@@ -1,0 +1,49 @@
+{
+    "name": "bookaria-studio",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "packageManager": "pnpm@10.34.6",
+    "description": "Bookaria Studio is a Web Application for managing, organizing and editing your book collection.",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc -b && vite build",
+        "preview": "vite preview",
+        "lint": "biome lint .",
+        "format": "biome format --write .",
+        "check": "biome check . && pnpm run typecheck",
+        "typecheck": "tsc -b",
+        "test": "tsx --test tests/*.test.mjs",
+        "contract:sync": "node scripts/sync-contract.mjs",
+        "contract:check": "node scripts/sync-contract.mjs --check",
+        "contract:verify": "node scripts/sync-contract.mjs --verify"
+    },
+    "dependencies": {
+        "@tanstack/react-query": "5.104.5",
+        "axios": "1.20.0",
+        "clsx": "2.1.1",
+        "lucide-react": "1.60.0",
+        "react": "19.3.1",
+        "react-dom": "19.3.1",
+        "react-router": "7.18.4",
+        "react-router-dom": "7.18.4",
+        "tailwind-merge": "3.7.0",
+        "zod": "4.6.5",
+        "zustand": "5.0.15"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.5.15",
+        "@tailwindcss/vite": "4.3.3",
+        "@types/node": "^24.19.2",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "@vitejs/plugin-react": "^6.1.2",
+        "tailwindcss": "4.3.3",
+        "tsx": "4.23.15",
+        "typescript": "~6.0.3",
+        "vite": "^8.3.4"
+    },
+    "engines": {
+        "node": ">=22.0.0"
+    }
+}

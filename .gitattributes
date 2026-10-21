@@ -1,0 +1,4 @@
+* text=auto
+src/shared/contracts/** text eol=lf
+scripts/** text eol=lf
+tests/** text eol=lf

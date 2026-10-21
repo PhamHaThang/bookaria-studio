@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "zod": "4.6.5",
+  "files": {
+    "api/admin.schema.ts": "33876148c149274d5d9452f48de9fbb2b43c14dd93eeb1a2e8689d31b78e61d0",
+    "api/assets.schema.ts": "675209bf6ba4485a9d2aeae773df88b8100dbf9a53f981865175793d08a4902a",
+    "api/auth.schema.ts": "d1ed9f9265a39fcb10298bd76053ba6c405ad99b140c4032591952df8f4ce05e",
+    "api/books.schema.ts": "a907214042698f01ccdbcb25ea117b41917ea066cb3335d4aa02d2d3f4eba17f",
+    "api/me.schema.ts": "09443bfa6b7363c9f115ab9fa04acdd7176a8190dc395ae4831cdb55bf43cfe6",
+    "api/pages.schema.ts": "f606205de83de8236ea53cda289f177c0db01720ba26267aea1c92ee81d92d31",
+    "api/public.schema.ts": "3e54283b87a2b60b31ab2faf9352f5d11bf2f14cf4641a51dc71e9d7178cafa6",
+    "api/publish.schema.ts": "bee237d1f43a44db5a6e061b7bc231e962648035406b4a8b530216000155e9aa",
+    "asset.schema.ts": "ada6c40629cba82f6efc08fac2042fed3c6f77664fa40b22caa01a4729a08b37",
+    "common.schema.ts": "dca6151897097b2b4e7ba10fca68bfe22b7caf186c50a7b27116bafc6404c342",
+    "dto.schema.ts": "7204af9963aee32b4d2e0577d85cce567e6e139012c2901308dd0401862a23df",
+    "enums.schema.ts": "735aab626ffdd48416de58e8e6a161683bb9a744a5f162e3b3351eff36640452",
+    "error.schema.ts": "da9a1ab3c8a3a8de6ce67c5b23bb905b0011e6376d368085a7eabd15b9299c9e",
+    "manifest.schema.ts": "faf3165b23dba2f6f20811191e2adfc1e55a9a4f9035640273cfc9a379ef5928",
+    "marker.schema.ts": "4242849a2509876261a36c892f041119f6b338f58218062453d7dc39fffd4310",
+    "routes.schema.ts": "9f3db5ca6d45da92a4fc2221b1e1bae743802fc6b5888f634feded62b014a69a",
+    "scene.schema.ts": "eb10138d18034818a4834b7ed8c1f6ebf42604174245b7f2430148c1cef8e20d"
+  }
+}
