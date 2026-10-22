@@ -1,4 +1,4 @@
-import { BookOpen, Library, LogOut, Palette, Trash2, UserRound } from 'lucide-react';
+import { BookOpen, FolderOpen, Library, LogOut, Palette, Trash2, UserRound } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { auth, useAuth } from '../features/auth';
@@ -47,6 +47,10 @@ export function StudioLayout() {
                     <NavLink to="/books/trash">
                         <Trash2 size={19} aria-hidden="true" />
                         Thùng rác
+                    </NavLink>
+                    <NavLink to="/assets">
+                        <FolderOpen size={19} aria-hidden="true" />
+                        Tài nguyên
                     </NavLink>
                     <NavLink to="/profile">
                         <UserRound size={19} aria-hidden="true" />

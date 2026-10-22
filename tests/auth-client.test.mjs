@@ -175,8 +175,13 @@ test('new passwords enforce UTF-8 byte limit and confirmation', () => {
     assert.ok(validateNewPassword('ế'.repeat(25), 'ế'.repeat(25)));
     assert.ok(validateNewPassword('password123', 'other'));
 });
-test('return path cannot redirect outside the protected books area', () => {
+test('return path stays within protected Studio routes', () => {
     for (const path of ['https://example.com', '//example.com', '/login', '/books\\evil'])
         assert.equal(safeReturnPath(path), '/books');
     assert.equal(safeReturnPath('/books/example'), '/books/example');
+    assert.equal(safeReturnPath('/assets/upload'), '/assets/upload');
+    assert.equal(safeReturnPath('/assets?scope=library'), '/assets?scope=library');
+    assert.equal(safeReturnPath('/profile'), '/profile');
+    assert.equal(safeReturnPath('/assets-evil'), '/books');
+    assert.equal(safeReturnPath('/assets\\evil'), '/books');
 });

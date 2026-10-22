@@ -6,7 +6,9 @@ export function validateNewPassword(password: string, confirmation: string): str
     return password === confirmation ? null : 'Mật khẩu nhập lại chưa khớp.';
 }
 export function safeReturnPath(value: unknown): string {
-    return typeof value === 'string' && /^\/books(?:[/?#]|$)/.test(value) && !value.includes('\\')
+    return typeof value === 'string' &&
+        /^\/(?:books|assets|profile)(?:[/?#]|$)/.test(value) &&
+        !value.includes('\\')
         ? value
         : '/books';
 }

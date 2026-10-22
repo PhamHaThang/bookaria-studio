@@ -23,6 +23,15 @@ const BookDetailPage = lazy(() =>
 const ProfilePage = lazy(() =>
     import('../pages/ProfilePage').then((module) => ({ default: module.ProfilePage })),
 );
+const AssetsPage = lazy(() =>
+    import('../pages/AssetsPage').then((module) => ({ default: module.AssetsPage })),
+);
+const AssetUploadPage = lazy(() =>
+    import('../pages/AssetUploadPage').then((module) => ({ default: module.AssetUploadPage })),
+);
+const AssetDetailPage = lazy(() =>
+    import('../pages/AssetDetailPage').then((module) => ({ default: module.AssetDetailPage })),
+);
 const StyleGuidePage = import.meta.env.DEV
     ? lazy(() =>
           import('../pages/StyleGuidePage').then((module) => ({ default: module.StyleGuidePage })),
@@ -82,6 +91,9 @@ export function AppRouter() {
                             <Route path="/books/new" element={<BookCreatePage />} />
                             <Route path="/books/:bookId" element={<BookDetailPage />} />
                             <Route path="/profile" element={<ProfilePage />} />
+                            <Route path="/assets" element={<AssetsPage />} />
+                            <Route path="/assets/upload" element={<AssetUploadPage />} />
+                            <Route path="/assets/:assetId" element={<AssetDetailPage />} />
                         </Route>
                     </Route>
                     <Route
