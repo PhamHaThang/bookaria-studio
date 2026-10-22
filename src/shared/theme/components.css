@@ -177,6 +177,7 @@
         text-align: center;
     }
     .confirm-dialog {
+        margin: auto;
         padding: var(--space-8);
         max-width: min(480px, calc(100vw - 32px));
         border: var(--border-width) solid var(--border-default);

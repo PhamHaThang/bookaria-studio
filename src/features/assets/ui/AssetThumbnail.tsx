@@ -1,3 +1,4 @@
+import './asset-thumbnail.css';
 import { Box, FileImage, Film, Music2 } from 'lucide-react';
 import { useState } from 'react';
 import type { Asset } from '../../../shared/contracts/dto.schema';

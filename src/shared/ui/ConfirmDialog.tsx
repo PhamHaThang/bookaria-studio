@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import { type ReactNode, useEffect, useId, useRef } from 'react';
 
 export function ConfirmDialog({
@@ -5,11 +6,13 @@ export function ConfirmDialog({
     children,
     busy,
     onClose,
+    className,
 }: {
     title: string;
     children: ReactNode;
     busy: boolean;
     onClose: () => void;
+    className?: string;
 }) {
     const dialog = useRef<HTMLDialogElement>(null);
     const id = useId();
@@ -18,7 +21,7 @@ export function ConfirmDialog({
     }, []);
     return (
         <dialog
-            className="confirm-dialog"
+            className={clsx('confirm-dialog', className)}
             ref={dialog}
             aria-labelledby={id}
             onCancel={(event) => {

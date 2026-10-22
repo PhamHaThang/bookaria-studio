@@ -11,6 +11,7 @@ import { type MindCheckpoint, prepareMarkerUpload } from '../features/pages/mode
 import { placementFromForm } from '../features/pages/model/placement';
 import { type ImageAttachmentContext, PageImageForm } from '../features/pages/ui/PageImageForm';
 import { profileKey } from '../features/profile';
+import { SceneEditor } from '../features/scene';
 import { errorMessage } from '../shared/api/errors';
 import { IdSchema } from '../shared/contracts/common.schema';
 import type { BookDetail, Page } from '../shared/contracts/dto.schema';
@@ -37,6 +38,8 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                     : 'Đã thêm trang sách.'
                 : null,
         );
+    const [mode, setMode] = useState<'content' | 'page'>('content');
+    const [sceneBusy, setSceneBusy] = useState(false);
     const [jobId, setJobId] = useState<string | null>(null);
     const controller = useRef<AbortController | null>(null),
         checkpoint = useRef<MindCheckpoint | null>(null);
@@ -51,7 +54,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                 : 1500,
     });
     const scoring = Boolean(jobId) && !['SUCCEEDED', 'FAILED'].includes(job.data?.status || '');
-    const locked = busy || imageBusy || scoring;
+    const locked = busy || imageBusy || scoring || sceneBusy;
     const geometry = { format: book.pageFormat, aspect: book.pageAspect };
     const transform =
         page.bookariaMarker?.transform || defaultMarkerTransform(geometry, page.orderIndex);
@@ -143,323 +146,355 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                     {markerWarningText(warning)}
                 </p>
             ))}
-            <div className="page-editor-layout">
-                <section className="page-preview-section" aria-label="Xem trước trang sách">
-                    <div className="page-paper" style={{ aspectRatio: `1 / ${book.pageAspect}` }}>
-                        <img
-                            src={page.image.url}
-                            alt={`Ảnh ${page.title || `trang ${page.orderIndex + 1}`}`}
-                        />
-                        {page.markerMode === 'BOOKARIA_MARKER' && page.bookariaMarker && (
-                            <div
-                                className="marker-placement"
-                                style={{
-                                    left: `${(transform.x + 0.5) * 100}%`,
-                                    top: `${(0.5 - transform.y / book.pageAspect) * 100}%`,
-                                    width: `${transform.size * 100}%`,
-                                    aspectRatio: '1',
-                                }}
-                            >
-                                <span>{page.markerNumber}</span>
-                            </div>
-                        )}
-                    </div>
-                    {page.markerMode === 'BOOKARIA_MARKER' && (
-                        <p className="field-hint">
-                            Ô số minh họa vị trí marker khi in. Đây không phải mẫu marker để quét.
-                        </p>
-                    )}
-                    <p className="field-hint">
-                        Ảnh gốc {page.image.width} × {page.image.height} px. Nội dung AR sẽ được
-                        chỉnh ở phần tiếp theo.
-                    </p>
-                </section>
-                <div className="page-editor-controls">
-                    <form className="page-control-section" onSubmit={saveTitle}>
-                        <h2>Thông tin trang</h2>
-                        <label htmlFor="page-title">
-                            Tên trang
-                            <input
-                                id="page-title"
-                                name="title"
-                                maxLength={150}
-                                defaultValue={page.title || ''}
-                                disabled={locked}
+            <fieldset className="page-edit-modes" aria-label="Phần chỉnh sửa trang">
+                <Button
+                    variant={mode === 'content' ? 'primary' : 'ghost'}
+                    aria-pressed={mode === 'content'}
+                    disabled={busy || imageBusy || sceneBusy}
+                    onClick={() => setMode('content')}
+                >
+                    Nội dung AR
+                </Button>
+                <Button
+                    variant={mode === 'page' ? 'primary' : 'ghost'}
+                    aria-pressed={mode === 'page'}
+                    disabled={busy || imageBusy || sceneBusy}
+                    onClick={() => setMode('page')}
+                >
+                    Trang và nhận diện
+                </Button>
+            </fieldset>
+            <div hidden={mode !== 'content'}>
+                <SceneEditor
+                    page={page}
+                    book={book}
+                    disabled={busy || imageBusy || scoring}
+                    onBusyChange={setSceneBusy}
+                />
+            </div>
+            <div hidden={mode !== 'page'}>
+                <div className="page-editor-layout">
+                    <section className="page-preview-section" aria-label="Xem trước trang sách">
+                        <div
+                            className="page-paper"
+                            style={{ aspectRatio: `1 / ${book.pageAspect}` }}
+                        >
+                            <img
+                                src={page.image.url}
+                                alt={`Ảnh ${page.title || `trang ${page.orderIndex + 1}`}`}
                             />
-                        </label>
-                        <Button type="submit" disabled={locked}>
-                            Lưu tên trang
-                        </Button>
-                    </form>
-                    <section className="page-control-section" aria-labelledby="marker-heading">
-                        <h2 id="marker-heading">Nhận diện AR</h2>
-                        <p>
-                            Hiện tại:{' '}
-                            {page.markerMode === 'NONE'
-                                ? 'Không dùng AR'
-                                : page.markerMode === 'BOOKARIA_MARKER'
-                                  ? `Marker Bookaria ${page.markerNumber}`
-                                  : 'Dùng ảnh trang để nhận diện'}
-                            .
-                        </p>
-                        <div className="form-actions">
-                            <Button
-                                variant="secondary"
-                                disabled={locked || page.markerMode === 'NONE'}
-                                onClick={() => {
-                                    void run(async () => {
-                                        await pagesApi.update(page.id, { noAr: true });
-                                    }, 'Đã tắt AR cho trang.');
-                                }}
-                            >
-                                Không dùng AR
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                disabled={locked || page.markerMode === 'BOOKARIA_MARKER'}
-                                onClick={() => {
-                                    void run(async () => {
-                                        await pagesApi.setMarker(page.id, {
-                                            mode: 'BOOKARIA_MARKER',
-                                        });
-                                    }, 'Đã dùng marker Bookaria.');
-                                }}
-                            >
-                                Dùng marker Bookaria
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                disabled={locked || page.markerMode === 'CUSTOM_MARKER'}
-                                onClick={() => {
-                                    void run(async (signal) => {
-                                        const markerMindPublicId = await mind(page.image.url, {
-                                            signal,
-                                            onStage: setStage,
-                                            onProgress: setProgress,
-                                        });
-                                        signal.throwIfAborted();
-                                        setStage('saving');
-                                        const result = await pagesApi.setMarker(page.id, {
-                                            mode: 'CUSTOM_MARKER',
-                                            markerMindPublicId,
-                                        });
-                                        if (result.processing) setJobId(result.jobId);
-                                    }, 'Đã lưu chế độ nhận diện. Máy chủ đang đánh giá ảnh.');
-                                }}
-                            >
-                                Dùng ảnh trang
-                            </Button>
+                            {page.markerMode === 'BOOKARIA_MARKER' && page.bookariaMarker && (
+                                <div
+                                    className="marker-placement"
+                                    style={{
+                                        left: `${(transform.x + 0.5) * 100}%`,
+                                        top: `${(0.5 - transform.y / book.pageAspect) * 100}%`,
+                                        width: `${transform.size * 100}%`,
+                                        aspectRatio: '1',
+                                    }}
+                                >
+                                    <span>{page.markerNumber}</span>
+                                </div>
+                            )}
                         </div>
-                        <p className="field-hint">
-                            Dùng ảnh trang sẽ chuẩn bị dữ liệu nhận diện trên trình duyệt, có thể
-                            mất vài phút. Ảnh có nhiều chi tiết thường dễ quét hơn.
-                        </p>
-                        {stage && (
-                            <div>
-                                <p role="status">
-                                    {stage === 'saving'
-                                        ? 'Đang lưu nhận diện…'
-                                        : `${stage === 'compiling' ? 'Đang chuẩn bị nhận diện' : 'Đang tải dữ liệu nhận diện'}… ${progress}%`}
-                                </p>
-                                {stage !== 'saving' && (
-                                    <Button
-                                        variant="ghost"
-                                        onClick={() => {
-                                            controller.current?.abort();
-                                        }}
-                                    >
-                                        Dừng chuẩn bị
-                                    </Button>
-                                )}
-                            </div>
-                        )}
                         {page.markerMode === 'BOOKARIA_MARKER' && (
-                            <form
-                                className="marker-position-form"
-                                key={`${page.id}-${JSON.stringify(transform)}`}
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    const form = new FormData(event.currentTarget);
-                                    void run(async () => {
-                                        await pagesApi.setMarker(page.id, {
-                                            mode: 'BOOKARIA_MARKER',
-                                            transform: placementFromForm(form, geometry),
-                                        });
-                                    }, 'Đã lưu vị trí marker.');
-                                }}
-                            >
-                                <h3>Vị trí trên bản in</h3>
-                                <p className="field-hint">
-                                    Tâm marker tính từ góc trên bên trái. Cạnh tối thiểu 35 mm, cách
-                                    mép ít nhất 12 mm.
-                                </p>
-                                <fieldset disabled={locked} className="marker-measurements">
-                                    <label htmlFor="marker-x">
-                                        Tâm ngang (mm)
-                                        <input
-                                            id="marker-x"
-                                            name="centerX"
-                                            type="number"
-                                            step="0.1"
-                                            required
-                                            defaultValue={mm.centerXMm.toFixed(1)}
-                                        />
-                                    </label>
-                                    <label htmlFor="marker-y">
-                                        Tâm dọc (mm)
-                                        <input
-                                            id="marker-y"
-                                            name="centerY"
-                                            type="number"
-                                            step="0.1"
-                                            required
-                                            defaultValue={mm.centerYMm.toFixed(1)}
-                                        />
-                                    </label>
-                                    <label htmlFor="marker-size">
-                                        Cạnh (mm)
-                                        <input
-                                            id="marker-size"
-                                            name="size"
-                                            type="number"
-                                            step="0.1"
-                                            min="35"
-                                            required
-                                            defaultValue={mm.sizeMm.toFixed(1)}
-                                        />
-                                    </label>
-                                </fieldset>
-                                <Button type="submit" disabled={locked}>
-                                    Lưu vị trí marker
-                                </Button>
-                            </form>
+                            <p className="field-hint">
+                                Ô số minh họa vị trí marker khi in. Đây không phải mẫu marker để
+                                quét.
+                            </p>
                         )}
-                        {jobId && (
-                            <div className="page-score-status">
-                                {job.isPending && (
-                                    <p role="status">Đang kiểm tra tiến độ đánh giá…</p>
-                                )}
-                                {job.isError && (
-                                    <>
-                                        <Feedback error={errorMessage(job.error)} />
+                        <p className="field-hint">
+                            Ảnh gốc {page.image.width} × {page.image.height} px. Nội dung AR sẽ được
+                            chỉnh ở phần tiếp theo.
+                        </p>
+                    </section>
+                    <div className="page-editor-controls">
+                        <form className="page-control-section" onSubmit={saveTitle}>
+                            <h2>Thông tin trang</h2>
+                            <label htmlFor="page-title">
+                                Tên trang
+                                <input
+                                    id="page-title"
+                                    name="title"
+                                    maxLength={150}
+                                    defaultValue={page.title || ''}
+                                    disabled={locked}
+                                />
+                            </label>
+                            <Button type="submit" disabled={locked}>
+                                Lưu tên trang
+                            </Button>
+                        </form>
+                        <section className="page-control-section" aria-labelledby="marker-heading">
+                            <h2 id="marker-heading">Nhận diện AR</h2>
+                            <p>
+                                Hiện tại:{' '}
+                                {page.markerMode === 'NONE'
+                                    ? 'Không dùng AR'
+                                    : page.markerMode === 'BOOKARIA_MARKER'
+                                      ? `Marker Bookaria ${page.markerNumber}`
+                                      : 'Dùng ảnh trang để nhận diện'}
+                                .
+                            </p>
+                            <div className="form-actions">
+                                <Button
+                                    variant="secondary"
+                                    disabled={locked || page.markerMode === 'NONE'}
+                                    onClick={() => {
+                                        void run(async () => {
+                                            await pagesApi.update(page.id, { noAr: true });
+                                        }, 'Đã tắt AR cho trang.');
+                                    }}
+                                >
+                                    Không dùng AR
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    disabled={locked || page.markerMode === 'BOOKARIA_MARKER'}
+                                    onClick={() => {
+                                        void run(async () => {
+                                            await pagesApi.setMarker(page.id, {
+                                                mode: 'BOOKARIA_MARKER',
+                                            });
+                                        }, 'Đã dùng marker Bookaria.');
+                                    }}
+                                >
+                                    Dùng marker Bookaria
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    disabled={locked || page.markerMode === 'CUSTOM_MARKER'}
+                                    onClick={() => {
+                                        void run(async (signal) => {
+                                            const markerMindPublicId = await mind(page.image.url, {
+                                                signal,
+                                                onStage: setStage,
+                                                onProgress: setProgress,
+                                            });
+                                            signal.throwIfAborted();
+                                            setStage('saving');
+                                            const result = await pagesApi.setMarker(page.id, {
+                                                mode: 'CUSTOM_MARKER',
+                                                markerMindPublicId,
+                                            });
+                                            if (result.processing) setJobId(result.jobId);
+                                        }, 'Đã lưu chế độ nhận diện. Máy chủ đang đánh giá ảnh.');
+                                    }}
+                                >
+                                    Dùng ảnh trang
+                                </Button>
+                            </div>
+                            <p className="field-hint">
+                                Dùng ảnh trang sẽ chuẩn bị dữ liệu nhận diện trên trình duyệt, có
+                                thể mất vài phút. Ảnh có nhiều chi tiết thường dễ quét hơn.
+                            </p>
+                            {stage && (
+                                <div>
+                                    <p role="status">
+                                        {stage === 'saving'
+                                            ? 'Đang lưu nhận diện…'
+                                            : `${stage === 'compiling' ? 'Đang chuẩn bị nhận diện' : 'Đang tải dữ liệu nhận diện'}… ${progress}%`}
+                                    </p>
+                                    {stage !== 'saving' && (
                                         <Button
-                                            variant="secondary"
+                                            variant="ghost"
                                             onClick={() => {
-                                                void job.refetch();
+                                                controller.current?.abort();
                                             }}
                                         >
-                                            Kiểm tra lại tiến độ
+                                            Dừng chuẩn bị
                                         </Button>
-                                    </>
-                                )}
-                                {job.data && (
-                                    <p role="status">
-                                        {job.data.status === 'SUCCEEDED'
-                                            ? 'Đã đánh giá ảnh nhận diện.'
-                                            : job.data.status === 'FAILED'
-                                              ? `Đánh giá chưa thành công: ${job.data.error?.message || 'Vui lòng thử lại.'}`
-                                              : `Máy chủ đang đánh giá ảnh… ${job.data.progress}%`}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                        {page.markerMode === 'CUSTOM_MARKER' && (
-                            <div className="marker-report">
-                                <h3>Chất lượng ảnh nhận diện</h3>
-                                <p>
-                                    {page.markerScore == null
-                                        ? 'Chưa có điểm đánh giá.'
-                                        : `${page.markerScore}/5 sao · Cần tối thiểu 3 sao để xuất bản.`}
-                                </p>
-                                {page.markerReport && (
-                                    <>
-                                        <p>
-                                            {page.markerReport.features} điểm đặc trưng · Phủ{' '}
-                                            {(page.markerReport.coverage * 100).toFixed(0)}% vùng
-                                            ảnh.
-                                        </p>
-                                        {page.markerReport.hints.length > 0 && (
-                                            <ul>
-                                                {page.markerReport.hints.map((hint) => (
-                                                    <li key={hint}>{hint}</li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                        {page.markerReport.heatmapUrl && (
-                                            <a
-                                                href={page.markerReport.heatmapUrl}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                            >
-                                                Xem bản đồ phân bố chi tiết
-                                            </a>
-                                        )}
-                                        {page.markerReport.similarPages.length > 0 && (
-                                            <p>
-                                                Ảnh gần giống trang khác trong sách. Hãy dùng ảnh có
-                                                bố cục khác để tránh nhận nhầm.
-                                            </p>
-                                        )}
-                                    </>
-                                )}
-                                <div className="form-actions">
-                                    <Button
-                                        variant="secondary"
-                                        disabled={locked}
-                                        onClick={() => {
-                                            void run(async () => {
-                                                const result = await pagesApi.rescore(page.id);
-                                                setJobId(result.jobId);
-                                            }, 'Đã gửi yêu cầu đánh giá lại.');
-                                        }}
-                                    >
-                                        Đánh giá lại
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        disabled={busy || imageBusy}
-                                        onClick={() => {
-                                            void refresh();
-                                        }}
-                                    >
-                                        Cập nhật kết quả
-                                    </Button>
+                                    )}
                                 </div>
-                            </div>
-                        )}
-                    </section>
-                    <section
-                        className="page-control-section"
-                        aria-labelledby="replace-image-heading"
-                    >
-                        <h2 id="replace-image-heading">Thay ảnh trang</h2>
-                        <PageImageForm
-                            title="Ảnh thay thế"
-                            action="Lưu ảnh thay thế"
-                            disabled={busy || scoring}
-                            onBusyChange={setImageBusy}
-                            onUploaded={() => {
-                                void cache.invalidateQueries({ queryKey: assetKeys.all });
-                                void cache.invalidateQueries({
-                                    queryKey: profileKey(user?.id || ''),
-                                });
-                            }}
-                            onAttach={async (asset, _form, context) => {
-                                const markerMindPublicId =
-                                    page.markerMode === 'CUSTOM_MARKER'
-                                        ? await mind(asset.url, context)
-                                        : undefined;
-                                context.signal.throwIfAborted();
-                                context.onStage('saving');
-                                const result = await pagesApi.replaceImage(page.id, {
-                                    imageAssetId: asset.id,
-                                    markerMindPublicId,
-                                });
-                                if (result.jobId) setJobId(result.jobId);
-                                await refresh();
-                            }}
-                        />
-                    </section>
+                            )}
+                            {page.markerMode === 'BOOKARIA_MARKER' && (
+                                <form
+                                    className="marker-position-form"
+                                    key={`${page.id}-${JSON.stringify(transform)}`}
+                                    onSubmit={(event) => {
+                                        event.preventDefault();
+                                        const form = new FormData(event.currentTarget);
+                                        void run(async () => {
+                                            await pagesApi.setMarker(page.id, {
+                                                mode: 'BOOKARIA_MARKER',
+                                                transform: placementFromForm(form, geometry),
+                                            });
+                                        }, 'Đã lưu vị trí marker.');
+                                    }}
+                                >
+                                    <h3>Vị trí trên bản in</h3>
+                                    <p className="field-hint">
+                                        Tâm marker tính từ góc trên bên trái. Cạnh tối thiểu 35 mm,
+                                        cách mép ít nhất 12 mm.
+                                    </p>
+                                    <fieldset disabled={locked} className="marker-measurements">
+                                        <label htmlFor="marker-x">
+                                            Tâm ngang (mm)
+                                            <input
+                                                id="marker-x"
+                                                name="centerX"
+                                                type="number"
+                                                step="0.1"
+                                                required
+                                                defaultValue={mm.centerXMm.toFixed(1)}
+                                            />
+                                        </label>
+                                        <label htmlFor="marker-y">
+                                            Tâm dọc (mm)
+                                            <input
+                                                id="marker-y"
+                                                name="centerY"
+                                                type="number"
+                                                step="0.1"
+                                                required
+                                                defaultValue={mm.centerYMm.toFixed(1)}
+                                            />
+                                        </label>
+                                        <label htmlFor="marker-size">
+                                            Cạnh (mm)
+                                            <input
+                                                id="marker-size"
+                                                name="size"
+                                                type="number"
+                                                step="0.1"
+                                                min="35"
+                                                required
+                                                defaultValue={mm.sizeMm.toFixed(1)}
+                                            />
+                                        </label>
+                                    </fieldset>
+                                    <Button type="submit" disabled={locked}>
+                                        Lưu vị trí marker
+                                    </Button>
+                                </form>
+                            )}
+                            {jobId && (
+                                <div className="page-score-status">
+                                    {job.isPending && (
+                                        <p role="status">Đang kiểm tra tiến độ đánh giá…</p>
+                                    )}
+                                    {job.isError && (
+                                        <>
+                                            <Feedback error={errorMessage(job.error)} />
+                                            <Button
+                                                variant="secondary"
+                                                onClick={() => {
+                                                    void job.refetch();
+                                                }}
+                                            >
+                                                Kiểm tra lại tiến độ
+                                            </Button>
+                                        </>
+                                    )}
+                                    {job.data && (
+                                        <p role="status">
+                                            {job.data.status === 'SUCCEEDED'
+                                                ? 'Đã đánh giá ảnh nhận diện.'
+                                                : job.data.status === 'FAILED'
+                                                  ? `Đánh giá chưa thành công: ${job.data.error?.message || 'Vui lòng thử lại.'}`
+                                                  : `Máy chủ đang đánh giá ảnh… ${job.data.progress}%`}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                            {page.markerMode === 'CUSTOM_MARKER' && (
+                                <div className="marker-report">
+                                    <h3>Chất lượng ảnh nhận diện</h3>
+                                    <p>
+                                        {page.markerScore == null
+                                            ? 'Chưa có điểm đánh giá.'
+                                            : `${page.markerScore}/5 sao · Cần tối thiểu 3 sao để xuất bản.`}
+                                    </p>
+                                    {page.markerReport && (
+                                        <>
+                                            <p>
+                                                {page.markerReport.features} điểm đặc trưng · Phủ{' '}
+                                                {(page.markerReport.coverage * 100).toFixed(0)}%
+                                                vùng ảnh.
+                                            </p>
+                                            {page.markerReport.hints.length > 0 && (
+                                                <ul>
+                                                    {page.markerReport.hints.map((hint) => (
+                                                        <li key={hint}>{hint}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                            {page.markerReport.heatmapUrl && (
+                                                <a
+                                                    href={page.markerReport.heatmapUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    Xem bản đồ phân bố chi tiết
+                                                </a>
+                                            )}
+                                            {page.markerReport.similarPages.length > 0 && (
+                                                <p>
+                                                    Ảnh gần giống trang khác trong sách. Hãy dùng
+                                                    ảnh có bố cục khác để tránh nhận nhầm.
+                                                </p>
+                                            )}
+                                        </>
+                                    )}
+                                    <div className="form-actions">
+                                        <Button
+                                            variant="secondary"
+                                            disabled={locked}
+                                            onClick={() => {
+                                                void run(async () => {
+                                                    const result = await pagesApi.rescore(page.id);
+                                                    setJobId(result.jobId);
+                                                }, 'Đã gửi yêu cầu đánh giá lại.');
+                                            }}
+                                        >
+                                            Đánh giá lại
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            disabled={busy || imageBusy}
+                                            onClick={() => {
+                                                void refresh();
+                                            }}
+                                        >
+                                            Cập nhật kết quả
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </section>
+                        <section
+                            className="page-control-section"
+                            aria-labelledby="replace-image-heading"
+                        >
+                            <h2 id="replace-image-heading">Thay ảnh trang</h2>
+                            <PageImageForm
+                                title="Ảnh thay thế"
+                                action="Lưu ảnh thay thế"
+                                disabled={busy || scoring || sceneBusy}
+                                onBusyChange={setImageBusy}
+                                onUploaded={() => {
+                                    void cache.invalidateQueries({ queryKey: assetKeys.all });
+                                    void cache.invalidateQueries({
+                                        queryKey: profileKey(user?.id || ''),
+                                    });
+                                }}
+                                onAttach={async (asset, _form, context) => {
+                                    const markerMindPublicId =
+                                        page.markerMode === 'CUSTOM_MARKER'
+                                            ? await mind(asset.url, context)
+                                            : undefined;
+                                    context.signal.throwIfAborted();
+                                    context.onStage('saving');
+                                    const result = await pagesApi.replaceImage(page.id, {
+                                        imageAssetId: asset.id,
+                                        markerMindPublicId,
+                                    });
+                                    if (result.jobId) setJobId(result.jobId);
+                                    await refresh();
+                                }}
+                            />
+                        </section>
+                    </div>
                 </div>
             </div>
         </>
@@ -488,7 +523,7 @@ function PageDetailContent({ bookId, pageId }: { bookId: string; pageId: string 
                 <Link to="/books">Về sách của tôi</Link>
             </>
         );
-    if (page.isError || book.isError)
+    if ((page.isError && !page.data) || (book.isError && !book.data))
         return (
             <>
                 <h1>Chưa mở được trang sách</h1>
@@ -508,7 +543,25 @@ function PageDetailContent({ bookId, pageId }: { bookId: string; pageId: string 
             </>
         );
     if (!page.data || !book.data) return <p role="status">Đang tải trang sách…</p>;
-    return <PageEditor key={pageId} page={page.data} book={book.data} />;
+    return (
+        <>
+            {(page.isError || book.isError) && (
+                <div>
+                    <Feedback error="Chưa cập nhật được dữ liệu mới nhất. Nội dung đang sửa vẫn được giữ." />
+                    <Button
+                        variant="ghost"
+                        onClick={() => {
+                            void page.refetch();
+                            void book.refetch();
+                        }}
+                    >
+                        Thử đọc lại dữ liệu trang
+                    </Button>
+                </div>
+            )}
+            <PageEditor key={pageId} page={page.data} book={book.data} />
+        </>
+    );
 }
 
 export function PageDetailPage() {
