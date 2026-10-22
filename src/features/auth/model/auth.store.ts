@@ -1,9 +1,10 @@
 import { createStore } from 'zustand/vanilla';
 import type { AuthUser } from '../../../shared/contracts/api/auth.schema';
+import type { Me } from '../../../shared/contracts/dto.schema';
 
 interface AuthState {
     status: 'loading' | 'anonymous' | 'authenticated' | 'error';
-    user: AuthUser | null;
+    user: (AuthUser & Partial<Pick<Me, 'avatarUrl'>>) | null;
     token: string | null;
     message: string | null;
     signingOut: boolean;

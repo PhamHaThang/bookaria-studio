@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 import { Button } from '@/shared/ui/Button';
+import { ImageUploadEditor } from '../features/assets';
 import { auth, useAuth } from '../features/auth';
 import { profileApi, profileKey } from '../features/profile';
 import { errorMessage } from '../shared/api/errors';
@@ -9,7 +10,17 @@ import type { Me } from '../shared/contracts/dto.schema';
 import { formatBytes } from '../shared/lib/format';
 import { Feedback } from '../shared/ui/Feedback';
 
-function ProfileForm({ me, onSaved }: { me: Me; onSaved: (me: Me) => void }) {
+function ProfileForm({
+    me,
+    onSaved,
+    disabled,
+    onBusyChange,
+}: {
+    me: Me;
+    onSaved: (me: Me) => void;
+    disabled: boolean;
+    onBusyChange: (busy: boolean) => void;
+}) {
     const cache = useQueryClient();
     const [values, setValues] = useState({
         displayName: me.displayName,
@@ -20,11 +31,15 @@ function ProfileForm({ me, onSaved }: { me: Me; onSaved: (me: Me) => void }) {
     const [success, setSuccess] = useState<string | null>(null);
     const mutation = useMutation({
         mutationFn: profileApi.update,
-        onMutate: () => cache.cancelQueries({ queryKey: profileKey(me.id) }),
+        onMutate: () => {
+            onBusyChange(true);
+            return cache.cancelQueries({ queryKey: profileKey(me.id) });
+        },
+        onSettled: () => onBusyChange(false),
     });
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (mutation.isPending) return;
+        if (mutation.isPending || disabled) return;
         setError(null);
         setSuccess(null);
         try {
@@ -48,7 +63,7 @@ function ProfileForm({ me, onSaved }: { me: Me; onSaved: (me: Me) => void }) {
         <form className="editor-form" onSubmit={submit} aria-busy={mutation.isPending}>
             <h2>Thông tin cá nhân</h2>
             <Feedback error={error} success={success} />
-            <fieldset disabled={mutation.isPending}>
+            <fieldset disabled={mutation.isPending || disabled}>
                 <label htmlFor="profile-name">
                     Họ tên
                     <input
@@ -177,6 +192,8 @@ function PasswordForm() {
 export function ProfilePage() {
     const { user } = useAuth();
     const cache = useQueryClient();
+    const [avatarBusy, setAvatarBusy] = useState(false);
+    const [profileBusy, setProfileBusy] = useState(false);
     const profile = useQuery({
         queryKey: profileKey(user?.id || ''),
         queryFn: ({ signal }) => profileApi.get(signal),
@@ -211,10 +228,30 @@ export function ProfilePage() {
             </div>
             <div className="profile-layout">
                 <div>
+                    <ImageUploadEditor
+                        key={`avatar-${me.id}`}
+                        kind="avatar"
+                        currentUrl={me.avatarUrl}
+                        disabled={profileBusy}
+                        onBusyChange={setAvatarBusy}
+                        onUploaded={() => {
+                            void cache.invalidateQueries({ queryKey: profileKey(me.id) });
+                        }}
+                        onSave={async (avatarAssetId) => {
+                            await cache.cancelQueries({ queryKey: profileKey(me.id) });
+                            const saved = await profileApi.update({ avatarAssetId });
+                            if (auth.store.getState().user?.id !== me.id) return;
+                            cache.setQueryData(profileKey(me.id), saved);
+                            auth.store.setState({ user: saved });
+                        }}
+                    />
                     <ProfileForm
                         key={me.id}
                         me={me}
+                        disabled={avatarBusy}
+                        onBusyChange={setProfileBusy}
                         onSaved={(saved) => {
+                            if (auth.store.getState().user?.id !== me.id) return;
                             cache.setQueryData(profileKey(me.id), saved);
                             auth.store.setState({ user: saved });
                         }}

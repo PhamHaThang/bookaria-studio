@@ -1,0 +1,63 @@
+.image-editor {
+    margin-bottom: var(--space-6);
+}
+.image-editor h2 {
+    margin-top: 0;
+    font-size: var(--text-xl);
+}
+.image-editor-layout {
+    display: grid;
+    grid-template-columns: 144px minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: start;
+}
+.image-editor-layout form {
+    min-width: 0;
+}
+.image-editor-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: var(--space-2);
+    background: var(--bg-surface-subtle);
+    color: var(--text-muted);
+    overflow: hidden;
+    font-size: var(--text-xs);
+}
+.image-editor-preview img {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+.avatar-preview {
+    width: 128px;
+    height: 128px;
+    border-radius: 50%;
+}
+.avatar-preview img {
+    object-fit: cover;
+}
+.cover-preview {
+    width: 144px;
+    height: 192px;
+    border-radius: var(--radius-sm);
+}
+.cover-preview img {
+    object-fit: contain;
+}
+.image-file-name {
+    overflow-wrap: anywhere;
+    font-size: var(--text-sm);
+}
+.image-upload-progress progress {
+    width: 100%;
+}
+.image-editor .form-actions:empty {
+    display: none;
+}
+@media (max-width: 600px) {
+    .image-editor-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

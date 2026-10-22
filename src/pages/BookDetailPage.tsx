@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { useAuth } from '../features/auth';
+import { ImageUploadEditor } from '../features/assets';
+import { auth, useAuth } from '../features/auth';
 import { BookForm, bookKeys, bookStatusLabels, booksApi, updateBookForm } from '../features/books';
+import { profileKey } from '../features/profile';
 import { errorMessage } from '../shared/api/errors';
 import { IdSchema } from '../shared/contracts/common.schema';
+import type { BookDetail } from '../shared/contracts/dto.schema';
 import { Feedback } from '../shared/ui/Feedback';
 
 function BookDetailContent({ bookId }: { bookId: string }) {
@@ -13,6 +16,7 @@ function BookDetailContent({ bookId }: { bookId: string }) {
     const cache = useQueryClient();
     const valid = IdSchema.safeParse(bookId).success;
     const [error, setError] = useState<string | null>(null);
+    const [coverBusy, setCoverBusy] = useState(false);
     const [success, setSuccess] = useState<string | null>(
         location.state?.created ? 'Đã tạo sách trống thành công.' : null,
     );
@@ -81,10 +85,37 @@ function BookDetailContent({ bookId }: { bookId: string }) {
             {book.takenDown && (
                 <Feedback error="Sách đang bị gỡ. Một số thao tác có thể bị hạn chế." />
             )}
+            <ImageUploadEditor
+                key={`cover-${book.id}`}
+                kind="cover"
+                currentUrl={book.coverUrl}
+                disabled={mutation.isPending}
+                onBusyChange={setCoverBusy}
+                onUploaded={() => {
+                    void cache.invalidateQueries({ queryKey: profileKey(user?.id || '') });
+                }}
+                onSave={async (coverAssetId) => {
+                    await cache.cancelQueries({ queryKey: bookKeys.all });
+                    const saved = await booksApi.update(bookId, { coverAssetId });
+                    if (auth.store.getState().user?.id !== user?.id) return;
+                    cache.setQueryData<BookDetail>(
+                        bookKeys.detail(user?.id || '', bookId),
+                        (current) =>
+                            current
+                                ? {
+                                      ...current,
+                                      coverUrl: saved.coverUrl,
+                                      updatedAt: saved.updatedAt,
+                                  }
+                                : current,
+                    );
+                    void cache.invalidateQueries({ queryKey: bookKeys.all });
+                }}
+            />
             <BookForm
                 key={book.id}
                 book={book}
-                busy={mutation.isPending}
+                busy={mutation.isPending || coverBusy}
                 error={error}
                 success={success}
                 onSubmit={(form) => {

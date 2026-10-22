@@ -2,3 +2,4 @@ export { assetKeys, assetStatusLabels, assetsApi, assetTypeLabels } from './mode
 export { completeAssetForm, updateAssetForm, uploadRequest } from './model/form';
 export { readAssetSearch, updateAssetSearch } from './model/search';
 export { AssetThumbnail } from './ui/AssetThumbnail';
+export { ImageUploadEditor } from './ui/ImageUploadEditor';

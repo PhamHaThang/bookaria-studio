@@ -28,6 +28,7 @@ export async function runAssetUpload({
     onCheckpoint,
     onStage,
     onProgress,
+    purpose = 'ASSET',
 }: {
     api: Pick<AssetsApi, 'signature' | 'complete'>;
     transfer: Transfer;
@@ -38,8 +39,9 @@ export async function runAssetUpload({
     onCheckpoint: (checkpoint: UploadCheckpoint) => void;
     onStage: (stage: UploadStage) => void;
     onProgress: (percent: number) => void;
+    purpose?: 'ASSET' | 'AVATAR';
 }) {
-    const request = uploadRequest(file);
+    const request = uploadRequest(file, purpose);
     signal.throwIfAborted();
     let current = checkpoint;
     if (!current || (!current.uploaded && Date.parse(current.signature.expiresAt) <= Date.now())) {

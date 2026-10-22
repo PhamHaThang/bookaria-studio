@@ -17,12 +17,15 @@ const fallbackMime: Record<string, string> = {
     wav: 'audio/wav',
     mp4: 'video/mp4',
 };
-export function uploadRequest(file: Pick<File, 'name' | 'type' | 'size'>) {
+export function uploadRequest(
+    file: Pick<File, 'name' | 'type' | 'size'>,
+    purpose: 'ASSET' | 'AVATAR' = 'ASSET',
+) {
     if (file.size === 0) throw new Error('Tệp trống. Hãy chọn tệp có nội dung.');
     const mimeType =
         file.type || fallbackMime[file.name.split('.').pop()?.toLowerCase() || ''] || '';
     const body = UploadSignatureBodySchema.parse({
-        purpose: 'ASSET',
+        purpose,
         fileName: file.name,
         mimeType,
         sizeBytes: file.size,

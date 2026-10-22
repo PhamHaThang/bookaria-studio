@@ -3,6 +3,7 @@ import { Suspense, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { auth, useAuth } from '../features/auth';
 import { errorMessage } from '../shared/api/errors';
+import { Avatar } from '../shared/ui/Avatar';
 import { Feedback } from '../shared/ui/Feedback';
 
 export function StudioLayout() {
@@ -25,7 +26,8 @@ export function StudioLayout() {
                 </Link>
                 <div className="account-actions">
                     <Link className="account-link" to="/profile">
-                        {user?.displayName}
+                        <Avatar url={user?.avatarUrl || null} />
+                        <span>{user?.displayName}</span>
                     </Link>
                     <button
                         className="text-button"

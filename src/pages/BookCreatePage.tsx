@@ -24,7 +24,7 @@ export function BookCreatePage() {
             <div className="page-heading">
                 <div>
                     <h1>Tạo sách mới</h1>
-                    <p>Bắt đầu với sách trống. Bạn có thể sửa thông tin sách sau khi tạo.</p>
+                    <p>Bắt đầu với sách trống. Sau khi tạo, bạn có thể thêm ảnh bìa và nội dung.</p>
                 </div>
             </div>
             <BookForm
