@@ -1,10 +1,22 @@
-import { BookOpen, FolderOpen, Library, LogOut, Palette, Trash2, UserRound } from 'lucide-react';
+import {
+    Bell,
+    BookOpen,
+    ChartColumn,
+    FolderOpen,
+    Library,
+    LogOut,
+    Palette,
+    Trash2,
+    UserRound,
+} from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { auth, useAuth } from '../features/auth';
+import { NotificationLink } from '../features/notifications/NotificationLink';
 import { errorMessage } from '../shared/api/errors';
 import { Avatar } from '../shared/ui/Avatar';
 import { Feedback } from '../shared/ui/Feedback';
+import './insights.css';
 
 export function StudioLayout() {
     const { user, signingOut } = useAuth();
@@ -25,6 +37,7 @@ export function StudioLayout() {
                     Bookaria<span>Studio</span>
                 </Link>
                 <div className="account-actions">
+                    <NotificationLink userId={user?.id || ''} />
                     <Link className="account-link" to="/profile">
                         <Avatar url={user?.avatarUrl || null} />
                         <span>{user?.displayName}</span>
@@ -57,6 +70,14 @@ export function StudioLayout() {
                     <NavLink to="/assets">
                         <FolderOpen size={19} aria-hidden="true" />
                         Tài nguyên
+                    </NavLink>
+                    <NavLink to="/stats">
+                        <ChartColumn size={19} aria-hidden="true" />
+                        Thống kê
+                    </NavLink>
+                    <NavLink to="/notifications">
+                        <Bell size={19} aria-hidden="true" />
+                        Thông báo
                     </NavLink>
                     <NavLink to="/profile">
                         <UserRound size={19} aria-hidden="true" />

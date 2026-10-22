@@ -88,6 +88,7 @@ function BookDetailContent({ bookId }: { bookId: string }) {
                     <p>
                         {bookStatusLabels[book.status]} · {book.pageCount} trang
                     </p>
+                    <Link to={`/books/${book.id}/stats`}>Xem thống kê sách</Link>
                 </div>
             </div>
             {book.takenDown && (

@@ -27,6 +27,16 @@ const AuthorPage = lazy(() =>
     import('../pages/AuthorPage').then((module) => ({ default: module.AuthorPage })),
 );
 
+const StatsBooksPage = lazy(() =>
+    import('../pages/StatsBooksPage').then((module) => ({ default: module.StatsBooksPage })),
+);
+const BookStatsPage = lazy(() =>
+    import('../pages/BookStatsPage').then((module) => ({ default: module.BookStatsPage })),
+);
+const NotificationsPage = lazy(() =>
+    import('../pages/NotificationsPage').then((module) => ({ default: module.NotificationsPage })),
+);
+
 const BooksPage = lazy(() =>
     import('../pages/BooksPage').then((module) => ({ default: module.BooksPage })),
 );
@@ -114,6 +124,9 @@ const router = createBrowserRouter(
                 <Route element={<RequireSession />}>
                     <Route element={<StudioLayout />}>
                         <Route path="/books" element={<BooksPage key="active" />} />
+                        <Route path="/stats" element={<StatsBooksPage />} />
+                        <Route path="/books/:bookId/stats" element={<BookStatsPage />} />
+                        <Route path="/notifications" element={<NotificationsPage />} />
                         <Route path="/books/trash" element={<BooksPage key="trash" trash />} />
                         <Route path="/books/new" element={<BookCreatePage />} />
                         <Route path="/books/:bookId" element={<BookDetailPage />} />
