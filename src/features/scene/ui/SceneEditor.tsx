@@ -13,6 +13,7 @@ import {
 import { Button } from '../../../shared/ui/Button';
 import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
+import { PreviewPanel } from '../../preview/ui/PreviewPanel';
 import {
     addObject,
     duplicateObject,
@@ -387,6 +388,13 @@ export function SceneEditor({
                 disabled={disabled || editor.busy || editor.uncertain}
                 onDirtyChange={setSettingsDirty}
                 onBusyChange={setSettingsBusy}
+            />
+            <PreviewPanel
+                page={page}
+                book={book}
+                scene={editor.draft}
+                disabled={blocked || settingsDirty}
+                unsaved={editor.dirty || settingsDirty}
             />
             {picker && (
                 <AssetPicker
