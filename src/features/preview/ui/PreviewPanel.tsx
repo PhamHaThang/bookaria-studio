@@ -59,7 +59,9 @@ export function PreviewPanel({
     let origin = '',
         configError = '';
     try {
-        origin = viewerOrigin(import.meta.env.VITE_VIEWER_ORIGIN || 'http://viewer.localhost:5174');
+        origin = viewerOrigin(
+            import.meta.env.VITE_VIEWER_ORIGIN || 'https://viewer.localhost:5174',
+        );
     } catch (cause) {
         configError = errorMessage(cause);
     }
