@@ -1,0 +1,187 @@
+/* Only used by the development style guide. */
+.theme-demo-field {
+    margin-bottom: var(--space-5);
+}
+.theme-demo-field label {
+    margin-bottom: 0;
+}
+.theme-guide {
+    max-width: 1120px;
+    margin-inline: auto;
+    padding: var(--space-8) var(--space-6);
+}
+.theme-guide-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-6);
+    margin-bottom: var(--space-12);
+}
+.theme-guide-intro {
+    max-width: 68ch;
+}
+.theme-guide-intro h1 {
+    margin-top: var(--space-4);
+}
+.theme-guide-intro p,
+.theme-guide-section > p {
+    color: var(--text-muted);
+}
+.theme-guide-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-6);
+    padding-block: var(--space-5);
+    margin-top: var(--space-6);
+    border-block: 1px solid var(--border-default);
+}
+.theme-guide-nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+}
+.theme-guide-section {
+    padding-block: var(--space-10);
+    border-bottom: 1px solid var(--border-default);
+    scroll-margin-top: var(--space-6);
+}
+.theme-guide-section > p {
+    margin: calc(-1 * var(--space-2)) 0 var(--space-6);
+}
+.theme-swatches {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(164px, 1fr));
+    gap: var(--space-6);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.theme-swatches strong,
+.theme-swatches code {
+    display: block;
+    font-size: var(--text-xs);
+}
+.theme-swatches strong {
+    margin-block: var(--space-2) var(--space-1);
+    font-size: var(--text-sm);
+}
+.theme-swatches code {
+    color: var(--text-muted);
+    overflow-wrap: anywhere;
+}
+.theme-swatch {
+    height: 64px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+}
+.theme-type-samples {
+    padding: var(--space-6);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+}
+.theme-type-samples p {
+    margin: 0 0 var(--space-4);
+}
+.theme-type-samples p:last-child {
+    margin-bottom: 0;
+}
+.theme-heading-sample {
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+}
+.theme-subheading-sample {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+}
+.theme-small-sample {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+.theme-caption-sample {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+.theme-weight-samples,
+.theme-demo-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+    margin-block: var(--space-5);
+}
+.theme-demo-form {
+    max-width: 720px;
+    padding: var(--space-6);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
+}
+.theme-demo-form .theme-demo-row:last-child {
+    margin-bottom: 0;
+}
+.theme-feedback-samples {
+    max-width: 720px;
+}
+.theme-space-samples {
+    display: grid;
+    gap: var(--space-3);
+    margin-bottom: var(--space-8);
+}
+.theme-space-samples > div {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+.theme-space-samples code {
+    width: 80px;
+}
+.theme-space-samples span {
+    height: 16px;
+    background: var(--action-primary);
+}
+.theme-space-samples small {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+.theme-radius-samples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}
+.theme-radius-samples > div {
+    border: 1px solid var(--border-input);
+    background: var(--bg-surface);
+    padding: var(--space-5);
+}
+.theme-guide-footer {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    padding-block: var(--space-8) var(--space-4);
+}
+@media (max-width: 540px) {
+    .theme-guide {
+        padding: var(--space-6) var(--space-5);
+    }
+    .theme-guide-header {
+        margin-bottom: var(--space-8);
+        gap: var(--space-3);
+    }
+    .theme-guide-header .brand span {
+        display: none;
+    }
+    .theme-swatches {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-5) var(--space-4);
+    }
+    .theme-type-samples,
+    .theme-demo-form {
+        padding: var(--space-5);
+    }
+    .theme-heading-sample {
+        font-size: var(--text-2xl);
+    }
+    .theme-demo-form .form-grid {
+        grid-template-columns: 1fr;
+    }
+}

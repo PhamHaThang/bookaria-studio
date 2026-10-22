@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
+import { Button } from '@/shared/ui/Button';
 import { auth, useAuth } from '../features/auth';
 import { profileApi, profileKey } from '../features/profile';
 import { errorMessage } from '../shared/api/errors';
@@ -86,9 +87,9 @@ function ProfileForm({ me, onSaved }: { me: Me; onSaved: (me: Me) => void }) {
                         maxLength={500}
                     />
                 </label>
-                <button className="button compact" type="submit">
+                <Button type="submit" loading={mutation.isPending}>
                     {mutation.isPending ? 'Đang lưu…' : 'Lưu hồ sơ'}
-                </button>
+                </Button>
             </fieldset>
         </form>
     );
@@ -165,9 +166,9 @@ function PasswordForm() {
                         required
                     />
                 </label>
-                <button className="button compact" type="submit">
+                <Button type="submit" loading={mutation.isPending}>
                     {mutation.isPending ? 'Đang đổi…' : 'Đổi mật khẩu'}
-                </button>
+                </Button>
             </fieldset>
         </form>
     );

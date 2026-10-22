@@ -1,4 +1,4 @@
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import {
     AuthForm,
@@ -23,6 +23,11 @@ const BookDetailPage = lazy(() =>
 const ProfilePage = lazy(() =>
     import('../pages/ProfilePage').then((module) => ({ default: module.ProfilePage })),
 );
+const StyleGuidePage = import.meta.env.DEV
+    ? lazy(() =>
+          import('../pages/StyleGuidePage').then((module) => ({ default: module.StyleGuidePage })),
+      )
+    : null;
 
 export function AppRouter() {
     return (
@@ -31,6 +36,22 @@ export function AppRouter() {
                 Đến nội dung chính
             </a>
             <Routes>
+                {StyleGuidePage && (
+                    <Route
+                        path="/style-guide"
+                        element={
+                            <Suspense
+                                fallback={
+                                    <main id="main" className="session-state" role="status">
+                                        Đang mở bộ giao diện…
+                                    </main>
+                                }
+                            >
+                                <StyleGuidePage />
+                            </Suspense>
+                        }
+                    />
+                )}
                 <Route element={<SessionBoundary />}>
                     <Route path="/" element={<Navigate to="/books" replace />} />
                     <Route element={<AuthLayout />}>

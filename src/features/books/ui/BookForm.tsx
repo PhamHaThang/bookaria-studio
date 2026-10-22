@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Button } from '@/shared/ui/Button';
 import type { BookDetail } from '../../../shared/contracts/dto.schema';
 import { Feedback } from '../../../shared/ui/Feedback';
 
@@ -123,9 +124,9 @@ export function BookForm({
                     </label>
                 </div>
                 <div className="form-actions">
-                    <button className="button compact" type="submit">
+                    <Button type="submit" loading={busy}>
                         {busy ? 'Đang lưu…' : book ? 'Lưu thông tin sách' : 'Tạo sách trống'}
-                    </button>
+                    </Button>
                     <Link to="/books">Quay về sách của tôi</Link>
                 </div>
             </fieldset>

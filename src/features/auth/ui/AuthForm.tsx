@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { safeReturnPath, validateNewPassword } from '@/features/auth/model/form';
 import { auth, useAuth } from '@/features/auth/model/session';
 import { errorMessage } from '@/shared/api/errors';
+import { Button } from '@/shared/ui/Button';
 import { Feedback } from '@/shared/ui/Feedback';
 
 type Mode = 'login' | 'register' | 'forgot' | 'reset';
@@ -178,9 +179,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
                                 <Link to="/forgot-password">Quên mật khẩu?</Link>
                             </div>
                         )}
-                        <button className="button primary" type="submit">
+                        <Button type="submit" loading={busy} fullWidth>
                             {busy ? 'Đang xử lý…' : action}
-                        </button>
+                        </Button>
                     </fieldset>
                 </form>
             )}

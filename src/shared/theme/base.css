@@ -1,0 +1,168 @@
+@layer base {
+    :root {
+        font-family: var(--font-body);
+        color: var(--text-primary);
+        background: var(--bg-canvas);
+        font-size: 100%;
+        font-synthesis: none;
+        line-height: var(--leading-normal);
+        text-rendering: optimizeLegibility;
+        scrollbar-color: var(--border-input) var(--bg-canvas);
+    }
+    * {
+        box-sizing: border-box;
+    }
+    body {
+        margin: 0;
+        min-width: 320px;
+    }
+    button,
+    input,
+    select,
+    textarea {
+        font: inherit;
+    }
+    button,
+    a,
+    input,
+    select,
+    textarea {
+        -webkit-tap-highlight-color: transparent;
+    }
+    a {
+        color: var(--action-primary);
+        text-underline-offset: 4px;
+    }
+    a:hover {
+        text-decoration-thickness: 2px;
+    }
+    button {
+        cursor: pointer;
+    }
+    button:disabled {
+        cursor: not-allowed;
+        opacity: var(--opacity-disabled);
+    }
+    button[aria-busy="true"] {
+        cursor: progress;
+    }
+    :focus-visible {
+        outline: var(--focus-width) solid var(--focus-color);
+        outline-offset: var(--focus-offset);
+    }
+    ::selection {
+        background: var(--selection-bg);
+        color: var(--selection-text);
+    }
+    h1,
+    h2,
+    h3 {
+        font-family: var(--font-heading);
+        font-weight: var(--weight-semibold);
+        line-height: var(--leading-tight);
+    }
+    h1 {
+        margin: 0 0 var(--space-3);
+        font-size: clamp(1.5rem, 4vw, var(--text-3xl));
+        letter-spacing: -0.02em;
+        text-wrap: balance;
+    }
+    h2 {
+        margin: 0 0 var(--space-5);
+        font-size: var(--text-xl);
+    }
+    h3 {
+        margin: 0 0 var(--space-3);
+        font-size: var(--text-lg);
+    }
+    p {
+        line-height: var(--leading-normal);
+    }
+    strong {
+        font-weight: var(--weight-semibold);
+    }
+    code {
+        font-family: var(--font-code);
+        font-size: 0.9em;
+    }
+    form,
+    fieldset {
+        padding: 0;
+        margin: 0;
+        border: 0;
+        min-width: 0;
+    }
+    label {
+        display: block;
+        font-size: var(--text-sm);
+        font-weight: var(--weight-semibold);
+        margin-bottom: var(--space-5);
+    }
+    input:not([type="checkbox"]),
+    select,
+    textarea {
+        display: block;
+        width: 100%;
+        margin-top: var(--space-2);
+        border: var(--border-width) solid var(--border-input);
+        border-radius: var(--radius-md);
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        font-size: var(--text-md);
+        font-weight: var(--weight-regular);
+        padding: var(--space-3);
+        caret-color: var(--action-primary);
+        transition: border-color var(--duration-fast) var(--ease-out);
+    }
+    input:not([type="checkbox"]),
+    select {
+        min-height: var(--control-height);
+        padding-block: var(--space-2);
+    }
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--text-placeholder);
+        opacity: 1;
+    }
+    input:not([type="checkbox"]):hover,
+    select:hover,
+    textarea:hover {
+        border-color: var(--border-input-hover);
+    }
+    input[readonly],
+    input:disabled,
+    textarea:disabled,
+    select:disabled {
+        background: var(--bg-canvas);
+        color: var(--text-muted);
+    }
+    input[aria-invalid="true"],
+    select[aria-invalid="true"],
+    textarea[aria-invalid="true"] {
+        border-color: var(--status-danger-text);
+    }
+    input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--action-primary);
+    }
+    textarea {
+        resize: vertical;
+        line-height: var(--leading-normal);
+    }
+    progress {
+        accent-color: var(--action-primary);
+        border: 0;
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+    }
+    progress::-webkit-progress-bar {
+        background: var(--border-default);
+    }
+    progress::-webkit-progress-value {
+        background: var(--action-primary);
+    }
+    progress::-moz-progress-bar {
+        background: var(--action-primary);
+    }
+}

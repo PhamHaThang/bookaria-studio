@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Button } from '@/shared/ui/Button';
 import { errorMessage } from '../../../shared/api/errors';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { auth, useAuth } from '../model/session';
@@ -37,9 +38,9 @@ export function CheckEmail() {
             </p>
             <Feedback error={error} success={success} />
             {!user?.emailVerified && (
-                <button className="button primary" type="button" disabled={busy} onClick={resend}>
+                <Button fullWidth loading={busy} onClick={resend}>
                     {busy ? 'Đang gửi…' : 'Gửi lại email xác minh'}
-                </button>
+                </Button>
             )}
             <Link className="button secondary" to="/books">
                 Vào Studio
@@ -80,9 +81,9 @@ export function VerifyEmail() {
                 error={error || (!token ? 'Liên kết thiếu mã xác minh. Hãy mở lại email.' : null)}
             />
             {!success && token && (
-                <button className="button primary" type="button" disabled={busy} onClick={verify}>
+                <Button fullWidth loading={busy} onClick={verify}>
                     {busy ? 'Đang xác minh…' : 'Xác minh email'}
-                </button>
+                </Button>
             )}
             <Link className="button secondary" to={success ? '/books' : '/check-email'}>
                 {success ? 'Tiếp tục vào Studio' : 'Gửi lại email xác minh'}

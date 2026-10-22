@@ -1,4 +1,4 @@
-import { BookOpen, Library, LogOut, Trash2, UserRound } from 'lucide-react';
+import { BookOpen, Library, LogOut, Palette, Trash2, UserRound } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { auth, useAuth } from '../features/auth';
@@ -52,6 +52,12 @@ export function StudioLayout() {
                         <UserRound size={19} aria-hidden="true" />
                         Hồ sơ
                     </NavLink>
+                    {import.meta.env.DEV && (
+                        <NavLink to="/style-guide">
+                            <Palette size={19} aria-hidden="true" />
+                            Giao diện mẫu
+                        </NavLink>
+                    )}
                 </nav>
                 <main id="main" className="studio-main">
                     <Feedback error={error} />

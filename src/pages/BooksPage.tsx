@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BookOpen, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Badge } from '@/shared/ui/Badge';
 import { useAuth } from '../features/auth';
 import {
     bookKeys,
@@ -246,11 +247,17 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                         </p>
                                     </div>
                                     <div className="book-badges">
-                                        <span
-                                            className={`book-status status-${book.status.toLowerCase()}`}
+                                        <Badge
+                                            tone={
+                                                book.status === 'PUBLISHED'
+                                                    ? 'success'
+                                                    : book.status === 'CHANGED'
+                                                      ? 'warning'
+                                                      : 'neutral'
+                                            }
                                         >
                                             {bookStatusLabels[book.status]}
-                                        </span>
+                                        </Badge>
                                         {book.takenDown && (
                                             <span className="moderation-label">Đã bị gỡ</span>
                                         )}
