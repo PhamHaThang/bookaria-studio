@@ -42,6 +42,10 @@ export function StudioLayout() {
             </header>
             <div className="studio-body">
                 <nav className="studio-nav" aria-label="Điều hướng Studio">
+                    <NavLink to="/explore">
+                        <BookOpen size={19} aria-hidden="true" />
+                        Thư viện công khai
+                    </NavLink>
                     <NavLink to="/books" end>
                         <Library size={19} aria-hidden="true" />
                         Sách của tôi

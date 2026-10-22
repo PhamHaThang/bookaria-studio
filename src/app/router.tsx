@@ -17,7 +17,15 @@ import {
     SessionBoundary,
     VerifyEmail,
 } from '../features/auth';
+import { PublicLayout } from './PublicLayout';
 import { StudioLayout } from './StudioLayout';
+
+const ExplorePage = lazy(() =>
+    import('../pages/ExplorePage').then((module) => ({ default: module.ExplorePage })),
+);
+const AuthorPage = lazy(() =>
+    import('../pages/AuthorPage').then((module) => ({ default: module.AuthorPage })),
+);
 
 const BooksPage = lazy(() =>
     import('../pages/BooksPage').then((module) => ({ default: module.BooksPage })),
@@ -63,6 +71,10 @@ function RouterLayout() {
 const router = createBrowserRouter(
     createRoutesFromElements(
         <Route element={<RouterLayout />}>
+            <Route element={<PublicLayout />}>
+                <Route path="/explore" element={<ExplorePage />} />
+                <Route path="/authors/:authorId" element={<AuthorPage />} />
+            </Route>
             {StyleGuidePage && (
                 <Route
                     path="/style-guide"

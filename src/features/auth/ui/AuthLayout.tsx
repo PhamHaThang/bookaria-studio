@@ -13,7 +13,10 @@ export function AuthLayout() {
             <main id="main" className="auth-panel">
                 <Outlet />
             </main>
-            <footer className="auth-footer">Không gian sáng tạo sách tương tác AR.</footer>
+            <footer className="auth-footer">
+                Không gian sáng tạo sách tương tác AR.{' '}
+                <Link to="/explore">Khám phá thư viện công khai</Link>
+            </footer>
         </div>
     );
 }
