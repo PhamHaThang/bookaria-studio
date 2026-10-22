@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset, BookDetail, Page } from '../../../shared/contracts/dto.schema';
 import {
-    findSceneReferenceIssues,
     getSceneWarnings,
     SCENE_LIMITS,
     type SceneObject,
@@ -28,6 +27,7 @@ import {
 } from '../model/objects';
 import { useSceneDraft } from '../model/use-scene-draft';
 import { AssetPicker } from './AssetPicker';
+import { InteractionEditor } from './InteractionEditor';
 import { NavigationGuard } from './NavigationGuard';
 import { ObjectEditor } from './ObjectEditor';
 import { PageSettingsEditor } from './PageSettingsEditor';
@@ -65,7 +65,6 @@ export function SceneEditor({
     const selected =
         editor.draft.objects.find((object) => object.id === selectedId) || editor.draft.objects[0];
     const validation = SceneSchema.safeParse(editor.draft);
-    const referenceIssues = findSceneReferenceIssues(editor.draft);
     const warnings = getSceneWarnings(editor.draft, { pageAspect: book.pageAspect });
     function change(object: SceneObject) {
         editor.setDraft((current) => ({
@@ -123,7 +122,7 @@ export function SceneEditor({
             <Feedback error={error || editor.error} success={editor.notice} />
             {!validation.success && (
                 <Feedback
-                    error={`Nội dung chưa hợp lệ${typeof validation.error.issues[0]?.path[1] === 'number' ? ` ở đối tượng ${Number(validation.error.issues[0].path[1]) + 1}` : ''}: ${validation.error.issues[0]?.message || 'Kiểm tra các trường đang nhập.'}`}
+                    error={`Nội dung chưa hợp lệ${typeof validation.error.issues[0]?.path[1] === 'number' ? ` ở ${validation.error.issues[0].path[0] === 'interactions' ? 'quy tắc' : 'đối tượng'} ${Number(validation.error.issues[0].path[1]) + 1}` : ''}: ${validation.error.issues[0]?.message || 'Kiểm tra các trường đang nhập.'}`}
                 />
             )}
             {(editor.conflict || editor.uncertain) && (
@@ -377,33 +376,12 @@ export function SceneEditor({
                     </ul>
                 </div>
             )}
-            <section className="scene-interactions">
-                <h3>Tương tác hiện có</h3>
-                <p>
-                    {editor.draft.interactions.length} quy tắc được giữ nguyên khi lưu. Phần chỉnh
-                    quy tắc “khi chạm thì…” sẽ được bổ sung tiếp.
-                </p>
-                {referenceIssues.length > 0 && (
-                    <>
-                        <p className="scene-reference-error">
-                            Có quy tắc trỏ tới đối tượng không còn phù hợp. Có thể lưu bản nháp; cần
-                            sửa quy tắc trước khi xuất bản.
-                        </p>
-                        <ul>
-                            {referenceIssues.map((issue) => (
-                                <li
-                                    key={`${issue.interactionId}-${issue.actionIndex ?? 'trigger'}`}
-                                >
-                                    {editor.draft.interactions.find(
-                                        (rule) => rule.id === issue.interactionId,
-                                    )?.name || 'Quy tắc chưa đặt tên'}
-                                    : {issue.message}
-                                </li>
-                            ))}
-                        </ul>
-                    </>
-                )}
-            </section>
+            <InteractionEditor
+                scene={editor.draft}
+                assets={{ ...page.assets, ...assets }}
+                disabled={blocked}
+                onChange={(scene) => editor.setDraft(scene)}
+            />
             <PageSettingsEditor
                 page={page}
                 disabled={disabled || editor.busy || editor.uncertain}

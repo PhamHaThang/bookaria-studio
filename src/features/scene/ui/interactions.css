@@ -1,0 +1,98 @@
+.interaction-workspace {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.7fr) minmax(0, 2fr);
+    gap: var(--space-6);
+    align-items: start;
+    margin-top: var(--space-5);
+}
+.interaction-list {
+    display: grid;
+    gap: var(--space-2);
+}
+.interaction-list button {
+    text-align: left;
+    padding: var(--space-3);
+    color: var(--text-primary);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+.interaction-list button:hover,
+.interaction-list button[aria-current="true"] {
+    background: var(--bg-selected);
+    border-color: var(--action-primary);
+}
+.interaction-list strong,
+.interaction-list span {
+    display: block;
+}
+.interaction-list span {
+    font-size: var(--text-sm);
+    margin-top: var(--space-1);
+}
+.interaction-detail {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.interaction-detail h4,
+.interaction-detail h5 {
+    font-size: var(--text-md);
+    margin: 0 0 var(--space-4);
+}
+.interaction-detail h5 {
+    margin-top: var(--space-6);
+}
+.interaction-rule-fields,
+.interaction-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+}
+.interaction-wide,
+.interaction-audio {
+    grid-column: 1 / -1;
+}
+.interaction-actions {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--space-4);
+}
+.interaction-actions > li {
+    border-top: 1px solid var(--border-default);
+}
+.interaction-actions summary {
+    cursor: pointer;
+    padding-block: var(--space-4);
+    font-weight: 600;
+}
+.interaction-action-body {
+    display: grid;
+    gap: var(--space-4);
+    padding-bottom: var(--space-5);
+}
+.interaction-issue-link {
+    padding: var(--space-2) 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    text-decoration: underline;
+    cursor: pointer;
+}
+@media (max-width: 900px) {
+    .interaction-workspace {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 600px) {
+    .interaction-rule-fields,
+    .interaction-fields {
+        grid-template-columns: 1fr;
+    }
+}
