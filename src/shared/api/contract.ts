@@ -1,5 +1,6 @@
 import type { AxiosResponse } from 'axios';
 import { z } from 'zod';
+import { pagedResponse } from '../contracts/common.schema';
 
 export class ContractError extends Error {
     constructor() {
@@ -28,4 +29,10 @@ export function readData<T>(response: AxiosResponse<unknown>, schema: z.ZodType<
  */
 export function expectStatus(response: AxiosResponse<unknown>, status: number): void {
     if (response.status !== status) throw new ContractError();
+}
+
+export function readPage<T>(response: AxiosResponse<unknown>, schema: z.ZodType<T>) {
+    const result = pagedResponse(schema).safeParse(response.data);
+    if (!result.success) throw new ContractError();
+    return result.data;
 }

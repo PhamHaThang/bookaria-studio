@@ -1,3 +1,4 @@
+import { lazy } from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import {
     AuthForm,
@@ -8,7 +9,20 @@ import {
     SessionBoundary,
     VerifyEmail,
 } from '../features/auth';
-import { WorkspacePage } from '../pages/WorkspacePage';
+import { StudioLayout } from './StudioLayout';
+
+const BooksPage = lazy(() =>
+    import('../pages/BooksPage').then((module) => ({ default: module.BooksPage })),
+);
+const BookCreatePage = lazy(() =>
+    import('../pages/BookCreatePage').then((module) => ({ default: module.BookCreatePage })),
+);
+const BookDetailPage = lazy(() =>
+    import('../pages/BookDetailPage').then((module) => ({ default: module.BookDetailPage })),
+);
+const ProfilePage = lazy(() =>
+    import('../pages/ProfilePage').then((module) => ({ default: module.ProfilePage })),
+);
 
 export function AppRouter() {
     return (
@@ -41,7 +55,13 @@ export function AppRouter() {
                         </Route>
                     </Route>
                     <Route element={<RequireSession />}>
-                        <Route path="/books" element={<WorkspacePage />} />
+                        <Route element={<StudioLayout />}>
+                            <Route path="/books" element={<BooksPage key="active" />} />
+                            <Route path="/books/trash" element={<BooksPage key="trash" trash />} />
+                            <Route path="/books/new" element={<BookCreatePage />} />
+                            <Route path="/books/:bookId" element={<BookDetailPage />} />
+                            <Route path="/profile" element={<ProfilePage />} />
+                        </Route>
                     </Route>
                     <Route
                         path="*"
