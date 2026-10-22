@@ -10,12 +10,14 @@ export function BookForm({
     error,
     success,
     onSubmit,
+    onDirtyChange,
 }: {
     book?: BookDetail;
     busy: boolean;
     error: string | null;
     success?: string | null;
     onSubmit: (form: FormData) => void;
+    onDirtyChange?: (dirty: boolean) => void;
 }) {
     const [format, setFormat] = useState(book?.pageFormat || 'A4');
     function submit(event: FormEvent<HTMLFormElement>) {
@@ -23,7 +25,12 @@ export function BookForm({
         if (!busy) onSubmit(new FormData(event.currentTarget));
     }
     return (
-        <form className="editor-form" onSubmit={submit} aria-busy={busy}>
+        <form
+            className="editor-form"
+            onSubmit={submit}
+            onChange={() => onDirtyChange?.(true)}
+            aria-busy={busy}
+        >
             <Feedback error={error} success={success} />
             <fieldset disabled={busy}>
                 <label htmlFor="title">

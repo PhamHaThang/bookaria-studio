@@ -6,6 +6,7 @@ import { auth, useAuth } from '../features/auth';
 import { BookForm, bookKeys, bookStatusLabels, booksApi, updateBookForm } from '../features/books';
 import { BookPages } from '../features/pages';
 import { profileKey } from '../features/profile';
+import { PublicationPanel } from '../features/publication/ui/PublicationPanel';
 import { errorMessage } from '../shared/api/errors';
 import { IdSchema } from '../shared/contracts/common.schema';
 import type { BookDetail } from '../shared/contracts/dto.schema';
@@ -19,6 +20,8 @@ function BookDetailContent({ bookId }: { bookId: string }) {
     const [error, setError] = useState<string | null>(null);
     const [coverBusy, setCoverBusy] = useState(false);
     const [pagesBusy, setPagesBusy] = useState(false);
+    const [publicationBusy, setPublicationBusy] = useState(false);
+    const [metadataDirty, setMetadataDirty] = useState(false);
     const [success, setSuccess] = useState<string | null>(
         location.state?.created ? 'Đã tạo sách trống thành công.' : null,
     );
@@ -36,6 +39,8 @@ function BookDetailContent({ bookId }: { bookId: string }) {
         setSuccess(null);
         try {
             await mutation.mutateAsync(form);
+            if (auth.store.getState().user?.id !== user?.id) return;
+            setMetadataDirty(false);
             await cache.invalidateQueries({ queryKey: bookKeys.all });
             setSuccess('Đã lưu thông tin sách.');
         } catch (cause) {
@@ -51,7 +56,7 @@ function BookDetailContent({ bookId }: { bookId: string }) {
             </>
         );
     if (detail.isPending) return <p role="status">Đang tải thông tin sách…</p>;
-    if (detail.isError)
+    if (detail.isError && !detail.data)
         return (
             <>
                 <h1>Chưa mở được sách</h1>
@@ -71,6 +76,7 @@ function BookDetailContent({ bookId }: { bookId: string }) {
             </>
         );
     const book = detail.data;
+    if (!book) return null;
     return (
         <>
             <div className="page-heading">
@@ -87,11 +93,16 @@ function BookDetailContent({ bookId }: { bookId: string }) {
             {book.takenDown && (
                 <Feedback error="Sách đang bị gỡ. Một số thao tác có thể bị hạn chế." />
             )}
+            {detail.isError && (
+                <Feedback
+                    error={`Chưa cập nhật được trạng thái sách. ${errorMessage(detail.error)}`}
+                />
+            )}
             <ImageUploadEditor
                 key={`cover-${book.id}`}
                 kind="cover"
                 currentUrl={book.coverUrl}
-                disabled={mutation.isPending || pagesBusy}
+                disabled={mutation.isPending || pagesBusy || publicationBusy}
                 onBusyChange={setCoverBusy}
                 onUploaded={() => {
                     void cache.invalidateQueries({ queryKey: profileKey(user?.id || '') });
@@ -117,7 +128,8 @@ function BookDetailContent({ bookId }: { bookId: string }) {
             <BookForm
                 key={book.id}
                 book={book}
-                busy={mutation.isPending || coverBusy || pagesBusy}
+                busy={mutation.isPending || coverBusy || pagesBusy || publicationBusy}
+                onDirtyChange={setMetadataDirty}
                 error={error}
                 success={success}
                 onSubmit={(form) => {
@@ -126,8 +138,15 @@ function BookDetailContent({ bookId }: { bookId: string }) {
             />
             <BookPages
                 bookId={bookId}
-                disabled={mutation.isPending || coverBusy}
+                disabled={mutation.isPending || coverBusy || publicationBusy}
                 onBusyChange={setPagesBusy}
+            />
+            <PublicationPanel
+                key={`${user?.id}:${bookId}`}
+                book={book}
+                disabled={mutation.isPending || coverBusy || pagesBusy || detail.isError}
+                unsaved={metadataDirty}
+                onBusyChange={setPublicationBusy}
             />
         </>
     );
