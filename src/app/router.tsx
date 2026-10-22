@@ -20,6 +20,9 @@ const BookCreatePage = lazy(() =>
 const BookDetailPage = lazy(() =>
     import('../pages/BookDetailPage').then((module) => ({ default: module.BookDetailPage })),
 );
+const PageDetailPage = lazy(() =>
+    import('../pages/PageDetailPage').then((module) => ({ default: module.PageDetailPage })),
+);
 const ProfilePage = lazy(() =>
     import('../pages/ProfilePage').then((module) => ({ default: module.ProfilePage })),
 );
@@ -90,6 +93,10 @@ export function AppRouter() {
                             <Route path="/books/trash" element={<BooksPage key="trash" trash />} />
                             <Route path="/books/new" element={<BookCreatePage />} />
                             <Route path="/books/:bookId" element={<BookDetailPage />} />
+                            <Route
+                                path="/books/:bookId/pages/:pageId"
+                                element={<PageDetailPage />}
+                            />
                             <Route path="/profile" element={<ProfilePage />} />
                             <Route path="/assets" element={<AssetsPage />} />
                             <Route path="/assets/upload" element={<AssetUploadPage />} />

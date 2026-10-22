@@ -1,0 +1,207 @@
+.book-pages {
+    margin-top: var(--space-8);
+}
+.page-list-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+.page-list-heading h2,
+.page-control-section h2 {
+    margin: 0 0 var(--space-2);
+}
+.page-list-heading p {
+    color: var(--text-muted);
+    margin: 0;
+}
+.page-list {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-5) 0;
+}
+.page-list-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--border-default);
+}
+.page-row-image {
+    width: 64px;
+    height: 88px;
+    object-fit: contain;
+    background: var(--bg-surface-subtle);
+    flex-shrink: 0;
+}
+.page-row-content {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.page-row-content h3,
+.page-row-content p {
+    margin: 0 0 var(--space-1);
+}
+.page-row-content p {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+.page-row-actions {
+    display: flex;
+    gap: var(--space-1);
+    flex-wrap: wrap;
+}
+.page-row-actions .button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--space-2);
+}
+.page-image-form {
+    display: grid;
+    gap: var(--space-4);
+    min-width: 0;
+}
+.book-pages > .page-image-form {
+    padding: var(--space-5);
+    margin-top: var(--space-5);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+}
+.page-image-form h3 {
+    margin: 0;
+}
+.page-image-form fieldset,
+.marker-measurements {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    display: grid;
+    gap: var(--space-3);
+}
+.page-image-form label,
+.page-control-section label {
+    display: grid;
+    gap: var(--space-2);
+    font-weight: var(--weight-medium);
+}
+.page-image-form input,
+.page-image-form select,
+.page-control-section input {
+    width: 100%;
+    min-width: 0;
+}
+.page-upload-preview {
+    max-width: 100%;
+    max-height: 240px;
+    object-fit: contain;
+    justify-self: start;
+}
+.page-file-name {
+    overflow-wrap: anywhere;
+    margin: 0;
+}
+.page-sync-notice,
+.page-warning {
+    padding: var(--space-3) var(--space-4);
+    background: var(--status-warning-bg);
+    color: var(--status-warning-text);
+    border-radius: var(--radius-sm);
+}
+.page-editor-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: var(--space-8);
+    align-items: start;
+}
+.page-preview-section {
+    min-width: 0;
+}
+.page-paper {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    overflow: hidden;
+}
+.page-paper > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.marker-placement {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: grid;
+    place-items: center;
+    border: 2px dashed var(--text-primary);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-weight: var(--weight-semibold);
+}
+.page-editor-controls {
+    display: grid;
+    gap: var(--space-6);
+    min-width: 0;
+}
+.page-control-section {
+    padding: var(--space-5);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    display: grid;
+    gap: var(--space-4);
+    min-width: 0;
+}
+.page-control-section p,
+.page-control-section h3 {
+    margin: 0;
+}
+.page-control-section .button {
+    justify-self: start;
+}
+.marker-position-form,
+.marker-report {
+    display: grid;
+    gap: var(--space-3);
+    border-top: 1px solid var(--border-default);
+    padding-top: var(--space-4);
+}
+.marker-measurements {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.page-score-status {
+    padding: var(--space-3);
+    background: var(--status-info-bg);
+    color: var(--status-info-text);
+}
+@media (max-width: 850px) {
+    .page-editor-layout {
+        grid-template-columns: 1fr;
+    }
+    .page-paper {
+        max-width: 360px;
+        margin-inline: auto;
+    }
+}
+@media (max-width: 540px) {
+    .page-list-row {
+        flex-wrap: wrap;
+        gap: var(--space-3);
+    }
+    .page-row-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    .marker-measurements {
+        grid-template-columns: 1fr;
+    }
+    .page-control-section {
+        padding: var(--space-4);
+    }
+}

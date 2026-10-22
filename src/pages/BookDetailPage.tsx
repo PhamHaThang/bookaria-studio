@@ -4,6 +4,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { ImageUploadEditor } from '../features/assets';
 import { auth, useAuth } from '../features/auth';
 import { BookForm, bookKeys, bookStatusLabels, booksApi, updateBookForm } from '../features/books';
+import { BookPages } from '../features/pages';
 import { profileKey } from '../features/profile';
 import { errorMessage } from '../shared/api/errors';
 import { IdSchema } from '../shared/contracts/common.schema';
@@ -17,6 +18,7 @@ function BookDetailContent({ bookId }: { bookId: string }) {
     const valid = IdSchema.safeParse(bookId).success;
     const [error, setError] = useState<string | null>(null);
     const [coverBusy, setCoverBusy] = useState(false);
+    const [pagesBusy, setPagesBusy] = useState(false);
     const [success, setSuccess] = useState<string | null>(
         location.state?.created ? 'Đã tạo sách trống thành công.' : null,
     );
@@ -89,7 +91,7 @@ function BookDetailContent({ bookId }: { bookId: string }) {
                 key={`cover-${book.id}`}
                 kind="cover"
                 currentUrl={book.coverUrl}
-                disabled={mutation.isPending}
+                disabled={mutation.isPending || pagesBusy}
                 onBusyChange={setCoverBusy}
                 onUploaded={() => {
                     void cache.invalidateQueries({ queryKey: profileKey(user?.id || '') });
@@ -115,31 +117,18 @@ function BookDetailContent({ bookId }: { bookId: string }) {
             <BookForm
                 key={book.id}
                 book={book}
-                busy={mutation.isPending || coverBusy}
+                busy={mutation.isPending || coverBusy || pagesBusy}
                 error={error}
                 success={success}
                 onSubmit={(form) => {
                     void save(form);
                 }}
             />
-            <section className="pages-overview">
-                <h2>Trang sách</h2>
-                {book.pages.length ? (
-                    <ol>
-                        {book.pages.map((page) => (
-                            <li key={page.id}>
-                                {page.title || `Trang ${page.orderIndex + 1}`} · {page.objectCount}{' '}
-                                đối tượng
-                            </li>
-                        ))}
-                    </ol>
-                ) : (
-                    <p>
-                        Sách chưa có trang. Bạn có thể hoàn thiện thông tin sách trước khi thêm nội
-                        dung.
-                    </p>
-                )}
-            </section>
+            <BookPages
+                bookId={bookId}
+                disabled={mutation.isPending || coverBusy}
+                onBusyChange={setPagesBusy}
+            />
         </>
     );
 }

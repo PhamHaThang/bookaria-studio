@@ -39,7 +39,7 @@ export async function runAssetUpload({
     onCheckpoint: (checkpoint: UploadCheckpoint) => void;
     onStage: (stage: UploadStage) => void;
     onProgress: (percent: number) => void;
-    purpose?: 'ASSET' | 'AVATAR';
+    purpose?: 'ASSET' | 'AVATAR' | 'PAGE_IMAGE';
 }) {
     const request = uploadRequest(file, purpose);
     signal.throwIfAborted();

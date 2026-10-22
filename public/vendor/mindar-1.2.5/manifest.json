@@ -1,0 +1,12 @@
+{
+  "package": "mind-ar",
+  "version": "1.2.5",
+  "source": "https://registry.npmjs.org/mind-ar/-/mind-ar-1.2.5.tgz",
+  "integrity": "sha512-YsbiNYaNbI/AMSXYfL+c/vJaFD/RB8uKtAOhmMyOkGZ0vBnEM8+KPh3ee8BH35ldtVudziJpv62qqV6dns/Evw==",
+  "files": {
+    "mindar-image.prod.js": "a21eef9a98ed73aee589a219b35e580c50b501c6f50f88d6eed16dcef9b8dec2",
+    "ui-fBadYuor.js": "aed9538fec28fecfb0a564da48fbf053ac2549d3314746e67182d381b3a24c31",
+    "controller-mGt1s8dJ.js": "98a90806c01077a46fc5a3daddc6441ac9d61c5b85b3cc09d3f0b2087d228713",
+    "LICENSE": "4f3aa5215ac0346a823170c9f9677da25c3e8bdb8243693118a3711e157d7fff"
+  }
+}

@@ -12,7 +12,8 @@
             "!**/node_modules",
             "!**/*.mind",
             "!**/package-lock.json",
-            "!**/src/shared/contracts"
+            "!**/src/shared/contracts",
+            "!**/public/vendor"
         ]
     },
     "css": {
