@@ -8,6 +8,7 @@ import {
     Route,
     RouterProvider,
 } from 'react-router-dom';
+import { AdminLayout } from '../features/admin/AdminLayout';
 import {
     AuthForm,
     AuthLayout,
@@ -19,6 +20,36 @@ import {
 } from '../features/auth';
 import { PublicLayout } from './PublicLayout';
 import { StudioLayout } from './StudioLayout';
+
+const AdminDashboardPage = lazy(() =>
+    import('../pages/AdminDashboardPage').then((module) => ({
+        default: module.AdminDashboardPage,
+    })),
+);
+const AdminUsersPage = lazy(() =>
+    import('../pages/AdminUsersPage').then((module) => ({ default: module.AdminUsersPage })),
+);
+const AdminUserCreatePage = lazy(() =>
+    import('../pages/AdminUserCreatePage').then((module) => ({
+        default: module.AdminUserCreatePage,
+    })),
+);
+const AdminUserDetailPage = lazy(() =>
+    import('../pages/AdminUserDetailPage').then((module) => ({
+        default: module.AdminUserDetailPage,
+    })),
+);
+const AdminBooksPage = lazy(() =>
+    import('../pages/AdminBooksPage').then((module) => ({ default: module.AdminBooksPage })),
+);
+const AdminModerationPage = lazy(() =>
+    import('../pages/AdminBooksPage').then((module) => ({ default: module.AdminModerationPage })),
+);
+const AdminBookDetailPage = lazy(() =>
+    import('../pages/AdminBookDetailPage').then((module) => ({
+        default: module.AdminBookDetailPage,
+    })),
+);
 
 const ExplorePage = lazy(() =>
     import('../pages/ExplorePage').then((module) => ({ default: module.ExplorePage })),
@@ -123,6 +154,15 @@ const router = createBrowserRouter(
                 </Route>
                 <Route element={<RequireSession />}>
                     <Route element={<StudioLayout />}>
+                        <Route path="/admin" element={<AdminLayout />}>
+                            <Route index element={<AdminDashboardPage />} />
+                            <Route path="users" element={<AdminUsersPage />} />
+                            <Route path="users/new" element={<AdminUserCreatePage />} />
+                            <Route path="users/:userId" element={<AdminUserDetailPage />} />
+                            <Route path="moderation" element={<AdminModerationPage />} />
+                            <Route path="books" element={<AdminBooksPage />} />
+                            <Route path="books/:bookId" element={<AdminBookDetailPage />} />
+                        </Route>
                         <Route path="/books" element={<BooksPage key="active" />} />
                         <Route path="/stats" element={<StatsBooksPage />} />
                         <Route path="/books/:bookId/stats" element={<BookStatsPage />} />

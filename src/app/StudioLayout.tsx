@@ -6,6 +6,7 @@ import {
     Library,
     LogOut,
     Palette,
+    ShieldCheck,
     Trash2,
     UserRound,
 } from 'lucide-react';
@@ -83,6 +84,12 @@ export function StudioLayout() {
                         <UserRound size={19} aria-hidden="true" />
                         Hồ sơ
                     </NavLink>
+                    {user?.role === 'ADMIN' && (
+                        <NavLink to="/admin">
+                            <ShieldCheck size={19} aria-hidden="true" />
+                            Quản trị
+                        </NavLink>
+                    )}
                     {import.meta.env.DEV && (
                         <NavLink to="/style-guide">
                             <Palette size={19} aria-hidden="true" />
