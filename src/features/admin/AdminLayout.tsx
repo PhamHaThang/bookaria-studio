@@ -37,6 +37,9 @@ function AdminGate({ actor }: { actor: string }) {
                 <NavLink to="/admin/users">Người dùng</NavLink>
                 <NavLink to="/admin/moderation">Báo cáo chờ xử lý</NavLink>
                 <NavLink to="/admin/books">Tra cứu sách</NavLink>
+                <NavLink to="/admin/library">Thư viện dùng chung</NavLink>
+                <NavLink to="/admin/categories">Danh mục</NavLink>
+                <NavLink to="/admin/markers">Bộ marker</NavLink>
             </nav>
             <Outlet />
         </div>

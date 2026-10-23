@@ -159,3 +159,24 @@
         gap: var(--space-2) var(--space-4);
     }
 }
+
+.library-row-main {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    min-width: 0;
+}
+.library-row-main > div {
+    min-width: 0;
+}
+.admin-form .library-ack {
+    display: flex;
+    align-items: start;
+    gap: var(--space-3);
+}
+.admin-form .library-ack input {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    margin-top: var(--space-1);
+}

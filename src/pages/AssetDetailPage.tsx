@@ -226,6 +226,16 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                     {assetStatusLabels[asset.status]}
                 </Badge>
             </div>
+            {user?.role === 'ADMIN' && asset.scope === 'mine' && asset.status === 'READY' && (
+                <p>
+                    <Link
+                        className="button secondary compact"
+                        to={`/admin/library/new?asset=${asset.id}`}
+                    >
+                        Đưa vào thư viện dùng chung
+                    </Link>
+                </p>
+            )}
             {location.state?.uploaded && (
                 <Alert tone="success">
                     Đã nhận tài nguyên.{' '}

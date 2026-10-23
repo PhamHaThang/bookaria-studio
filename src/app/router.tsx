@@ -51,6 +51,38 @@ const AdminBookDetailPage = lazy(() =>
     })),
 );
 
+const AdminLibraryPage = lazy(() =>
+    import('../pages/AdminLibraryPage').then((module) => ({ default: module.AdminLibraryPage })),
+);
+const AdminLibraryNewPage = lazy(() =>
+    import('../pages/AdminLibraryNewPage').then((module) => ({
+        default: module.AdminLibraryNewPage,
+    })),
+);
+const AdminLibraryDetailPage = lazy(() =>
+    import('../pages/AdminLibraryDetailPage').then((module) => ({
+        default: module.AdminLibraryDetailPage,
+    })),
+);
+const AdminCategoriesPage = lazy(() =>
+    import('../pages/AdminCategoriesPage').then((module) => ({
+        default: module.AdminCategoriesPage,
+    })),
+);
+const AdminCategoryEditPage = lazy(() =>
+    import('../pages/AdminCategoriesPage').then((module) => ({
+        default: module.AdminCategoryEditPage,
+    })),
+);
+const AdminMarkersPage = lazy(() =>
+    import('../pages/AdminMarkersPage').then((module) => ({ default: module.AdminMarkersPage })),
+);
+const AdminMarkerCreatePage = lazy(() =>
+    import('../pages/AdminMarkersPage').then((module) => ({
+        default: module.AdminMarkerCreatePage,
+    })),
+);
+
 const ExplorePage = lazy(() =>
     import('../pages/ExplorePage').then((module) => ({ default: module.ExplorePage })),
 );
@@ -156,6 +188,17 @@ const router = createBrowserRouter(
                     <Route element={<StudioLayout />}>
                         <Route path="/admin" element={<AdminLayout />}>
                             <Route index element={<AdminDashboardPage />} />
+                            <Route path="library" element={<AdminLibraryPage />} />
+                            <Route path="library/new" element={<AdminLibraryNewPage />} />
+                            <Route path="library/:assetId" element={<AdminLibraryDetailPage />} />
+                            <Route path="categories" element={<AdminCategoriesPage />} />
+                            <Route path="categories/new" element={<AdminCategoryEditPage />} />
+                            <Route
+                                path="categories/:categoryId"
+                                element={<AdminCategoryEditPage />}
+                            />
+                            <Route path="markers" element={<AdminMarkersPage />} />
+                            <Route path="markers/new" element={<AdminMarkerCreatePage />} />
                             <Route path="users" element={<AdminUsersPage />} />
                             <Route path="users/new" element={<AdminUserCreatePage />} />
                             <Route path="users/:userId" element={<AdminUserDetailPage />} />
