@@ -40,6 +40,8 @@ function AdminGate({ actor }: { actor: string }) {
                 <NavLink to="/admin/library">Thư viện dùng chung</NavLink>
                 <NavLink to="/admin/categories">Danh mục</NavLink>
                 <NavLink to="/admin/markers">Bộ marker</NavLink>
+                <NavLink to="/admin/jobs">Tác vụ</NavLink>
+                <NavLink to="/admin/audit-logs">Nhật ký quản trị</NavLink>
             </nav>
             <Outlet />
         </div>

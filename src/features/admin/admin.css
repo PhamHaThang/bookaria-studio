@@ -174,9 +174,44 @@
     align-items: start;
     gap: var(--space-3);
 }
+.admin-monitor > input {
+    flex-shrink: 0;
+    margin-top: var(--space-1);
+}
 .admin-form .library-ack input {
     width: 20px;
     height: 20px;
     flex-shrink: 0;
     margin-top: var(--space-1);
+}
+
+.admin-job-main {
+    min-width: 0;
+    flex: 1;
+}
+.admin-id {
+    overflow-wrap: anywhere;
+}
+.admin-json {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-width: 100%;
+    padding: var(--space-4);
+    background: var(--bg-surface-subtle);
+    font-size: var(--text-sm);
+}
+.admin-monitor {
+    display: flex;
+    align-items: start;
+    gap: var(--space-3);
+    margin-block: var(--space-4);
+}
+
+.admin-job-main details {
+    margin-top: var(--space-4);
+}
+.admin-job-main summary {
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
 }

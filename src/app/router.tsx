@@ -21,6 +21,18 @@ import {
 import { PublicLayout } from './PublicLayout';
 import { StudioLayout } from './StudioLayout';
 
+const AdminJobsPage = lazy(() =>
+    import('../pages/AdminJobsPage').then((module) => ({ default: module.AdminJobsPage })),
+);
+const AdminAuditPage = lazy(() =>
+    import('../pages/AdminAuditPage').then((module) => ({ default: module.AdminAuditPage })),
+);
+const AdminAuditDetailPage = lazy(() =>
+    import('../pages/AdminAuditDetailPage').then((module) => ({
+        default: module.AdminAuditDetailPage,
+    })),
+);
+
 const AdminDashboardPage = lazy(() =>
     import('../pages/AdminDashboardPage').then((module) => ({
         default: module.AdminDashboardPage,
@@ -188,6 +200,9 @@ const router = createBrowserRouter(
                     <Route element={<StudioLayout />}>
                         <Route path="/admin" element={<AdminLayout />}>
                             <Route index element={<AdminDashboardPage />} />
+                            <Route path="jobs" element={<AdminJobsPage />} />
+                            <Route path="audit-logs" element={<AdminAuditPage />} />
+                            <Route path="audit-logs/:logId" element={<AdminAuditDetailPage />} />
                             <Route path="library" element={<AdminLibraryPage />} />
                             <Route path="library/new" element={<AdminLibraryNewPage />} />
                             <Route path="library/:assetId" element={<AdminLibraryDetailPage />} />
