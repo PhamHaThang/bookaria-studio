@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ImagePlus, UserRound } from 'lucide-react';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { cn } from '@/shared/lib/cn';
+import { Button as PreviewButton } from '@/shared/ui/primitives/button';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { Progress } from '@/shared/ui/primitives/progress';
@@ -152,6 +153,10 @@ export function ImageUploadEditor({
         }
     }
     const imageUrl = preview || currentUrl;
+    const choosingDisabled = disabled || Boolean(stage);
+    function chooseImage() {
+        if (!choosingDisabled) input.current?.click();
+    }
     return (
         <section
             className="editor-form image-editor mb-6 max-w-180 rounded-[var(--radius-lg)] border border-border border-solid bg-surface p-8 max-[760px]:px-5 max-[760px]:py-6 [&_.feedback]:mb-6 [&_h2]:mt-0 [&_h2]:text-[length:var(--text-xl)]"
@@ -165,9 +170,15 @@ export function ImageUploadEditor({
             </p>
             <Feedback error={error} success={notice} />
             <div className="image-editor-layout grid grid-cols-[144px_minmax(0,_1fr)] items-start gap-6 max-[600px]:grid-cols-[minmax(0,_1fr)] [&_form]:min-w-0">
-                <div
+                <PreviewButton
+                    variant="plain"
+                    type="button"
+                    onClick={chooseImage}
+                    disabled={choosingDisabled}
+                    aria-label={`Chọn ${title.toLowerCase()} từ ảnh xem trước`}
+                    aria-describedby={`${id}-help`}
                     className={cn(
-                        'image-editor-preview flex flex-col items-center justify-center gap-2 overflow-hidden bg-muted text-[length:var(--text-xs)] text-muted-foreground [&_img]:block [&_img]:size-full',
+                        'image-editor-preview flex cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden bg-muted text-[length:var(--text-xs)] text-muted-foreground [&_img]:block [&_img]:size-full',
                         avatar
                             ? 'avatar-preview size-32 rounded-[50%] [&_img]:object-cover'
                             : 'cover-preview h-48 w-36 rounded-[var(--radius-sm)] [&_img]:object-contain',
@@ -186,7 +197,7 @@ export function ImageUploadEditor({
                             <span>Chưa có ảnh</span>
                         </>
                     )}
-                </div>
+                </PreviewButton>
                 <form
                     onSubmit={submit}
                     aria-label={`Cập nhật ${title.toLowerCase()}`}
@@ -194,16 +205,27 @@ export function ImageUploadEditor({
                 >
                     <FieldGroup className="contents">
                         <Field orientation="contents">
-                            <FieldLabel htmlFor={`${id}-file`}>
-                                Chọn {title.toLowerCase()}
-                            </FieldLabel>
+                            <FieldLabel htmlFor={`${id}-file`}>{title}</FieldLabel>
                         </Field>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={choosingDisabled}
+                            aria-controls={`${id}-file`}
+                            aria-describedby={`${id}-help`}
+                            onClick={chooseImage}
+                        >
+                            <ImagePlus data-icon="inline-start" aria-hidden="true" />
+                            {file ? 'Chọn ảnh khác' : `Chọn ${title.toLowerCase()}`}
+                        </Button>
                         <Input
+                            className="hidden"
+                            tabIndex={-1}
                             id={`${id}-file`}
                             ref={input}
                             type="file"
                             accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-                            disabled={disabled || Boolean(stage)}
+                            disabled={choosingDisabled}
                             aria-describedby={`${id}-help`}
                             onChange={(event) => {
                                 const selected = event.currentTarget.files?.[0];

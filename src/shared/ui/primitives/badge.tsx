@@ -8,6 +8,8 @@ const badgeVariants = cva(
     {
         variants: {
             variant: {
+                counter:
+                    'justify-center rounded-none bg-transparent p-0 text-[11px] text-primary leading-none tabular-nums',
                 neutral: 'bg-neutral text-neutral-foreground',
                 success: 'bg-success text-success-foreground',
                 warning: 'bg-warning text-warning-foreground',

@@ -10,6 +10,8 @@ export function PublicLayout() {
         '/': 'Bookaria - Đọc và tạo sách tương tác',
         '/library': 'Khám phá sách | Bookaria',
         '/help': 'Hướng dẫn | Bookaria',
+        '/profile': 'Hồ sơ | Bookaria',
+        '/change-password': 'Đổi mật khẩu | Bookaria',
     };
     const pageTitle =
         titles[pathname] ||

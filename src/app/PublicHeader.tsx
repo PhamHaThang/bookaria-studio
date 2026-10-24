@@ -59,14 +59,9 @@ export function PublicHeader() {
                     {signedIn ? (
                         <HeaderAccountActions />
                     ) : (
-                        <>
-                            <Button variant="secondary" asChild>
-                                <AuthDialogLink mode="register">Đăng ký</AuthDialogLink>
-                            </Button>
-                            <Button asChild>
-                                <AuthDialogLink mode="login">Đăng nhập</AuthDialogLink>
-                            </Button>
-                        </>
+                        <Button asChild>
+                            <AuthDialogLink mode="login">Đăng nhập</AuthDialogLink>
+                        </Button>
                     )}
                 </div>
             </div>

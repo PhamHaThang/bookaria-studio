@@ -172,16 +172,26 @@ test('reset password accepts empty 204 and clears local auth', async (t) => {
 });
 test('new passwords enforce UTF-8 byte limit and confirmation', () => {
     assert.equal(validateNewPassword('ế'.repeat(24), 'ế'.repeat(24)), null);
-    assert.ok(validateNewPassword('ế'.repeat(25), 'ế'.repeat(25)));
+    assert.equal(
+        validateNewPassword('ế'.repeat(25), 'ế'.repeat(25)),
+        'Mật khẩu quá dài, vui lòng rút ngắn lại.',
+    );
+    assert.equal(validateNewPassword('a'.repeat(72), 'a'.repeat(72)), null);
+    assert.equal(
+        validateNewPassword('a'.repeat(73), 'a'.repeat(73)),
+        'Mật khẩu quá dài, vui lòng rút ngắn lại.',
+    );
     assert.ok(validateNewPassword('password123', 'other'));
 });
-test('return path stays within protected Studio and Admin routes', () => {
+test('return path stays within protected Studio, account and Admin routes', () => {
     for (const path of ['https://example.com', '//example.com', '/login', '/books\\evil'])
         assert.equal(safeReturnPath(path), '/books');
     assert.equal(safeReturnPath('/books/example'), '/books/example');
     assert.equal(safeReturnPath('/assets/upload'), '/assets/upload');
     assert.equal(safeReturnPath('/assets?scope=library'), '/assets?scope=library');
     assert.equal(safeReturnPath('/profile'), '/profile');
+    assert.equal(safeReturnPath('/change-password'), '/change-password');
+    assert.equal(safeReturnPath('/change-password-evil'), '/books');
     assert.equal(safeReturnPath('/admin'), '/admin');
     assert.equal(safeReturnPath('/admin/users?status=ACTIVE'), '/admin/users?status=ACTIVE');
     assert.equal(safeReturnPath('/admin/profile'), '/admin/profile');

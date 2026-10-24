@@ -12,7 +12,7 @@ const buttonVariants = cva(
                 default:
                     'primary bg-primary text-primary-foreground hover:not-disabled:bg-primary-hover',
                 secondary:
-                    'secondary bg-secondary text-secondary-foreground hover:not-disabled:bg-secondary-hover',
+                    'secondary border-primary bg-surface text-primary hover:not-disabled:bg-primary hover:not-disabled:text-primary-foreground',
                 outline:
                     'ghost border-border bg-transparent text-primary hover:not-disabled:bg-hover',
                 ghost: 'bg-transparent text-primary hover:not-disabled:bg-hover',

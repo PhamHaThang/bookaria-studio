@@ -31,6 +31,7 @@ const tabsListVariants = cva(
             variant: {
                 default: 'bg-muted',
                 line: 'gap-4 bg-transparent',
+                navigation: 'w-full flex-col items-stretch gap-1 bg-transparent p-0',
             },
         },
         defaultVariants: {
@@ -61,6 +62,7 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
             className={cn(
                 'inline-flex min-h-10 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 py-2 font-medium text-muted-foreground text-sm outline-none transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 data-[state=active]:bg-surface data-[state=active]:text-primary',
                 'group-data-[variant=line]/tabs-list:rounded-none group-data-[variant=line]/tabs-list:border-transparent group-data-[variant=line]/tabs-list:border-b-2 group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:px-0 group-data-[variant=line]/tabs-list:data-[state=active]:border-primary group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent',
+                'group-data-[variant=navigation]/tabs-list:min-h-12 group-data-[variant=navigation]/tabs-list:flex-none group-data-[variant=navigation]/tabs-list:justify-start group-data-[variant=navigation]/tabs-list:gap-3 group-data-[variant=navigation]/tabs-list:border-transparent group-data-[variant=navigation]/tabs-list:border-l-2 group-data-[variant=navigation]/tabs-list:px-3 group-data-[variant=navigation]/tabs-list:py-3 group-data-[variant=navigation]/tabs-list:data-[state=active]:border-primary group-data-[variant=navigation]/tabs-list:data-[state=active]:bg-selected [&_svg]:size-4 [&_svg]:shrink-0',
                 className,
             )}
             {...props}

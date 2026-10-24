@@ -127,6 +127,11 @@ const PageDetailPage = lazy(() =>
 const ProfilePage = lazy(() =>
     import('../pages/ProfilePage').then((module) => ({ default: module.ProfilePage })),
 );
+const ChangePasswordPage = lazy(() =>
+    import('../pages/ChangePasswordPage').then((module) => ({
+        default: module.ChangePasswordPage,
+    })),
+);
 const AssetsPage = lazy(() =>
     import('../pages/AssetsPage').then((module) => ({ default: module.AssetsPage })),
 );
@@ -201,6 +206,11 @@ const router = createBrowserRouter(
             )}
             <Route element={<SessionBoundary />}>
                 <Route element={<RequireSession />}>
+                    <Route element={<PublicLayout />}>
+                        <Route path="/profile" element={<ProfilePage />} />
+                        <Route path="/change-password" element={<ChangePasswordPage />} />
+                    </Route>
+                    <Route path="/admin/profile" element={<Navigate to="/profile" replace />} />
                     <Route path="/admin" element={<AdminLayout />}>
                         <Route index element={<AdminDashboardPage />} />
                         <Route path="jobs" element={<AdminJobsPage />} />
@@ -220,7 +230,6 @@ const router = createBrowserRouter(
                         <Route path="moderation" element={<AdminModerationPage />} />
                         <Route path="books" element={<AdminBooksPage />} />
                         <Route path="books/:bookId" element={<AdminBookDetailPage />} />
-                        <Route path="profile" element={<ProfilePage />} />
                         <Route path="*" element={<AdminNotFoundPage />} />
                     </Route>
                     <Route element={<StudioLayout />}>
@@ -235,7 +244,6 @@ const router = createBrowserRouter(
                         <Route path="/books/new" element={<BookCreatePage />} />
                         <Route path="/books/:bookId" element={<BookDetailPage />} />
                         <Route path="/books/:bookId/pages/:pageId" element={<PageDetailPage />} />
-                        <Route path="/profile" element={<ProfilePage />} />
                         <Route path="/assets" element={<AssetsPage />} />
                         <Route path="/assets/upload" element={<AssetUploadPage />} />
                         <Route path="/assets/:assetId" element={<AssetDetailPage />} />

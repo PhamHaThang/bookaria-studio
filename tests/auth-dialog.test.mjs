@@ -27,6 +27,7 @@ test('protected intent keeps query and anchor and rejects unsafe destinations', 
         '/bookshelf',
         '/books\\evil',
         '/profiled',
+        '/change-password-evil',
     ])
         assert.equal(
             new URLSearchParams(authLocation(library, 'login', unsafe).search).get('next'),

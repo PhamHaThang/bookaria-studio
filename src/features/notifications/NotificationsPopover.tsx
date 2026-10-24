@@ -1,5 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, ArrowUpRight, Bell, Check, CheckCheck, X } from 'lucide-react';
+import {
+    ArrowLeft,
+    ArrowRight,
+    ArrowUpRight,
+    Bell,
+    BellDot,
+    Check,
+    CheckCheck,
+    X,
+} from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { auth } from '@/features/auth/model/session';
@@ -8,6 +17,7 @@ import type { MarkNotificationsReadBody } from '@/shared/contracts/api/me.schema
 import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
 import { Badge } from '@/shared/ui/Badge';
+import { Badge as CounterBadge } from '@/shared/ui/primitives/badge';
 import { Button } from '@/shared/ui/primitives/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/primitives/popover';
@@ -96,14 +106,19 @@ export function NotificationsPopover({
                     className="relative"
                     aria-label={count === undefined ? 'Thông báo' : `Thông báo, ${count} chưa đọc`}
                 >
-                    <Bell aria-hidden="true" />
+                    {count !== undefined && count > 0 ? (
+                        <BellDot aria-hidden="true" className="[&>circle]:hidden" />
+                    ) : (
+                        <Bell aria-hidden="true" />
+                    )}
                     {count !== undefined && count > 0 && (
-                        <Badge
+                        <CounterBadge
+                            variant="counter"
                             aria-hidden="true"
-                            className="pointer-events-none absolute -top-1 -right-1"
+                            className="pointer-events-none absolute top-2 left-[calc(50%+2px)] min-w-2"
                         >
                             {count > 99 ? '99+' : count}
-                        </Badge>
+                        </CounterBadge>
                     )}
                 </Button>
             </PopoverTrigger>

@@ -44,11 +44,9 @@ const destinations = [
 export function AdminLayout() {
     const { pathname } = useLocation();
     const title =
-        pathname === '/admin/profile'
-            ? 'Hồ sơ quản trị viên'
-            : destinations.find(
-                  ({ to }) => pathname === to || (to !== '/admin' && pathname.startsWith(`${to}/`)),
-              )?.label || 'Quản trị';
+        destinations.find(
+            ({ to }) => pathname === to || (to !== '/admin' && pathname.startsWith(`${to}/`)),
+        )?.label || 'Quản trị';
     useEffect(() => {
         const previous = document.title;
         document.title = `${title} | Quản trị Bookaria`;

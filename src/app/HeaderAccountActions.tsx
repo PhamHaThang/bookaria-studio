@@ -8,6 +8,7 @@ import { profileApi, profileKey } from '@/features/profile';
 import { errorMessage } from '@/shared/api/errors';
 import type { AuthUser } from '@/shared/contracts/api/auth.schema';
 import type { Me } from '@/shared/contracts/dto.schema';
+import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/primitives/button';
@@ -23,13 +24,14 @@ import {
 import { Spinner } from '@/shared/ui/primitives/spinner';
 
 type Panel = 'account' | 'notifications' | null;
+type AccountVariant = 'full' | 'compact';
 
 function SignedInActions({
     user,
-    profileTo,
+    variant,
 }: {
     user: AuthUser & Partial<Pick<Me, 'avatarUrl'>>;
-    profileTo: string;
+    variant: AccountVariant;
 }) {
     const [panel, setPanel] = useState<Panel>(null);
     const [error, setError] = useState<string | null>(null);
@@ -95,7 +97,11 @@ function SignedInActions({
                     <Button
                         type="button"
                         variant="ghost"
-                        size="icon"
+                        size={variant === 'compact' ? 'icon' : 'default'}
+                        className={cn(
+                            variant === 'full' && 'max-w-68 justify-start gap-3 px-2 py-1.5',
+                        )}
+                        data-account-variant={variant}
                         aria-label={`Tài khoản của ${user.displayName}`}
                         onPointerEnter={(event) => {
                             if (event.pointerType !== 'mouse') return;
@@ -128,6 +134,16 @@ function SignedInActions({
                         }}
                     >
                         <Avatar url={user.avatarUrl || null} />
+                        {variant === 'full' && (
+                            <span className="min-w-0 text-left" aria-hidden="true">
+                                <span className="block truncate font-semibold text-sm">
+                                    {user.displayName}
+                                </span>
+                                <span className="mt-0.5 block truncate font-normal text-muted-foreground text-xs">
+                                    {user.email}
+                                </span>
+                            </span>
+                        )}
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -165,7 +181,7 @@ function SignedInActions({
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild disabled={signingOut}>
-                            <Link to={profileTo} onClick={() => changePanel('account', false)}>
+                            <Link to="/profile" onClick={() => changePanel('account', false)}>
                                 <UserRound aria-hidden="true" />
                                 Hồ sơ
                             </Link>
@@ -208,7 +224,7 @@ function SignedInActions({
     );
 }
 
-export function HeaderAccountActions() {
+export function HeaderAccountActions({ variant = 'full' }: { variant?: AccountVariant }) {
     const { user } = useAuth();
     const { pathname } = useLocation();
     const profile = useQuery({
@@ -220,15 +236,6 @@ export function HeaderAccountActions() {
     });
     const account = profile.data?.id === user?.id ? profile.data : user;
     return account ? (
-        <SignedInActions
-            key={`${account.id}:${pathname}`}
-            user={account}
-            profileTo={
-                account.role === 'ADMIN' &&
-                (pathname === '/admin' || pathname.startsWith('/admin/'))
-                    ? '/admin/profile'
-                    : '/profile'
-            }
-        />
+        <SignedInActions key={`${account.id}:${pathname}`} user={account} variant={variant} />
     ) : null;
 }
