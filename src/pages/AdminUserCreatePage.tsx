@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { adminApi, bytesLabel, roleLabel } from '../features/admin';
 import { useAdminAction } from '../features/admin/ui';
 import { errorMessage } from '../shared/api/errors';
@@ -12,7 +14,6 @@ import {
     AdminCreateUserBodySchema,
 } from '../shared/contracts/api/admin.schema';
 import { LIMITS } from '../shared/contracts/common.schema';
-import { ConfirmDialog } from '../shared/ui/ConfirmDialog';
 import { Feedback } from '../shared/ui/Feedback';
 
 export function AdminUserCreatePage() {
@@ -99,10 +100,15 @@ export function AdminUserCreatePage() {
                         <Field orientation="contents">
                             <FieldLabel htmlFor="create-role">
                                 Vai trò
-                                <NativeSelect id="create-role" name="role" defaultValue="AUTHOR">
-                                    <option value="AUTHOR">Tác giả</option>
-                                    <option value="ADMIN">Quản trị viên</option>
-                                </NativeSelect>
+                                <FormSelect
+                                    id="create-role"
+                                    name="role"
+                                    defaultValue="AUTHOR"
+                                    options={[
+                                        { value: 'AUTHOR', label: 'Tác giả' },
+                                        { value: 'ADMIN', label: 'Quản trị viên' },
+                                    ]}
+                                />
                             </FieldLabel>
                         </Field>
                         <Field orientation="contents">
@@ -131,15 +137,17 @@ export function AdminUserCreatePage() {
                 </FieldGroup>
             </form>
             {draft && (
-                <ConfirmDialog
+                <ConfirmationDialog
+                    description={
+                        <>
+                            {draft.displayName} — {draft.email}
+                        </>
+                    }
                     title="Xác nhận tạo người dùng"
                     busy={action.busy}
                     className="admin-confirm [&_p]:wrap-anywhere max-h-[calc(100dvh_-_32px)] max-w-[min(480px,_calc(100%_-_32px))] overflow-y-auto [&_p]:[white-space:pre-wrap]"
                     onClose={() => setDraft(null)}
                 >
-                    <p>
-                        {draft.displayName} — {draft.email}
-                    </p>
                     <p>
                         Vai trò: {roleLabel[draft.role]}. Hạn mức:{' '}
                         {bytesLabel(draft.storageQuotaBytes)}.
@@ -147,36 +155,44 @@ export function AdminUserCreatePage() {
                     {draft.role === 'ADMIN' && <p>Tài khoản này có quyền quản trị hệ thống.</p>}
                     <Feedback error={action.error} />
                     <div className="admin-actions flex flex-wrap items-center gap-3 max-[640px]:flex-col max-[640px]:items-stretch [.admin-confirm_&]:mt-5">
-                        <Button
-                            type="button"
-                            fullWidth
-                            disabled={action.busy || action.uncertain}
-                            onClick={() =>
-                                void action.run(
-                                    () => adminApi.createUser(draft),
-                                    (result) => {
-                                        setDraft(null);
-                                        navigate(`/admin/users/${result.id}`, {
-                                            replace: true,
-                                            state: { created: true },
-                                        });
-                                    },
-                                )
-                            }
+                        <AlertDialogCancel variant="plain" asChild>
+                            <Button
+                                type="button"
+                                fullWidth
+                                disabled={action.busy || action.uncertain}
+                                onClick={() =>
+                                    void action.run(
+                                        () => adminApi.createUser(draft),
+                                        (result) => {
+                                            setDraft(null);
+                                            navigate(`/admin/users/${result.id}`, {
+                                                replace: true,
+                                                state: { created: true },
+                                            });
+                                        },
+                                    )
+                                }
+                            >
+                                {action.busy ? 'Đang tạo…' : 'Xác nhận tạo tài khoản'}
+                            </Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="plain"
+                            asChild
+                            onClick={(event) => event.preventDefault()}
                         >
-                            {action.busy ? 'Đang tạo…' : 'Xác nhận tạo tài khoản'}
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            fullWidth
-                            disabled={action.busy}
-                            onClick={() => setDraft(null)}
-                        >
-                            Quay lại
-                        </Button>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                fullWidth
+                                disabled={action.busy}
+                                onClick={() => setDraft(null)}
+                            >
+                                Quay lại
+                            </Button>
+                        </AlertDialogAction>
                     </div>
-                </ConfirmDialog>
+                </ConfirmationDialog>
             )}
         </>
     );

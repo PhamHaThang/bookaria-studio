@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -47,7 +48,7 @@ export function AdminCategoriesPage() {
                 </Button>
             </div>
             <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />
-            {list.isPending && <p role="status">Đang tải danh mục…</p>}
+            {list.isPending && <LoadingState>Đang tải danh mục…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess &&
                 (list.data.length ? (
@@ -256,7 +257,7 @@ export function AdminCategoryEditPage() {
     return (
         <>
             <Link to="/admin/categories">Về danh mục tài nguyên</Link>
-            {list.isPending && <p role="status">Đang tải danh mục…</p>}
+            {list.isPending && <LoadingState>Đang tải danh mục…</LoadingState>}
             {list.isError && (
                 <>
                     <Feedback error={errorMessage(list.error)} />

@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import type { Page } from '../../../shared/contracts/dto.schema';
@@ -69,7 +70,9 @@ export function SceneCanvas(props: Props) {
             dragging = false,
             frame = 0;
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color('#eef0f4');
+        const theme = getComputedStyle(element);
+        const themeColor = (token: string) => new THREE.Color(theme.getPropertyValue(token).trim());
+        scene.background = themeColor('--editor-ground');
         const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100);
         camera.position.set(0, -0.9, 2.2);
         const orbit = new OrbitControls(camera, renderer.domElement);
@@ -97,7 +100,12 @@ export function SceneCanvas(props: Props) {
         const light = new THREE.DirectionalLight(0xffffff, 2.5);
         light.position.set(2, 3, 4);
         scene.add(light);
-        const grid = new THREE.GridHelper(4, 40, 0xaeb5c0, 0xd2d7df);
+        const grid = new THREE.GridHelper(
+            4,
+            40,
+            themeColor('--editor-grid-strong'),
+            themeColor('--editor-grid'),
+        );
         grid.rotation.x = Math.PI / 2;
         grid.position.z = -0.008;
         scene.add(grid);
@@ -129,7 +137,7 @@ export function SceneCanvas(props: Props) {
                     }));
             },
         );
-        const outline = new THREE.BoxHelper(new THREE.Object3D(), 0x215fff);
+        const outline = new THREE.BoxHelper(new THREE.Object3D(), themeColor('--action-primary'));
         outline.visible = false;
         scene.add(outline);
         const nodes = new Map<string, Node>();
@@ -300,7 +308,7 @@ export function SceneCanvas(props: Props) {
                             spec.size[0],
                             spec.size[1],
                             new THREE.MeshBasicMaterial({
-                                color: 0x215fff,
+                                color: themeColor('--action-primary'),
                                 transparent: true,
                                 opacity: 0.28,
                                 side: THREE.DoubleSide,
@@ -560,8 +568,15 @@ export function SceneCanvas(props: Props) {
     useEffect(() => {
         const key = (event: KeyboardEvent) => {
             if (
+                event.defaultPrevented ||
+                document.querySelector(
+                    '[role=dialog], [role=alertdialog], [role=menu], [data-slot=select-content][data-state=open]',
+                )
+            )
+                return;
+            if (
                 (event.target as HTMLElement)?.closest(
-                    'input,textarea,select,[contenteditable="true"]',
+                    'input,textarea,select,[role="combobox"],[role="checkbox"],[role="radio"],[role="switch"],[role="tab"],[data-slot="accordion-trigger"],[contenteditable="true"]',
                 ) ||
                 event.ctrlKey ||
                 event.metaKey ||
@@ -580,7 +595,7 @@ export function SceneCanvas(props: Props) {
     return (
         <div className="scene-stage-column relative flex min-h-0 min-w-0 flex-col bg-[var(--editor-ground)] max-[760px]:min-h-120 [.scene-editor[data-panel=preview]_&]:hidden">
             <div
-                className="canvas-toolbar absolute bottom-[58px] left-[18px] z-2 flex flex-col gap-[6px] rounded-[12px] bg-surface p-[5px] shadow-[0_4px_14px_#20283814] [&_button:hover]:bg-hover [&_button:hover]:text-foreground [&_button[aria-pressed=true]]:bg-selected [&_button[aria-pressed=true]]:text-primary [&_button[data-state=on]]:bg-selected [&_button[data-state=on]]:text-primary [&_button]:flex [&_button]:items-center [&_button]:gap-[5px] [&_button]:rounded-[8px] [&_button]:border-0 [&_button]:border-[transparent] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:p-[10px] [&_button]:text-[length:11px] [&_button]:text-muted-foreground [&_button_span]:hidden"
+                className="canvas-toolbar absolute bottom-[58px] left-[18px] z-2 flex flex-col gap-[6px] rounded-[12px] bg-surface p-[5px] shadow-[0_4px_14px_#00000014] [&_button:hover]:bg-hover [&_button:hover]:text-foreground [&_button[aria-pressed=true]]:bg-selected [&_button[aria-pressed=true]]:text-primary [&_button[data-state=on]]:bg-selected [&_button[data-state=on]]:text-primary [&_button]:flex [&_button]:items-center [&_button]:gap-[5px] [&_button]:rounded-[8px] [&_button]:border-0 [&_button]:border-[transparent] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:p-[10px] [&_button]:text-[length:11px] [&_button]:text-muted-foreground [&_button_span]:hidden"
                 role="toolbar"
                 aria-label="Công cụ canvas"
             >
@@ -615,7 +630,8 @@ export function SceneCanvas(props: Props) {
                     ))}
                 </ToggleGroup>
                 <div className="canvas-tool-group flex flex-col gap-[3px]">
-                    <button
+                    <ActionButton
+                        variant="plain"
                         type="button"
                         title="Bắt bước: 0,025 đơn vị / 15°"
                         aria-label="Bật bắt bước"
@@ -623,21 +639,23 @@ export function SceneCanvas(props: Props) {
                         onClick={() => setSnap(!snap)}
                     >
                         <Magnet size={18} />
-                    </button>
-                    <button
+                    </ActionButton>
+                    <ActionButton
+                        variant="plain"
                         type="button"
                         aria-label="Đưa đối tượng vào giữa (F)"
                         onClick={() => api.current?.focus()}
                     >
                         <Focus size={18} />
-                    </button>
-                    <button
+                    </ActionButton>
+                    <ActionButton
+                        variant="plain"
                         type="button"
                         aria-label="Vừa trang"
                         onClick={() => api.current?.view('front')}
                     >
                         <Maximize2 size={18} />
-                    </button>
+                    </ActionButton>
                 </div>
             </div>
             <div className="canvas-viewport relative min-h-90 flex-[1] overflow-hidden">
@@ -654,7 +672,7 @@ export function SceneCanvas(props: Props) {
                     </p>
                 )}
                 <fieldset
-                    className="canvas-view-switch absolute top-[18px] left-[18px] flex rounded-[10px] bg-surface p-[3px] shadow-[0_2px_6px_#2028380a] [&_button:hover]:bg-hover [&_button:hover]:text-foreground [&_button]:flex [&_button]:items-center [&_button]:gap-[5px] [&_button]:rounded-[8px] [&_button]:border-0 [&_button]:border-[transparent] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:p-[10px] [&_button]:text-[length:11px] [&_button]:text-muted-foreground"
+                    className="canvas-view-switch absolute top-[18px] left-[18px] flex rounded-[10px] bg-surface p-[3px] shadow-[0_2px_6px_#0000000a] [&_button:hover]:bg-hover [&_button:hover]:text-foreground [&_button]:flex [&_button]:items-center [&_button]:gap-[5px] [&_button]:rounded-[8px] [&_button]:border-0 [&_button]:border-[transparent] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:p-[10px] [&_button]:text-[length:11px] [&_button]:text-muted-foreground"
                     aria-label="Góc nhìn"
                 >
                     {[
@@ -662,9 +680,14 @@ export function SceneCanvas(props: Props) {
                         ['iso', 'Phối cảnh'],
                         ['side', 'Bên cạnh'],
                     ].map(([value, label]) => (
-                        <button key={value} type="button" onClick={() => api.current?.view(value)}>
+                        <ActionButton
+                            variant="plain"
+                            key={value}
+                            type="button"
+                            onClick={() => api.current?.view(value)}
+                        >
                             {label}
-                        </button>
+                        </ActionButton>
                     ))}
                 </fieldset>
                 {loading > 0 && (

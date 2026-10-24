@@ -31,9 +31,15 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Alert } from '@/shared/ui/Alert';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
+import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
+import { Separator } from '@/shared/ui/primitives/separator';
 import { Spinner } from '@/shared/ui/primitives/spinner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset, BookDetail, Page } from '../../../shared/contracts/dto.schema';
 import {
@@ -137,10 +143,17 @@ export function SceneEditor({
     commands.current = { editor, blocked, selected };
     useEffect(() => {
         function keyboard(event: KeyboardEvent) {
+            if (
+                event.defaultPrevented ||
+                document.querySelector(
+                    '[role=dialog], [role=alertdialog], [role=menu], [data-slot=select-content][data-state=open]',
+                )
+            )
+                return;
             if (document.getElementById('scene-heading')?.closest('[hidden]')) return;
             const state = commands.current;
             const typing = (event.target as HTMLElement)?.closest(
-                'input,textarea,select,[contenteditable="true"]',
+                'input,textarea,select,[role="combobox"],[role="checkbox"],[role="radio"],[role="switch"],[role="tab"],[data-slot="accordion-trigger"],[contenteditable="true"]',
             );
             const modifier = event.ctrlKey || event.metaKey;
             if (modifier && event.key.toLowerCase() === 's') {
@@ -197,7 +210,7 @@ export function SceneEditor({
     }
     return (
         <section
-            className="scene-editor m-0 min-h-[100dvh] bg-surface p-0 [--control-height:40px] [--text-md:0.8125rem] [--text-sm:0.75rem] [--text-xs:0.6875rem] [&_audio]:my-3 [&_audio]:block [&_audio]:w-full [&_audio]:max-w-105 [&_input:not([type=checkbox])]:m-0 [&_label]:m-0 [&_select]:m-0 [&_textarea]:m-0 [.scene-editor_&_.button]:min-h-10 [.scene-editor_&_.button]:w-auto [.scene-editor_&_.button]:rounded-[10px] [.scene-editor_&_.button]:px-[13px] [.scene-editor_&_.button]:py-[9px] [.scene-editor_&_.button]:text-[length:12px]"
+            className="scene-editor m-0 min-h-[100dvh] bg-surface p-0 [--control-height:40px] [--text-md:0.8125rem] [--text-sm:0.75rem] [--text-xs:0.6875rem] [&_[data-slot=select-trigger]]:m-0 [&_audio]:my-3 [&_audio]:block [&_audio]:w-full [&_audio]:max-w-105 [&_input:not([type=checkbox])]:m-0 [&_label]:m-0 [&_textarea]:m-0 [.scene-editor_&_.button]:min-h-10 [.scene-editor_&_.button]:w-auto [.scene-editor_&_.button]:rounded-[10px] [.scene-editor_&_.button]:px-[13px] [.scene-editor_&_.button]:py-[9px] [.scene-editor_&_.button]:text-[length:12px]"
             data-panel={panel}
             data-layers={layersOpen}
             aria-labelledby="scene-heading"
@@ -209,9 +222,9 @@ export function SceneEditor({
             <header className="scene-heading editor-header flex flex-wrap items-start justify-between gap-4 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_p]:m-0 [&_p]:text-muted-foreground [.scene-editor_&]:m-0 [.scene-editor_&]:flex [.scene-editor_&]:min-h-19 [.scene-editor_&]:items-center [.scene-editor_&]:gap-[14px] [.scene-editor_&]:border-b-[1px] [.scene-editor_&]:border-b-border [.scene-editor_&]:px-5 [.scene-editor_&]:py-3 [.scene-editor_&]:[border-bottom-style:solid] max-[760px]:[.scene-editor_&]:grid max-[760px]:[.scene-editor_&]:min-h-28 max-[760px]:[.scene-editor_&]:grid-cols-[minmax(0,_1fr)_auto] max-[760px]:[.scene-editor_&]:flex-wrap max-[760px]:[.scene-editor_&]:gap-2 max-[760px]:[.scene-editor_&]:px-3 max-[760px]:[.scene-editor_&]:py-[10px]">
                 <div className="editor-project mr-auto flex min-w-0 max-w-[30%] items-center gap-[13px] max-[1100px]:max-w-[23%] max-[760px]:max-w-[60%] max-[760px]:flex-[1] [&_>_div]:min-w-0 [&_h1]:m-0 [&_h1]:truncate [&_h1]:font-medium [&_h1]:text-[length:14px] [&_h1]:tracking-0 max-[760px]:[&_h1]:max-w-full max-[760px]:[&_h1]:text-[length:12px] [&_p]:mx-0 [&_p]:mt-[3px] [&_p]:mb-0 [&_p]:text-[length:10px] [&_p]:text-muted-foreground max-[760px]:[.scene-editor_&]:col-[1] max-[760px]:[.scene-editor_&]:row-[1] max-[760px]:[.scene-editor_&]:w-full max-[760px]:[.scene-editor_&]:max-w-full max-[760px]:[.scene-editor_&]:overflow-hidden max-[760px]:[.scene-editor_.editor-header_&]:col-[1_/_-1] max-[760px]:[.scene-editor_.editor-header_&]:w-[calc(100%_-_56px)] max-[760px]:[.scene-editor_.editor-header_&]:max-w-[calc(100%_-_56px)]">
                     <Link
-                        to="/books"
+                        to="/"
                         className="editor-brand inline-flex min-h-11 shrink-0 items-center justify-center rounded-[var(--radius-sm)] p-2 [&:hover]:bg-hover"
-                        aria-label="Bookaria Studio — Sách của tôi"
+                        aria-label="Bookaria - Trang chủ"
                     >
                         <BookariaLogo symbol />
                     </Link>
@@ -231,7 +244,7 @@ export function SceneEditor({
                     </div>
                 </div>
                 <fieldset
-                    className="editor-mode-switch flex gap-1 rounded-[13px] bg-muted p-1 max-[760px]:m-auto max-[760px]:[order:4] max-[760px]:[.scene-editor_&]:col-[2] max-[760px]:[.scene-editor_&]:row-[2] max-[760px]:[.scene-editor_&]:m-0 max-[760px]:[.scene-editor_&]:p-[2px] [.scene-editor_&_.button[aria-pressed=true]]:bg-surface [.scene-editor_&_.button[aria-pressed=true]]:text-foreground [.scene-editor_&_.button[aria-pressed=true]]:shadow-[0_2px_5px_#20283808] [.scene-editor_&_.button]:min-h-9 [.scene-editor_&_.button]:text-muted-foreground max-[760px]:[.scene-editor_&_.button]:min-h-8 max-[760px]:[.scene-editor_&_.button]:gap-1 max-[760px]:[.scene-editor_&_.button]:p-[6px] max-[1100px]:[.scene-editor_&_.button]:px-2 max-[760px]:[.scene-editor_&_.button]:text-[length:10px] max-[760px]:[.scene-editor_&_svg]:w-[14px]"
+                    className="editor-mode-switch flex gap-1 rounded-[13px] bg-muted p-1 max-[760px]:m-auto max-[760px]:[order:4] max-[760px]:[.scene-editor_&]:col-[2] max-[760px]:[.scene-editor_&]:row-[2] max-[760px]:[.scene-editor_&]:m-0 max-[760px]:[.scene-editor_&]:p-[2px] [.scene-editor_&_.button[aria-pressed=true]]:bg-surface [.scene-editor_&_.button[aria-pressed=true]]:text-foreground [.scene-editor_&_.button[aria-pressed=true]]:shadow-[0_2px_5px_#00000008] [.scene-editor_&_.button]:min-h-9 [.scene-editor_&_.button]:text-muted-foreground max-[760px]:[.scene-editor_&_.button]:min-h-8 max-[760px]:[.scene-editor_&_.button]:gap-1 max-[760px]:[.scene-editor_&_.button]:p-[6px] max-[1100px]:[.scene-editor_&_.button]:px-2 max-[760px]:[.scene-editor_&_.button]:text-[length:10px] max-[760px]:[.scene-editor_&_svg]:w-[14px]"
                     aria-label="Chế độ editor"
                 >
                     <Button
@@ -287,7 +300,7 @@ export function SceneEditor({
                     >
                         <Upload data-icon="inline-start" />
                     </Button>
-                    <input
+                    <Input
                         ref={importFile}
                         type="file"
                         accept=".json,application/json"
@@ -362,7 +375,7 @@ export function SceneEditor({
                 />
             )}
             {(editor.conflict || editor.uncertain) && (
-                <div className="scene-reconcile mx-3 my-2 rounded-[var(--radius-sm)] bg-warning p-4 text-warning-foreground">
+                <Alert tone="warning" className="my-4">
                     <p>
                         {editor.uncertain
                             ? 'Chưa xác nhận được kết quả lưu. Hãy kiểm tra trước khi tiếp tục chỉnh sửa hoặc gửi lại.'
@@ -419,7 +432,7 @@ export function SceneEditor({
                             </Button>
                         )}
                     </div>
-                </div>
+                </Alert>
             )}
             <div className="workbench-body grid grid-cols-[72px_minmax(0,_1fr)] max-[760px]:grid-cols-[56px_minmax(0,_1fr)]">
                 <div
@@ -454,7 +467,7 @@ export function SceneEditor({
                             {objectLabels[item.type]}
                         </Button>
                     ))}
-                    <span className="rail-separator mx-0 my-2 w-7 border-t-[1px] border-t-border [border-top-style:solid] max-[760px]:[.scene-add_&]:my-[6px]" />
+                    <Separator className="my-2 w-7" />
                     <Button
                         variant="ghost"
                         aria-label="Mở tương tác"
@@ -495,18 +508,19 @@ export function SceneEditor({
                 </div>
                 <div className="scene-workspace relative m-0 grid h-[calc(100dvh_-_176px)] min-h-125 grid-cols-[minmax(0,_1fr)_340px] items-stretch gap-0 max-[760px]:h-auto max-[760px]:min-h-0 max-[1100px]:grid-cols-[minmax(0,_1fr)_300px] max-[1200px]:grid-cols-[minmax(180px,_0.8fr)_minmax(240px,_1fr)] max-[600px]:grid-cols-[1fr] max-[760px]:grid-cols-[minmax(0,_1fr)] min-[1600px]:grid-cols-[minmax(0,_1fr)_380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[minmax(0,_1fr)_minmax(480px,_45%)] [.scene-editor[data-panel=preview]_&]:grid-cols-[minmax(0,_1fr)]">
                     <section
-                        className="scene-layers absolute bottom-14 left-[18px] z-4 max-h-[70%] w-70 min-w-0 overflow-auto rounded-[14px] border border-border border-solid bg-surface px-3 py-[18px] shadow-[0_12px_30px_#20283820] max-[760px]:top-15 max-[760px]:bottom-auto max-[760px]:left-2 max-[760px]:w-[calc(100%_-_16px)] max-[760px]:max-w-70 [&[hidden]]:hidden [&_h3]:mt-0 [&_h3]:mr-[22px] [&_h3]:mb-[14px] [&_h3]:ml-1 [&_h3]:flex [&_h3]:gap-3 [&_h3]:text-[length:14px] [&_h3_span]:text-muted-foreground [&_h3_span]:tabular-nums [&_li.is-selected]:border-0 [&_li.is-selected]:border-[transparent] [&_li.is-selected]:border-solid [&_li.is-selected]:bg-selected [&_li:hover]:bg-hover [&_li[hidden]]:hidden [&_li]:rounded-[8px] [&_li]:border-0 [&_li]:border-[transparent] [&_li]:border-solid [&_li]:bg-[transparent] [&_li]:p-[3px] [&_ol]:m-0 [&_ol]:list-none [&_ol]:gap-[5px] [&_ol]:p-0"
+                        className="scene-layers absolute bottom-14 left-[18px] z-4 max-h-[70%] w-70 min-w-0 overflow-auto rounded-[14px] border border-border border-solid bg-surface px-3 py-[18px] shadow-[0_12px_30px_#00000020] max-[760px]:top-15 max-[760px]:bottom-auto max-[760px]:left-2 max-[760px]:w-[calc(100%_-_16px)] max-[760px]:max-w-70 [&[hidden]]:hidden [&_h3]:mt-0 [&_h3]:mr-[22px] [&_h3]:mb-[14px] [&_h3]:ml-1 [&_h3]:flex [&_h3]:gap-3 [&_h3]:text-[length:14px] [&_h3_span]:text-muted-foreground [&_h3_span]:tabular-nums [&_li.is-selected]:border-0 [&_li.is-selected]:border-[transparent] [&_li.is-selected]:border-solid [&_li.is-selected]:bg-selected [&_li:hover]:bg-hover [&_li[hidden]]:hidden [&_li]:rounded-[8px] [&_li]:border-0 [&_li]:border-[transparent] [&_li]:border-solid [&_li]:bg-[transparent] [&_li]:p-[3px] [&_ol]:m-0 [&_ol]:list-none [&_ol]:gap-[5px] [&_ol]:p-0"
                         aria-labelledby="layers-heading"
                         hidden={!layersOpen}
                     >
-                        <button
+                        <ActionButton
+                            variant="plain"
                             className="layers-close absolute top-4 right-3 border-0 border-[transparent] border-solid bg-[transparent] p-1 text-muted-foreground"
                             type="button"
                             aria-label="Đóng danh sách đối tượng"
                             onClick={() => setLayersOpen(false)}
                         >
                             <X size={16} />
-                        </button>
+                        </ActionButton>
                         <h3 id="layers-heading">
                             Đối tượng <span>{editor.draft.objects.length}</span>
                         </h3>
@@ -538,7 +552,8 @@ export function SceneEditor({
                                     key={object.id}
                                     className={selected?.id === object.id ? 'is-selected' : ''}
                                 >
-                                    <button
+                                    <ActionButton
+                                        variant="plain"
                                         type="button"
                                         className="scene-layer-select [&_span]:wrap-anywhere flex min-h-10 w-full flex-wrap items-center gap-[5px] border-0 border-[transparent] border-solid bg-[transparent] p-[6px] text-left text-[length:12px] text-foreground [&_small]:text-[length:10px] [&_small]:text-muted-foreground [&_span]:w-full [&_span]:font-semibold"
                                         aria-pressed={selected?.id === object.id}
@@ -556,7 +571,7 @@ export function SceneEditor({
                                         {object.editorHidden && (
                                             <EyeOff size={16} aria-label="Ẩn khỏi sơ đồ" />
                                         )}
-                                    </button>
+                                    </ActionButton>
                                     <div className="scene-layer-actions flex flex-wrap gap-0 px-1 py-1 max-[600px]:justify-end [.scene-editor_&_.button]:min-h-7 [.scene-editor_&_.button]:min-w-11 [.scene-editor_&_.button]:px-[7px] [.scene-editor_&_.button]:py-[3px]">
                                         <Button
                                             variant="ghost"
@@ -648,172 +663,153 @@ export function SceneEditor({
                             </div>
                         }
                     />
-                    <aside
-                        className="workbench-panel min-w-0 overflow-auto border-l-[1px] border-l-border bg-[#fafafa] [border-left-style:solid] max-[760px]:max-h-125 max-[760px]:border-t-[1px] max-[760px]:border-t-border max-[760px]:border-l-[0] max-[760px]:border-l-[transparent] max-[760px]:[border-left-style:solid] max-[760px]:[border-top-style:solid] [&_[role=tabpanel][hidden]]:hidden [&_[role=tabpanel]]:px-4 [&_[role=tabpanel]]:py-[18px] max-[760px]:[&_[role=tabpanel]]:m-auto max-[760px]:[&_[role=tabpanel]]:max-w-150 [&_h2]:text-[length:15px] [&_input:not([type=checkbox])]:mt-1 [&_input:not([type=checkbox])]:border-border [&_input:not([type=checkbox])]:p-2 [&_input:not([type=checkbox])]:text-[length:12px] max-[760px]:[&_input:not([type=checkbox])]:text-[length:16px] [&_label]:mb-[10px] [&_label]:text-[length:12px] [&_p]:text-[length:11px] [&_select]:mt-1 [&_select]:border-border [&_select]:p-2 [&_select]:text-[length:12px] max-[760px]:[&_select]:text-[length:16px] [&_textarea]:mt-1 [&_textarea]:border-border [&_textarea]:p-2 [&_textarea]:text-[length:12px] max-[760px]:[&_textarea]:text-[length:16px] [.scene-editor[data-panel=preview]_&]:border-l-[0] [.scene-editor[data-panel=preview]_&]:border-l-[transparent] [.scene-editor[data-panel=preview]_&]:bg-surface [.scene-editor[data-panel=preview]_&]:[border-left-style:solid] [.scene-editor[data-panel=preview]_&_[role=tabpanel]]:m-auto [.scene-editor[data-panel=preview]_&_[role=tabpanel]]:max-w-300"
-                        aria-label="Bảng chỉnh sửa"
+                    <Tabs
+                        value={panel}
+                        onValueChange={(value) => setPanel(value as typeof panel)}
+                        asChild
                     >
-                        <div
-                            className="workbench-tabs sticky top-0 z-2 flex border-b-[1px] border-b-border bg-surface px-[10px] py-0 [border-bottom-style:solid] [&_button[aria-selected=true]]:border-b-primary [&_button[aria-selected=true]]:font-semibold [&_button[aria-selected=true]]:text-primary [&_button]:flex-[1] [&_button]:whitespace-nowrap [&_button]:border-[transparent] [&_button]:border-t-[0] [&_button]:border-r-[0] [&_button]:border-b-[2px] [&_button]:border-l-[0] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:px-[2px] [&_button]:py-[18px] [&_button]:text-[length:11px] [&_button]:text-muted-foreground"
-                            role="tablist"
-                            aria-label="Bảng công cụ"
+                        <aside
+                            className="workbench-panel min-w-0 overflow-auto border-l-[1px] border-l-border bg-muted [border-left-style:solid] max-[760px]:max-h-125 max-[760px]:border-t-[1px] max-[760px]:border-t-border max-[760px]:border-l-[0] max-[760px]:border-l-[transparent] max-[760px]:[border-left-style:solid] max-[760px]:[border-top-style:solid] [&_[data-slot=select-trigger]]:mt-1 [&_[data-slot=select-trigger]]:border-input [&_[data-slot=select-trigger]]:p-2 [&_[data-slot=select-trigger]]:text-[length:12px] max-[760px]:[&_[data-slot=select-trigger]]:text-[length:16px] [&_[role=tabpanel][hidden]]:hidden [&_[role=tabpanel]]:px-4 [&_[role=tabpanel]]:py-[18px] max-[760px]:[&_[role=tabpanel]]:m-auto max-[760px]:[&_[role=tabpanel]]:max-w-150 [&_h2]:text-[length:15px] [&_input:not([type=checkbox])]:mt-1 [&_input:not([type=checkbox])]:border-input [&_input:not([type=checkbox])]:p-2 [&_input:not([type=checkbox])]:text-[length:12px] max-[760px]:[&_input:not([type=checkbox])]:text-[length:16px] [&_label]:mb-[10px] [&_label]:text-[length:12px] [&_p]:text-[length:11px] [&_textarea]:mt-1 [&_textarea]:border-input [&_textarea]:p-2 [&_textarea]:text-[length:12px] max-[760px]:[&_textarea]:text-[length:16px] [.scene-editor[data-panel=preview]_&]:border-l-[0] [.scene-editor[data-panel=preview]_&]:border-l-[transparent] [.scene-editor[data-panel=preview]_&]:bg-surface [.scene-editor[data-panel=preview]_&]:[border-left-style:solid] [.scene-editor[data-panel=preview]_&_[role=tabpanel]]:m-auto [.scene-editor[data-panel=preview]_&_[role=tabpanel]]:max-w-300"
+                            aria-label="Bảng chỉnh sửa"
                         >
-                            {(
-                                [
-                                    ['properties', 'Thuộc tính'],
-                                    ['interactions', 'Tương tác'],
-                                    ['settings', 'Cài đặt'],
-                                    ['preview', 'Xem thử'],
-                                ] as const
-                            ).map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    id={`panel-tab-${value}`}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={panel === value}
-                                    aria-controls={`panel-${value}`}
-                                    tabIndex={panel === value ? 0 : -1}
-                                    onKeyDown={(event) => {
-                                        const tabs = [
-                                            'properties',
-                                            'interactions',
-                                            'settings',
-                                            'preview',
-                                        ] as const;
-                                        const index = tabs.indexOf(value);
-                                        const next =
-                                            event.key === 'ArrowRight'
-                                                ? tabs[(index + 1) % tabs.length]
-                                                : event.key === 'ArrowLeft'
-                                                  ? tabs[(index + tabs.length - 1) % tabs.length]
-                                                  : event.key === 'Home'
-                                                    ? tabs[0]
-                                                    : event.key === 'End'
-                                                      ? tabs.at(-1)
-                                                      : undefined;
-                                        if (next) {
-                                            event.preventDefault();
-                                            setPanel(next);
-                                            document.getElementById(`panel-tab-${next}`)?.focus();
+                            <TabsList
+                                variant="line"
+                                className="workbench-tabs sticky top-0 z-2 bg-surface px-3"
+                                aria-label="Bảng công cụ"
+                            >
+                                {(
+                                    [
+                                        ['properties', 'Thuộc tính'],
+                                        ['interactions', 'Tương tác'],
+                                        ['settings', 'Cài đặt'],
+                                        ['preview', 'Xem thử'],
+                                    ] as const
+                                ).map(([value, label]) => (
+                                    <TabsTrigger
+                                        key={value}
+                                        value={value}
+                                        id={`panel-tab-${value}`}
+                                        aria-controls={`panel-${value}`}
+                                    >
+                                        {label}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                            <TabsContent
+                                value="properties"
+                                forceMount
+                                id="panel-properties"
+                                aria-labelledby="panel-tab-properties"
+                            >
+                                {selected ? (
+                                    <ObjectEditor
+                                        key={selected.id}
+                                        object={selected}
+                                        assetRef={
+                                            'assetId' in selected
+                                                ? assets[selected.assetId] ||
+                                                  page.assets[selected.assetId]
+                                                : undefined
                                         }
-                                    }}
-                                    onClick={() => setPanel(value)}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                        <div
-                            id="panel-properties"
-                            role="tabpanel"
-                            aria-labelledby="panel-tab-properties"
-                            hidden={panel !== 'properties'}
-                        >
-                            {selected ? (
-                                <ObjectEditor
-                                    key={selected.id}
-                                    object={selected}
-                                    assetRef={
-                                        'assetId' in selected
-                                            ? assets[selected.assetId] ||
-                                              page.assets[selected.assetId]
-                                            : undefined
-                                    }
+                                        disabled={blocked}
+                                        onChange={change}
+                                        onDuplicate={() => {
+                                            if (
+                                                editor.draft.objects.length >=
+                                                SCENE_LIMITS.hardMaxObjects
+                                            ) {
+                                                setError('Trang đã đạt giới hạn đối tượng.');
+                                                return;
+                                            }
+                                            const id = crypto.randomUUID();
+                                            editor.setDraft((current) =>
+                                                duplicateObject(current, selected.id, id),
+                                            );
+                                            setSelectedId(id);
+                                        }}
+                                        onDelete={() => setDeleting(selected)}
+                                        onChooseAsset={() => {
+                                            if (usesAsset(selected.type))
+                                                setPicker({
+                                                    type: selected.type,
+                                                    replace: selected.id,
+                                                });
+                                        }}
+                                    />
+                                ) : (
+                                    <p className="scene-no-selection">
+                                        Thuộc tính sẽ xuất hiện khi bạn thêm hoặc chọn một đối
+                                        tượng.
+                                    </p>
+                                )}
+                            </TabsContent>
+                            <TabsContent
+                                value="interactions"
+                                forceMount
+                                id="panel-interactions"
+                                aria-labelledby="panel-tab-interactions"
+                            >
+                                {(warnings.length > 0 ||
+                                    (!editor.dirty && editor.warnings.length > 0)) && (
+                                    <Alert tone="warning" className="my-4">
+                                        <h3>Gợi ý trước khi xuất bản</h3>
+                                        <ul>
+                                            {[
+                                                ...new Map(
+                                                    [
+                                                        ...warnings,
+                                                        ...(!editor.dirty ? editor.warnings : []),
+                                                    ].map((warning) => [
+                                                        `${warning.code}-${warning.objectId || ''}`,
+                                                        warning,
+                                                    ]),
+                                                ).values(),
+                                            ].map((warning) => (
+                                                <li
+                                                    key={`${warning.code}-${warning.objectId || ''}`}
+                                                >
+                                                    {warning.message}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </Alert>
+                                )}
+                                <InteractionEditor
+                                    scene={editor.draft}
+                                    assets={sceneAssets}
                                     disabled={blocked}
-                                    onChange={change}
-                                    onDuplicate={() => {
-                                        if (
-                                            editor.draft.objects.length >=
-                                            SCENE_LIMITS.hardMaxObjects
-                                        ) {
-                                            setError('Trang đã đạt giới hạn đối tượng.');
-                                            return;
-                                        }
-                                        const id = crypto.randomUUID();
-                                        editor.setDraft((current) =>
-                                            duplicateObject(current, selected.id, id),
-                                        );
-                                        setSelectedId(id);
-                                    }}
-                                    onDelete={() => setDeleting(selected)}
-                                    onChooseAsset={() => {
-                                        if (usesAsset(selected.type))
-                                            setPicker({
-                                                type: selected.type,
-                                                replace: selected.id,
-                                            });
-                                    }}
+                                    onChange={(scene) => editor.setDraft(scene)}
                                 />
-                            ) : (
-                                <p className="scene-no-selection">
-                                    Thuộc tính sẽ xuất hiện khi bạn thêm hoặc chọn một đối tượng.
-                                </p>
-                            )}
-                        </div>
-                        <div
-                            id="panel-interactions"
-                            role="tabpanel"
-                            aria-labelledby="panel-tab-interactions"
-                            hidden={panel !== 'interactions'}
-                        >
-                            {(warnings.length > 0 ||
-                                (!editor.dirty && editor.warnings.length > 0)) && (
-                                <div className="scene-warnings mt-6 rounded-[var(--radius-sm)] border-t-[1px] border-t-border bg-warning p-4 text-warning-foreground [border-top-style:solid] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3">
-                                    <h3>Gợi ý trước khi xuất bản</h3>
-                                    <ul>
-                                        {[
-                                            ...new Map(
-                                                [
-                                                    ...warnings,
-                                                    ...(!editor.dirty ? editor.warnings : []),
-                                                ].map((warning) => [
-                                                    `${warning.code}-${warning.objectId || ''}`,
-                                                    warning,
-                                                ]),
-                                            ).values(),
-                                        ].map((warning) => (
-                                            <li key={`${warning.code}-${warning.objectId || ''}`}>
-                                                {warning.message}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-                            <InteractionEditor
-                                scene={editor.draft}
-                                assets={sceneAssets}
-                                disabled={blocked}
-                                onChange={(scene) => editor.setDraft(scene)}
-                            />
-                        </div>
-                        <div
-                            id="panel-settings"
-                            role="tabpanel"
-                            aria-labelledby="panel-tab-settings"
-                            hidden={panel !== 'settings'}
-                        >
-                            <PageSettingsEditor
-                                page={page}
-                                disabled={disabled || editor.busy || editor.uncertain}
-                                onDirtyChange={setSettingsDirty}
-                                onBusyChange={setSettingsBusy}
-                            />
-                        </div>
-                        <div
-                            id="panel-preview"
-                            role="tabpanel"
-                            aria-labelledby="panel-tab-preview"
-                            hidden={panel !== 'preview'}
-                        >
-                            <PreviewPanel
-                                page={page}
-                                book={book}
-                                scene={editor.draft}
-                                disabled={blocked || settingsDirty}
-                                unsaved={editor.dirty || settingsDirty}
-                            />
-                        </div>
-                    </aside>
+                            </TabsContent>
+                            <TabsContent
+                                value="settings"
+                                forceMount
+                                id="panel-settings"
+                                aria-labelledby="panel-tab-settings"
+                            >
+                                <PageSettingsEditor
+                                    page={page}
+                                    disabled={disabled || editor.busy || editor.uncertain}
+                                    onDirtyChange={setSettingsDirty}
+                                    onBusyChange={setSettingsBusy}
+                                />
+                            </TabsContent>
+                            <TabsContent
+                                value="preview"
+                                forceMount
+                                id="panel-preview"
+                                aria-labelledby="panel-tab-preview"
+                            >
+                                <PreviewPanel
+                                    page={page}
+                                    book={book}
+                                    scene={editor.draft}
+                                    disabled={blocked || settingsDirty}
+                                    unsaved={editor.dirty || settingsDirty}
+                                />
+                            </TabsContent>
+                        </aside>
+                    </Tabs>
                 </div>
             </div>
             <PageStrip
@@ -887,66 +883,88 @@ export function SceneEditor({
                 />
             )}
             {deleting && (
-                <ConfirmDialog
+                <ConfirmationDialog
+                    description={
+                        <>
+                            Đối tượng “{deleting.name || objectLabels[deleting.type]}” sẽ bị bỏ khỏi
+                            bản đang sửa. Tệp tài nguyên vẫn được giữ. Quy tắc tương tác liên quan
+                            sẽ được giữ và đánh dấu để bạn sửa.
+                        </>
+                    }
                     title="Xóa đối tượng khỏi trang?"
                     busy={false}
                     onClose={() => setDeleting(null)}
                 >
-                    <p>
-                        Đối tượng “{deleting.name || objectLabels[deleting.type]}” sẽ bị bỏ khỏi bản
-                        đang sửa. Tệp tài nguyên vẫn được giữ. Quy tắc tương tác liên quan sẽ được
-                        giữ và đánh dấu để bạn sửa.
-                    </p>
                     <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                        <Button variant="secondary" onClick={() => setDeleting(null)}>
-                            Giữ đối tượng
-                        </Button>
-                        <Button
-                            variant="danger"
-                            onClick={() => {
-                                editor.setDraft((current) => removeObject(current, deleting.id));
-                                setDeleting(null);
-                            }}
+                        <AlertDialogCancel variant="plain" asChild>
+                            <Button variant="secondary" onClick={() => setDeleting(null)}>
+                                Giữ đối tượng
+                            </Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="plain"
+                            asChild
+                            onClick={(event) => event.preventDefault()}
                         >
-                            Xóa đối tượng
-                        </Button>
+                            <Button
+                                variant="danger"
+                                onClick={() => {
+                                    editor.setDraft((current) =>
+                                        removeObject(current, deleting.id),
+                                    );
+                                    setDeleting(null);
+                                }}
+                            >
+                                Xóa đối tượng
+                            </Button>
+                        </AlertDialogAction>
                     </div>
-                </ConfirmDialog>
+                </ConfirmationDialog>
             )}
             {resetting && (
-                <ConfirmDialog
+                <ConfirmationDialog
+                    description={
+                        editor.dirty
+                            ? 'Bản đang sửa sẽ được thay bằng nội dung từ máy chủ. Cài đặt âm thanh và ánh sáng chưa lưu vẫn được giữ.'
+                            : 'Lấy lại nội dung đối tượng và quy tắc đang lưu trên máy chủ.'
+                    }
                     title="Tải nội dung mới nhất?"
                     busy={editor.busy}
                     onClose={() => {
                         if (!editor.busy) setResetting(false);
                     }}
                 >
-                    <p>
-                        {editor.dirty
-                            ? 'Bản đang sửa sẽ được thay bằng nội dung từ máy chủ. Cài đặt âm thanh và ánh sáng chưa lưu vẫn được giữ.'
-                            : 'Lấy lại nội dung đối tượng và quy tắc đang lưu trên máy chủ.'}
-                    </p>
                     <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                        <Button
-                            variant="secondary"
-                            disabled={editor.busy}
-                            onClick={() => setResetting(false)}
+                        <AlertDialogCancel variant="plain" asChild>
+                            <Button
+                                variant="secondary"
+                                disabled={editor.busy}
+                                onClick={() => setResetting(false)}
+                            >
+                                Giữ bản đang sửa
+                            </Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="plain"
+                            asChild
+                            onClick={(event) => event.preventDefault()}
                         >
-                            Giữ bản đang sửa
-                        </Button>
-                        <Button
-                            aria-busy={editor.busy}
-                            onClick={async () => {
-                                await editor.readLatest(true);
-                                setResetting(false);
-                            }}
-                            disabled={editor.busy}
-                        >
-                            {editor.busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
-                            Xác nhận tải nội dung
-                        </Button>
+                            <Button
+                                aria-busy={editor.busy}
+                                onClick={async () => {
+                                    await editor.readLatest(true);
+                                    setResetting(false);
+                                }}
+                                disabled={editor.busy}
+                            >
+                                {editor.busy && (
+                                    <Spinner data-icon="inline-start" aria-hidden="true" />
+                                )}
+                                Xác nhận tải nội dung
+                            </Button>
+                        </AlertDialogAction>
                     </div>
-                </ConfirmDialog>
+                </ConfirmationDialog>
             )}
         </section>
     );

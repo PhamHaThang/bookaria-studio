@@ -4,6 +4,19 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { FilterBar } from '@/shared/ui/FilterBar';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
+import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
+import { Button as ActionButton } from '@/shared/ui/primitives/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/shared/ui/primitives/card';
 import {
     Empty,
     EmptyContent,
@@ -14,7 +27,11 @@ import {
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
+import {
+    PaginationContent,
+    PaginationItem,
+    Pagination as PaginationRoot,
+} from '@/shared/ui/primitives/pagination';
 import { useAuth } from '../features/auth';
 import {
     bookKeys,
@@ -26,7 +43,6 @@ import {
 import { errorMessage } from '../shared/api/errors';
 import type { BookSummary } from '../shared/contracts/dto.schema';
 import { formatDate } from '../shared/lib/format';
-import { ConfirmDialog } from '../shared/ui/ConfirmDialog';
 import { Feedback } from '../shared/ui/Feedback';
 
 export function BooksPage({ trash = false }: { trash?: boolean }) {
@@ -105,26 +121,22 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
             <Feedback error={actionError} success={notice} />
             {!trash && (
                 <>
-                    <fieldset
-                        className={
-                            'status-tabs mx-0 mt-0 mb-6 flex gap-7 border-b-[1px] border-b-border [border-bottom-style:solid] max-[760px]:gap-5 max-[760px]:overflow-x-auto max-[760px]:text-[length:var(--text-xs)] [&_button.selected]:border-b-primary [&_button.selected]:font-semibold [&_button.selected]:text-primary-hover [&_button]:min-h-11 [&_button]:whitespace-nowrap [&_button]:border-[transparent] [&_button]:border-t-[0] [&_button]:border-r-[0] [&_button]:border-b-[2px] [&_button]:border-l-[0] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:px-0 [&_button]:py-3 [&_button]:text-[length:12px] [&_button]:text-muted-foreground max-[540px]:[.page-heading:has(+_&[aria-label="Nguồn_tài_nguyên"])]:flex-wrap [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375'
+                    <FilterBar
+                        value={query.status || 'all'}
+                        onValueChange={(status) =>
+                            change({ status: status === 'all' ? undefined : status })
                         }
-                        aria-label="Lọc trạng thái sách"
-                    >
-                        {([undefined, 'DRAFT', 'PUBLISHED', 'CHANGED'] as const).map((status) => (
-                            <button
-                                key={status || 'all'}
-                                type="button"
-                                className={query.status === status ? 'selected' : ''}
-                                aria-pressed={query.status === status}
-                                onClick={() => change({ status })}
-                            >
-                                {status ? bookStatusLabels[status] : 'Tất cả'}
-                            </button>
-                        ))}
-                    </fieldset>
+                        label="Lọc trạng thái sách"
+                        options={[
+                            { value: 'all', label: 'Tất cả' },
+                            ...(['DRAFT', 'PUBLISHED', 'CHANGED'] as const).map((status) => ({
+                                value: status,
+                                label: bookStatusLabels[status],
+                            })),
+                        ]}
+                    />
                     <form
-                        className="books-toolbar mb-6 flex items-center gap-3 rounded-[8px] border border-border border-solid bg-surface p-2 max-[760px]:grid max-[760px]:grid-cols-[minmax(0,_1fr)_auto] max-[700px]:flex-wrap max-[760px]:gap-3 [&_input]:min-h-9 [&_input]:text-[length:12px] [&_label]:m-0 [&_select]:min-h-9 [&_select]:text-[length:12px] [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
+                        className="books-toolbar mb-6 flex items-center gap-3 rounded-[8px] border border-border border-solid bg-surface p-2 max-[760px]:grid max-[760px]:grid-cols-[minmax(0,_1fr)_auto] max-[700px]:flex-wrap max-[760px]:gap-3 [&_[data-slot=select-trigger]]:min-h-9 [&_[data-slot=select-trigger]]:text-[length:12px] [&_input]:min-h-9 [&_input]:text-[length:12px] [&_label]:m-0 [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
                         key={`${query.q}-${query.sort}`}
                         onSubmit={(event) => {
                             event.preventDefault();
@@ -157,28 +169,26 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                             </Field>
                             <Field orientation="contents">
                                 <FieldLabel
-                                    className="sort-field max-[760px]:min-w-0 [&_select]:m-0 [&_select]:min-w-[190px] [&_select]:text-[length:var(--text-sm)] max-[760px]:[&_select]:w-full max-[760px]:[&_select]:min-w-0"
+                                    className="sort-field max-[760px]:min-w-0 [&_[data-slot=select-trigger]]:m-0 [&_[data-slot=select-trigger]]:min-w-[190px] [&_[data-slot=select-trigger]]:text-[length:var(--text-sm)] max-[760px]:[&_[data-slot=select-trigger]]:w-full max-[760px]:[&_[data-slot=select-trigger]]:min-w-0"
                                     htmlFor="book-sort"
                                 >
                                     <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
                                         Sắp xếp sách
                                     </span>
-                                    <NativeSelect
+                                    <FormSelect
                                         id="book-sort"
                                         name="sort"
                                         defaultValue={query.sort}
-                                        onChange={(event) => {
-                                            const form = event.currentTarget.form;
-                                            if (form) form.requestSubmit();
-                                        }}
-                                    >
-                                        <option value="-updatedAt">Cập nhật gần nhất</option>
-                                        <option value="updatedAt">Cập nhật cũ nhất</option>
-                                        <option value="-createdAt">Mới tạo gần nhất</option>
-                                        <option value="createdAt">Tạo cũ nhất</option>
-                                        <option value="title">Tên A–Z</option>
-                                        <option value="-title">Tên Z–A</option>
-                                    </NativeSelect>
+                                        submitOnChange
+                                        options={[
+                                            { value: '-updatedAt', label: 'Cập nhật gần nhất' },
+                                            { value: 'updatedAt', label: 'Cập nhật cũ nhất' },
+                                            { value: '-createdAt', label: 'Mới tạo gần nhất' },
+                                            { value: 'createdAt', label: 'Tạo cũ nhất' },
+                                            { value: 'title', label: 'Tên A–Z' },
+                                            { value: '-title', label: 'Tên Z–A' },
+                                        ]}
+                                    />
                                 </FieldLabel>
                             </Field>
                             <Button type="submit">Tìm sách</Button>
@@ -186,11 +196,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                     </form>
                 </>
             )}
-            {listing.isPending && (
-                <p className="list-state px-0 py-12" role="status">
-                    Đang tải sách…
-                </p>
-            )}
+            {listing.isPending && <LoadingState>Đang tải sách…</LoadingState>}
             {listing.isError && (
                 <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(listing.error)} />
@@ -244,13 +250,14 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                             <EmptyContent>
                                 {!trash &&
                                     (query.q || query.status ? (
-                                        <button
+                                        <ActionButton
+                                            variant="plain"
                                             className="inline-flex min-h-11 items-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-primary [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px]"
                                             type="button"
                                             onClick={() => setParams({})}
                                         >
                                             Xóa bộ lọc
-                                        </button>
+                                        </ActionButton>
                                     ) : (
                                         <Button asChild>
                                             <Link to="/books/new">Tạo sách đầu tiên</Link>
@@ -275,151 +282,191 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                 </li>
                             )}
                             {listing.data.data.map((book) => (
-                                <li
-                                    className={
-                                        trash
-                                            ? 'book-row trash-row grid grid-cols-[52px_minmax(0,_1fr)_130px_44px] items-center gap-5 border-b-[1px] border-b-border px-1 py-6 [border-bottom-style:solid] max-[760px]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:gap-[var(--space-3)_var(--space-4)] max-[760px]:px-0 max-[760px]:py-5 [&:hover]:bg-muted [.book-gallery_&]:grid [.book-gallery_&]:grid-cols-[minmax(0,_1fr)_auto] [.book-gallery_&]:items-start [.book-gallery_&]:gap-3 [.book-gallery_&]:overflow-hidden [.book-gallery_&]:rounded-[12px] [.book-gallery_&]:border [.book-gallery_&]:border-border [.book-gallery_&]:border-solid [.book-gallery_&]:bg-surface [.book-gallery_&]:p-3 [.book-row&]:grid-cols-[52px_minmax(0,_1fr)_130px_110px] max-[760px]:[.book-row&]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:[.book-row&]:gap-[var(--space-3)_var(--space-4)] max-[760px]:[.book-row&]:px-0 max-[760px]:[.book-row&]:py-5'
-                                            : 'book-row grid grid-cols-[52px_minmax(0,_1fr)_130px_44px] items-center gap-5 border-b-[1px] border-b-border px-1 py-6 [border-bottom-style:solid] max-[760px]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:gap-[var(--space-3)_var(--space-4)] max-[760px]:px-0 max-[760px]:py-5 [&:hover]:bg-muted [.book-gallery_&]:grid [.book-gallery_&]:grid-cols-[minmax(0,_1fr)_auto] [.book-gallery_&]:items-start [.book-gallery_&]:gap-3 [.book-gallery_&]:overflow-hidden [.book-gallery_&]:rounded-[12px] [.book-gallery_&]:border [.book-gallery_&]:border-border [.book-gallery_&]:border-solid [.book-gallery_&]:bg-surface [.book-gallery_&]:p-3'
-                                    }
-                                    key={book.id}
-                                >
-                                    <div className="book-cover motion-safe:[.book-gallery_.book-row:hover_&_img]:transform-[scale(1.025)] grid h-[66px] w-[50px] overflow-hidden rounded-[var(--radius-sm)] bg-[var(--bg-cover)] text-[var(--text-cover)] [place-items:center] max-[760px]:row-[span_2] max-[760px]:h-[54px] max-[760px]:w-10 [&_img]:size-full [&_img]:object-cover [.book-gallery_&]:col-[1_/_-1] [.book-gallery_&]:row-[1] [.book-gallery_&]:h-[190px] [.book-gallery_&]:w-full [.book-gallery_&]:rounded-[7px] [.book-gallery_&]:bg-[var(--bg-cover)] [.book-gallery_&_img]:object-contain motion-safe:[.book-gallery_&_img]:[transition:transform_180ms_ease-out]">
-                                        {book.coverUrl ? (
-                                            <img src={book.coverUrl} alt="" loading="lazy" />
+                                <Card asChild variant="collection" key={book.id}>
+                                    <li
+                                        className={
+                                            trash
+                                                ? 'book-row trash-row grid grid-cols-[52px_minmax(0,_1fr)_130px_44px] items-center gap-5 border-b-[1px] border-b-border px-1 py-6 [border-bottom-style:solid] max-[760px]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:gap-[var(--space-3)_var(--space-4)] max-[760px]:px-0 max-[760px]:py-5 [&:hover]:bg-muted [.book-gallery_&]:grid [.book-gallery_&]:grid-cols-[minmax(0,_1fr)_auto] [.book-gallery_&]:items-start [.book-gallery_&]:gap-3 [.book-gallery_&]:overflow-hidden [.book-gallery_&]:rounded-[12px] [.book-gallery_&]:border [.book-gallery_&]:border-border [.book-gallery_&]:border-solid [.book-gallery_&]:bg-surface [.book-gallery_&]:p-3 [.book-row&]:grid-cols-[52px_minmax(0,_1fr)_130px_110px] max-[760px]:[.book-row&]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:[.book-row&]:gap-[var(--space-3)_var(--space-4)] max-[760px]:[.book-row&]:px-0 max-[760px]:[.book-row&]:py-5'
+                                                : 'book-row grid grid-cols-[52px_minmax(0,_1fr)_130px_44px] items-center gap-5 border-b-[1px] border-b-border px-1 py-6 [border-bottom-style:solid] max-[760px]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:gap-[var(--space-3)_var(--space-4)] max-[760px]:px-0 max-[760px]:py-5 [&:hover]:bg-muted [.book-gallery_&]:grid [.book-gallery_&]:grid-cols-[minmax(0,_1fr)_auto] [.book-gallery_&]:items-start [.book-gallery_&]:gap-3 [.book-gallery_&]:overflow-hidden [.book-gallery_&]:rounded-[12px] [.book-gallery_&]:border [.book-gallery_&]:border-border [.book-gallery_&]:border-solid [.book-gallery_&]:bg-surface [.book-gallery_&]:p-3'
+                                        }
+                                        key={book.id}
+                                    >
+                                        <CardContent asChild className="p-0">
+                                            <div className="book-cover motion-safe:[.book-gallery_.book-row:hover_&_img]:transform-[scale(1.025)] grid h-[66px] w-[50px] overflow-hidden rounded-[var(--radius-sm)] bg-[var(--bg-cover)] text-[var(--text-cover)] [place-items:center] max-[760px]:row-[span_2] max-[760px]:h-[54px] max-[760px]:w-10 [&_img]:size-full [&_img]:object-cover [.book-gallery_&]:col-[1_/_-1] [.book-gallery_&]:row-[1] [.book-gallery_&]:h-[190px] [.book-gallery_&]:w-full [.book-gallery_&]:rounded-[7px] [.book-gallery_&]:bg-[var(--bg-cover)] [.book-gallery_&_img]:object-contain motion-safe:[.book-gallery_&_img]:[transition:transform_180ms_ease-out]">
+                                                {book.coverUrl ? (
+                                                    <img
+                                                        src={book.coverUrl}
+                                                        alt=""
+                                                        loading="lazy"
+                                                    />
+                                                ) : (
+                                                    <BookOpen size={27} aria-hidden="true" />
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                        <CardHeader asChild className="gap-0 p-0">
+                                            <div className="book-info [&_h2]:wrap-anywhere min-w-0 max-[760px]:col-[2_/_4] [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h2]:text-[length:var(--text-md)] [&_h2]:leading-[1.4] max-[760px]:[&_h2]:text-[length:var(--text-md)] [&_h2_a:hover]:text-primary [&_h2_a:hover]:underline [&_h2_a]:text-[inherit] [&_h2_a]:no-underline [&_p]:m-0 [&_p]:text-[length:var(--text-xs)] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-xs)] [.book-gallery_&]:col-[1_/_-1] [.book-gallery_&]:row-[2] [.book-gallery_&]:px-[3px] [.book-gallery_&_h2]:mb-[5px] [.book-gallery_&_h2]:text-[length:15px] [.book-gallery_&_h2]:leading-[1.5] [.book-gallery_&_p]:text-[length:11px]">
+                                                <CardTitle asChild>
+                                                    <h2>
+                                                        {trash ? (
+                                                            book.title
+                                                        ) : (
+                                                            <Link to={`/books/${book.id}`}>
+                                                                {book.title}
+                                                            </Link>
+                                                        )}
+                                                    </h2>
+                                                </CardTitle>
+                                                <CardDescription asChild>
+                                                    <p>
+                                                        {book.pageCount} trang
+                                                        <span aria-hidden="true"> · </span>
+                                                        {trash && 'deletedAt' in book
+                                                            ? 'Đã xóa '
+                                                            : 'Cập nhật '}
+                                                        {formatDate(
+                                                            trash && 'deletedAt' in book
+                                                                ? String(book.deletedAt)
+                                                                : book.updatedAt,
+                                                        )}
+                                                    </p>
+                                                </CardDescription>
+                                            </div>
+                                        </CardHeader>
+                                        <div className="book-badges flex flex-col items-start gap-2 max-[760px]:col-[2] max-[760px]:flex-row max-[760px]:flex-wrap max-[760px]:items-center [.book-gallery_&]:col-[1] [.book-gallery_&]:row-[3] [.book-gallery_&]:justify-start [.book-gallery_&]:px-[3px]">
+                                            <Badge
+                                                tone={
+                                                    book.status === 'PUBLISHED'
+                                                        ? 'success'
+                                                        : book.status === 'CHANGED'
+                                                          ? 'warning'
+                                                          : 'neutral'
+                                                }
+                                            >
+                                                {bookStatusLabels[book.status]}
+                                            </Badge>
+                                            {book.takenDown && (
+                                                <span className="moderation-label text-[length:var(--text-xs)] text-destructive">
+                                                    Đã bị gỡ
+                                                </span>
+                                            )}
+                                        </div>
+                                        {trash ? (
+                                            <ActionButton
+                                                variant="plain"
+                                                className="row-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-primary max-[760px]:col-[3] max-[760px]:row-[2] max-[760px]:min-h-11 max-[760px]:text-[length:var(--text-xs)] [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_&]:col-[2] [.book-gallery_&]:row-[3] [.book-gallery_&]:self-end [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px] [.book-row_&]:whitespace-nowrap"
+                                                type="button"
+                                                disabled={restore.isPending}
+                                                aria-label={`Khôi phục ${book.title}`}
+                                                onClick={() => {
+                                                    void restoreBook(book.id);
+                                                }}
+                                            >
+                                                <RotateCcw size={17} aria-hidden="true" />
+                                                Khôi phục
+                                            </ActionButton>
                                         ) : (
-                                            <BookOpen size={27} aria-hidden="true" />
+                                            <ActionButton
+                                                variant="plain"
+                                                className="danger-text row-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-destructive max-[760px]:col-[3] max-[760px]:row-[2] max-[760px]:min-h-11 max-[760px]:text-[length:var(--text-xs)] [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_&]:col-[2] [.book-gallery_&]:row-[3] [.book-gallery_&]:self-end [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px] [.book-row_&]:whitespace-nowrap"
+                                                type="button"
+                                                aria-label={`Chuyển ${book.title} vào thùng rác`}
+                                                onClick={() => {
+                                                    remove.reset();
+                                                    setDeleting(book);
+                                                }}
+                                            >
+                                                <Trash2 size={17} aria-hidden="true" />
+                                                <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
+                                                    Chuyển vào thùng rác
+                                                </span>
+                                            </ActionButton>
                                         )}
-                                    </div>
-                                    <div className="book-info [&_h2]:wrap-anywhere min-w-0 max-[760px]:col-[2_/_4] [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h2]:text-[length:var(--text-md)] [&_h2]:leading-[1.4] max-[760px]:[&_h2]:text-[length:var(--text-md)] [&_h2_a:hover]:text-primary [&_h2_a:hover]:underline [&_h2_a]:text-[inherit] [&_h2_a]:no-underline [&_p]:m-0 [&_p]:text-[length:var(--text-xs)] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-xs)] [.book-gallery_&]:col-[1_/_-1] [.book-gallery_&]:row-[2] [.book-gallery_&]:px-[3px] [.book-gallery_&_h2]:mb-[5px] [.book-gallery_&_h2]:text-[length:15px] [.book-gallery_&_h2]:leading-[1.5] [.book-gallery_&_p]:text-[length:11px]">
-                                        <h2>
-                                            {trash ? (
-                                                book.title
-                                            ) : (
-                                                <Link to={`/books/${book.id}`}>{book.title}</Link>
-                                            )}
-                                        </h2>
-                                        <p>
-                                            {book.pageCount} trang
-                                            <span aria-hidden="true"> · </span>
-                                            {trash && 'deletedAt' in book ? 'Đã xóa ' : 'Cập nhật '}
-                                            {formatDate(
-                                                trash && 'deletedAt' in book
-                                                    ? String(book.deletedAt)
-                                                    : book.updatedAt,
-                                            )}
-                                        </p>
-                                    </div>
-                                    <div className="book-badges flex flex-col items-start gap-2 max-[760px]:col-[2] max-[760px]:flex-row max-[760px]:flex-wrap max-[760px]:items-center [.book-gallery_&]:col-[1] [.book-gallery_&]:row-[3] [.book-gallery_&]:justify-start [.book-gallery_&]:px-[3px]">
-                                        <Badge
-                                            tone={
-                                                book.status === 'PUBLISHED'
-                                                    ? 'success'
-                                                    : book.status === 'CHANGED'
-                                                      ? 'warning'
-                                                      : 'neutral'
-                                            }
-                                        >
-                                            {bookStatusLabels[book.status]}
-                                        </Badge>
-                                        {book.takenDown && (
-                                            <span className="moderation-label text-[length:var(--text-xs)] text-destructive">
-                                                Đã bị gỡ
-                                            </span>
-                                        )}
-                                    </div>
-                                    {trash ? (
-                                        <button
-                                            className="row-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-primary max-[760px]:col-[3] max-[760px]:row-[2] max-[760px]:min-h-11 max-[760px]:text-[length:var(--text-xs)] [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_&]:col-[2] [.book-gallery_&]:row-[3] [.book-gallery_&]:self-end [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px] [.book-row_&]:whitespace-nowrap"
-                                            type="button"
-                                            disabled={restore.isPending}
-                                            aria-label={`Khôi phục ${book.title}`}
-                                            onClick={() => {
-                                                void restoreBook(book.id);
-                                            }}
-                                        >
-                                            <RotateCcw size={17} aria-hidden="true" />
-                                            Khôi phục
-                                        </button>
-                                    ) : (
-                                        <button
-                                            className="danger-text row-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-destructive max-[760px]:col-[3] max-[760px]:row-[2] max-[760px]:min-h-11 max-[760px]:text-[length:var(--text-xs)] [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_&]:col-[2] [.book-gallery_&]:row-[3] [.book-gallery_&]:self-end [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px] [.book-row_&]:whitespace-nowrap"
-                                            type="button"
-                                            aria-label={`Chuyển ${book.title} vào thùng rác`}
-                                            onClick={() => {
-                                                remove.reset();
-                                                setDeleting(book);
-                                            }}
-                                        >
-                                            <Trash2 size={17} aria-hidden="true" />
-                                            <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
-                                                Chuyển vào thùng rác
-                                            </span>
-                                        </button>
-                                    )}
-                                </li>
+                                    </li>
+                                </Card>
                             ))}
                         </ul>
                     )}
                     {meta && meta.totalPages > 1 && (
-                        <nav
+                        <PaginationRoot
                             className="pagination mt-8 flex items-center justify-end gap-5 text-[length:var(--text-sm)] tabular-nums max-[760px]:justify-between max-[760px]:gap-2 max-[760px]:text-[length:var(--text-xs)] max-[760px]:[&_.button]:p-3 max-[760px]:[&_.button]:text-[length:var(--text-xs)]"
                             aria-label="Phân trang sách"
                         >
-                            <Button
-                                variant="secondary"
-                                type="button"
-                                disabled={query.page === 1 || listing.isFetching}
-                                onClick={() => change({ page: String(query.page - 1) })}
-                            >
-                                Trang trước
-                            </Button>
-                            <span>
-                                Trang {query.page} / {meta.totalPages}
-                            </span>
-                            <Button
-                                variant="secondary"
-                                type="button"
-                                disabled={query.page >= meta.totalPages || listing.isFetching}
-                                onClick={() => change({ page: String(query.page + 1) })}
-                            >
-                                Trang sau
-                            </Button>
-                        </nav>
+                            <PaginationContent className="m-0 gap-3 p-0">
+                                <PaginationItem>
+                                    <Button
+                                        variant="secondary"
+                                        type="button"
+                                        disabled={query.page === 1 || listing.isFetching}
+                                        onClick={() => change({ page: String(query.page - 1) })}
+                                    >
+                                        Trang trước
+                                    </Button>
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <span>
+                                        Trang {query.page} / {meta.totalPages}
+                                    </span>
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <Button
+                                        variant="secondary"
+                                        type="button"
+                                        disabled={
+                                            query.page >= meta.totalPages || listing.isFetching
+                                        }
+                                        onClick={() => change({ page: String(query.page + 1) })}
+                                    >
+                                        Trang sau
+                                    </Button>
+                                </PaginationItem>
+                            </PaginationContent>
+                        </PaginationRoot>
                     )}
                 </>
             )}
             {deleting && (
-                <ConfirmDialog
+                <ConfirmationDialog
+                    description={
+                        <>
+                            <strong>{deleting.title}</strong> sẽ không còn nằm trong Sách của tôi.
+                            Bạn có thể khôi phục từ thùng rác.
+                        </>
+                    }
                     title="Chuyển sách vào thùng rác?"
                     busy={remove.isPending}
                     onClose={() => setDeleting(null)}
                 >
-                    <p>
-                        <strong>{deleting.title}</strong> sẽ không còn nằm trong Sách của tôi. Bạn
-                        có thể khôi phục từ thùng rác.
-                    </p>
                     <Feedback error={remove.error ? errorMessage(remove.error) : null} />
                     <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                        <Button
-                            variant="secondary"
-                            type="button"
-                            disabled={remove.isPending}
-                            onClick={() => setDeleting(null)}
+                        <AlertDialogCancel variant="plain" asChild>
+                            <Button
+                                variant="secondary"
+                                type="button"
+                                disabled={remove.isPending}
+                                onClick={() => setDeleting(null)}
+                            >
+                                Giữ sách
+                            </Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="plain"
+                            asChild
+                            onClick={(event) => event.preventDefault()}
                         >
-                            Giữ sách
-                        </Button>
-                        <Button
-                            variant="danger"
-                            type="button"
-                            disabled={remove.isPending}
-                            onClick={() => {
-                                void remove.mutateAsync(deleting.id).catch(() => undefined);
-                            }}
-                        >
-                            {remove.isPending ? 'Đang chuyển…' : 'Chuyển vào thùng rác'}
-                        </Button>
+                            <Button
+                                variant="danger"
+                                type="button"
+                                disabled={remove.isPending}
+                                onClick={() => {
+                                    void remove.mutateAsync(deleting.id).catch(() => undefined);
+                                }}
+                            >
+                                {remove.isPending ? 'Đang chuyển…' : 'Chuyển vào thùng rác'}
+                            </Button>
+                        </AlertDialogAction>
                     </div>
-                </ConfirmDialog>
+                </ConfirmationDialog>
             )}
         </>
     );

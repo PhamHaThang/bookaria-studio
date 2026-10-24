@@ -2,9 +2,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { Disclosure } from '@/shared/ui/Disclosure';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
+import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
+import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { adminDate, adminOperationsApi } from '../features/admin';
 import {
     auditTargetLink,
@@ -23,7 +28,6 @@ import { errorMessage } from '../shared/api/errors';
 import type { AdminJob } from '../shared/contracts/api/admin.schema';
 import { JobStatusSchema, JobTypeSchema } from '../shared/contracts/enums.schema';
 import { Badge } from '../shared/ui/Badge';
-import { ConfirmDialog } from '../shared/ui/ConfirmDialog';
 import { Feedback } from '../shared/ui/Feedback';
 
 export function AdminJobsPage() {
@@ -54,7 +58,7 @@ export function AdminJobsPage() {
                 {query && <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />}
             </div>
             <form
-                className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto] [&_select]:w-full"
+                className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_[data-slot=select-trigger]]:w-full [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto]"
                 key={params.toString()}
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -65,35 +69,35 @@ export function AdminJobsPage() {
                     <Field orientation="contents">
                         <FieldLabel htmlFor="jobs-status">
                             Trạng thái
-                            <NativeSelect
+                            <FormSelect
                                 id="jobs-status"
                                 name="status"
                                 defaultValue={params.get('status') || ''}
-                            >
-                                <option value="">Tất cả trạng thái</option>
-                                {JobStatusSchema.options.map((value) => (
-                                    <option key={value} value={value}>
-                                        {jobStatusLabel[value]}
-                                    </option>
-                                ))}
-                            </NativeSelect>
+                                options={[
+                                    { value: '', label: 'Tất cả trạng thái' },
+                                    ...(JobStatusSchema.options.map((value) => ({
+                                        value: value,
+                                        label: jobStatusLabel[value],
+                                    })) ?? []),
+                                ]}
+                            />
                         </FieldLabel>
                     </Field>
                     <Field orientation="contents">
                         <FieldLabel htmlFor="jobs-type">
                             Loại tác vụ
-                            <NativeSelect
+                            <FormSelect
                                 id="jobs-type"
                                 name="type"
                                 defaultValue={params.get('type') || ''}
-                            >
-                                <option value="">Tất cả loại</option>
-                                {JobTypeSchema.options.map((value) => (
-                                    <option key={value} value={value}>
-                                        {jobTypeLabel[value]}
-                                    </option>
-                                ))}
-                            </NativeSelect>
+                                options={[
+                                    { value: '', label: 'Tất cả loại' },
+                                    ...(JobTypeSchema.options.map((value) => ({
+                                        value: value,
+                                        label: jobTypeLabel[value],
+                                    })) ?? []),
+                                ]}
+                            />
                         </FieldLabel>
                     </Field>
                     <Button type="submit">Lọc tác vụ</Button>
@@ -102,10 +106,9 @@ export function AdminJobsPage() {
             </form>
             <Field orientation="contents">
                 <FieldLabel className="admin-monitor my-4 flex items-start gap-3 [&_>_input]:mt-1 [&_>_input]:shrink-0">
-                    <input
-                        type="checkbox"
+                    <Checkbox
                         checked={monitor}
-                        onChange={(event) => setMonitor(event.target.checked)}
+                        onCheckedChange={(checked) => setMonitor(checked === true)}
                     />{' '}
                     Tự cập nhật mỗi 10 giây khi đang mở trang
                 </FieldLabel>
@@ -141,7 +144,7 @@ export function AdminJobsPage() {
                     </div>
                 </section>
             )}
-            {query && list.isPending && <p role="status">Đang tải tác vụ…</p>}
+            {query && list.isPending && <LoadingState>Đang tải tác vụ…</LoadingState>}
             {query && list.isError && (
                 <Feedback
                     error={`${errorMessage(list.error)} Theo dõi tự động đã dừng; hãy tải lại dữ liệu.`}
@@ -154,7 +157,7 @@ export function AdminJobsPage() {
                         <ul className="admin-rows admin-job-rows [&_>_li]:wrap-anywhere mx-0 my-4 list-none p-0 [&_>_li]:flex [&_>_li]:items-start [&_>_li]:justify-between [&_>_li]:gap-5 [&_>_li]:border-b-[1px] [&_>_li]:border-b-border [&_>_li]:py-5 [&_>_li]:[border-bottom-style:solid] max-[640px]:[&_>_li]:flex-col max-[640px]:[&_>_li]:gap-3 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h2]:text-[length:var(--text-md)] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-2 [&_h3]:text-[length:var(--text-md)] [&_p]:mx-0 [&_p]:my-2">
                             {list.data.data.map((job) => (
                                 <li key={job.id}>
-                                    <div className="admin-job-main min-w-0 flex-[1] [&_details]:mt-4 [&_summary]:cursor-pointer [&_summary]:underline [&_summary]:underline-offset-[0.2em]">
+                                    <div className="admin-job-main min-w-0 flex-[1] [&_[data-slot=accordion-trigger]]:cursor-pointer [&_[data-slot=accordion-trigger]]:underline [&_[data-slot=accordion-trigger]]:underline-offset-[0.2em] [&_details]:mt-4">
                                         <h2>{jobTypeLabel[job.type]}</h2>
                                         <p>
                                             <code className="admin-id wrap-anywhere">{job.id}</code>
@@ -192,8 +195,7 @@ export function AdminJobsPage() {
                                                 Lỗi {job.error.code}: {job.error.message}
                                             </p>
                                         )}
-                                        <details>
-                                            <summary>Kết quả và mã tham chiếu</summary>
+                                        <Disclosure title={<> Kết quả và mã tham chiếu </>}>
                                             <AuditJson
                                                 value={{
                                                     id: job.id,
@@ -204,7 +206,7 @@ export function AdminJobsPage() {
                                                     error: job.error,
                                                 }}
                                             />
-                                        </details>
+                                        </Disclosure>
                                     </div>
                                     <div className="admin-row-detail flex flex-col gap-2 text-[length:var(--text-sm)]">
                                         <Link to={auditTargetLink('JOB', job.id)}>
@@ -248,16 +250,18 @@ export function AdminJobsPage() {
                 </>
             )}
             {selected && (
-                <ConfirmDialog
+                <ConfirmationDialog
+                    description={
+                        <>
+                            {jobTypeLabel[selected.type]} —{' '}
+                            <code className="admin-id wrap-anywhere">{selected.id}</code>
+                        </>
+                    }
                     title="Thử lại tác vụ này?"
                     busy={action.busy}
                     onClose={() => setSelected(null)}
                     className="admin-confirm [&_p]:wrap-anywhere max-h-[calc(100dvh_-_32px)] max-w-[min(480px,_calc(100%_-_32px))] overflow-y-auto [&_p]:[white-space:pre-wrap]"
                 >
-                    <p>
-                        {jobTypeLabel[selected.type]} —{' '}
-                        <code className="admin-id wrap-anywhere">{selected.id}</code>
-                    </p>
                     <p>
                         {targetLabel[selected.ref.type]}:{' '}
                         <code className="admin-id wrap-anywhere">{selected.ref.id}</code>
@@ -268,38 +272,49 @@ export function AdminJobsPage() {
                     </p>
                     <Feedback error={action.error} />
                     <div className="admin-actions flex flex-wrap items-center gap-3 max-[640px]:flex-col max-[640px]:items-stretch [.admin-confirm_&]:mt-5">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            fullWidth
-                            disabled={action.busy}
-                            onClick={() => setSelected(null)}
+                        <AlertDialogCancel variant="plain" asChild>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                fullWidth
+                                disabled={action.busy}
+                                onClick={() => setSelected(null)}
+                            >
+                                Hủy
+                            </Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="plain"
+                            asChild
+                            onClick={(event) => event.preventDefault()}
                         >
-                            Hủy
-                        </Button>
-                        <Button
-                            type="button"
-                            fullWidth
-                            disabled={action.busy || action.uncertain}
-                            onClick={() =>
-                                void action.run(
-                                    () => adminOperationsApi.retry(selected.id),
-                                    (result) => {
-                                        setAccepted({ previous: selected.id, next: result.jobId });
-                                        setSelected(null);
-                                        void cache.invalidateQueries({ queryKey: ['assets'] });
-                                        void cache.invalidateQueries({ queryKey: ['books'] });
-                                        void cache.invalidateQueries({
-                                            queryKey: ['notifications', user?.id || ''],
-                                        });
-                                    },
-                                )
-                            }
-                        >
-                            {action.busy ? 'Đang gửi…' : 'Xác nhận thử lại'}
-                        </Button>
+                            <Button
+                                type="button"
+                                fullWidth
+                                disabled={action.busy || action.uncertain}
+                                onClick={() =>
+                                    void action.run(
+                                        () => adminOperationsApi.retry(selected.id),
+                                        (result) => {
+                                            setAccepted({
+                                                previous: selected.id,
+                                                next: result.jobId,
+                                            });
+                                            setSelected(null);
+                                            void cache.invalidateQueries({ queryKey: ['assets'] });
+                                            void cache.invalidateQueries({ queryKey: ['books'] });
+                                            void cache.invalidateQueries({
+                                                queryKey: ['notifications', user?.id || ''],
+                                            });
+                                        },
+                                    )
+                                }
+                            >
+                                {action.busy ? 'Đang gửi…' : 'Xác nhận thử lại'}
+                            </Button>
+                        </AlertDialogAction>
                     </div>
-                </ConfirmDialog>
+                </ConfirmationDialog>
             )}
         </>
     );

@@ -1,4 +1,10 @@
-import { Button } from '@/shared/ui/Button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from './primitives/button';
+import {
+    PaginationContent,
+    PaginationItem,
+    Pagination as PaginationRoot,
+} from './primitives/pagination';
 export function Pagination({
     page,
     totalPages,
@@ -12,29 +18,34 @@ export function Pagination({
 }) {
     if (totalPages <= 1) return null;
     return (
-        <nav
-            className="pagination mt-8 flex items-center justify-end gap-5 text-[length:var(--text-sm)] tabular-nums max-[760px]:justify-between max-[760px]:gap-2 max-[760px]:text-[length:var(--text-xs)] max-[760px]:[&_.button]:p-3 max-[760px]:[&_.button]:text-[length:var(--text-xs)]"
-            aria-label={label}
-        >
-            <Button
-                type="button"
-                variant="secondary"
-                disabled={page <= 1}
-                onClick={() => onPage(page - 1)}
-            >
-                Trang trước
-            </Button>
-            <span>
-                Trang {page} / {totalPages}
-            </span>
-            <Button
-                type="button"
-                variant="secondary"
-                disabled={page >= totalPages}
-                onClick={() => onPage(page + 1)}
-            >
-                Trang sau
-            </Button>
-        </nav>
+        <PaginationRoot aria-label={label} className="mt-8 justify-end">
+            <PaginationContent className="m-0 gap-3 p-0">
+                <PaginationItem>
+                    <Button
+                        variant="secondary"
+                        disabled={page <= 1}
+                        onClick={() => onPage(page - 1)}
+                    >
+                        <ChevronLeft data-icon="inline-start" />
+                        Trang trước
+                    </Button>
+                </PaginationItem>
+                <PaginationItem>
+                    <span className="px-2 text-sm tabular-nums" aria-live="polite">
+                        Trang {page} / {totalPages}
+                    </span>
+                </PaginationItem>
+                <PaginationItem>
+                    <Button
+                        variant="secondary"
+                        disabled={page >= totalPages}
+                        onClick={() => onPage(page + 1)}
+                    >
+                        Trang sau
+                        <ChevronRight data-icon="inline-end" />
+                    </Button>
+                </PaginationItem>
+            </PaginationContent>
+        </PaginationRoot>
     );
 }

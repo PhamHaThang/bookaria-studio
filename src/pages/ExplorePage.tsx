@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import {
     Empty,
     EmptyContent,
@@ -11,7 +13,11 @@ import {
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
+import {
+    PaginationContent,
+    PaginationItem,
+    Pagination as PaginationRoot,
+} from '@/shared/ui/primitives/pagination';
 import { discoveryApi } from '../features/discovery';
 import { PublicBooks } from '../features/discovery/PublicBooks';
 import { readDiscoverySearch, updateDiscoverySearch } from '../features/discovery/search';
@@ -82,14 +88,17 @@ export function ExplorePage() {
                     <Field orientation="contents">
                         <FieldLabel>
                             Độ tuổi
-                            <NativeSelect name="age" defaultValue={query.age ?? ''}>
-                                <option value="">Tất cả độ tuổi</option>
-                                {ages.map((age) => (
-                                    <option key={age} value={age}>
-                                        {age} tuổi
-                                    </option>
-                                ))}
-                            </NativeSelect>
+                            <FormSelect
+                                name="age"
+                                defaultValue={query.age ?? ''}
+                                options={[
+                                    { value: '', label: 'Tất cả độ tuổi' },
+                                    ...(ages.map((age) => ({
+                                        value: age,
+                                        label: <>{age} tuổi</>,
+                                    })) ?? []),
+                                ]}
+                            />
                         </FieldLabel>
                     </Field>
                     <Field orientation="contents">
@@ -118,10 +127,14 @@ export function ExplorePage() {
                     <Field orientation="contents">
                         <FieldLabel>
                             Sắp xếp
-                            <NativeSelect name="sort" defaultValue={query.sort}>
-                                <option value="newest">Mới xuất bản</option>
-                                <option value="popular">Đọc nhiều</option>
-                            </NativeSelect>
+                            <FormSelect
+                                name="sort"
+                                defaultValue={query.sort}
+                                options={[
+                                    { value: 'newest', label: 'Mới xuất bản' },
+                                    { value: 'popular', label: 'Đọc nhiều' },
+                                ]}
+                            />
                         </FieldLabel>
                     </Field>
                     <div className="discovery-filter-actions col-[span_2] flex flex-wrap items-end gap-3 max-[640px]:col-[auto]">
@@ -132,11 +145,7 @@ export function ExplorePage() {
                     </div>
                 </FieldGroup>
             </form>
-            {listing.isPending && (
-                <p className="list-state px-0 py-12" role="status">
-                    Đang tải sách…
-                </p>
-            )}
+            {listing.isPending && <LoadingState>Đang tải sách…</LoadingState>}
             {listing.isError && (
                 <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(listing.error)} />
@@ -180,42 +189,50 @@ export function ExplorePage() {
                         </Empty>
                     )}
                     {listing.data.meta.totalPages > 1 && (
-                        <nav
+                        <PaginationRoot
                             className="pagination mt-8 flex items-center justify-end gap-5 text-[length:var(--text-sm)] tabular-nums max-[760px]:justify-between max-[760px]:gap-2 max-[760px]:text-[length:var(--text-xs)] max-[760px]:[&_.button]:p-3 max-[760px]:[&_.button]:text-[length:var(--text-xs)]"
                             aria-label="Phân trang thư viện"
                         >
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                disabled={query.page <= 1}
-                                onClick={() =>
-                                    setParams((current) =>
-                                        updateDiscoverySearch(current, {
-                                            page: String(query.page - 1),
-                                        }),
-                                    )
-                                }
-                            >
-                                Trang trước
-                            </Button>
-                            <span>
-                                Trang {query.page} / {listing.data.meta.totalPages}
-                            </span>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                disabled={query.page >= listing.data.meta.totalPages}
-                                onClick={() =>
-                                    setParams((current) =>
-                                        updateDiscoverySearch(current, {
-                                            page: String(query.page + 1),
-                                        }),
-                                    )
-                                }
-                            >
-                                Trang sau
-                            </Button>
-                        </nav>
+                            <PaginationContent className="m-0 gap-3 p-0">
+                                <PaginationItem>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        disabled={query.page <= 1}
+                                        onClick={() =>
+                                            setParams((current) =>
+                                                updateDiscoverySearch(current, {
+                                                    page: String(query.page - 1),
+                                                }),
+                                            )
+                                        }
+                                    >
+                                        Trang trước
+                                    </Button>
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <span>
+                                        Trang {query.page} / {listing.data.meta.totalPages}
+                                    </span>
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        disabled={query.page >= listing.data.meta.totalPages}
+                                        onClick={() =>
+                                            setParams((current) =>
+                                                updateDiscoverySearch(current, {
+                                                    page: String(query.page + 1),
+                                                }),
+                                            )
+                                        }
+                                    >
+                                        Trang sau
+                                    </Button>
+                                </PaginationItem>
+                            </PaginationContent>
+                        </PaginationRoot>
                     )}
                 </>
             )}

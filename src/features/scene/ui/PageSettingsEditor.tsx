@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset, Page } from '../../../shared/contracts/dto.schema';
@@ -74,7 +75,7 @@ export function PageSettingsEditor({
             <Feedback error={error} success={notice} />
             <fieldset
                 disabled={disabled || busy}
-                className="scene-settings-fields mx-0 mt-0 mb-4 grid min-w-0 grid-cols-[repeat(2,_minmax(0,_1fr))] gap-4 border-0 border-[transparent] border-solid p-0 max-[600px]:grid-cols-[1fr] [&_h4]:mx-0 [&_h4]:mt-0 [&_h4]:mb-2 [&_select]:w-full [&_select]:min-w-0 [.workbench-panel_&]:gap-[14px]"
+                className="scene-settings-fields mx-0 mt-0 mb-4 grid min-w-0 grid-cols-[repeat(2,_minmax(0,_1fr))] gap-4 border-0 border-[transparent] border-solid p-0 max-[600px]:grid-cols-[1fr] [&_[data-slot=select-trigger]]:w-full [&_[data-slot=select-trigger]]:min-w-0 [&_h4]:mx-0 [&_h4]:mt-0 [&_h4]:mb-2 [.workbench-panel_&]:gap-[14px]"
             >
                 {(['backgroundAudioAssetId', 'narrationAssetId'] as const).map((key) => (
                     <div key={key}>
@@ -117,11 +118,10 @@ export function PageSettingsEditor({
                 ))}
                 <Field orientation="contents">
                     <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                        <input
-                            type="checkbox"
+                        <Checkbox
                             checked={draft.backgroundLoop}
-                            onChange={(event) =>
-                                update('backgroundLoop', event.currentTarget.checked)
+                            onCheckedChange={(checked) =>
+                                update('backgroundLoop', checked === true)
                             }
                         />
                         Lặp âm thanh nền
@@ -130,20 +130,18 @@ export function PageSettingsEditor({
                 <Field orientation="contents">
                     <FieldLabel htmlFor="scene-lighting">
                         Ánh sáng
-                        <NativeSelect
+                        <FormSelect
                             id="scene-lighting"
                             value={draft.lighting}
-                            onChange={(event) =>
-                                update(
-                                    'lighting',
-                                    event.currentTarget.value as PageSettings['lighting'],
-                                )
+                            onValueChange={(value) =>
+                                update('lighting', value as PageSettings['lighting'])
                             }
-                        >
-                            <option value="neutral">Trung tính</option>
-                            <option value="warm">Ấm</option>
-                            <option value="cool">Lạnh</option>
-                        </NativeSelect>
+                            options={[
+                                { value: 'neutral', label: 'Trung tính' },
+                                { value: 'warm', label: 'Ấm' },
+                                { value: 'cool', label: 'Lạnh' },
+                            ]}
+                        />
                     </FieldLabel>
                 </Field>
             </fieldset>

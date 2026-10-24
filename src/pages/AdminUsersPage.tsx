@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import {
     adminApi,
     adminDate,
@@ -41,7 +42,7 @@ export function AdminUsersPage() {
                 </Button>
             </div>
             <form
-                className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto] [&_select]:w-full"
+                className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_[data-slot=select-trigger]]:w-full [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto]"
                 key={params.toString()}
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -68,50 +69,53 @@ export function AdminUsersPage() {
                     <Field orientation="contents">
                         <FieldLabel htmlFor="admin-user-role">
                             Vai trò
-                            <NativeSelect
+                            <FormSelect
                                 name="role"
                                 id="admin-user-role"
                                 defaultValue={query.role || ''}
-                            >
-                                <option value="">Tất cả</option>
-                                <option value="AUTHOR">Tác giả</option>
-                                <option value="ADMIN">Quản trị viên</option>
-                            </NativeSelect>
+                                options={[
+                                    { value: '', label: 'Tất cả' },
+                                    { value: 'AUTHOR', label: 'Tác giả' },
+                                    { value: 'ADMIN', label: 'Quản trị viên' },
+                                ]}
+                            />
                         </FieldLabel>
                     </Field>
                     <Field orientation="contents">
                         <FieldLabel htmlFor="admin-user-status">
                             Trạng thái
-                            <NativeSelect
+                            <FormSelect
                                 name="status"
                                 id="admin-user-status"
                                 defaultValue={query.status || ''}
-                            >
-                                <option value="">Tất cả</option>
-                                <option value="ACTIVE">Hoạt động</option>
-                                <option value="LOCKED">Đã khóa</option>
-                            </NativeSelect>
+                                options={[
+                                    { value: '', label: 'Tất cả' },
+                                    { value: 'ACTIVE', label: 'Hoạt động' },
+                                    { value: 'LOCKED', label: 'Đã khóa' },
+                                ]}
+                            />
                         </FieldLabel>
                     </Field>
                     <Field orientation="contents">
                         <FieldLabel htmlFor="admin-user-sort">
                             Sắp xếp
-                            <NativeSelect
+                            <FormSelect
                                 name="sort"
                                 id="admin-user-sort"
                                 defaultValue={query.sort}
-                            >
-                                <option value="-createdAt">Mới nhất</option>
-                                <option value="createdAt">Cũ nhất</option>
-                                <option value="displayName">Tên A–Z</option>
-                                <option value="-displayName">Tên Z–A</option>
-                                <option value="email">Email A–Z</option>
-                                <option value="-email">Email Z–A</option>
-                                <option value="updatedAt">Cập nhật cũ nhất</option>
-                                <option value="-updatedAt">Cập nhật mới nhất</option>
-                                <option value="storageUsedBytes">Dung lượng tăng dần</option>
-                                <option value="-storageUsedBytes">Dung lượng giảm dần</option>
-                            </NativeSelect>
+                                options={[
+                                    { value: '-createdAt', label: 'Mới nhất' },
+                                    { value: 'createdAt', label: 'Cũ nhất' },
+                                    { value: 'displayName', label: 'Tên A–Z' },
+                                    { value: '-displayName', label: 'Tên Z–A' },
+                                    { value: 'email', label: 'Email A–Z' },
+                                    { value: '-email', label: 'Email Z–A' },
+                                    { value: 'updatedAt', label: 'Cập nhật cũ nhất' },
+                                    { value: '-updatedAt', label: 'Cập nhật mới nhất' },
+                                    { value: 'storageUsedBytes', label: 'Dung lượng tăng dần' },
+                                    { value: '-storageUsedBytes', label: 'Dung lượng giảm dần' },
+                                ]}
+                            />
                         </FieldLabel>
                     </Field>
                     <Button type="submit">Áp dụng bộ lọc</Button>
@@ -119,7 +123,7 @@ export function AdminUsersPage() {
                 </FieldGroup>
             </form>
             <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />
-            {list.isPending && <p role="status">Đang tải người dùng…</p>}
+            {list.isPending && <LoadingState>Đang tải người dùng…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess && (
                 <>

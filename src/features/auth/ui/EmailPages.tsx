@@ -1,98 +1,118 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Button } from '@/shared/ui/Button';
+import { useSearchParams } from 'react-router-dom';
+import { Feedback } from '@/shared/ui/Feedback';
+import { Button } from '@/shared/ui/primitives/button';
+import { DialogDescription, DialogHeader, DialogTitle } from '@/shared/ui/primitives/dialog';
 import { Spinner } from '@/shared/ui/primitives/spinner';
-import { errorMessage } from '../../../shared/api/errors';
-import { Feedback } from '../../../shared/ui/Feedback';
 import { auth, useAuth } from '../model/session';
+import { AuthDialogLink } from './AuthDialogLink';
+import { type AuthRequestProps, useAuthRequest } from './useAuthRequest';
 
-export function CheckEmail() {
+type EmailDialogProps = AuthRequestProps & { onContinue: () => void; continueLabel: string };
+
+export function CheckEmail({ onContinue, continueLabel, ...props }: EmailDialogProps) {
     const { user } = useAuth();
-    const [error, setError] = useState<string | null>(null);
+    const request = useAuthRequest(props);
     const [success, setSuccess] = useState<string | null>(null);
-    const [busy, setBusy] = useState(false);
-    async function resend() {
-        setBusy(true);
-        setError(null);
-        setSuccess(null);
-        try {
-            await auth.resendVerification();
-            setSuccess('Đã gửi yêu cầu. Hãy kiểm tra hộp thư và thư rác.');
-        } catch (cause) {
-            setError(errorMessage(cause));
-        } finally {
-            setBusy(false);
-        }
-    }
     return (
         <>
-            <h1>{user?.emailVerified ? 'Email đã xác minh' : 'Kiểm tra email của bạn'}</h1>
-            <p className="intro mx-0 mt-0 mb-8 text-muted-foreground">
-                {user?.emailVerified ? (
-                    'Tài khoản của bạn đã sẵn sàng cho bước xuất bản.'
-                ) : (
-                    <>
-                        Mở liên kết xác minh gửi đến <strong>{user?.email}</strong>. Bạn vẫn có thể
-                        vào Studio trước khi xác minh.
-                    </>
+            <DialogHeader className="mb-6 pr-5">
+                <DialogTitle size="lg" className="m-0">
+                    {user?.emailVerified ? 'Email đã xác minh' : 'Kiểm tra email của bạn'}
+                </DialogTitle>
+                <DialogDescription className="m-0">
+                    {user?.emailVerified ? (
+                        'Tài khoản của bạn đã sẵn sàng cho bước xuất bản.'
+                    ) : (
+                        <>
+                            Mở liên kết xác minh gửi đến <strong>{user?.email}</strong>. Bạn vẫn có
+                            thể vào Studio trước khi xác minh.
+                        </>
+                    )}
+                </DialogDescription>
+            </DialogHeader>
+            <Feedback error={request.error} success={success} />
+            <div className="flex flex-col gap-3">
+                {!user?.emailVerified && (
+                    <Button
+                        disabled={request.disabled}
+                        onClick={() => {
+                            setSuccess(null);
+                            void request.run(
+                                () => auth.resendVerification(),
+                                () =>
+                                    setSuccess('Đã gửi yêu cầu. Hãy kiểm tra hộp thư và thư rác.'),
+                            );
+                        }}
+                    >
+                        {request.busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
+                        {request.busy ? 'Đang gửi…' : 'Gửi lại email xác minh'}
+                    </Button>
                 )}
-            </p>
-            <Feedback error={error} success={success} />
-            {!user?.emailVerified && (
-                <Button fullWidth aria-busy={busy} onClick={resend} disabled={busy}>
-                    {busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
-                    {busy ? 'Đang gửi…' : 'Gửi lại email xác minh'}
+                <Button variant="outline" disabled={request.disabled} onClick={onContinue}>
+                    {continueLabel}
                 </Button>
-            )}
-            <Button variant="secondary" fullWidth asChild>
-                <Link to="/books">Vào Studio</Link>
-            </Button>
+            </div>
         </>
     );
 }
 
-export function VerifyEmail() {
+export function VerifyEmail({ onContinue, continueLabel, ...props }: EmailDialogProps) {
     const [params] = useSearchParams();
     const token = params.get('token') || '';
-    const [error, setError] = useState<string | null>(null);
+    const request = useAuthRequest(props);
     const [success, setSuccess] = useState(false);
-    const [busy, setBusy] = useState(false);
-    async function verify() {
-        setBusy(true);
-        setError(null);
-        try {
-            await auth.verifyEmail(token);
-            // Verification can belong to a different account; do not blindly set its flag locally.
-            if (auth.store.getState().user) await auth.profile().catch(() => undefined);
-            setSuccess(true);
-        } catch (cause) {
-            setError(errorMessage(cause));
-        } finally {
-            setBusy(false);
-        }
-    }
     return (
         <>
-            <h1>{success ? 'Xác minh thành công' : 'Xác minh email'}</h1>
-            <p className="intro mx-0 mt-0 mb-8 text-muted-foreground">
-                {success
-                    ? 'Email đã được xác nhận. Bạn có thể tiếp tục vào Studio.'
-                    : 'Bấm xác minh để hoàn tất việc xác nhận email của bạn.'}
-            </p>
+            <DialogHeader className="mb-6 pr-5">
+                <DialogTitle size="lg" className="m-0">
+                    {success ? 'Xác minh thành công' : 'Xác minh email'}
+                </DialogTitle>
+                <DialogDescription className="m-0">
+                    {success
+                        ? 'Email đã được xác nhận. Bạn có thể tiếp tục vào Studio.'
+                        : 'Bấm xác minh để hoàn tất việc xác nhận email của bạn.'}
+                </DialogDescription>
+            </DialogHeader>
             <Feedback
-                error={error || (!token ? 'Liên kết thiếu mã xác minh. Hãy mở lại email.' : null)}
+                error={
+                    request.error ||
+                    (!token ? 'Liên kết thiếu mã xác minh. Hãy mở lại email.' : null)
+                }
             />
-            {!success && token && (
-                <Button fullWidth aria-busy={busy} onClick={verify} disabled={busy}>
-                    {busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
-                    {busy ? 'Đang xác minh…' : 'Xác minh email'}
-                </Button>
-            )}
-            <Button variant="secondary" fullWidth asChild>
-                <Link to={success ? '/books' : '/check-email'}>
-                    {success ? 'Tiếp tục vào Studio' : 'Gửi lại email xác minh'}
-                </Link>
-            </Button>
+            <div className="flex flex-col gap-3">
+                {!success && token && (
+                    <Button
+                        disabled={request.disabled}
+                        onClick={() => {
+                            void request.run(
+                                async () => {
+                                    await auth.verifyEmail(
+                                        token,
+                                    ); /* The token may belong to another account: reload the actual current profile. */
+                                    if (auth.store.getState().user)
+                                        await auth.profile().catch(() => undefined);
+                                },
+                                () => setSuccess(true),
+                            );
+                        }}
+                    >
+                        {request.busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
+                        {request.busy ? 'Đang xác minh…' : 'Xác minh email'}
+                    </Button>
+                )}
+                {success ? (
+                    <Button variant="outline" disabled={request.disabled} onClick={onContinue}>
+                        {continueLabel}
+                    </Button>
+                ) : (
+                    <Button variant="outline" asChild>
+                        <AuthDialogLink mode="check-email" disabled={request.disabled}>
+                            Gửi lại email xác minh
+                        </AuthDialogLink>
+                    </Button>
+                )}
+            </div>
         </>
     );
 }

@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { errorMessage } from '../../../shared/api/errors';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import {
@@ -68,19 +69,17 @@ export function InteractionActionEditor({
                 <Field orientation="contents">
                     <FieldLabel htmlFor={`${id}-type`}>
                         Loại hành động
-                        <NativeSelect
+                        <FormSelect
                             id={`${id}-type`}
                             value={action.type}
-                            onChange={(event) =>
-                                onChange(newAction(event.currentTarget.value as ActionType))
-                            }
-                        >
-                            {Object.entries(actionLabels).map(([value, label]) => (
-                                <option key={value} value={value}>
-                                    {label}
-                                </option>
-                            ))}
-                        </NativeSelect>
+                            onValueChange={(value) => onChange(newAction(value as ActionType))}
+                            options={[
+                                ...(Object.entries(actionLabels).map(([value, label]) => ({
+                                    value: value,
+                                    label: label,
+                                })) ?? []),
+                            ]}
+                        />
                     </FieldLabel>
                 </Field>
                 {'objectId' in action && (
@@ -177,10 +176,9 @@ export function InteractionActionEditor({
                 {(action.type === 'playAudio' || action.type === 'playAnimation') && (
                     <Field orientation="contents">
                         <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                            <input
-                                type="checkbox"
+                            <Checkbox
                                 checked={action.loop}
-                                onChange={(event) => patch({ loop: event.currentTarget.checked })}
+                                onCheckedChange={(checked) => patch({ loop: checked === true })}
                             />
                             Phát lặp hành động
                         </FieldLabel>
@@ -197,10 +195,9 @@ export function InteractionActionEditor({
                 {action.type === 'setVisible' && (
                     <Field orientation="contents">
                         <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                            <input
-                                type="checkbox"
+                            <Checkbox
                                 checked={action.value}
-                                onChange={(event) => patch({ value: event.currentTarget.checked })}
+                                onCheckedChange={(checked) => patch({ value: checked === true })}
                             />
                             Hiện đối tượng
                         </FieldLabel>
@@ -256,26 +253,22 @@ export function InteractionActionEditor({
                         <Field orientation="contents">
                             <FieldLabel htmlFor={`${id}-easing`}>
                                 Kiểu chuyển động
-                                <NativeSelect
+                                <FormSelect
                                     id={`${id}-easing`}
                                     value={action.easing}
-                                    onChange={(event) =>
-                                        patch({ easing: event.currentTarget.value as Easing })
-                                    }
-                                >
-                                    {EasingSchema.options.map((value) => (
-                                        <option key={value} value={value}>
-                                            {
-                                                {
-                                                    linear: 'Đều',
-                                                    easeIn: 'Chậm rồi nhanh',
-                                                    easeOut: 'Nhanh rồi chậm',
-                                                    easeInOut: 'Chậm ở hai đầu',
-                                                }[value]
-                                            }
-                                        </option>
-                                    ))}
-                                </NativeSelect>
+                                    onValueChange={(value) => patch({ easing: value as Easing })}
+                                    options={[
+                                        ...(EasingSchema.options.map((value) => ({
+                                            value: value,
+                                            label: {
+                                                linear: 'Đều',
+                                                easeIn: 'Chậm rồi nhanh',
+                                                easeOut: 'Nhanh rồi chậm',
+                                                easeInOut: 'Chậm ở hai đầu',
+                                            }[value],
+                                        })) ?? []),
+                                    ]}
+                                />
                             </FieldLabel>
                         </Field>
                         <p className="field-hint interaction-wide col-[1_/_-1] mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
@@ -292,19 +285,19 @@ export function InteractionActionEditor({
                                 <div key={key} className="interaction-wide col-[1_/_-1]">
                                     <Field orientation="contents">
                                         <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                            <input
-                                                type="checkbox"
+                                            <Checkbox
                                                 checked={action[key] !== undefined}
-                                                onChange={(event) =>
+                                                onCheckedChange={(checked) =>
                                                     patch({
-                                                        [key]: event.currentTarget.checked
-                                                            ? [
-                                                                  ...(target?.transform[key] ||
-                                                                      (key === 'scale'
-                                                                          ? [1, 1, 1]
-                                                                          : [0, 0, 0])),
-                                                              ]
-                                                            : undefined,
+                                                        [key]:
+                                                            checked === true
+                                                                ? [
+                                                                      ...(target?.transform[key] ||
+                                                                          (key === 'scale'
+                                                                              ? [1, 1, 1]
+                                                                              : [0, 0, 0])),
+                                                                  ]
+                                                                : undefined,
                                                     })
                                                 }
                                             />

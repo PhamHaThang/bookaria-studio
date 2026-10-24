@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { adminDate, adminOperationsApi, auditLabel } from '../features/admin';
 import {
     formSearch,
@@ -40,7 +41,7 @@ export function AdminAuditPage() {
                 {query && <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />}
             </div>
             <form
-                className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto] [&_select]:w-full"
+                className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_[data-slot=select-trigger]]:w-full [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto]"
                 key={params.toString()}
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -58,18 +59,18 @@ export function AdminAuditPage() {
                     <Field orientation="contents">
                         <FieldLabel htmlFor="audit-action">
                             Thao tác
-                            <NativeSelect
+                            <FormSelect
                                 id="audit-action"
                                 name="action"
                                 defaultValue={params.get('action') || ''}
-                            >
-                                <option value="">Tất cả thao tác</option>
-                                {AuditActionSchema.options.map((value) => (
-                                    <option key={value} value={value}>
-                                        {auditLabel[value]}
-                                    </option>
-                                ))}
-                            </NativeSelect>
+                                options={[
+                                    { value: '', label: 'Tất cả thao tác' },
+                                    ...(AuditActionSchema.options.map((value) => ({
+                                        value: value,
+                                        label: auditLabel[value],
+                                    })) ?? []),
+                                ]}
+                            />
                         </FieldLabel>
                     </Field>
                     <Field orientation="contents">
@@ -87,18 +88,18 @@ export function AdminAuditPage() {
                     <Field orientation="contents">
                         <FieldLabel htmlFor="audit-target-type">
                             Loại đối tượng
-                            <NativeSelect
+                            <FormSelect
                                 id="audit-target-type"
                                 name="targetType"
                                 defaultValue={params.get('targetType') || ''}
-                            >
-                                <option value="">Tất cả đối tượng</option>
-                                {AuditTargetTypeSchema.options.map((value) => (
-                                    <option key={value} value={value}>
-                                        {targetLabel[value]}
-                                    </option>
-                                ))}
-                            </NativeSelect>
+                                options={[
+                                    { value: '', label: 'Tất cả đối tượng' },
+                                    ...(AuditTargetTypeSchema.options.map((value) => ({
+                                        value: value,
+                                        label: targetLabel[value],
+                                    })) ?? []),
+                                ]}
+                            />
                         </FieldLabel>
                     </Field>
                     <Field orientation="contents">
@@ -120,7 +121,7 @@ export function AdminAuditPage() {
             {!parsed.success && (
                 <Feedback error="Bộ lọc không hợp lệ. Mã người thực hiện và mã đối tượng phải là UUID; hãy sửa hoặc xóa bộ lọc." />
             )}
-            {query && list.isPending && <p role="status">Đang tải nhật ký…</p>}
+            {query && list.isPending && <LoadingState>Đang tải nhật ký…</LoadingState>}
             {query && list.isError && <Feedback error={errorMessage(list.error)} />}
             {query && list.isSuccess && (
                 <>

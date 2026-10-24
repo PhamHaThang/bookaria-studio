@@ -19,10 +19,6 @@ export function AuthLayout() {
             >
                 <Outlet />
             </main>
-            <footer className="auth-footer mx-auto mt-8 mb-0 text-center text-[length:var(--text-xs)] text-muted-foreground">
-                Không gian sáng tạo sách tương tác AR.{' '}
-                <Link to="/explore">Khám phá thư viện công khai</Link>
-            </footer>
         </div>
     );
 }

@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 import { Button } from '@/shared/ui/Button';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
+import { Progress } from '@/shared/ui/primitives/progress';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import { ImageUploadEditor } from '../features/assets';
@@ -246,7 +248,7 @@ export function ProfilePage() {
         enabled: Boolean(user),
         refetchOnWindowFocus: false,
     });
-    if (profile.isPending) return <p role="status">Đang tải hồ sơ…</p>;
+    if (profile.isPending) return <LoadingState>Đang tải hồ sơ…</LoadingState>;
     if (profile.isError)
         return (
             <>
@@ -312,7 +314,7 @@ export function ProfilePage() {
                         <strong>{formatBytes(me.storage.usedBytes)}</strong> /{' '}
                         {formatBytes(me.storage.quotaBytes)}
                     </p>
-                    <progress
+                    <Progress
                         aria-label="Dung lượng đã sử dụng"
                         max={Math.max(1, me.storage.quotaBytes)}
                         value={Math.min(me.storage.usedBytes, Math.max(1, me.storage.quotaBytes))}

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { discoveryApi } from '../features/discovery';
 import { PublicBooks } from '../features/discovery/PublicBooks';
 import { errorMessage } from '../shared/api/errors';
@@ -27,7 +28,7 @@ export function AuthorPage() {
     return (
         <>
             <Link to="/explore">Về thư viện</Link>
-            {profile.isPending && <p role="status">Đang tải hồ sơ tác giả…</p>}
+            {profile.isPending && <LoadingState>Đang tải hồ sơ tác giả…</LoadingState>}
             {profile.isError && (
                 <div className="list-state px-0 py-12">
                     <h1>Chưa mở được hồ sơ tác giả</h1>

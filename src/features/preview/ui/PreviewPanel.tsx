@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
+import { FormSelect } from '@/shared/ui/FormSelect';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { apiClient } from '../../../shared/api/client';
 import { errorMessage } from '../../../shared/api/errors';
@@ -335,17 +335,16 @@ export function PreviewPanel({
                 <Field orientation="contents">
                     <FieldLabel htmlFor="preview-scope">
                         Phạm vi
-                        <NativeSelect
+                        <FormSelect
                             id="preview-scope"
                             value={scope}
                             disabled={Boolean(jobId) || loading}
-                            onChange={(event) =>
-                                setScope(event.currentTarget.value as 'PAGE' | 'BOOK')
-                            }
-                        >
-                            <option value="PAGE">Trang hiện tại</option>
-                            <option value="BOOK">Toàn bộ sách</option>
-                        </NativeSelect>
+                            onValueChange={(value) => setScope(value as 'PAGE' | 'BOOK')}
+                            options={[
+                                { value: 'PAGE', label: 'Trang hiện tại' },
+                                { value: 'BOOK', label: 'Toàn bộ sách' },
+                            ]}
+                        />
                     </FieldLabel>
                 </Field>
                 <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">

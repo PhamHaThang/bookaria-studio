@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { FieldGroup } from '@/shared/ui/primitives/field';
 import { libraryChanges, libraryFields } from '../features/admin/library-model';
 import {
@@ -168,7 +169,7 @@ export function AdminLibraryDetailPage() {
                 }}
                 busy={detail.isFetching || categories.isFetching}
             />
-            {detail.isPending && <p role="status">Đang tải tài nguyên…</p>}
+            {detail.isPending && <LoadingState>Đang tải tài nguyên…</LoadingState>}
             {detail.isError && <h1>Chưa mở được tài nguyên</h1>}
             {(detail.isError || categories.isError) && (
                 <Feedback error={errorMessage(detail.error || categories.error)} />

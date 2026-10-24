@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
+import { Progress } from '@/shared/ui/primitives/progress';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { assetKeys, assetsApi, completeAssetForm, uploadRequest } from '../features/assets';
 import { uploadFile } from '../features/assets/api/upload-file';
@@ -121,7 +122,7 @@ export function AssetUploadPage() {
                         <Field orientation="contents">
                             <FieldLabel htmlFor="asset-file">Tệp tài nguyên</FieldLabel>
                         </Field>
-                        <input
+                        <Input
                             id="asset-file"
                             name="file"
                             type="file"
@@ -191,7 +192,7 @@ export function AssetUploadPage() {
                                 {stage === 'uploading' ? ` ${progress}%` : ''}
                             </p>
                             {stage === 'uploading' && (
-                                <progress value={progress} max={100} aria-label="Tiến độ tải tệp" />
+                                <Progress value={progress} max={100} aria-label="Tiến độ tải tệp" />
                             )}
                         </div>
                     )}

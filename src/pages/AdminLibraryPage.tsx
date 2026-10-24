@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { libraryKeys, readLibrarySearch } from '../features/admin/library-model';
 import { CategorySelect, libraryApi } from '../features/admin/library-ui';
 import { AdminPager, AdminReload } from '../features/admin/ui';
@@ -37,7 +38,7 @@ export function AdminLibraryPage() {
                 </Button>
             </div>
             <form
-                className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto] [&_select]:w-full"
+                className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_[data-slot=select-trigger]]:w-full [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto]"
                 key={params.toString() + categories.isSuccess}
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -63,18 +64,18 @@ export function AdminLibraryPage() {
                     <Field orientation="contents">
                         <FieldLabel htmlFor="library-type">
                             Loại
-                            <NativeSelect
+                            <FormSelect
                                 id="library-type"
                                 name="type"
                                 defaultValue={query.type || ''}
-                            >
-                                <option value="">Tất cả</option>
-                                {Object.entries(assetTypeLabels).map(([value, label]) => (
-                                    <option key={value} value={value}>
-                                        {label}
-                                    </option>
-                                ))}
-                            </NativeSelect>
+                                options={[
+                                    { value: '', label: 'Tất cả' },
+                                    ...(Object.entries(assetTypeLabels).map(([value, label]) => ({
+                                        value: value,
+                                        label: label,
+                                    })) ?? []),
+                                ]}
+                            />
                         </FieldLabel>
                     </Field>
                     {categories.isSuccess && (
@@ -97,7 +98,7 @@ export function AdminLibraryPage() {
                 }}
                 busy={list.isFetching || categories.isFetching}
             />
-            {list.isPending && <p role="status">Đang tải thư viện…</p>}
+            {list.isPending && <LoadingState>Đang tải thư viện…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess && (
                 <>

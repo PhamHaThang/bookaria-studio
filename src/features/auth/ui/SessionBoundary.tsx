@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
 import { Feedback } from '../../../shared/ui/Feedback';
+import { protectedLogin } from '../model/dialog';
 import { auth, useAuth } from '../model/session';
 
 export function SessionBoundary() {
@@ -15,7 +16,8 @@ export function SessionBoundary() {
                 className="session-state mx-auto my-[12vh] max-w-130 p-8 text-center"
                 role="status"
             >
-                Đang kiểm tra phiên đăng nhập…
+                <p>Đang kiểm tra phiên đăng nhập…</p>
+                <Link to="/">Về trang chủ</Link>
             </main>
         );
     if (status === 'error')
@@ -32,6 +34,7 @@ export function SessionBoundary() {
                 >
                     Thử kết nối lại
                 </Button>
+                <Link to="/">Về trang chủ</Link>
             </main>
         );
     return <Outlet />;
@@ -39,9 +42,5 @@ export function SessionBoundary() {
 export function RequireSession() {
     const { user } = useAuth();
     const location = useLocation();
-    return user ? <Outlet /> : <Navigate to="/login" replace state={{ from: location.pathname }} />;
-}
-export function GuestOnly() {
-    const { user } = useAuth();
-    return user ? <Navigate to="/books" replace /> : <Outlet />;
+    return user ? <Outlet /> : <Navigate to={protectedLogin(location)} replace />;
 }

@@ -2,15 +2,18 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Alert } from '@/shared/ui/Alert';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
+import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { errorMessage } from '../../../shared/api/errors';
 import { AddPageBodySchema } from '../../../shared/contracts/api/pages.schema';
 import type { PageSummary } from '../../../shared/contracts/dto.schema';
 import { Button } from '../../../shared/ui/Button';
-import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { assetKeys } from '../../assets';
 import { auth, useAuth } from '../../auth';
@@ -97,7 +100,7 @@ export function BookPages({
             </div>
             <Feedback error={deleting ? null : error} success={notice} />
             {uncertain && (
-                <div className="page-sync-notice rounded-[var(--radius-sm)] bg-warning px-4 py-3 text-warning-foreground">
+                <Alert tone="warning" className="my-4">
                     <p>
                         Chưa xác nhận được kết quả. Yêu cầu có thể đã được nhận; hãy tải lại danh
                         sách trước khi thao tác tiếp.
@@ -127,9 +130,9 @@ export function BookPages({
                         {busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
                         Tải lại danh sách
                     </Button>
-                </div>
+                </Alert>
             )}
-            {pages.isPending && <p role="status">Đang tải danh sách trang…</p>}
+            {pages.isPending && <LoadingState>Đang tải danh sách trang…</LoadingState>}
             {pages.isError && (
                 <>
                     <Feedback error={errorMessage(pages.error)} />
@@ -300,20 +303,24 @@ export function BookPages({
                             <Field orientation="contents">
                                 <FieldLabel htmlFor="page-position">
                                     Vị trí thêm trang
-                                    <NativeSelect
+                                    <FormSelect
                                         id="page-position"
                                         name="position"
                                         defaultValue="end"
-                                    >
-                                        <option value="end">Cuối sách</option>
-                                        <option value="start">Đầu sách</option>
-                                        {pages.data.map((page, index) => (
-                                            <option key={page.id} value={page.id}>
-                                                Sau trang {index + 1}
-                                                {page.title ? ` — ${page.title}` : ''}
-                                            </option>
-                                        ))}
-                                    </NativeSelect>
+                                        options={[
+                                            { value: 'end', label: 'Cuối sách' },
+                                            { value: 'start', label: 'Đầu sách' },
+                                            ...(pages.data.map((page, index) => ({
+                                                value: page.id,
+                                                label: (
+                                                    <>
+                                                        Sau trang {index + 1}
+                                                        {page.title ? ` — ${page.title}` : ''}
+                                                    </>
+                                                ),
+                                            })) ?? []),
+                                        ]}
+                                    />
                                 </FieldLabel>
                             </Field>
                         </PageImageForm>
@@ -321,39 +328,53 @@ export function BookPages({
                 </>
             )}
             {deleting && (
-                <ConfirmDialog
+                <ConfirmationDialog
+                    description={
+                        <>
+                            Trang “{deleting.title || `Trang ${deleting.orderIndex + 1}`}” và nội
+                            dung của nó sẽ bị xóa khỏi bản nháp. Tệp ảnh vẫn được giữ trong tài
+                            nguyên.
+                        </>
+                    }
                     title="Xóa trang sách?"
                     busy={busy}
                     onClose={() => {
                         if (!busy) setDeleting(null);
                     }}
                 >
-                    <p>
-                        Trang “{deleting.title || `Trang ${deleting.orderIndex + 1}`}” và nội dung
-                        của nó sẽ bị xóa khỏi bản nháp. Tệp ảnh vẫn được giữ trong tài nguyên.
-                    </p>
                     <Feedback error={error} />
                     <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                        <Button
-                            variant="secondary"
-                            disabled={busy}
-                            onClick={() => setDeleting(null)}
+                        <AlertDialogCancel variant="plain" asChild>
+                            <Button
+                                variant="secondary"
+                                disabled={busy}
+                                onClick={() => setDeleting(null)}
+                            >
+                                Giữ lại
+                            </Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="plain"
+                            asChild
+                            onClick={(event) => event.preventDefault()}
                         >
-                            Giữ lại
-                        </Button>
-                        <Button
-                            variant="danger"
-                            aria-busy={busy}
-                            onClick={() => {
-                                void mutate(() => pagesApi.remove(deleting.id), 'Đã xóa trang.');
-                            }}
-                            disabled={busy}
-                        >
-                            {busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
-                            Xóa trang
-                        </Button>
+                            <Button
+                                variant="danger"
+                                aria-busy={busy}
+                                onClick={() => {
+                                    void mutate(
+                                        () => pagesApi.remove(deleting.id),
+                                        'Đã xóa trang.',
+                                    );
+                                }}
+                                disabled={busy}
+                            >
+                                {busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
+                                Xóa trang
+                            </Button>
+                        </AlertDialogAction>
                     </div>
-                </ConfirmDialog>
+                </ConfirmationDialog>
             )}
         </section>
     );

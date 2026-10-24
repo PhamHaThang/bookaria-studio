@@ -1,12 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { Button } from '@/shared/ui/Button';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { apiClient } from '../../shared/api/client';
 import type { Asset, AssetCategory } from '../../shared/contracts/dto.schema';
-import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../shared/ui/Feedback';
 import { assetKeys } from '../assets';
 import { useAuth } from '../auth';
@@ -79,29 +80,37 @@ export function LibraryConfirm({
     children: ReactNode;
 }) {
     return (
-        <ConfirmDialog
+        <ConfirmationDialog
+            description={children}
             title={title}
             busy={busy}
             onClose={onClose}
             className="admin-confirm [&_p]:wrap-anywhere max-h-[calc(100dvh_-_32px)] max-w-[min(480px,_calc(100%_-_32px))] overflow-y-auto [&_p]:[white-space:pre-wrap]"
         >
-            {children}
             <Feedback error={error} />
             <div className="admin-actions flex flex-wrap items-center gap-3 max-[640px]:flex-col max-[640px]:items-stretch [.admin-confirm_&]:mt-5">
-                <Button type="button" fullWidth disabled={busy || blocked} onClick={onConfirm}>
-                    {busy ? 'Đang xử lý…' : 'Xác nhận'}
-                </Button>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    fullWidth
-                    disabled={busy}
-                    onClick={onClose}
+                <AlertDialogCancel variant="plain" asChild>
+                    <Button type="button" fullWidth disabled={busy || blocked} onClick={onConfirm}>
+                        {busy ? 'Đang xử lý…' : 'Xác nhận'}
+                    </Button>
+                </AlertDialogCancel>
+                <AlertDialogAction
+                    variant="plain"
+                    asChild
+                    onClick={(event) => event.preventDefault()}
                 >
-                    Quay lại
-                </Button>
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        fullWidth
+                        disabled={busy}
+                        onClick={onClose}
+                    >
+                        Quay lại
+                    </Button>
+                </AlertDialogAction>
             </div>
-        </ConfirmDialog>
+        </ConfirmationDialog>
     );
 }
 export function CategorySelect({
@@ -123,19 +132,27 @@ export function CategorySelect({
         <Field orientation="contents">
             <FieldLabel htmlFor={`library-${name}`}>
                 {label}
-                <NativeSelect id={`library-${name}`} name={name} defaultValue={value}>
-                    <option value="">{emptyLabel}</option>
-                    {categories
-                        .filter((item) => !exclude.has(item.id))
-                        .map((item) => (
-                            <option key={item.id} value={item.id}>
-                                {item.name}
-                                {item.parentId
-                                    ? ` — trong ${categories.find((parent) => parent.id === item.parentId)?.name || 'danh mục cha'}`
-                                    : ''}
-                            </option>
-                        ))}
-                </NativeSelect>
+                <FormSelect
+                    id={`library-${name}`}
+                    name={name}
+                    defaultValue={value}
+                    options={[
+                        { value: '', label: emptyLabel },
+                        ...(categories
+                            .filter((item) => !exclude.has(item.id))
+                            .map((item) => ({
+                                value: item.id,
+                                label: (
+                                    <>
+                                        {item.name}
+                                        {item.parentId
+                                            ? ` — trong ${categories.find((parent) => parent.id === item.parentId)?.name || 'danh mục cha'}`
+                                            : ''}
+                                    </>
+                                ),
+                            })) ?? []),
+                    ]}
+                />
             </FieldLabel>
         </Field>
     );

@@ -3,9 +3,12 @@ import { ArrowRight, BookOpen, FileUp, LoaderCircle, X } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
-import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Disclosure } from '@/shared/ui/Disclosure';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { Button as ActionButton } from '@/shared/ui/primitives/button';
+import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
+import { RadioGroup, RadioGroupItem } from '@/shared/ui/primitives/radio-group';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import { ContractError } from '../../../shared/api/contract';
@@ -228,7 +231,7 @@ export function BookCreateDialog() {
                         <div className="creation-body overflow-y-auto px-7 pt-0 pb-6 [overscroll-behavior:contain] [scrollbar-color:var(--border-input)_var(--bg-surface)] [scrollbar-width:thin] max-[600px]:px-[18px]">
                             <fieldset
                                 disabled={busy || locked}
-                                className="creation-fields m-0 min-w-0 border-0 border-[transparent] border-solid p-0 [&_>_label]:block [&_>_label]:font-semibold [&_>_label]:text-[length:14px] [&_input::placeholder]:text-muted-foreground [&_input::placeholder]:opacity-100 [&_input:not([type=radio])]:mt-2 [&_input:not([type=radio])]:block [&_input:not([type=radio])]:min-h-11 [&_input:not([type=radio])]:w-full [&_select]:mt-2 [&_select]:block [&_select]:min-h-11 [&_select]:w-full [&_textarea]:mt-2 [&_textarea]:block [&_textarea]:min-h-11 [&_textarea]:w-full"
+                                className="creation-fields m-0 min-w-0 border-0 border-[transparent] border-solid p-0 [&_>_label]:block [&_>_label]:font-semibold [&_>_label]:text-[length:14px] [&_[data-slot=select-trigger]]:mt-2 [&_[data-slot=select-trigger]]:flex [&_[data-slot=select-trigger]]:min-h-11 [&_[data-slot=select-trigger]]:w-full [&_input::placeholder]:text-muted-foreground [&_input::placeholder]:opacity-100 [&_input:not([type=radio])]:mt-2 [&_input:not([type=radio])]:block [&_input:not([type=radio])]:min-h-11 [&_input:not([type=radio])]:w-full [&_textarea]:mt-2 [&_textarea]:block [&_textarea]:min-h-11 [&_textarea]:w-full"
                             >
                                 <Field orientation="contents">
                                     <FieldLabel htmlFor="new-book-title">
@@ -243,54 +246,53 @@ export function BookCreateDialog() {
                                         />
                                     </FieldLabel>
                                 </Field>
-                                <fieldset className="creation-modes mx-0 mt-6 mb-0 grid min-w-0 grid-cols-[1fr_1fr] gap-3 border-0 border-[transparent] border-solid p-0 max-[600px]:grid-cols-[1fr] max-[600px]:gap-2 [&_input]:size-4 [&_input]:shrink-0 [&_input]:[accent-color:var(--action-primary)] [&_legend]:mb-[10px] [&_legend]:font-semibold [&_legend]:text-[length:14px] [&_small]:mt-1 [&_small]:block [&_small]:text-[length:12px] [&_small]:text-muted-foreground [&_small]:leading-[1.6] [&_strong]:block [&_strong]:font-semibold [&_strong]:text-[length:14px] [&_svg]:shrink-0 [&_svg]:text-primary">
-                                    <legend>Bắt đầu với</legend>
-                                    <Field orientation="contents">
-                                        <FieldLabel
-                                            className={cn(
-                                                'creation-mode-option m-0 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-border border-solid px-3 py-4 [&.selected]:border-primary [&.selected]:bg-selected [.creation-fields:disabled_&]:[cursor:default]',
-                                                mode === 'blank' ? 'selected' : '',
-                                            )}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="creation-source"
-                                                value="blank"
-                                                checked={mode === 'blank'}
-                                                onChange={() => setMode('blank')}
-                                            />
-                                            <BookOpen size={23} aria-hidden="true" />
-                                            <span>
-                                                <strong>Sách trống</strong>
-                                                <small>Một trang trắng để sáng tạo</small>
-                                            </span>
-                                        </FieldLabel>
-                                    </Field>
-                                    <Field orientation="contents">
-                                        <FieldLabel
-                                            className={cn(
-                                                'creation-mode-option m-0 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-border border-solid px-3 py-4 [&.selected]:border-primary [&.selected]:bg-selected [.creation-fields:disabled_&]:[cursor:default]',
-                                                mode === 'import' ? 'selected' : '',
-                                            )}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="creation-source"
-                                                value="import"
-                                                checked={mode === 'import'}
-                                                onChange={() => setMode('import')}
-                                            />
-                                            <FileUp size={23} aria-hidden="true" />
-                                            <span>
-                                                <strong>Nhập PDF / ảnh</strong>
-                                                <small>Mỗi trang hoặc ảnh là một trang sách</small>
-                                            </span>
-                                        </FieldLabel>
-                                    </Field>
-                                </fieldset>
+                                <FieldSet className="creation-modes mx-0 mt-6 mb-0 grid min-w-0 grid-cols-[1fr_1fr] gap-3 border-0 border-[transparent] border-solid p-0 max-[600px]:grid-cols-[1fr] max-[600px]:gap-2 [&_input]:size-4 [&_input]:shrink-0 [&_input]:[accent-color:var(--action-primary)] [&_legend]:mb-[10px] [&_legend]:font-semibold [&_legend]:text-[length:14px] [&_small]:mt-1 [&_small]:block [&_small]:text-[length:12px] [&_small]:text-muted-foreground [&_small]:leading-[1.6] [&_strong]:block [&_strong]:font-semibold [&_strong]:text-[length:14px] [&_svg]:shrink-0 [&_svg]:text-primary">
+                                    <FieldLegend>Bắt đầu với</FieldLegend>
+                                    <RadioGroup
+                                        name="creation-source"
+                                        value={mode}
+                                        onValueChange={(value) => setMode(value as typeof mode)}
+                                        className="contents"
+                                        aria-label="Bắt đầu với"
+                                    >
+                                        <Field orientation="contents">
+                                            <FieldLabel
+                                                className={cn(
+                                                    'creation-mode-option m-0 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-border border-solid px-3 py-4 [&.selected]:border-primary [&.selected]:bg-selected [.creation-fields:disabled_&]:[cursor:default]',
+                                                    mode === 'blank' ? 'selected' : '',
+                                                )}
+                                            >
+                                                <RadioGroupItem value="blank" />
+                                                <BookOpen size={23} aria-hidden="true" />
+                                                <span>
+                                                    <strong>Sách trống</strong>
+                                                    <small>Một trang trắng để sáng tạo</small>
+                                                </span>
+                                            </FieldLabel>
+                                        </Field>
+                                        <Field orientation="contents">
+                                            <FieldLabel
+                                                className={cn(
+                                                    'creation-mode-option m-0 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-border border-solid px-3 py-4 [&.selected]:border-primary [&.selected]:bg-selected [.creation-fields:disabled_&]:[cursor:default]',
+                                                    mode === 'import' ? 'selected' : '',
+                                                )}
+                                            >
+                                                <RadioGroupItem value="import" />
+                                                <FileUp size={23} aria-hidden="true" />
+                                                <span>
+                                                    <strong>Nhập PDF / ảnh</strong>
+                                                    <small>
+                                                        Mỗi trang hoặc ảnh là một trang sách
+                                                    </small>
+                                                </span>
+                                            </FieldLabel>
+                                        </Field>
+                                    </RadioGroup>
+                                </FieldSet>
                                 {mode === 'import' && (
                                     <div className="creation-import mt-4">
-                                        <button
+                                        <ActionButton
+                                            variant="plain"
                                             className="creation-file flex w-full cursor-pointer flex-wrap items-center justify-center gap-2 rounded-[var(--radius-md)] border border-input border-dashed bg-muted p-4 text-center text-foreground [font:inherit] [&_span]:basis-full [&_span]:font-normal [&_span]:text-[length:12px] [&_span]:text-muted-foreground"
                                             type="button"
                                             onClick={() => fileInput.current?.click()}
@@ -304,8 +306,8 @@ export function BookCreateDialog() {
                                                 Một PDF ≤ 50 MB hoặc JPG/PNG ≤ 10 MB/ảnh. Tối đa 100
                                                 trang.
                                             </span>
-                                        </button>
-                                        <input
+                                        </ActionButton>
+                                        <Input
                                             ref={fileInput}
                                             hidden
                                             id="book-source-file"
@@ -391,16 +393,17 @@ export function BookCreateDialog() {
                                     <Field orientation="contents">
                                         <FieldLabel htmlFor="new-book-format">
                                             Khổ sách
-                                            <NativeSelect
+                                            <FormSelect
                                                 id="new-book-format"
                                                 value={format}
-                                                onChange={(event) => setFormat(event.target.value)}
-                                            >
-                                                <option value="A4">A4 · Dọc</option>
-                                                <option value="A5">A5 · Dọc</option>
-                                                <option value="SQUARE">Vuông · 1:1</option>
-                                                <option value="CUSTOM">Tùy chỉnh</option>
-                                            </NativeSelect>
+                                                onValueChange={(value) => setFormat(value)}
+                                                options={[
+                                                    { value: 'A4', label: 'A4 · Dọc' },
+                                                    { value: 'A5', label: 'A5 · Dọc' },
+                                                    { value: 'SQUARE', label: 'Vuông · 1:1' },
+                                                    { value: 'CUSTOM', label: 'Tùy chỉnh' },
+                                                ]}
+                                            />
                                         </FieldLabel>
                                     </Field>
                                     {format === 'CUSTOM' && (
@@ -429,13 +432,17 @@ export function BookCreateDialog() {
                                         trắng.
                                     </p>
                                 )}
-                                <details className="creation-details mt-6 border-t-[1px] border-t-border pt-[18px] [border-top-style:solid] [&_>_label]:block [&_>_label]:font-semibold [&_>_label]:text-[length:14px] [&_label]:mt-[14px] [&_summary]:min-h-[30px] [&_summary]:cursor-pointer [&_summary]:font-semibold [&_summary]:text-[length:14px]">
-                                    <summary>
-                                        Thông tin bổ sung{' '}
-                                        <span className="creation-optional ml-2 font-normal text-[length:12px] text-muted-foreground">
-                                            Không bắt buộc
-                                        </span>
-                                    </summary>
+                                <Disclosure
+                                    title={
+                                        <>
+                                            Thông tin bổ sung{' '}
+                                            <span className="creation-optional ml-2 font-normal text-[length:12px] text-muted-foreground">
+                                                Không bắt buộc
+                                            </span>
+                                        </>
+                                    }
+                                    className="creation-details mt-6 border-t-[1px] border-t-border pt-[18px] [border-top-style:solid] [&_>_label]:block [&_>_label]:font-semibold [&_>_label]:text-[length:14px] [&_[data-slot=accordion-trigger]]:min-h-[30px] [&_[data-slot=accordion-trigger]]:cursor-pointer [&_[data-slot=accordion-trigger]]:font-semibold [&_[data-slot=accordion-trigger]]:text-[length:14px] [&_label]:mt-[14px]"
+                                >
                                     <Field orientation="contents">
                                         <FieldLabel htmlFor="new-book-description">
                                             Mô tả
@@ -462,7 +469,7 @@ export function BookCreateDialog() {
                                             />
                                         </FieldLabel>
                                     </Field>
-                                </details>
+                                </Disclosure>
                             </fieldset>
                         </div>
                         {(error || busy) && (

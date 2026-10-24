@@ -3,6 +3,8 @@ import { ImagePlus, UserRound } from 'lucide-react';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { cn } from '@/shared/lib/cn';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { Progress } from '@/shared/ui/primitives/progress';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset } from '../../../shared/contracts/dto.schema';
@@ -196,7 +198,7 @@ export function ImageUploadEditor({
                                 Chọn {title.toLowerCase()}
                             </FieldLabel>
                         </Field>
-                        <input
+                        <Input
                             id={`${id}-file`}
                             ref={input}
                             type="file"
@@ -235,7 +237,7 @@ export function ImageUploadEditor({
                                     {stage === 'uploading' ? ` ${progress}%` : ''}
                                 </p>
                                 {stage === 'uploading' && (
-                                    <progress
+                                    <Progress
                                         aria-label="Tiến độ tải ảnh"
                                         value={progress}
                                         max={100}

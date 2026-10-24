@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { assetKeys, assetsApi } from '../features/assets';
@@ -406,7 +407,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                             {jobId && (
                                 <div className="page-score-status bg-info p-3 text-info-foreground">
                                     {job.isPending && (
-                                        <p role="status">Đang kiểm tra tiến độ đánh giá…</p>
+                                        <LoadingState>Đang kiểm tra tiến độ đánh giá…</LoadingState>
                                     )}
                                     {job.isError && (
                                         <>
@@ -577,7 +578,7 @@ function PageDetailContent({ bookId, pageId }: { bookId: string; pageId: string 
                 </div>
             </>
         );
-    if (!page.data || !book.data) return <p role="status">Đang tải trang sách…</p>;
+    if (!page.data || !book.data) return <LoadingState>Đang tải trang sách…</LoadingState>;
     return (
         <>
             {(page.isError || book.isError) && (

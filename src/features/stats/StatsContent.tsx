@@ -1,5 +1,17 @@
 import type { ReactNode } from 'react';
+import { Bar, BarChart, XAxis } from 'recharts';
+import { Disclosure } from '@/shared/ui/Disclosure';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/shared/ui/primitives/chart';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
+import {
+    Table,
+    TableBody,
+    TableCaption,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/shared/ui/primitives/table';
 import type { BookStats } from '../../shared/contracts/api/books.schema';
 
 function TableRegion({ label, children }: { label: string; children: ReactNode }) {
@@ -25,7 +37,6 @@ const deviceLabels = { desktop: 'Máy tính', mobile: 'Điện thoại', tablet:
 
 export function StatsContent({ stats }: { stats: BookStats }) {
     const days = [...stats.opensByDay].sort((a, b) => a.date.localeCompare(b.date));
-    const maximum = Math.max(1, ...days.map((day) => day.opens));
     const hasEvents = Object.values(stats.totals).some((value) => value > 0);
     return (
         <div className="stats-content [&_>_section]:mt-8">
@@ -70,61 +81,65 @@ export function StatsContent({ stats }: { stats: BookStats }) {
                     Ngày được tính theo UTC.
                 </p>
                 {days.some((day) => day.opens > 0) && (
-                    <figure className="stats-chart mx-0 my-5 [&_figcaption]:flex [&_figcaption]:justify-between [&_figcaption]:gap-3 [&_figcaption]:pt-2 [&_figcaption]:text-[length:var(--text-xs)] [&_figcaption]:text-muted-foreground [&_svg]:block [&_svg]:h-45 [&_svg]:w-full [&_svg]:border-b-[1px] [&_svg]:border-b-input [&_svg]:[border-bottom-style:solid]">
-                        <svg
-                            viewBox="0 0 800 160"
-                            preserveAspectRatio="none"
-                            role="img"
-                            aria-labelledby="opens-chart-title"
-                            aria-describedby="opens-chart-description"
+                    <figure className="stats-chart mx-0 my-5 [&_[data-slot=chart]]:h-45 [&_[data-slot=chart]]:border-b-[1px] [&_[data-slot=chart]]:border-b-input [&_[data-slot=chart]]:[border-bottom-style:solid] [&_figcaption]:flex [&_figcaption]:justify-between [&_figcaption]:gap-3 [&_figcaption]:pt-2 [&_figcaption]:text-[length:var(--text-xs)] [&_figcaption]:text-muted-foreground [&_svg]:block [&_svg]:w-full">
+                        <ChartContainer
+                            config={{ opens: { label: 'Lượt mở', color: 'var(--action-primary)' } }}
+                            className="h-45 w-full"
+                            aria-label="Lượt mở sách theo ngày"
                         >
-                            <title id="opens-chart-title">Lượt mở sách theo ngày</title>
-                            <desc id="opens-chart-description">
-                                Biểu đồ cột. Số liệu chính xác có trong bảng từng ngày bên dưới.
-                            </desc>
-                            {days.map((day, i) => (
-                                <rect
-                                    key={day.date}
-                                    x={(i * 800) / days.length}
-                                    y={160 - (day.opens / maximum) * 150}
-                                    width={Math.max(1, 800 / days.length - 2)}
-                                    height={(day.opens / maximum) * 150}
-                                    fill="var(--action-primary)"
-                                >
-                                    <title>
-                                        {date(day.date)}: {number(day.opens)} lượt mở
-                                    </title>
-                                </rect>
-                            ))}
-                        </svg>
+                            <BarChart accessibilityLayer data={days}>
+                                <XAxis
+                                    dataKey="date"
+                                    tickFormatter={date}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    minTickGap={30}
+                                />
+                                <ChartTooltip
+                                    content={
+                                        <ChartTooltipContent
+                                            labelFormatter={(label) => date(String(label))}
+                                        />
+                                    }
+                                />
+                                <Bar
+                                    dataKey="opens"
+                                    fill="var(--color-opens)"
+                                    radius={[3, 3, 0, 0]}
+                                    isAnimationActive={false}
+                                />
+                            </BarChart>
+                        </ChartContainer>
                         <figcaption>
                             <span>{days[0] && date(days[0].date)}</span>
                             <span>{days.length > 1 && date(days[days.length - 1].date)}</span>
                         </figcaption>
                     </figure>
                 )}
-                <details className="stats-days [&_summary]:cursor-pointer [&_summary]:py-3">
-                    <summary>Xem số liệu từng ngày</summary>
+                <Disclosure
+                    title={<> Xem số liệu từng ngày </>}
+                    className="stats-days [&_[data-slot=accordion-trigger]]:cursor-pointer [&_[data-slot=accordion-trigger]]:py-3"
+                >
                     <TableRegion label="Bảng lượt mở theo ngày">
-                        <table>
-                            <caption>Lượt mở từng ngày (UTC)</caption>
-                            <thead>
-                                <tr>
-                                    <th scope="col">Ngày</th>
-                                    <th scope="col">Lượt mở</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <Table>
+                            <TableCaption>Lượt mở từng ngày (UTC)</TableCaption>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead scope="col">Ngày</TableHead>
+                                    <TableHead scope="col">Lượt mở</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
                                 {days.map((day) => (
-                                    <tr key={day.date}>
-                                        <th scope="row">{date(day.date)}</th>
-                                        <td>{number(day.opens)}</td>
-                                    </tr>
+                                    <TableRow key={day.date}>
+                                        <TableHead scope="row">{date(day.date)}</TableHead>
+                                        <TableCell>{number(day.opens)}</TableCell>
+                                    </TableRow>
                                 ))}
-                            </tbody>
-                        </table>
+                            </TableBody>
+                        </Table>
                     </TableRegion>
-                </details>
+                </Disclosure>
             </section>
             <section aria-labelledby="page-stats-title">
                 <h2 id="page-stats-title">Tương tác theo trang</h2>
@@ -134,27 +149,27 @@ export function StatsContent({ stats }: { stats: BookStats }) {
                 </p>
                 {stats.byPage.length ? (
                     <TableRegion label="Bảng tương tác theo trang">
-                        <table>
-                            <caption>Nhận diện AR và chạm đối tượng</caption>
-                            <thead>
-                                <tr>
-                                    <th scope="col">Trang</th>
-                                    <th scope="col">Nhận diện AR</th>
-                                    <th scope="col">Lượt chạm</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <Table>
+                            <TableCaption>Nhận diện AR và chạm đối tượng</TableCaption>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead scope="col">Trang</TableHead>
+                                    <TableHead scope="col">Nhận diện AR</TableHead>
+                                    <TableHead scope="col">Lượt chạm</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
                                 {stats.byPage.map((page) => (
-                                    <tr key={page.pageId}>
-                                        <th scope="row">
+                                    <TableRow key={page.pageId}>
+                                        <TableHead scope="row">
                                             {page.pageNumber}. {page.title || 'Trang chưa đặt tên'}
-                                        </th>
-                                        <td>{number(page.found)}</td>
-                                        <td>{number(page.taps)}</td>
-                                    </tr>
+                                        </TableHead>
+                                        <TableCell>{number(page.found)}</TableCell>
+                                        <TableCell>{number(page.taps)}</TableCell>
+                                    </TableRow>
                                 ))}
-                            </tbody>
-                        </table>
+                            </TableBody>
+                        </Table>
                     </TableRegion>
                 ) : (
                     <p>Sách chưa có trang.</p>
@@ -164,25 +179,29 @@ export function StatsContent({ stats }: { stats: BookStats }) {
                 <h2 id="device-stats-title">Thiết bị đọc</h2>
                 {stats.byDevice.length ? (
                     <TableRegion label="Bảng phiên đọc theo thiết bị">
-                        <table>
-                            <caption>Phiên đọc theo nhóm thiết bị và hệ điều hành</caption>
-                            <thead>
-                                <tr>
-                                    <th scope="col">Thiết bị</th>
-                                    <th scope="col">Hệ điều hành</th>
-                                    <th scope="col">Phiên đọc</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <Table>
+                            <TableCaption>
+                                Phiên đọc theo nhóm thiết bị và hệ điều hành
+                            </TableCaption>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead scope="col">Thiết bị</TableHead>
+                                    <TableHead scope="col">Hệ điều hành</TableHead>
+                                    <TableHead scope="col">Phiên đọc</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
                                 {stats.byDevice.map((device) => (
-                                    <tr key={`${device.type}:${device.os}`}>
-                                        <th scope="row">{deviceLabels[device.type]}</th>
-                                        <td>{device.os || 'Chưa xác định'}</td>
-                                        <td>{number(device.count)}</td>
-                                    </tr>
+                                    <TableRow key={`${device.type}:${device.os}`}>
+                                        <TableHead scope="row">
+                                            {deviceLabels[device.type]}
+                                        </TableHead>
+                                        <TableCell>{device.os || 'Chưa xác định'}</TableCell>
+                                        <TableCell>{number(device.count)}</TableCell>
+                                    </TableRow>
                                 ))}
-                            </tbody>
-                        </table>
+                            </TableBody>
+                        </Table>
                     </TableRegion>
                 ) : (
                     <p>Chưa có dữ liệu thiết bị trong khoảng này.</p>

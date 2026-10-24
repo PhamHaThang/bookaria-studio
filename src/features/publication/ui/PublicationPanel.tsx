@@ -2,9 +2,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { z } from 'zod';
+import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
+import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
+import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import { apiClient } from '../../../shared/api/client';
@@ -15,7 +20,6 @@ import {
 } from '../../../shared/contracts/api/publish.schema';
 import type { BookDetail } from '../../../shared/contracts/dto.schema';
 import { Button } from '../../../shared/ui/Button';
-import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { auth, useAuth } from '../../auth';
 import { bookKeys } from '../../books';
@@ -232,7 +236,7 @@ export function PublicationPanel({
                     {!item.pageId && item.code === 'EMAIL_NOT_VERIFIED' && (
                         <>
                             {' '}
-                            <Link to="/check-email">Xác nhận email</Link>
+                            <AuthDialogLink mode="check-email">Xác nhận email</AuthDialogLink>
                         </>
                     )}
                 </li>
@@ -290,33 +294,31 @@ export function PublicationPanel({
                         <Field orientation="contents">
                             <FieldLabel htmlFor="publication-visibility">
                                 Cách chia sẻ
-                                <NativeSelect
+                                <FormSelect
                                     id="publication-visibility"
                                     value={visibility}
-                                    onChange={(event) =>
-                                        setVisibility(
-                                            event.currentTarget.value as typeof visibility,
-                                        )
+                                    onValueChange={(value) =>
+                                        setVisibility(value as typeof visibility)
                                     }
-                                >
-                                    <option value="UNLISTED">
-                                        Không niêm yết — xem bằng liên kết
-                                    </option>
-                                    <option value="PUBLIC">
-                                        Công khai — xuất hiện trong thư viện
-                                    </option>
-                                </NativeSelect>
+                                    options={[
+                                        {
+                                            value: 'UNLISTED',
+                                            label: 'Không niêm yết — xem bằng liên kết',
+                                        },
+                                        {
+                                            value: 'PUBLIC',
+                                            label: 'Công khai — xuất hiện trong thư viện',
+                                        },
+                                    ]}
+                                />
                             </FieldLabel>
                         </Field>
                         {check.warnings.length > 0 && (
                             <Field orientation="contents">
                                 <FieldLabel className="publication-accept mb-4 flex items-start gap-3 [&_input]:size-[1.25rem] [&_input]:min-h-0 [&_input]:shrink-0">
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         checked={accepted}
-                                        onChange={(event) =>
-                                            setAccepted(event.currentTarget.checked)
-                                        }
+                                        onCheckedChange={(checked) => setAccepted(checked === true)}
                                     />
                                     Tôi đã đọc và chấp nhận các cảnh báo trên.
                                 </FieldLabel>
@@ -370,7 +372,9 @@ export function PublicationPanel({
                     </p>
                 ) : (
                     <>
-                        {share.isPending && <p role="status">Đang tải thông tin chia sẻ…</p>}
+                        {share.isPending && (
+                            <LoadingState>Đang tải thông tin chia sẻ…</LoadingState>
+                        )}
                         {share.isError && (
                             <Feedback
                                 error={`${errorMessage(share.error)} Bấm Tải lại trạng thái xuất bản để kiểm tra lại.`}
@@ -504,45 +508,45 @@ export function PublicationPanel({
                                 <Field orientation="contents">
                                     <FieldLabel htmlFor="pdf-kind">
                                         Loại tệp
-                                        <NativeSelect
+                                        <FormSelect
                                             id="pdf-kind"
                                             value={print.kind}
-                                            onChange={(event) =>
+                                            onValueChange={(value) =>
                                                 setPrint({
                                                     ...print,
-                                                    kind: event.currentTarget.value as
-                                                        | 'PRINT'
-                                                        | 'MARKER_SHEET',
+                                                    kind: value as 'PRINT' | 'MARKER_SHEET',
                                                 })
                                             }
-                                        >
-                                            <option value="PRINT">Sách để in</option>
-                                            <option value="MARKER_SHEET">
-                                                Tờ tem marker Bookaria
-                                            </option>
-                                        </NativeSelect>
+                                            options={[
+                                                { value: 'PRINT', label: 'Sách để in' },
+                                                {
+                                                    value: 'MARKER_SHEET',
+                                                    label: 'Tờ tem marker Bookaria',
+                                                },
+                                            ]}
+                                        />
                                     </FieldLabel>
                                 </Field>
                                 <Field orientation="contents">
                                     <FieldLabel htmlFor="pdf-qr">
                                         Vị trí QR
-                                        <NativeSelect
+                                        <FormSelect
                                             id="pdf-qr"
                                             value={print.qrMode}
-                                            onChange={(event) =>
+                                            onValueChange={(value) =>
                                                 setPrint({
                                                     ...print,
-                                                    qrMode: event.currentTarget.value as
-                                                        | 'COVER_ONLY'
-                                                        | 'ALL_AR_PAGES',
+                                                    qrMode: value as 'COVER_ONLY' | 'ALL_AR_PAGES',
                                                 })
                                             }
-                                        >
-                                            <option value="COVER_ONLY">Chỉ trên bìa</option>
-                                            <option value="ALL_AR_PAGES">
-                                                Bìa và mọi trang AR
-                                            </option>
-                                        </NativeSelect>
+                                            options={[
+                                                { value: 'COVER_ONLY', label: 'Chỉ trên bìa' },
+                                                {
+                                                    value: 'ALL_AR_PAGES',
+                                                    label: 'Bìa và mọi trang AR',
+                                                },
+                                            ]}
+                                        />
                                     </FieldLabel>
                                 </Field>
                                 <Field orientation="contents">
@@ -618,7 +622,7 @@ export function PublicationPanel({
             </div>
             <div className="publication-section mt-8 border-t-[1px] border-t-border pt-6 [border-top-style:solid]">
                 <h3>Lịch sử phiên bản</h3>
-                {versions.isPending && <p role="status">Đang tải lịch sử…</p>}
+                {versions.isPending && <LoadingState>Đang tải lịch sử…</LoadingState>}
                 {versions.isError && <Feedback error={errorMessage(versions.error)} />}
                 {versions.data?.length === 0 && <p>Chưa có phiên bản đã xuất bản.</p>}
                 {versions.data && versions.data.length > 0 && (
@@ -638,7 +642,14 @@ export function PublicationPanel({
                 )}
             </div>
             {confirm && (
-                <ConfirmDialog
+                <ConfirmationDialog
+                    description={
+                        confirm === 'publish'
+                            ? `Xuất bản bản nháp đã lưu ở chế độ ${visibility === 'PUBLIC' ? 'công khai' : 'không niêm yết'}. Liên kết cũ sẽ mở phiên bản mới sau khi tác vụ thành công.`
+                            : confirm === 'unpublish'
+                              ? 'Sách chuyển về riêng tư. Người đọc không tải tiếp được bằng liên kết và QR cũ; các tệp đã tải xuống vẫn tồn tại.'
+                              : 'Chỉ tiếp tục khi bạn đã xác định kết quả yêu cầu trước. Thao tác này bỏ chặn trên trình duyệt, không hủy tác vụ ở máy chủ.'
+                    }
                     title={
                         confirm === 'publish'
                             ? 'Xuất bản phiên bản mới?'
@@ -649,45 +660,46 @@ export function PublicationPanel({
                     busy={requesting || job.posting}
                     onClose={() => setConfirm(null)}
                 >
-                    <p>
-                        {confirm === 'publish'
-                            ? `Xuất bản bản nháp đã lưu ở chế độ ${visibility === 'PUBLIC' ? 'công khai' : 'không niêm yết'}. Liên kết cũ sẽ mở phiên bản mới sau khi tác vụ thành công.`
-                            : confirm === 'unpublish'
-                              ? 'Sách chuyển về riêng tư. Người đọc không tải tiếp được bằng liên kết và QR cũ; các tệp đã tải xuống vẫn tồn tại.'
-                              : 'Chỉ tiếp tục khi bạn đã xác định kết quả yêu cầu trước. Thao tác này bỏ chặn trên trình duyệt, không hủy tác vụ ở máy chủ.'}
-                    </p>
                     <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                        <Button
-                            variant={confirm === 'unpublish' ? 'danger' : 'primary'}
-                            aria-busy={requesting || job.posting}
-                            onClick={() => {
-                                if (confirm === 'publish') void publish();
-                                else if (confirm === 'unpublish') void unpublish();
-                                else {
-                                    job.release();
-                                    setConfirm(null);
-                                }
-                            }}
-                            disabled={requesting || job.posting}
+                        <AlertDialogCancel variant="plain" asChild>
+                            <Button
+                                variant={confirm === 'unpublish' ? 'danger' : 'primary'}
+                                aria-busy={requesting || job.posting}
+                                onClick={() => {
+                                    if (confirm === 'publish') void publish();
+                                    else if (confirm === 'unpublish') void unpublish();
+                                    else {
+                                        job.release();
+                                        setConfirm(null);
+                                    }
+                                }}
+                                disabled={requesting || job.posting}
+                            >
+                                {(requesting || job.posting) && (
+                                    <Spinner data-icon="inline-start" aria-hidden="true" />
+                                )}{' '}
+                                {confirm === 'publish'
+                                    ? 'Xác nhận xuất bản'
+                                    : confirm === 'unpublish'
+                                      ? 'Xác nhận gỡ xuất bản'
+                                      : 'Cho phép yêu cầu mới'}
+                            </Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="plain"
+                            asChild
+                            onClick={(event) => event.preventDefault()}
                         >
-                            {(requesting || job.posting) && (
-                                <Spinner data-icon="inline-start" aria-hidden="true" />
-                            )}{' '}
-                            {confirm === 'publish'
-                                ? 'Xác nhận xuất bản'
-                                : confirm === 'unpublish'
-                                  ? 'Xác nhận gỡ xuất bản'
-                                  : 'Cho phép yêu cầu mới'}
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            disabled={requesting || job.posting}
-                            onClick={() => setConfirm(null)}
-                        >
-                            Hủy
-                        </Button>
+                            <Button
+                                variant="ghost"
+                                disabled={requesting || job.posting}
+                                onClick={() => setConfirm(null)}
+                            >
+                                Hủy
+                            </Button>
+                        </AlertDialogAction>
                     </div>
-                </ConfirmDialog>
+                </ConfirmationDialog>
             )}
         </section>
     );

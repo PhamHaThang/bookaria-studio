@@ -1,9 +1,9 @@
 import { type FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { FormSelect } from '@/shared/ui/FormSelect';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import type { BookDetail } from '../../../shared/contracts/dto.schema';
@@ -67,17 +67,18 @@ export function BookForm({
                         <Field orientation="contents">
                             <FieldLabel htmlFor="pageFormat">
                                 Khổ sách
-                                <NativeSelect
+                                <FormSelect
                                     id="pageFormat"
                                     name="pageFormat"
                                     value={format}
-                                    onChange={(e) => setFormat(e.target.value as typeof format)}
-                                >
-                                    <option value="A4">A4</option>
-                                    <option value="A5">A5</option>
-                                    <option value="SQUARE">Hình vuông</option>
-                                    <option value="CUSTOM">Tùy chỉnh</option>
-                                </NativeSelect>
+                                    onValueChange={(value) => setFormat(value as typeof format)}
+                                    options={[
+                                        { value: 'A4', label: 'A4' },
+                                        { value: 'A5', label: 'A5' },
+                                        { value: 'SQUARE', label: 'Hình vuông' },
+                                        { value: 'CUSTOM', label: 'Tùy chỉnh' },
+                                    ]}
+                                />
                             </FieldLabel>
                         </Field>
                         {format === 'CUSTOM' && (

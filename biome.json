@@ -9,6 +9,7 @@
         "includes": [
             "**",
             "!**/dist",
+            "!**/.tmp",
             "!**/node_modules",
             "!**/*.mind",
             "!**/package-lock.json",

@@ -1,5 +1,7 @@
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { Progress } from '@/shared/ui/primitives/progress';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { ContractError } from '../../../shared/api/contract';
 import { errorMessage } from '../../../shared/api/errors';
@@ -152,7 +154,7 @@ export function PageImageForm({
                     <Field orientation="contents">
                         <FieldLabel htmlFor={`${id}-image`}>Ảnh trang</FieldLabel>
                     </Field>
-                    <input
+                    <Input
                         id={`${id}-image`}
                         name="image"
                         type="file"
@@ -200,7 +202,7 @@ export function PageImageForm({
                                 : ''}
                         </p>
                         {['uploading', 'compiling', 'uploading-marker'].includes(stage) && (
-                            <progress
+                            <Progress
                                 aria-label="Tiến độ chuẩn bị trang"
                                 max={100}
                                 value={progress}

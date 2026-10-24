@@ -1,5 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/shared/ui/primitives/table';
 import { adminApi, adminKeys, auditLabel, bytesLabel } from '../features/admin';
 import { AdminReload, AdminTable } from '../features/admin/ui';
 import { useAuth } from '../features/auth';
@@ -56,22 +64,22 @@ export function AdminDashboardPage() {
                     bản đầu, không tính lại khi cập nhật phiên bản.
                 </p>
                 <AdminTable label="Sách xuất bản theo ngày">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th scope="col">Ngày</th>
-                                <th scope="col">Số sách</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead scope="col">Ngày</TableHead>
+                                <TableHead scope="col">Số sách</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
                             {data.publishedPerDay.map((row) => (
-                                <tr key={row.date}>
-                                    <th scope="row">{row.date}</th>
-                                    <td>{row.count}</td>
-                                </tr>
+                                <TableRow key={row.date}>
+                                    <TableHead scope="row">{row.date}</TableHead>
+                                    <TableCell>{row.count}</TableCell>
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
                 </AdminTable>
             </section>
             <section className="admin-section mt-8">

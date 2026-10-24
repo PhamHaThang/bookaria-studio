@@ -7,7 +7,16 @@
 /* Product tokens are shared by utilities and shadcn primitives. */
 @theme inline {
     --font-sans: var(--font-body);
+    --font-display: var(--font-heading);
     --font-mono: var(--font-code);
+    --color-sidebar: var(--bg-surface);
+    --color-sidebar-foreground: var(--text-primary);
+    --color-sidebar-accent: var(--bg-selected);
+    --color-sidebar-accent-foreground: var(--text-primary);
+    --color-sidebar-primary: var(--action-primary);
+    --color-sidebar-primary-foreground: var(--text-on-primary);
+    --color-sidebar-border: var(--border-default);
+    --color-sidebar-ring: var(--focus-color);
     --color-background: var(--bg-canvas);
     --color-canvas: var(--bg-canvas);
     --color-surface: var(--bg-surface);

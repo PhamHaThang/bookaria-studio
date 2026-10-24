@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { LoadingState } from '@/shared/ui/LoadingState';
+import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { Spinner } from '@/shared/ui/primitives/spinner';
@@ -23,7 +26,6 @@ import { formatBytes, formatDate } from '../shared/lib/format';
 import { Alert } from '../shared/ui/Alert';
 import { Badge } from '../shared/ui/Badge';
 import { Button } from '../shared/ui/Button';
-import { ConfirmDialog } from '../shared/ui/ConfirmDialog';
 import { Feedback } from '../shared/ui/Feedback';
 
 function UsageList({ usages }: { usages: AssetUsage[] }) {
@@ -206,7 +208,7 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                 <Link to="/assets">Về tài nguyên</Link>
             </>
         );
-    if (detail.isPending) return <p role="status">Đang tải tài nguyên…</p>;
+    if (detail.isPending) return <LoadingState>Đang tải tài nguyên…</LoadingState>;
     if (detail.isError)
         return (
             <>
@@ -409,7 +411,7 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                         <section className="asset-usage-section mt-8">
                             <h2>Nơi đang sử dụng</h2>
                             {usages.isPending ? (
-                                <p role="status">Đang kiểm tra nơi sử dụng…</p>
+                                <LoadingState>Đang kiểm tra nơi sử dụng…</LoadingState>
                             ) : usages.isError ? (
                                 <>
                                     <Feedback error={errorMessage(usages.error)} />
@@ -452,38 +454,48 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                 )}
             </div>
             {confirming && (
-                <ConfirmDialog
+                <ConfirmationDialog
+                    description={
+                        <>
+                            Bạn muốn xóa “{asset.name}”? Ảnh bìa hoặc ảnh đại diện đang dùng tài
+                            nguyên này cũng sẽ được gỡ. Bạn chưa thể khôi phục tài nguyên từ Studio.
+                        </>
+                    }
                     title="Xóa tài nguyên?"
                     busy={removal.isPending}
                     onClose={() => setConfirming(false)}
                 >
-                    <p>
-                        Bạn muốn xóa “{asset.name}”? Ảnh bìa hoặc ảnh đại diện đang dùng tài nguyên
-                        này cũng sẽ được gỡ. Bạn chưa thể khôi phục tài nguyên từ Studio.
-                    </p>
                     <Feedback error={deleteError} />
                     {blockedUsages.length > 0 && <UsageList usages={blockedUsages} />}
                     <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                        <Button
-                            variant="secondary"
-                            disabled={removal.isPending}
-                            onClick={() => setConfirming(false)}
+                        <AlertDialogCancel variant="plain" asChild>
+                            <Button
+                                variant="secondary"
+                                disabled={removal.isPending}
+                                onClick={() => setConfirming(false)}
+                            >
+                                Giữ lại
+                            </Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="plain"
+                            asChild
+                            onClick={(event) => event.preventDefault()}
                         >
-                            Giữ lại
-                        </Button>
-                        <Button
-                            variant="danger"
-                            aria-busy={removal.isPending}
-                            onClick={remove}
-                            disabled={removal.isPending}
-                        >
-                            {removal.isPending && (
-                                <Spinner data-icon="inline-start" aria-hidden="true" />
-                            )}
-                            Xóa tài nguyên
-                        </Button>
+                            <Button
+                                variant="danger"
+                                aria-busy={removal.isPending}
+                                onClick={remove}
+                                disabled={removal.isPending}
+                            >
+                                {removal.isPending && (
+                                    <Spinner data-icon="inline-start" aria-hidden="true" />
+                                )}
+                                Xóa tài nguyên
+                            </Button>
+                        </AlertDialogAction>
                     </div>
-                </ConfirmDialog>
+                </ConfirmationDialog>
             )}
         </>
     );

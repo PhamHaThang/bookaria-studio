@@ -1,8 +1,14 @@
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { Alert } from '@/shared/ui/Alert';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { Disclosure } from '@/shared/ui/Disclosure';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
+import { Button as ActionButton } from '@/shared/ui/primitives/button';
+import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import {
     type Action,
@@ -14,7 +20,6 @@ import {
     type Trigger,
 } from '../../../shared/contracts/scene.schema';
 import { Button } from '../../../shared/ui/Button';
-import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import {
     actionLabels,
     appendAction,
@@ -103,7 +108,7 @@ export function InteractionEditor({
                 </p>
             )}
             {issues.length > 0 && (
-                <div className="scene-reference-error text-danger-foreground">
+                <Alert tone="danger" className="my-4">
                     <p>
                         Có đích không còn phù hợp. Có thể lưu bản nháp; cần sửa trước khi xuất bản,
                         kể cả quy tắc đang tắt.
@@ -111,7 +116,8 @@ export function InteractionEditor({
                     <ul>
                         {issues.map((issue) => (
                             <li key={`${issue.interactionId}-${issue.actionIndex ?? 'trigger'}`}>
-                                <button
+                                <ActionButton
+                                    variant="plain"
                                     type="button"
                                     className="interaction-issue-link cursor-pointer border-0 border-[transparent] border-solid bg-[transparent] px-0 py-2 text-left text-[inherit] underline"
                                     onClick={() => {
@@ -131,11 +137,11 @@ export function InteractionEditor({
                                         ? 'Sự kiện'
                                         : `Hành động ${issue.actionIndex + 1}`}
                                     : {issue.message}
-                                </button>
+                                </ActionButton>
                             </li>
                         ))}
                     </ul>
-                </div>
+                </Alert>
             )}
             {selected && (
                 <div className="interaction-workspace mt-5 grid grid-cols-[minmax(180px,_0.7fr)_minmax(0,_2fr)] items-start gap-6 max-[900px]:grid-cols-[1fr] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[140px_minmax(0,_1fr)] [.workbench-panel_&]:grid-cols-[minmax(0,_1fr)] [.workbench-panel_&]:gap-3">
@@ -144,7 +150,8 @@ export function InteractionEditor({
                         aria-label="Danh sách quy tắc"
                     >
                         {scene.interactions.map((rule, index) => (
-                            <button
+                            <ActionButton
+                                variant="plain"
                                 type="button"
                                 key={rule.id}
                                 aria-current={selected.id === rule.id ? 'true' : undefined}
@@ -163,7 +170,7 @@ export function InteractionEditor({
                                         ? ' · Chưa hợp lệ'
                                         : ''}
                                 </span>
-                            </button>
+                            </ActionButton>
                         ))}
                     </nav>
                     <section
@@ -193,11 +200,10 @@ export function InteractionEditor({
                             </Field>
                             <Field orientation="contents">
                                 <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         checked={selected.enabled}
-                                        onChange={(event) =>
-                                            patch({ enabled: event.currentTarget.checked })
+                                        onCheckedChange={(checked) =>
+                                            patch({ enabled: checked === true })
                                         }
                                     />
                                     Bật quy tắc
@@ -206,12 +212,11 @@ export function InteractionEditor({
                             <Field orientation="contents">
                                 <FieldLabel htmlFor={`rule-${selected.id}-trigger`}>
                                     Sự kiện
-                                    <NativeSelect
+                                    <FormSelect
                                         id={`rule-${selected.id}-trigger`}
                                         value={selected.trigger.type}
-                                        onChange={(event) => {
-                                            const type = event.currentTarget
-                                                .value as Trigger['type'];
+                                        onValueChange={(value) => {
+                                            const type = value as Trigger['type'];
                                             patch({
                                                 trigger:
                                                     type === 'onTap'
@@ -219,13 +224,15 @@ export function InteractionEditor({
                                                         : { type },
                                             });
                                         }}
-                                    >
-                                        {Object.entries(triggerLabels).map(([value, label]) => (
-                                            <option key={value} value={value}>
-                                                {label}
-                                            </option>
-                                        ))}
-                                    </NativeSelect>
+                                        options={[
+                                            ...(Object.entries(triggerLabels).map(
+                                                ([value, label]) => ({
+                                                    value: value,
+                                                    label: label,
+                                                }),
+                                            ) ?? []),
+                                        ]}
+                                    />
                                 </FieldLabel>
                             </Field>
                             {selected.trigger.type === 'onTap' && (
@@ -241,19 +248,20 @@ export function InteractionEditor({
                             <Field orientation="contents">
                                 <FieldLabel htmlFor={`rule-${selected.id}-retrigger`}>
                                     Khi sự kiện lặp lại lúc đang chạy
-                                    <NativeSelect
+                                    <FormSelect
                                         id={`rule-${selected.id}-retrigger`}
                                         value={selected.onRetrigger}
-                                        onChange={(event) =>
+                                        onValueChange={(value) =>
                                             patch({
-                                                onRetrigger: event.currentTarget
-                                                    .value as InteractionRule['onRetrigger'],
+                                                onRetrigger:
+                                                    value as InteractionRule['onRetrigger'],
                                             })
                                         }
-                                    >
-                                        <option value="ignore">Bỏ qua lần mới</option>
-                                        <option value="restart">Chạy lại từ đầu</option>
-                                    </NativeSelect>
+                                        options={[
+                                            { value: 'ignore', label: 'Bỏ qua lần mới' },
+                                            { value: 'restart', label: 'Chạy lại từ đầu' },
+                                        ]}
+                                    />
                                 </FieldLabel>
                             </Field>
                             <div className="form-actions interaction-wide col-[1_/_-1] mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
@@ -324,13 +332,17 @@ export function InteractionEditor({
                             Hành động theo thứ tự ({selected.actions.length}/
                             {SCENE_LIMITS.maxActionsPerRule})
                         </h5>
-                        <ol className="interaction-actions mx-0 mt-0 mb-4 list-none p-0 [&_>_li]:border-t-[1px] [&_>_li]:border-t-border [&_>_li]:[border-top-style:solid] [&_summary]:cursor-pointer [&_summary]:py-4 [&_summary]:font-semibold">
+                        <ol className="interaction-actions mx-0 mt-0 mb-4 list-none p-0 [&_>_li]:border-t-[1px] [&_>_li]:border-t-border [&_>_li]:[border-top-style:solid] [&_[data-slot=accordion-trigger]]:cursor-pointer [&_[data-slot=accordion-trigger]]:py-4 [&_[data-slot=accordion-trigger]]:font-semibold">
                             {selected.actions.map((action, index) => (
                                 <li key={`${actionKey(action)}-${action.type}`}>
-                                    <details open>
-                                        <summary>
-                                            Hành động {index + 1}: {actionLabels[action.type]}
-                                        </summary>
+                                    <Disclosure
+                                        title={
+                                            <>
+                                                Hành động {index + 1}: {actionLabels[action.type]}
+                                            </>
+                                        }
+                                        defaultOpen
+                                    >
                                         <div className="interaction-action-body grid gap-4 pb-5">
                                             <InteractionActionEditor
                                                 id={`action-${selected.id}-${index}`}
@@ -410,7 +422,7 @@ export function InteractionEditor({
                                                 </Button>
                                             </div>
                                         </div>
-                                    </details>
+                                    </Disclosure>
                                 </li>
                             ))}
                         </ol>
@@ -436,37 +448,49 @@ export function InteractionEditor({
                 </div>
             )}
             {deleting && (
-                <ConfirmDialog
+                <ConfirmationDialog
+                    description={
+                        <>
+                            Quy tắc “{deleting.name || 'Chưa đặt tên'}” cùng các hành động sẽ bị bỏ
+                            khỏi bản đang sửa.
+                        </>
+                    }
                     title="Xóa quy tắc tương tác?"
                     busy={disabled}
                     onClose={() => setDeleting(null)}
                 >
-                    <p>
-                        Quy tắc “{deleting.name || 'Chưa đặt tên'}” cùng các hành động sẽ bị bỏ khỏi
-                        bản đang sửa.
-                    </p>
                     <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                        <Button
-                            variant="secondary"
-                            disabled={disabled}
-                            onClick={() => setDeleting(null)}
+                        <AlertDialogCancel variant="plain" asChild>
+                            <Button
+                                variant="secondary"
+                                disabled={disabled}
+                                onClick={() => setDeleting(null)}
+                            >
+                                Giữ quy tắc
+                            </Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="plain"
+                            asChild
+                            onClick={(event) => event.preventDefault()}
                         >
-                            Giữ quy tắc
-                        </Button>
-                        <Button
-                            variant="danger"
-                            disabled={disabled}
-                            onClick={() => {
-                                changeRules(
-                                    scene.interactions.filter((rule) => rule.id !== deleting.id),
-                                );
-                                setDeleting(null);
-                            }}
-                        >
-                            Xác nhận xóa quy tắc
-                        </Button>
+                            <Button
+                                variant="danger"
+                                disabled={disabled}
+                                onClick={() => {
+                                    changeRules(
+                                        scene.interactions.filter(
+                                            (rule) => rule.id !== deleting.id,
+                                        ),
+                                    );
+                                    setDeleting(null);
+                                }}
+                            >
+                                Xác nhận xóa quy tắc
+                            </Button>
+                        </AlertDialogAction>
                     </div>
-                </ConfirmDialog>
+                </ConfirmationDialog>
             )}
         </section>
     );

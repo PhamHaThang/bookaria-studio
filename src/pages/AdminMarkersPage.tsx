@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { LoadingState } from '@/shared/ui/LoadingState';
+import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -49,7 +51,7 @@ export function AdminMarkersPage() {
             <Feedback success={success} />
             <WriteFeedback action={action} />
             <AdminReload retry={() => void list.refetch()} busy={list.isFetching || action.busy} />
-            {list.isPending && <p role="status">Đang tải marker…</p>}
+            {list.isPending && <LoadingState>Đang tải marker…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess && (
                 <>
@@ -250,7 +252,7 @@ export function AdminMarkerCreatePage() {
                                 className="library-ack [.admin-form_&]:flex [.admin-form_&]:items-start [.admin-form_&]:gap-3 [.admin-form_&_input]:mt-1 [.admin-form_&_input]:size-5 [.admin-form_&_input]:shrink-0"
                                 htmlFor="marker-ack"
                             >
-                                <input id="marker-ack" type="checkbox" required />
+                                <Checkbox id="marker-ack" required />
                                 Tôi đã kiểm tra ảnh và tệp .mind khớp nhau, truy cập được và sẵn
                                 sàng dùng.
                             </FieldLabel>

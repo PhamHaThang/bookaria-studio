@@ -2,6 +2,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ImagePlus, MoreHorizontal, Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { Button as ActionButton } from '@/shared/ui/primitives/button';
+import { DropdownMenu, DropdownMenuTrigger } from '@/shared/ui/primitives/dropdown-menu';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { errorMessage } from '../../../shared/api/errors';
@@ -42,8 +45,8 @@ export function PageStrip({
     const [stage, setStage] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [menu, setMenu] = useState<PageSummary | null>(null);
-    const menuAnchor = useRef<HTMLButtonElement | null>(null);
     const [renaming, setRenaming] = useState(false);
+    const menuAnchor = useRef<HTMLButtonElement | null>(null);
     const [deleting, setDeleting] = useState(false),
         [addingImage, setAddingImage] = useState(false);
     const [target, setTarget] = useState<string | null>(null);
@@ -163,9 +166,13 @@ export function PageStrip({
                 </span>
                 {listing.isPending && <span role="status">Đang tải các trang…</span>}
                 {listing.isError && (
-                    <button type="button" onClick={() => void listing.refetch()}>
+                    <ActionButton
+                        variant="plain"
+                        type="button"
+                        onClick={() => void listing.refetch()}
+                    >
                         Thử tải danh sách trang
-                    </button>
+                    </ActionButton>
                 )}
                 {listing.data?.map((page) => (
                     <div
@@ -187,27 +194,57 @@ export function PageStrip({
                                 {page.title || `Trang ${page.orderIndex + 1}`}
                             </span>
                         </Link>
-                        <button
-                            className="page-thumbnail-menu absolute top-[-5px] right-0 grid size-7 rounded-[var(--radius-sm)] border border-border border-solid bg-surface p-0 text-muted-foreground [place-items:center] max-[760px]:size-10 [&:hover]:bg-selected [&:hover]:text-primary"
-                            type="button"
-                            disabled={disabled || busy}
-                            aria-label={`Tùy chọn trang ${page.orderIndex + 1}`}
-                            aria-haspopup="menu"
-                            aria-expanded={menu?.id === page.id && !renaming && !deleting}
-                            aria-controls={menu?.id === page.id ? 'page-actions-menu' : undefined}
-                            onClick={(event) => {
-                                menuAnchor.current = event.currentTarget;
-                                setRenaming(false);
-                                setMenu(page);
-                                setDeleting(false);
-                                setError(null);
+                        <DropdownMenu
+                            open={menu?.id === page.id && !renaming && !deleting}
+                            onOpenChange={(open) => {
+                                if (open) {
+                                    setRenaming(false);
+                                    setDeleting(false);
+                                    setError(null);
+                                    setMenu(page);
+                                } else setMenu(null);
                             }}
                         >
-                            <MoreHorizontal size={14} />
-                        </button>
+                            <DropdownMenuTrigger asChild>
+                                <ActionButton
+                                    variant="plain"
+                                    className="page-thumbnail-menu absolute top-[-5px] right-0 grid size-7 rounded-[var(--radius-sm)] border border-border border-solid bg-surface p-0 text-muted-foreground [place-items:center] max-[760px]:size-10 [&:hover]:bg-selected [&:hover]:text-primary"
+                                    type="button"
+                                    disabled={disabled || busy}
+                                    aria-label={`Tùy chọn trang ${page.orderIndex + 1}`}
+                                    ref={(node) => {
+                                        if (node && menu?.id === page.id) menuAnchor.current = node;
+                                    }}
+                                >
+                                    <MoreHorizontal size={14} />
+                                </ActionButton>
+                            </DropdownMenuTrigger>
+                            {menu?.id === page.id && !renaming && !deleting && (
+                                <PageActionsMenu
+                                    title={menu.title || `Trang ${menu.orderIndex + 1}`}
+                                    locked={locked}
+                                    first={menuIndex <= 0}
+                                    last={menuIndex >= (listing.data?.length || 0) - 1}
+                                    error={error}
+                                    onRename={() => setRenaming(true)}
+                                    onMove={(direction) => void move(menu, direction)}
+                                    onDelete={() => setDeleting(true)}
+                                    onDuplicate={() =>
+                                        void run(async () => {
+                                            const result = await pagesApi.duplicate(menu.id);
+                                            if (currentSession())
+                                                setTarget(
+                                                    `/books/${bookId}/pages/${result.page.id}`,
+                                                );
+                                        }, true)
+                                    }
+                                />
+                            )}
+                        </DropdownMenu>
                     </div>
                 ))}
-                <button
+                <ActionButton
+                    variant="plain"
                     className="strip-add-page [.editor-page-strip_&]:flex [.editor-page-strip_&]:flex-[0_0_100px] [.editor-page-strip_&]:flex-col [.editor-page-strip_&]:items-center [.editor-page-strip_&]:justify-center [.editor-page-strip_&]:gap-[5px] [.editor-page-strip_&]:text-[length:10px] [.editor-page-strip_&]:no-underline [.editor-page-strip_&_>_span]:[position:static] [.editor-page-strip_a:not(&)]:relative [.editor-page-strip_a:not(&)]:flex [.editor-page-strip_a:not(&)]:h-[70px] [.editor-page-strip_a:not(&)]:flex-[0_0_54px] [.editor-page-strip_a:not(&)]:rounded-[8px] [.editor-page-strip_a:not(&)]:border [.editor-page-strip_a:not(&)]:border-border [.editor-page-strip_a:not(&)]:border-solid [.editor-page-strip_a:not(&)]:bg-muted [.editor-page-strip_a:not(&)]:p-[3px] [.editor-page-strip_a:not(&)]:no-underline [.scene-page-strip_button&]:min-h-18 [.scene-page-strip_button&]:w-19 [.scene-page-strip_button&]:flex-[0_0_76px] [.scene-page-strip_button&]:rounded-[var(--radius-md)] [.scene-page-strip_button&]:border [.scene-page-strip_button&]:border-input [.scene-page-strip_button&]:border-dashed [.scene-page-strip_button&]:bg-muted [.scene-page-strip_button&]:text-primary"
                     type="button"
                     disabled={locked || listing.isPending || listing.isError}
@@ -216,8 +253,9 @@ export function PageStrip({
                 >
                     <Plus size={20} aria-hidden="true" />
                     <span>Thêm trang</span>
-                </button>
-                <button
+                </ActionButton>
+                <ActionButton
+                    variant="plain"
                     className="strip-image-page flex shrink-0 items-center gap-[6px] border-0 border-[transparent] border-solid bg-[transparent] p-3 text-[length:12px] text-primary"
                     type="button"
                     disabled={locked}
@@ -228,7 +266,7 @@ export function PageStrip({
                 >
                     <ImagePlus size={18} aria-hidden="true" />
                     <span>Thêm từ ảnh</span>
-                </button>
+                </ActionButton>
             </nav>
             {busy && (
                 <p
@@ -271,29 +309,11 @@ export function PageStrip({
                     </Button>
                 </div>
             )}
-            {menu && !renaming && !deleting && menuAnchor.current && (
-                <PageActionsMenu
-                    anchor={menuAnchor.current}
-                    title={menu.title || `Trang ${menu.orderIndex + 1}`}
-                    locked={locked}
-                    first={menuIndex <= 0}
-                    last={menuIndex >= (listing.data?.length || 0) - 1}
-                    error={error}
-                    onClose={() => setMenu(null)}
-                    onRename={() => setRenaming(true)}
-                    onMove={(direction) => void move(menu, direction)}
-                    onDelete={() => setDeleting(true)}
-                    onDuplicate={() =>
-                        void run(async () => {
-                            const result = await pagesApi.duplicate(menu.id);
-                            if (currentSession())
-                                setTarget(`/books/${bookId}/pages/${result.page.id}`);
-                        }, true)
-                    }
-                />
-            )}
+
             {menu && (renaming || deleting) && (
                 <ConfirmDialog
+                    confirmation={deleting}
+                    returnFocus={menuAnchor.current}
                     title={deleting ? 'Xóa trang sách?' : `Trang ${menu.orderIndex + 1}`}
                     busy={busy}
                     className="page-actions-dialog max-h-[calc(100dvh_-_32px)] w-[min(480px,_calc(100vw_-_24px))] overflow-y-auto [&_form]:my-5 [&_form_>_.button]:mt-3 max-[760px]:[&_input]:text-[length:16px]"
@@ -315,7 +335,10 @@ export function PageStrip({
                                 <Button
                                     variant="secondary"
                                     disabled={busy}
-                                    onClick={() => setDeleting(false)}
+                                    onClick={() => {
+                                        setDeleting(false);
+                                        setMenu(null);
+                                    }}
                                 >
                                     Giữ lại
                                 </Button>
@@ -394,7 +417,7 @@ export function PageStrip({
                 </ConfirmDialog>
             )}
             {addingImage && (
-                <ConfirmDialog
+                <ConfirmationDialog
                     title="Thêm trang từ ảnh"
                     busy={busy}
                     className="page-actions-dialog max-h-[calc(100dvh_-_32px)] w-[min(480px,_calc(100vw_-_24px))] overflow-y-auto [&_form]:my-5 [&_form_>_.button]:mt-3 max-[760px]:[&_input]:text-[length:16px]"
@@ -437,7 +460,7 @@ export function PageStrip({
                     <Button variant="ghost" disabled={busy} onClick={() => setAddingImage(false)}>
                         Đóng
                     </Button>
-                </ConfirmDialog>
+                </ConfirmationDialog>
             )}
         </div>
     );

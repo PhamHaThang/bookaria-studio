@@ -1,5 +1,5 @@
+import { FormSelect } from '@/shared/ui/FormSelect';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import type { SceneObject } from '../../../shared/contracts/scene.schema';
 import { objectLabels } from '../model/objects';
 
@@ -19,22 +19,29 @@ export function InteractionTarget({
         <Field orientation="contents" data-invalid={missing || !value}>
             <FieldLabel htmlFor={id}>
                 Đối tượng đích
-                <NativeSelect
+                <FormSelect
                     id={id}
                     aria-label="Đối tượng đích"
                     aria-describedby={!objects.length ? `${id}-hint` : undefined}
                     value={value}
                     aria-invalid={missing || !value}
-                    onChange={(event) => onChange(event.currentTarget.value)}
-                >
-                    <option value="">Chọn đối tượng</option>
-                    {missing && <option value={value}>Đích không còn phù hợp: {value}</option>}
-                    {objects.map((object) => (
-                        <option key={object.id} value={object.id}>
-                            {object.name || objectLabels[object.type]} · {objectLabels[object.type]}
-                        </option>
-                    ))}
-                </NativeSelect>
+                    onValueChange={(value) => onChange(value)}
+                    options={[
+                        { value: '', label: 'Chọn đối tượng' },
+                        ...(missing
+                            ? [{ value: value, label: <>Đích không còn phù hợp: {value}</> }]
+                            : []),
+                        ...(objects.map((object) => ({
+                            value: object.id,
+                            label: (
+                                <>
+                                    {object.name || objectLabels[object.type]} ·{' '}
+                                    {objectLabels[object.type]}
+                                </>
+                            ),
+                        })) ?? []),
+                    ]}
+                />
                 {!objects.length && (
                     <span
                         id={`${id}-hint`}

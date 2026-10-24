@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import {
     adminApi,
     adminDate,
@@ -38,7 +39,7 @@ export function AdminModerationPage() {
                 </div>
                 <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />
             </div>
-            {list.isPending && <p role="status">Đang tải báo cáo…</p>}
+            {list.isPending && <LoadingState>Đang tải báo cáo…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess && (
                 <>
@@ -113,7 +114,7 @@ export function AdminBooksPage() {
                 <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />
             </div>
             <form
-                className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto] [&_select]:w-full"
+                className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_[data-slot=select-trigger]]:w-full [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto]"
                 key={params.toString()}
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -139,15 +140,16 @@ export function AdminBooksPage() {
                     <Field orientation="contents">
                         <FieldLabel htmlFor="admin-book-visibility">
                             Quyền hiển thị
-                            <NativeSelect
+                            <FormSelect
                                 id="admin-book-visibility"
                                 name="visibility"
                                 defaultValue={query.visibility}
-                            >
-                                <option value="PUBLIC">Công khai</option>
-                                <option value="UNLISTED">Qua liên kết</option>
-                                <option value="PRIVATE">Riêng tư</option>
-                            </NativeSelect>
+                                options={[
+                                    { value: 'PUBLIC', label: 'Công khai' },
+                                    { value: 'UNLISTED', label: 'Qua liên kết' },
+                                    { value: 'PRIVATE', label: 'Riêng tư' },
+                                ]}
+                            />
                         </FieldLabel>
                     </Field>
                     <Button type="submit">Tìm sách</Button>
@@ -156,7 +158,7 @@ export function AdminBooksPage() {
             <p className="stats-note max-w-[75ch] text-[length:var(--text-sm)] text-muted-foreground [.admin-form_&]:mb-4">
                 Sách bị gỡ được chuyển sang riêng tư. Chọn “Riêng tư” để tra cứu và khôi phục.
             </p>
-            {list.isPending && <p role="status">Đang tải sách…</p>}
+            {list.isPending && <LoadingState>Đang tải sách…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess && (
                 <>

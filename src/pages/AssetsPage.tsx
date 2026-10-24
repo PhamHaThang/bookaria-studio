@@ -2,6 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { FolderOpen, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { FilterBar } from '@/shared/ui/FilterBar';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
+import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import {
     Empty,
     EmptyContent,
@@ -12,7 +16,11 @@ import {
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
+import {
+    PaginationContent,
+    PaginationItem,
+    Pagination as PaginationRoot,
+} from '@/shared/ui/primitives/pagination';
 import {
     AssetThumbnail,
     assetKeys,
@@ -79,36 +87,40 @@ function AssetFilters({
                     <Field orientation="contents">
                         <FieldLabel htmlFor="asset-type">Loại tài nguyên</FieldLabel>
                     </Field>
-                    <NativeSelect id="asset-type" name="type" defaultValue={query.type || ''}>
-                        <option value="">Tất cả loại</option>
-                        {Object.entries(assetTypeLabels).map(([value, label]) => (
-                            <option value={value} key={value}>
-                                {label}
-                            </option>
-                        ))}
-                    </NativeSelect>
+                    <FormSelect
+                        id="asset-type"
+                        name="type"
+                        defaultValue={query.type || ''}
+                        options={[
+                            { value: '', label: 'Tất cả loại' },
+                            ...(Object.entries(assetTypeLabels).map(([value, label]) => ({
+                                value: value,
+                                label: label,
+                            })) ?? []),
+                        ]}
+                    />
                 </div>
                 <div>
                     <Field orientation="contents">
                         <FieldLabel htmlFor="asset-category">Danh mục</FieldLabel>
                     </Field>
-                    <NativeSelect
+                    <FormSelect
                         id="asset-category"
                         name="categoryId"
                         value={categoryId}
-                        onChange={(event) => setCategoryId(event.target.value)}
-                    >
-                        <option value="">Tất cả danh mục</option>
-                        {categoryId &&
-                            !categories?.some((category) => category.id === categoryId) && (
-                                <option value={categoryId}>Danh mục đang chọn</option>
-                            )}
-                        {categories?.map((category) => (
-                            <option value={category.id} key={category.id}>
-                                {category.name}
-                            </option>
-                        ))}
-                    </NativeSelect>
+                        onValueChange={(value) => setCategoryId(value)}
+                        options={[
+                            { value: '', label: 'Tất cả danh mục' },
+                            ...(categoryId &&
+                            !categories?.some((category) => category.id === categoryId)
+                                ? [{ value: categoryId, label: 'Danh mục đang chọn' }]
+                                : []),
+                            ...(categories?.map((category) => ({
+                                value: category.id,
+                                label: category.name,
+                            })) ?? []),
+                        ]}
+                    />
                 </div>
                 <Field orientation="contents">
                     <FieldLabel htmlFor="asset-tag">
@@ -125,8 +137,7 @@ function AssetFilters({
                 <div className="asset-filter-actions col-[1_/_-1] flex flex-wrap items-center gap-4">
                     <Field orientation="contents">
                         <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                            <input
-                                type="checkbox"
+                            <Checkbox
                                 name="hasAnimation"
                                 defaultChecked={query.hasAnimation === true}
                             />
@@ -203,29 +214,17 @@ export function AssetsPage() {
                     Tải tài nguyên
                 </Link>
             </div>
-            <fieldset
-                className={
-                    'status-tabs mx-0 mt-0 mb-6 flex gap-7 border-b-[1px] border-b-border [border-bottom-style:solid] max-[760px]:gap-5 max-[760px]:overflow-x-auto max-[760px]:text-[length:var(--text-xs)] [&_button.selected]:border-b-primary [&_button.selected]:font-semibold [&_button.selected]:text-primary-hover [&_button]:min-h-11 [&_button]:whitespace-nowrap [&_button]:border-[transparent] [&_button]:border-t-[0] [&_button]:border-r-[0] [&_button]:border-b-[2px] [&_button]:border-l-[0] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:px-0 [&_button]:py-3 [&_button]:text-[length:12px] [&_button]:text-muted-foreground max-[540px]:[.page-heading:has(+_&[aria-label="Nguồn_tài_nguyên"])]:flex-wrap [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375'
+            <FilterBar
+                value={query.scope}
+                onValueChange={(scope) =>
+                    change({ scope: scope === 'mine' ? undefined : 'library' })
                 }
-                aria-label="Nguồn tài nguyên"
-            >
-                <button
-                    type="button"
-                    className={query.scope === 'mine' ? 'selected' : ''}
-                    aria-pressed={query.scope === 'mine'}
-                    onClick={() => change({ scope: undefined })}
-                >
-                    Của tôi
-                </button>
-                <button
-                    type="button"
-                    className={query.scope === 'library' ? 'selected' : ''}
-                    aria-pressed={query.scope === 'library'}
-                    onClick={() => change({ scope: 'library' })}
-                >
-                    Thư viện chung
-                </button>
-            </fieldset>
+                label="Nguồn tài nguyên"
+                options={[
+                    { value: 'mine', label: 'Của tôi' },
+                    { value: 'library', label: 'Thư viện chung' },
+                ]}
+            />
             {query.scope === 'library' && (
                 <p className="asset-scope-note mx-0 mt-0 mb-6 max-w-[70ch] text-muted-foreground">
                     Tài nguyên dùng chung do nhóm quản trị cung cấp. Bạn có thể xem thông tin và
@@ -254,9 +253,7 @@ export function AssetsPage() {
                 </div>
             )}
             {listing.isPending ? (
-                <p className="list-state px-0 py-12" role="status">
-                    Đang tải tài nguyên…
-                </p>
+                <LoadingState>Đang tải tài nguyên…</LoadingState>
             ) : listing.isError ? (
                 <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(listing.error)} />
@@ -370,28 +367,38 @@ export function AssetsPage() {
                         </ul>
                     )}
                     {meta && meta.totalPages > 1 && (
-                        <nav
+                        <PaginationRoot
                             className="pagination mt-8 flex items-center justify-end gap-5 text-[length:var(--text-sm)] tabular-nums max-[760px]:justify-between max-[760px]:gap-2 max-[760px]:text-[length:var(--text-xs)] max-[760px]:[&_.button]:p-3 max-[760px]:[&_.button]:text-[length:var(--text-xs)]"
                             aria-label="Phân trang tài nguyên"
                         >
-                            <Button
-                                variant="secondary"
-                                disabled={query.page <= 1 || listing.isFetching}
-                                onClick={() => change({ page: String(query.page - 1) })}
-                            >
-                                Trang trước
-                            </Button>
-                            <span>
-                                Trang {query.page} / {meta.totalPages}
-                            </span>
-                            <Button
-                                variant="secondary"
-                                disabled={query.page >= meta.totalPages || listing.isFetching}
-                                onClick={() => change({ page: String(query.page + 1) })}
-                            >
-                                Trang sau
-                            </Button>
-                        </nav>
+                            <PaginationContent className="m-0 gap-3 p-0">
+                                <PaginationItem>
+                                    <Button
+                                        variant="secondary"
+                                        disabled={query.page <= 1 || listing.isFetching}
+                                        onClick={() => change({ page: String(query.page - 1) })}
+                                    >
+                                        Trang trước
+                                    </Button>
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <span>
+                                        Trang {query.page} / {meta.totalPages}
+                                    </span>
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <Button
+                                        variant="secondary"
+                                        disabled={
+                                            query.page >= meta.totalPages || listing.isFetching
+                                        }
+                                        onClick={() => change({ page: String(query.page + 1) })}
+                                    >
+                                        Trang sau
+                                    </Button>
+                                </PaginationItem>
+                            </PaginationContent>
+                        </PaginationRoot>
                     )}
                 </>
             )}

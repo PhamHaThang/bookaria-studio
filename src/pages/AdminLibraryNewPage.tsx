@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -163,7 +164,7 @@ export function AdminLibraryNewPage() {
                 }}
                 busy={mine.isFetching || categories.isFetching || detail.isFetching}
             />
-            {mine.isPending && <p role="status">Đang tải tài nguyên cá nhân…</p>}
+            {mine.isPending && <LoadingState>Đang tải tài nguyên cá nhân…</LoadingState>}
             {mine.isError && <Feedback error={errorMessage(mine.error)} />}
             {mine.isSuccess && (
                 <>
@@ -220,7 +221,9 @@ export function AdminLibraryNewPage() {
             )}
             <section className="admin-section mt-8">
                 {selected && !valid && <Feedback error="Mã tài nguyên chưa hợp lệ." />}
-                {valid && detail.isPending && <p role="status">Đang tải tài nguyên đã chọn…</p>}
+                {valid && detail.isPending && (
+                    <LoadingState>Đang tải tài nguyên đã chọn…</LoadingState>
+                )}
                 {(detail.isError || categories.isError) && (
                     <Feedback error={errorMessage(detail.error || categories.error)} />
                 )}

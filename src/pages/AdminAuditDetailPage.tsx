@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { adminDate, adminOperationsApi, auditLabel } from '../features/admin';
 import { AuditIdSchema } from '../features/admin/operations-api';
 import { auditTargetLink, operationsKeys, targetLabel } from '../features/admin/operations-model';
@@ -36,7 +37,7 @@ export function AdminAuditDetailPage() {
                 )}
             </div>
             {id === null && <Feedback error="Mã nhật ký phải là số nguyên dương hợp lệ." />}
-            {id !== null && detail.isPending && <p role="status">Đang tải nhật ký…</p>}
+            {id !== null && detail.isPending && <LoadingState>Đang tải nhật ký…</LoadingState>}
             {id !== null && detail.isError && <Feedback error={errorMessage(detail.error)} />}
             {log && (
                 <>

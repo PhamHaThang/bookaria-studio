@@ -1,146 +1,107 @@
 import { ArrowLeft, ArrowRight, Copy, Pencil, Trash2 } from 'lucide-react';
-import { useLayoutEffect, useRef } from 'react';
-import { Feedback } from '../../../shared/ui/Feedback';
+import { Feedback } from '@/shared/ui/Feedback';
+import {
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+} from '@/shared/ui/primitives/dropdown-menu';
 
 export function PageActionsMenu({
-    anchor,
     title,
     locked,
     first,
     last,
     error,
-    onClose,
     onRename,
     onMove,
     onDuplicate,
     onDelete,
 }: {
-    anchor: HTMLButtonElement;
     title: string;
     locked: boolean;
     first: boolean;
     last: boolean;
     error: string | null;
-    onClose: () => void;
     onRename: () => void;
     onMove: (direction: -1 | 1) => void;
     onDuplicate: () => void;
     onDelete: () => void;
 }) {
-    const menu = useRef<HTMLDivElement>(null);
-    useLayoutEffect(() => {
-        const node = menu.current;
-        if (!node) return;
-        node.showPopover();
-        function position() {
-            if (!node) return;
-            const rect = anchor.getBoundingClientRect();
-            const width = node.offsetWidth,
-                height = node.offsetHeight;
-            const viewport = document.documentElement;
-            const left = Math.max(
-                8,
-                Math.min(rect.left + rect.width / 2 - width / 2, viewport.clientWidth - width - 8),
-            );
-            const above = rect.top - height - 8;
-            const top =
-                above >= 8 ? above : Math.min(rect.bottom + 8, viewport.clientHeight - height - 8);
-            node.style.left = `${left}px`;
-            node.style.top = `${Math.max(8, top)}px`;
-        }
-        position();
-        const firstButton = node.querySelector<HTMLButtonElement>('button:not(:disabled)');
-        if (firstButton) firstButton.focus();
-        else node.focus();
-        const observer = new ResizeObserver(position);
-        observer.observe(node);
-        window.addEventListener('resize', position);
-        document.addEventListener('scroll', position, true);
-        return () => {
-            observer.disconnect();
-            window.removeEventListener('resize', position);
-            document.removeEventListener('scroll', position, true);
-            if (node.matches(':popover-open')) node.hidePopover();
-            if (document.contains(anchor)) anchor.focus();
-        };
-    }, [anchor]);
     return (
-        <div
+        <DropdownMenuContent
             id="page-actions-menu"
-            className="page-actions-popover fixed top-auto right-auto bottom-auto left-auto m-0 max-h-[calc(100dvh_-_16px)] w-56 max-w-[calc(100vw_-_16px)] overflow-y-auto rounded-[var(--radius-lg)] border border-border border-solid bg-surface p-[6px] text-[length:13px] text-foreground shadow-[var(--shadow-popover)] [&_button:disabled]:opacity-55.00000000000001 [&_button:hover]:bg-hover [&_button]:flex [&_button]:min-h-10 [&_button]:w-full [&_button]:items-center [&_button]:gap-[10px] [&_button]:rounded-[var(--radius-sm)] [&_button]:border-0 [&_button]:border-[transparent] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:px-[10px] [&_button]:py-2 [&_button]:text-left [&_button]:text-foreground"
-            ref={menu}
-            popover="auto"
-            role="menu"
-            tabIndex={-1}
+            side="top"
+            align="center"
+            sideOffset={8}
+            collisionPadding={8}
+            className="w-56"
             aria-label={title}
-            onToggle={(event) => {
-                if (event.newState === 'closed') onClose();
-            }}
-            onKeyDown={(event) => {
-                event.stopPropagation();
-                const buttons = Array.from(
-                    menu.current?.querySelectorAll<HTMLButtonElement>(
-                        'button[role="menuitem"]:not(:disabled)',
-                    ) || [],
-                );
-                if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+            onCloseAutoFocus={(event) => {
+                if (document.querySelector('[role=dialog],[role=alertdialog]'))
                     event.preventDefault();
-                    const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
-                    const next =
-                        event.key === 'Home'
-                            ? 0
-                            : event.key === 'End'
-                              ? buttons.length - 1
-                              : (index + (event.key === 'ArrowUp' ? -1 : 1) + buttons.length) %
-                                buttons.length;
-                    buttons[next]?.focus();
-                }
-                if (event.key === 'Tab') {
-                    event.preventDefault();
-                    onClose();
-                }
             }}
         >
-            <p className="page-actions-title wrap-anywhere m-0 px-[10px] pt-[6px] pb-2 text-[length:12px] text-muted-foreground">
-                {title}
-            </p>
-            <button type="button" role="menuitem" disabled={locked} onClick={onRename}>
-                <Pencil size={16} />
-                Đổi tên trang
-            </button>
-            <button
-                type="button"
-                role="menuitem"
-                disabled={locked || first}
-                onClick={() => onMove(-1)}
-            >
-                <ArrowLeft size={16} />
-                Đưa lên trước
-            </button>
-            <button
-                type="button"
-                role="menuitem"
-                disabled={locked || last}
-                onClick={() => onMove(1)}
-            >
-                <ArrowRight size={16} />
-                Đưa ra sau
-            </button>
-            <button type="button" role="menuitem" disabled={locked} onClick={onDuplicate}>
-                <Copy size={16} />
-                Nhân bản trang
-            </button>
-            <button
-                type="button"
-                role="menuitem"
-                className="page-menu-delete [.page-actions-popover_&]:text-destructive"
-                disabled={locked}
-                onClick={onDelete}
-            >
-                <Trash2 size={16} />
-                Xóa trang
-            </button>
+            <DropdownMenuLabel>{title}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+                <DropdownMenuItem
+                    disabled={locked}
+                    onSelect={(event) => {
+                        event.preventDefault();
+                        onRename();
+                    }}
+                >
+                    <Pencil />
+                    Đổi tên trang
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    disabled={locked || first}
+                    onSelect={(event) => {
+                        event.preventDefault();
+                        onMove(-1);
+                    }}
+                >
+                    <ArrowLeft />
+                    Đưa lên trước
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    disabled={locked || last}
+                    onSelect={(event) => {
+                        event.preventDefault();
+                        onMove(1);
+                    }}
+                >
+                    <ArrowRight />
+                    Đưa ra sau
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    disabled={locked}
+                    onSelect={(event) => {
+                        event.preventDefault();
+                        onDuplicate();
+                    }}
+                >
+                    <Copy />
+                    Nhân bản trang
+                </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+                <DropdownMenuItem
+                    variant="destructive"
+                    disabled={locked}
+                    onSelect={(event) => {
+                        event.preventDefault();
+                        onDelete();
+                    }}
+                >
+                    <Trash2 />
+                    Xóa trang
+                </DropdownMenuItem>
+            </DropdownMenuGroup>
             <Feedback error={error} />
-        </div>
+        </DropdownMenuContent>
     );
 }

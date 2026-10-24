@@ -1,9 +1,10 @@
 import { BookOpen, Check, Plus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import { Alert } from '../shared/ui/Alert';
@@ -34,7 +35,8 @@ export function StyleGuidePage() {
             <header className="theme-guide-header mb-12 flex items-center justify-between gap-6 max-[540px]:mb-8 max-[540px]:gap-3">
                 <Link
                     className="brand inline-flex items-center gap-3 font-bold text-[length:var(--text-2xl)] text-[var(--text-brand-strong)] no-underline [&_span]:border-l-[var(--border-width)] [&_span]:border-l-border [&_span]:pl-3 [&_span]:font-normal [&_span]:text-[length:var(--text-sm)] [&_span]:text-muted-foreground [&_span]:[border-left-style:solid] [.studio-topbar_&]:min-h-[66px] [.studio-topbar_&]:min-w-[222px] [.studio-topbar_&]:gap-2 [.studio-topbar_&]:self-stretch [.studio-topbar_&]:border-r-[1px] [.studio-topbar_&]:border-r-border [.studio-topbar_&]:bg-[var(--nav-ground)] [.studio-topbar_&]:px-5 [.studio-topbar_&]:py-4 [.studio-topbar_&]:text-[length:20px] [.studio-topbar_&]:text-foreground [.studio-topbar_&]:[border-right-style:solid] max-[700px]:[.studio-topbar_&]:mr-auto max-[1000px]:[.studio-topbar_&]:min-w-[190px] max-[700px]:[.studio-topbar_&]:min-w-0 max-[700px]:[.studio-topbar_&]:flex-[0_1_auto] max-[1000px]:[.studio-topbar_&]:px-[14px] max-[700px]:[.studio-topbar_&]:px-3 max-[1000px]:[.studio-topbar_&]:text-[length:18px] max-[700px]:[.studio-topbar_&]:text-[length:17px] [.studio-topbar_&_span]:border-[var(--nav-muted)] [.studio-topbar_&_span]:pl-2 [.studio-topbar_&_span]:text-[length:10px] [.studio-topbar_&_span]:text-[var(--nav-ink)] max-[700px]:[.studio-topbar_&_span]:hidden max-[760px]:[.studio-topbar_&_span]:hidden [.studio-topbar_&_svg]:text-primary max-[540px]:[.theme-guide-header_&_span]:hidden"
-                    to="/books"
+                    to="/"
+                    aria-label="Bookaria - Trang chủ"
                 >
                     <BookOpen size={25} aria-hidden="true" />
                     Bookaria<span>Studio</span>
@@ -88,13 +90,16 @@ export function StyleGuidePage() {
                     className="theme-guide-section border-b-[1px] border-b-border py-10 [border-bottom-style:solid] [scroll-margin-top:var(--space-6)] [&_>_p]:mx-0 [&_>_p]:mt-[calc(-1_*_var(--space-2))] [&_>_p]:mb-6 [&_>_p]:text-muted-foreground"
                     aria-labelledby="type-title"
                 >
-                    <h2 id="type-title">Be Vietnam Pro</h2>
-                    <p>Font được lưu cùng ứng dụng. Có sẵn bốn độ đậm: 400, 500, 600 và 700.</p>
+                    <h2 id="type-title">Bricolage Grotesque + Be Vietnam Pro</h2>
+                    <p>
+                        Bricolage Grotesque cho tiêu đề (600, 700). Be Vietnam Pro cho nội dung,
+                        nhãn và nút (400, 500, 600, 700). Cả hai font được lưu cùng ứng dụng.
+                    </p>
                     <div className="theme-type-samples border border-border border-solid bg-surface p-6 max-[540px]:p-5 [&_p:last-child]:mb-0 [&_p]:mx-0 [&_p]:mt-0 [&_p]:mb-4">
-                        <p className="theme-heading-sample font-semibold text-[length:var(--text-3xl)] leading-[var(--leading-tight)] max-[540px]:text-[length:var(--text-2xl)]">
+                        <p className="theme-heading-sample font-display font-semibold text-[length:var(--text-3xl)] leading-[var(--leading-tight)] max-[540px]:text-[length:var(--text-2xl)]">
                             Mỗi cuốn sách mở ra một thế giới.
                         </p>
-                        <p className="theme-subheading-sample font-semibold text-[length:var(--text-xl)]">
+                        <p className="theme-subheading-sample font-display font-semibold text-[length:var(--text-xl)]">
                             Không gian sáng tạo của bạn
                         </p>
                         <p>Khám phá, sáng tạo và chia sẻ những câu chuyện đầy cảm hứng.</p>
@@ -184,11 +189,15 @@ export function StyleGuidePage() {
                                 <Field orientation="contents">
                                     <FieldLabel htmlFor="sample-format">
                                         Khổ sách
-                                        <NativeSelect id="sample-format" name="format">
-                                            <option>A4</option>
-                                            <option>A5</option>
-                                            <option>Hình vuông</option>
-                                        </NativeSelect>
+                                        <FormSelect
+                                            id="sample-format"
+                                            name="format"
+                                            options={[
+                                                { value: 'A4', label: 'A4' },
+                                                { value: 'A5', label: 'A5' },
+                                                { value: 'Hình vuông', label: 'Hình vuông' },
+                                            ]}
+                                        />
                                     </FieldLabel>
                                 </Field>
                             </div>
@@ -243,7 +252,7 @@ export function StyleGuidePage() {
                             </Field>
                             <Field orientation="contents">
                                 <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                    <input type="checkbox" name="remember" />
+                                    <Checkbox name="remember" />
                                     Ghi nhớ lựa chọn mẫu
                                 </FieldLabel>
                             </Field>

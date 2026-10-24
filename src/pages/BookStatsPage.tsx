@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { useAuth } from '../features/auth';
 import { bookKeys, booksApi } from '../features/books';
 import { rangeLabels, readStatsRange, statsApi, statsKey } from '../features/stats';
@@ -55,27 +56,27 @@ export function BookStatsPage() {
                 </div>
                 <Link to="/stats">Chọn sách khác</Link>
             </div>
-            <div className="stats-toolbar mb-6 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch max-[640px]:[&_button]:[align-self:flex-start] [&_label]:m-0 max-[640px]:[&_label]:w-full max-[640px]:[&_label]:min-w-0 [&_select]:min-w-40 max-[640px]:[&_select]:w-full max-[640px]:[&_select]:min-w-0">
+            <div className="stats-toolbar mb-6 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_[data-slot=select-trigger]]:min-w-40 max-[640px]:[&_[data-slot=select-trigger]]:w-full max-[640px]:[&_[data-slot=select-trigger]]:min-w-0 max-[640px]:[&_button]:[align-self:flex-start] [&_label]:m-0 max-[640px]:[&_label]:w-full max-[640px]:[&_label]:min-w-0">
                 <Field orientation="contents">
                     <FieldLabel htmlFor="stats-range">
                         Khoảng thời gian
-                        <NativeSelect
+                        <FormSelect
                             id="stats-range"
                             value={range}
-                            onChange={(event) =>
+                            onValueChange={(value) =>
                                 setParams((current) => {
                                     const next = new URLSearchParams(current);
-                                    next.set('range', event.target.value);
+                                    next.set('range', value);
                                     return next;
                                 })
                             }
-                        >
-                            {Object.entries(rangeLabels).map(([value, label]) => (
-                                <option key={value} value={value}>
-                                    {label}
-                                </option>
-                            ))}
-                        </NativeSelect>
+                            options={[
+                                ...(Object.entries(rangeLabels).map(([value, label]) => ({
+                                    value: value,
+                                    label: label,
+                                })) ?? []),
+                            ]}
+                        />
                     </FieldLabel>
                 </Field>
                 <Button
@@ -90,7 +91,7 @@ export function BookStatsPage() {
                     Cập nhật số liệu
                 </Button>
             </div>
-            {pending && <p role="status">Đang tải thống kê…</p>}
+            {pending && <LoadingState>Đang tải thống kê…</LoadingState>}
             {failed && (
                 <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(detail.error || stats.error)} />

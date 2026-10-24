@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { ImageUploadEditor } from '../features/assets';
 import { auth, useAuth } from '../features/auth';
 import { BookForm, bookKeys, bookStatusLabels, booksApi, updateBookForm } from '../features/books';
@@ -56,7 +57,7 @@ function BookDetailContent({ bookId }: { bookId: string }) {
                 <Link to="/books">Về sách của tôi</Link>
             </>
         );
-    if (detail.isPending) return <p role="status">Đang tải thông tin sách…</p>;
+    if (detail.isPending) return <LoadingState>Đang tải thông tin sách…</LoadingState>;
     if (detail.isError && !detail.data)
         return (
             <>

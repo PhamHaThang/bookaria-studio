@@ -2,9 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
+import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import {
     adminApi,
@@ -26,7 +29,6 @@ import {
 } from '../shared/contracts/api/admin.schema';
 import { IdSchema } from '../shared/contracts/common.schema';
 import { Badge } from '../shared/ui/Badge';
-import { ConfirmDialog } from '../shared/ui/ConfirmDialog';
 import { Feedback } from '../shared/ui/Feedback';
 
 function UserEditor({
@@ -84,31 +86,31 @@ function UserEditor({
                         <Field orientation="contents">
                             <FieldLabel htmlFor="edit-role">
                                 Vai trò
-                                <NativeSelect
+                                <FormSelect
                                     id="edit-role"
                                     disabled={self}
                                     value={role}
-                                    onChange={(event) => setRole(event.target.value as typeof role)}
-                                >
-                                    <option value="AUTHOR">Tác giả</option>
-                                    <option value="ADMIN">Quản trị viên</option>
-                                </NativeSelect>
+                                    onValueChange={(value) => setRole(value as typeof role)}
+                                    options={[
+                                        { value: 'AUTHOR', label: 'Tác giả' },
+                                        { value: 'ADMIN', label: 'Quản trị viên' },
+                                    ]}
+                                />
                             </FieldLabel>
                         </Field>
                         <Field orientation="contents">
                             <FieldLabel htmlFor="edit-status">
                                 Trạng thái
-                                <NativeSelect
+                                <FormSelect
                                     id="edit-status"
                                     disabled={self}
                                     value={status}
-                                    onChange={(event) =>
-                                        setStatus(event.target.value as typeof status)
-                                    }
-                                >
-                                    <option value="ACTIVE">Hoạt động</option>
-                                    <option value="LOCKED">Đã khóa</option>
-                                </NativeSelect>
+                                    onValueChange={(value) => setStatus(value as typeof status)}
+                                    options={[
+                                        { value: 'ACTIVE', label: 'Hoạt động' },
+                                        { value: 'LOCKED', label: 'Đã khóa' },
+                                    ]}
+                                />
                             </FieldLabel>
                         </Field>
                         <Field orientation="contents">
@@ -152,15 +154,17 @@ function UserEditor({
                 </FieldGroup>
             </form>
             {draft && (
-                <ConfirmDialog
+                <ConfirmationDialog
+                    description={
+                        <>
+                            {target.displayName} — {target.email}
+                        </>
+                    }
                     title="Xác nhận thay đổi tài khoản"
                     busy={action.busy}
                     className="admin-confirm [&_p]:wrap-anywhere max-h-[calc(100dvh_-_32px)] max-w-[min(480px,_calc(100%_-_32px))] overflow-y-auto [&_p]:[white-space:pre-wrap]"
                     onClose={() => setDraft(null)}
                 >
-                    <p>
-                        {target.displayName} — {target.email}
-                    </p>
                     {draft.role && (
                         <p>
                             Vai trò: {roleLabel[target.role]} → {roleLabel[draft.role]}.{' '}
@@ -186,33 +190,41 @@ function UserEditor({
                     {draft.reason && <p>Lý do: {draft.reason}</p>}
                     <Feedback error={action.error} />
                     <div className="admin-actions flex flex-wrap items-center gap-3 max-[640px]:flex-col max-[640px]:items-stretch [.admin-confirm_&]:mt-5">
-                        <Button
-                            fullWidth
-                            type="button"
-                            disabled={action.busy || action.uncertain}
-                            onClick={() =>
-                                void action.run(
-                                    () => adminApi.updateUser(target.id, draft),
-                                    () => {
-                                        setDraft(null);
-                                        onSaved();
-                                    },
-                                )
-                            }
+                        <AlertDialogCancel variant="plain" asChild>
+                            <Button
+                                fullWidth
+                                type="button"
+                                disabled={action.busy || action.uncertain}
+                                onClick={() =>
+                                    void action.run(
+                                        () => adminApi.updateUser(target.id, draft),
+                                        () => {
+                                            setDraft(null);
+                                            onSaved();
+                                        },
+                                    )
+                                }
+                            >
+                                {action.busy ? 'Đang lưu…' : 'Xác nhận lưu thay đổi'}
+                            </Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="plain"
+                            asChild
+                            onClick={(event) => event.preventDefault()}
                         >
-                            {action.busy ? 'Đang lưu…' : 'Xác nhận lưu thay đổi'}
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            fullWidth
-                            type="button"
-                            disabled={action.busy}
-                            onClick={() => setDraft(null)}
-                        >
-                            Quay lại
-                        </Button>
+                            <Button
+                                variant="secondary"
+                                fullWidth
+                                type="button"
+                                disabled={action.busy}
+                                onClick={() => setDraft(null)}
+                            >
+                                Quay lại
+                            </Button>
+                        </AlertDialogAction>
                     </div>
-                </ConfirmDialog>
+                </ConfirmationDialog>
             )}
         </section>
     );
@@ -243,7 +255,7 @@ export function AdminUserDetailPage() {
         <>
             <Link to="/admin/users">Về danh sách người dùng</Link>
             <Feedback success={success} />
-            {query.isPending && <p role="status">Đang tải tài khoản…</p>}
+            {query.isPending && <LoadingState>Đang tải tài khoản…</LoadingState>}
             {query.isError && (
                 <>
                     <Feedback error={errorMessage(query.error)} />

@@ -2,9 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Play, RefreshCw, Search, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
+import { Button as ActionButton } from '@/shared/ui/primitives/button';
+import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset } from '../../../shared/contracts/dto.schema';
 import type { AssetType } from '../../../shared/contracts/enums.schema';
@@ -68,7 +71,7 @@ export function AssetPicker({
     });
     return (
         <ConfirmDialog
-            className="scene-asset-picker w-[min(1160px,_calc(100vw_-_48px))] max-w-290 rounded-[20px] [&_input]:m-0 [&_label]:m-0 [&_select]:m-0 [.confirm-dialog&[data-state=open]]:flex [.confirm-dialog&[data-state=open]]:max-h-[calc(100dvh_-_32px)] [.confirm-dialog&[data-state=open]]:w-[min(1160px,_calc(100vw_-_48px))] [.confirm-dialog&[data-state=open]]:max-w-290 [.confirm-dialog&[data-state=open]]:flex-col [.confirm-dialog&[data-state=open]]:overflow-hidden max-[760px]:[.confirm-dialog&[data-state=open]]:w-[calc(100vw_-_20px)] max-[760px]:[.confirm-dialog&[data-state=open]]:max-w-[calc(100vw_-_20px)] [.confirm-dialog&]:min-h-140 [.confirm-dialog&]:w-[min(1160px,_calc(100vw_-_48px))] [.confirm-dialog&]:max-w-290 [.confirm-dialog&]:rounded-[20px] [.confirm-dialog&]:p-[26px] max-[760px]:[.confirm-dialog&]:w-[calc(100vw_-_20px)] max-[600px]:[.confirm-dialog&]:p-5 max-[760px]:[.confirm-dialog&]:p-[18px]"
+            className="scene-asset-picker w-[min(1160px,_calc(100vw_-_48px))] max-w-290 rounded-[20px] [&_[data-slot=select-trigger]]:m-0 [&_input]:m-0 [&_label]:m-0 [.confirm-dialog&[data-state=open]]:flex [.confirm-dialog&[data-state=open]]:max-h-[calc(100dvh_-_32px)] [.confirm-dialog&[data-state=open]]:w-[min(1160px,_calc(100vw_-_48px))] [.confirm-dialog&[data-state=open]]:max-w-290 [.confirm-dialog&[data-state=open]]:flex-col [.confirm-dialog&[data-state=open]]:overflow-hidden max-[760px]:[.confirm-dialog&[data-state=open]]:w-[calc(100vw_-_20px)] max-[760px]:[.confirm-dialog&[data-state=open]]:max-w-[calc(100vw_-_20px)] [.confirm-dialog&]:min-h-140 [.confirm-dialog&]:w-[min(1160px,_calc(100vw_-_48px))] [.confirm-dialog&]:max-w-290 [.confirm-dialog&]:rounded-[20px] [.confirm-dialog&]:p-[26px] max-[760px]:[.confirm-dialog&]:w-[calc(100vw_-_20px)] max-[600px]:[.confirm-dialog&]:p-5 max-[760px]:[.confirm-dialog&]:p-[18px]"
             title={`Chọn ${assetTypeLabels[type].charAt(0).toLowerCase()}${assetTypeLabels[type].slice(1)}`}
             busy={busy}
             onClose={onClose}
@@ -86,7 +89,8 @@ export function AssetPicker({
                             ['mine', 'Tài nguyên của tôi'],
                         ] as const
                     ).map(([value, label]) => (
-                        <button
+                        <ActionButton
+                            variant="plain"
                             type="button"
                             key={value}
                             aria-pressed={scope === value}
@@ -96,7 +100,7 @@ export function AssetPicker({
                             }}
                         >
                             {label}
-                        </button>
+                        </ActionButton>
                     ))}
                 </fieldset>
                 <Field orientation="contents">
@@ -116,36 +120,35 @@ export function AssetPicker({
                     </FieldLabel>
                 </Field>
             </div>
-            <div className="library-options flex flex-wrap items-center gap-4 px-0 py-5 max-[760px]:gap-3 [&_label]:m-0 [&_label]:text-[length:12px] [&_select]:min-h-9 [&_select]:text-[length:12px]">
+            <div className="library-options flex flex-wrap items-center gap-4 px-0 py-5 max-[760px]:gap-3 [&_[data-slot=select-trigger]]:min-h-9 [&_[data-slot=select-trigger]]:text-[length:12px] [&_label]:m-0 [&_label]:text-[length:12px]">
                 <Field orientation="contents">
                     <FieldLabel>
                         Danh mục
-                        <NativeSelect
+                        <FormSelect
                             value={categoryId}
                             disabled={busy}
-                            onChange={(event) => {
-                                setCategoryId(event.currentTarget.value);
+                            onValueChange={(value) => {
+                                setCategoryId(value);
                                 setPage(1);
                             }}
-                        >
-                            <option value="">Tất cả danh mục</option>
-                            {categories.data?.map((category) => (
-                                <option value={category.id} key={category.id}>
-                                    {category.name}
-                                </option>
-                            ))}
-                        </NativeSelect>
+                            options={[
+                                { value: '', label: 'Tất cả danh mục' },
+                                ...(categories.data?.map((category) => ({
+                                    value: category.id,
+                                    label: category.name,
+                                })) ?? []),
+                            ]}
+                        />
                     </FieldLabel>
                 </Field>
                 {type === 'MODEL' && (
                     <Field orientation="contents">
                         <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                            <input
-                                type="checkbox"
+                            <Checkbox
                                 checked={hasAnimation}
                                 disabled={busy}
-                                onChange={(event) => {
-                                    setHasAnimation(event.currentTarget.checked);
+                                onCheckedChange={(checked) => {
+                                    setHasAnimation(checked === true);
                                     setPage(1);
                                 }}
                             />
@@ -177,7 +180,7 @@ export function AssetPicker({
                     Chưa tải được danh mục. Bạn vẫn có thể tìm và chọn tài nguyên.
                 </p>
             )}
-            {list.isPending && <p role="status">Đang tải tài nguyên…</p>}
+            {list.isPending && <LoadingState>Đang tải tài nguyên…</LoadingState>}
             {list.isError && (
                 <>
                     <Feedback error={errorMessage(list.error)} />

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -73,7 +74,7 @@ export function StatsBooksPage() {
                     <Button type="submit">Tìm sách</Button>
                 </FieldGroup>
             </form>
-            {list.isPending && <p role="status">Đang tải sách…</p>}
+            {list.isPending && <LoadingState>Đang tải sách…</LoadingState>}
             {list.isError && (
                 <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(list.error)} />

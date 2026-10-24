@@ -7,7 +7,9 @@ export function validateNewPassword(password: string, confirmation: string): str
 }
 export function safeReturnPath(value: unknown): string {
     return typeof value === 'string' &&
-        /^\/(?:books|assets|profile)(?:[/?#]|$)/.test(value) &&
+        /^\/(?:books|assets|profile|admin|stats|notifications|check-email)(?:[/?#]|$)/.test(
+            value,
+        ) &&
         !value.includes('\\')
         ? value
         : '/books';

@@ -2,8 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingState } from '@/shared/ui/LoadingState';
+import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import {
     adminApi,
@@ -23,7 +26,6 @@ import {
 } from '../shared/contracts/api/admin.schema';
 import { IdSchema } from '../shared/contracts/common.schema';
 import { Badge } from '../shared/ui/Badge';
-import { ConfirmDialog } from '../shared/ui/ConfirmDialog';
 import { Feedback } from '../shared/ui/Feedback';
 
 type BookAction = 'takedown' | 'reinstate' | 'dismiss';
@@ -80,21 +82,24 @@ function BookActions({
                         <Field orientation="contents">
                             <FieldLabel htmlFor="book-action">
                                 Thao tác
-                                <NativeSelect
+                                <FormSelect
                                     id="book-action"
                                     value={kind}
-                                    onChange={(event) => setKind(event.target.value as BookAction)}
-                                >
-                                    {!data.book.takenDown && (
-                                        <option value="takedown">Gỡ sách</option>
-                                    )}
-                                    {data.book.takenDown && (
-                                        <option value="reinstate">Khôi phục sách</option>
-                                    )}
-                                    <option value="dismiss" disabled={!open}>
-                                        Bỏ qua báo cáo đang mở ({open})
-                                    </option>
-                                </NativeSelect>
+                                    onValueChange={(value) => setKind(value as BookAction)}
+                                    options={[
+                                        ...(!data.book.takenDown
+                                            ? [{ value: 'takedown', label: 'Gỡ sách' }]
+                                            : []),
+                                        ...(data.book.takenDown
+                                            ? [{ value: 'reinstate', label: 'Khôi phục sách' }]
+                                            : []),
+                                        {
+                                            value: 'dismiss',
+                                            label: <>Bỏ qua báo cáo đang mở ({open})</>,
+                                            disabled: !open,
+                                        },
+                                    ]}
+                                />
                             </FieldLabel>
                         </Field>
                         <Field orientation="contents">
@@ -118,13 +123,13 @@ function BookActions({
                 </FieldGroup>
             </form>
             {draft && (
-                <ConfirmDialog
+                <ConfirmationDialog
+                    description={<> Sách: {data.book.title} </>}
                     title={`Xác nhận: ${actionLabel[draft.kind].toLowerCase()}`}
                     busy={action.busy}
                     className="admin-confirm [&_p]:wrap-anywhere max-h-[calc(100dvh_-_32px)] max-w-[min(480px,_calc(100%_-_32px))] overflow-y-auto [&_p]:[white-space:pre-wrap]"
                     onClose={() => setDraft(null)}
                 >
-                    <p>Sách: {data.book.title}</p>
                     <p>
                         {draft.kind === 'takedown'
                             ? 'Sách sẽ chuyển sang riêng tư; tất cả báo cáo đang mở được đánh dấu đã xử lý. Tác giả nhận thông báo.'
@@ -135,53 +140,61 @@ function BookActions({
                     {draft.note && <p>Lý do / ghi chú: {draft.note}</p>}
                     <Feedback error={action.error} />
                     <div className="admin-actions flex flex-wrap items-center gap-3 max-[640px]:flex-col max-[640px]:items-stretch [.admin-confirm_&]:mt-5">
-                        <Button
-                            fullWidth
-                            type="button"
-                            disabled={action.busy || action.uncertain}
-                            onClick={() =>
-                                void action.run(
-                                    async () => {
-                                        if (draft.kind === 'takedown')
-                                            await adminApi.takedown(data.book.id, {
-                                                reason: draft.note,
-                                            });
-                                        else if (draft.kind === 'reinstate')
-                                            await adminApi.reinstate(data.book.id, {
-                                                note: draft.note,
-                                            });
-                                        else
-                                            await adminApi.dismiss(data.book.id, {
-                                                note: draft.note,
-                                            });
-                                    },
-                                    () => {
-                                        setDraft(null);
-                                        setNote('');
-                                        onSaved(
-                                            'Đã hoàn tất: ' +
-                                                actionLabel[draft.kind].toLowerCase() +
-                                                '.',
-                                        );
-                                    },
-                                )
-                            }
+                        <AlertDialogCancel variant="plain" asChild>
+                            <Button
+                                fullWidth
+                                type="button"
+                                disabled={action.busy || action.uncertain}
+                                onClick={() =>
+                                    void action.run(
+                                        async () => {
+                                            if (draft.kind === 'takedown')
+                                                await adminApi.takedown(data.book.id, {
+                                                    reason: draft.note,
+                                                });
+                                            else if (draft.kind === 'reinstate')
+                                                await adminApi.reinstate(data.book.id, {
+                                                    note: draft.note,
+                                                });
+                                            else
+                                                await adminApi.dismiss(data.book.id, {
+                                                    note: draft.note,
+                                                });
+                                        },
+                                        () => {
+                                            setDraft(null);
+                                            setNote('');
+                                            onSaved(
+                                                'Đã hoàn tất: ' +
+                                                    actionLabel[draft.kind].toLowerCase() +
+                                                    '.',
+                                            );
+                                        },
+                                    )
+                                }
+                            >
+                                {action.busy
+                                    ? 'Đang xử lý…'
+                                    : `Xác nhận ${actionLabel[draft.kind].toLowerCase()}`}
+                            </Button>
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="plain"
+                            asChild
+                            onClick={(event) => event.preventDefault()}
                         >
-                            {action.busy
-                                ? 'Đang xử lý…'
-                                : `Xác nhận ${actionLabel[draft.kind].toLowerCase()}`}
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            fullWidth
-                            type="button"
-                            disabled={action.busy}
-                            onClick={() => setDraft(null)}
-                        >
-                            Quay lại
-                        </Button>
+                            <Button
+                                variant="secondary"
+                                fullWidth
+                                type="button"
+                                disabled={action.busy}
+                                onClick={() => setDraft(null)}
+                            >
+                                Quay lại
+                            </Button>
+                        </AlertDialogAction>
                     </div>
-                </ConfirmDialog>
+                </ConfirmationDialog>
             )}
         </section>
     );
@@ -210,7 +223,7 @@ export function AdminBookDetailPage() {
         <>
             <Link to="/admin/moderation">Về báo cáo chờ xử lý</Link>
             <Feedback success={success} />
-            {query.isPending && <p role="status">Đang tải sách…</p>}
+            {query.isPending && <LoadingState>Đang tải sách…</LoadingState>}
             {query.isError && (
                 <>
                     <Feedback error={errorMessage(query.error)} />
