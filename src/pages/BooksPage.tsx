@@ -16,6 +16,7 @@ import type { BookSummary } from '../shared/contracts/dto.schema';
 import { formatDate } from '../shared/lib/format';
 import { ConfirmDialog } from '../shared/ui/ConfirmDialog';
 import { Feedback } from '../shared/ui/Feedback';
+import '../features/books/ui/creation.css';
 
 export function BooksPage({ trash = false }: { trash?: boolean }) {
     const { user } = useAuth();
@@ -196,7 +197,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                     ? 'Những sách được chuyển vào thùng rác sẽ xuất hiện ở đây.'
                                     : query.q || query.status
                                       ? 'Thử tên khác hoặc xem tất cả trạng thái.'
-                                      : 'Tạo một cuốn sách trống và chọn khổ giấy phù hợp.'}
+                                      : 'Tạo sách trống hoặc nhập PDF, ảnh để bắt đầu cuốn sách của bạn.'}
                             </p>
                             {!trash &&
                                 (query.q || query.status ? (
@@ -214,7 +215,15 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                 ))}
                         </section>
                     ) : (
-                        <ul className="book-list">
+                        <ul className={trash ? 'book-list' : 'book-list book-gallery'}>
+                            {!trash && (
+                                <li className="book-create-card">
+                                    <Link to="/books/new">
+                                        <Plus size={32} aria-hidden="true" />
+                                        <span>Tạo sách mới</span>
+                                    </Link>
+                                </li>
+                            )}
                             {listing.data.data.map((book) => (
                                 <li
                                     className={trash ? 'book-row trash-row' : 'book-row'}

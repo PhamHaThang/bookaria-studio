@@ -128,7 +128,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
         }, 'Đã lưu tên trang.');
     }
     return (
-        <>
+        <div className="page-editor-screen" data-mode={mode}>
             <div className="page-heading">
                 <div>
                     <Link className="back-link" to={`/books/${book.id}`}>
@@ -170,6 +170,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                     book={book}
                     disabled={busy || imageBusy || scoring}
                     onBusyChange={setSceneBusy}
+                    onRecognition={() => setMode('page')}
                 />
             </div>
             <div hidden={mode !== 'page'}>
@@ -497,7 +498,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 }
 

@@ -6,6 +6,7 @@ import { defineConfig, loadEnv } from 'vite';
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
     plugins: [react(), tailwindcss()],
+    optimizeDeps: { entries: ['src/main.tsx'] },
     resolve: {
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url)),

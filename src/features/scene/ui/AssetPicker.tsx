@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { Play, RefreshCw, Search, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset } from '../../../shared/contracts/dto.schema';
 import type { AssetType } from '../../../shared/contracts/enums.schema';
@@ -26,10 +28,16 @@ export function AssetPicker({
     onClose: () => void;
 }) {
     const { user } = useAuth();
-    const [scope, setScope] = useState<'mine' | 'library'>('mine'),
+    const [scope, setScope] = useState<'mine' | 'library'>('library'),
         [search, setSearch] = useState(''),
         [query, setQuery] = useState(''),
         [page, setPage] = useState(1);
+    const [categoryId, setCategoryId] = useState(''),
+        [hasAnimation, setHasAnimation] = useState(false);
+    const categories = useQuery({
+        queryKey: assetKeys.categories(user?.id || ''),
+        queryFn: ({ signal }) => assetsApi.categories(signal),
+    });
     const [busy, setBusy] = useState(false),
         [error, setError] = useState<string | null>(null);
     const controller = useRef<AbortController | null>(null);
@@ -41,11 +49,19 @@ export function AssetPicker({
         }, 300);
         return () => clearTimeout(timeout);
     }, [search]);
-    const input = { scope, type, q: query || undefined, page, limit: 8 };
+    const input = {
+        scope,
+        type,
+        q: query || undefined,
+        categoryId: categoryId || undefined,
+        hasAnimation: type === 'MODEL' && hasAnimation ? true : undefined,
+        page,
+        limit: 12,
+    };
     const list = useQuery({
         queryKey: assetKeys.list(user?.id || '', input),
         queryFn: ({ signal }) => assetsApi.list(input, signal),
-        refetchOnWindowFocus: false,
+        refetchOnWindowFocus: true,
     });
     return (
         <ConfirmDialog
@@ -54,34 +70,98 @@ export function AssetPicker({
             busy={busy}
             onClose={onClose}
         >
-            <p>Chọn tài nguyên của bạn hoặc thư viện chung. Chỉ tệp sẵn sàng mới dùng được.</p>
             <Feedback error={error} />
-            <fieldset className="asset-picker-filters" disabled={busy}>
-                <label htmlFor="picker-scope">
-                    Nguồn
-                    <select
-                        id="picker-scope"
-                        value={scope}
-                        onChange={(event) => {
-                            setScope(event.currentTarget.value as typeof scope);
-                            setPage(1);
-                        }}
-                    >
-                        <option value="mine">Tài nguyên của tôi</option>
-                        <option value="library">Thư viện chung</option>
-                    </select>
-                </label>
-                <label htmlFor="picker-search">
-                    Tìm tài nguyên
+            <div className="library-tools">
+                <fieldset className="library-sources" aria-label="Nguồn tài nguyên" disabled={busy}>
+                    {(
+                        [
+                            ['library', 'Thư viện chung'],
+                            ['mine', 'Tài nguyên của tôi'],
+                        ] as const
+                    ).map(([value, label]) => (
+                        <button
+                            type="button"
+                            key={value}
+                            aria-pressed={scope === value}
+                            onClick={() => {
+                                setScope(value);
+                                setPage(1);
+                            }}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </fieldset>
+                <label className="library-search">
+                    <Search size={17} />
+                    <span className="sr-only">Tìm tài nguyên</span>
                     <input
-                        id="picker-search"
                         type="search"
+                        placeholder="Tìm tài nguyên…"
                         value={search}
                         maxLength={100}
+                        disabled={busy}
                         onChange={(event) => setSearch(event.currentTarget.value)}
                     />
                 </label>
-            </fieldset>
+            </div>
+            <div className="library-options">
+                <label>
+                    Danh mục
+                    <select
+                        value={categoryId}
+                        disabled={busy}
+                        onChange={(event) => {
+                            setCategoryId(event.currentTarget.value);
+                            setPage(1);
+                        }}
+                    >
+                        <option value="">Tất cả danh mục</option>
+                        {categories.data?.map((category) => (
+                            <option value={category.id} key={category.id}>
+                                {category.name}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+                {type === 'MODEL' && (
+                    <label className="checkbox">
+                        <input
+                            type="checkbox"
+                            checked={hasAnimation}
+                            disabled={busy}
+                            onChange={(event) => {
+                                setHasAnimation(event.currentTarget.checked);
+                                setPage(1);
+                            }}
+                        />
+                        <Play size={16} />
+                        Có animation
+                    </label>
+                )}
+                <Link
+                    className="library-upload"
+                    to="/assets/upload"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    <Upload size={18} />
+                    Tải tài nguyên lên
+                </Link>
+                <Button
+                    variant="ghost"
+                    aria-label="Làm mới thư viện"
+                    disabled={busy || list.isFetching}
+                    onClick={() => void list.refetch()}
+                >
+                    <RefreshCw size={17} />
+                </Button>
+            </div>
+            {categories.isError && (
+                <p className="field-hint">
+                    Chưa tải được danh mục. Bạn vẫn có thể tìm và chọn tài nguyên.
+                </p>
+            )}
             {list.isPending && <p role="status">Đang tải tài nguyên…</p>}
             {list.isError && (
                 <>
@@ -100,7 +180,7 @@ export function AssetPicker({
                 <>
                     <ul className="scene-picker-list">
                         {list.data.data.map((asset) => (
-                            <li key={asset.id}>
+                            <li key={asset.id} data-asset-id={asset.id}>
                                 <AssetThumbnail asset={asset} />
                                 <div>
                                     <strong>{asset.name}</strong>

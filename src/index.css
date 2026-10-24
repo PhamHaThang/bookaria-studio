@@ -5,6 +5,7 @@
 @import "./shared/theme/components.css";
 @import "./features/auth/ui/auth.css";
 @import "./app/studio.css";
+@import "./app/redesign.css";
 
 /* Tailwind utilities reference the same semantic tokens as regular CSS. */
 @theme inline {

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { apiClient } from '../../../shared/api/client';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Page } from '../../../shared/contracts/dto.schema';
-import type { Scene, SceneWarning } from '../../../shared/contracts/scene.schema';
+import type { SceneWarning } from '../../../shared/contracts/scene.schema';
 import { assetKeys } from '../../assets';
 import { auth, useAuth } from '../../auth';
 import { bookKeys } from '../../books';
@@ -12,13 +12,15 @@ import { uncertainWrite } from '../../pages/model/operations';
 import { createSceneApi } from '../api/scene-api';
 import { sceneFingerprint, validatedScene } from './objects';
 import { isSceneConflict, reconcileSave, type SaveAttempt } from './save-state';
+import { useSceneHistory } from './use-scene-history';
 
 const sceneApi = createSceneApi(apiClient);
 export function useSceneDraft(page: Page) {
     const { user } = useAuth(),
         cache = useQueryClient();
     const [base, setBase] = useState<SaveAttempt>({ scene: page.scene, revision: page.revision });
-    const [draft, setDraft] = useState<Scene>(() => structuredClone(page.scene));
+    const history = useSceneHistory(page.scene);
+    const { draft, setDraft } = history;
     const [busy, setBusy] = useState(false),
         [conflict, setConflict] = useState(false),
         [uncertain, setUncertain] = useState<SaveAttempt | null>(null);
@@ -43,12 +45,12 @@ export function useSceneDraft(page: Page) {
             return;
         }
         setBase({ scene: page.scene, revision: page.revision });
-        setDraft(structuredClone(page.scene));
-    }, [page.scene, page.revision, base.revision, dirty, busy, uncertain]);
+        history.reset(page.scene);
+    }, [page.scene, page.revision, base.revision, dirty, busy, uncertain, history.reset]);
     const currentSession = () => alive.current && auth.store.getState().user?.id === user?.id;
     function remember(value: SaveAttempt, updatedAt?: string) {
         setBase(value);
-        setDraft(structuredClone(value.scene));
+        if (sceneFingerprint(value.scene) !== sceneFingerprint(draft)) history.reset(value.scene);
         setConflict(false);
         setUncertain(null);
         cache.setQueryData<Page>(pageKeys.detail(user?.id || '', page.id), (current) =>
@@ -149,6 +151,7 @@ export function useSceneDraft(page: Page) {
         }
     }
     return {
+        ...history,
         draft,
         setDraft,
         busy,

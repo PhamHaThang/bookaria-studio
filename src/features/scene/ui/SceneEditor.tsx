@@ -1,6 +1,36 @@
-import clsx from 'clsx';
-import { ArrowDown, ArrowUp, Box, Copy, EyeOff, LockKeyhole, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import {
+    ArrowDown,
+    ArrowLeft,
+    ArrowUp,
+    Box,
+    CircleHelp,
+    Copy,
+    Download,
+    Eye,
+    EyeOff,
+    Image,
+    Layers,
+    LockKeyhole,
+    MousePointer2,
+    Pencil,
+    QrCode,
+    Redo2,
+    RefreshCw,
+    Save,
+    Send,
+    Settings2,
+    Tag,
+    Trash2,
+    Type,
+    Undo2,
+    Upload,
+    Video,
+    Volume2,
+    X,
+    Zap,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset, BookDetail, Page } from '../../../shared/contracts/dto.schema';
 import {
@@ -14,6 +44,7 @@ import { Button } from '../../../shared/ui/Button';
 import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { PreviewPanel } from '../../preview/ui/PreviewPanel';
+import { PublicationPanel } from '../../publication/ui/PublicationPanel';
 import {
     addObject,
     duplicateObject,
@@ -21,50 +52,65 @@ import {
     newObject,
     objectAssetTypes,
     objectLabels,
-    previewPosition,
     removeObject,
     replaceObjectAsset,
     usesAsset,
 } from '../model/objects';
+import { useSceneAssets } from '../model/use-scene-assets';
 import { useSceneDraft } from '../model/use-scene-draft';
 import { AssetPicker } from './AssetPicker';
 import { InteractionEditor } from './InteractionEditor';
 import { NavigationGuard } from './NavigationGuard';
 import { ObjectEditor } from './ObjectEditor';
 import { PageSettingsEditor } from './PageSettingsEditor';
+import { PageStrip } from './PageStrip';
+import { SceneCanvas } from './SceneCanvas';
 import './scene.css';
+import './assemblr.css';
 
 export function SceneEditor({
     page,
     book,
     disabled,
     onBusyChange,
+    onRecognition,
 }: {
     page: Page;
     book: BookDetail;
     disabled: boolean;
     onBusyChange: (busy: boolean) => void;
+    onRecognition: () => void;
 }) {
     const editor = useSceneDraft(page);
     const [selectedId, setSelectedId] = useState(page.scene.objects[0]?.id || '');
-    const [kind, setKind] = useState<SceneObjectType>('text'),
-        [picker, setPicker] = useState<{
-            type: keyof typeof objectAssetTypes;
-            replace?: string;
-        } | null>(null);
+    const [picker, setPicker] = useState<{
+        type: keyof typeof objectAssetTypes;
+        replace?: string;
+    } | null>(null);
     const [assets, setAssets] = useState<Record<string, Asset>>({}),
         [error, setError] = useState<string | null>(null);
+    const [panel, setPanel] = useState<'properties' | 'interactions' | 'settings' | 'preview'>(
+        'properties',
+    );
+    const [layersOpen, setLayersOpen] = useState(false),
+        [helpOpen, setHelpOpen] = useState(false),
+        [publishOpen, setPublishOpen] = useState(false),
+        [publicationBusy, setPublicationBusy] = useState(false);
+    const [layerSearch, setLayerSearch] = useState('');
+    const [pagesBusy, setPagesBusy] = useState(false);
+    const importFile = useRef<HTMLInputElement>(null);
     const [deleting, setDeleting] = useState<SceneObject | null>(null),
         [resetting, setResetting] = useState(false);
     const [settingsDirty, setSettingsDirty] = useState(false),
         [settingsBusy, setSettingsBusy] = useState(false);
     useEffect(() => {
-        onBusyChange(editor.busy || settingsBusy);
+        onBusyChange(editor.busy || settingsBusy || publicationBusy || pagesBusy);
         return () => onBusyChange(false);
-    }, [editor.busy, settingsBusy, onBusyChange]);
-    const blocked = disabled || editor.busy || settingsBusy || editor.uncertain;
-    const selected =
-        editor.draft.objects.find((object) => object.id === selectedId) || editor.draft.objects[0];
+    }, [editor.busy, settingsBusy, publicationBusy, pagesBusy, onBusyChange]);
+    const blocked =
+        disabled || editor.busy || settingsBusy || publicationBusy || pagesBusy || editor.uncertain;
+    const selected = editor.draft.objects.find((object) => object.id === selectedId);
+    const sceneAssets = useSceneAssets(editor.draft, { ...page.assets, ...assets });
     const validation = SceneSchema.safeParse(editor.draft);
     const warnings = getSceneWarnings(editor.draft, { pageAspect: book.pageAspect });
     function change(object: SceneObject) {
@@ -79,27 +125,183 @@ export function SceneEditor({
             const object = newObject(type, crypto.randomUUID(), asset);
             editor.setDraft((current) => addObject(current, object));
             setSelectedId(object.id);
+            setPanel('properties');
             setError(null);
         } catch (cause) {
             setError(errorMessage(cause));
         }
     }
+    const commands = useRef({ editor, blocked, selected });
+    commands.current = { editor, blocked, selected };
+    useEffect(() => {
+        function keyboard(event: KeyboardEvent) {
+            if (document.getElementById('scene-heading')?.closest('[hidden]')) return;
+            const state = commands.current;
+            const typing = (event.target as HTMLElement)?.closest(
+                'input,textarea,select,[contenteditable="true"]',
+            );
+            const modifier = event.ctrlKey || event.metaKey;
+            if (modifier && event.key.toLowerCase() === 's') {
+                event.preventDefault();
+                if (!state.blocked) void state.editor.save();
+                return;
+            }
+            if (typing || state.blocked) return;
+            if (modifier && event.key.toLowerCase() === 'z') {
+                event.preventDefault();
+                if (event.shiftKey) state.editor.redo();
+                else state.editor.undo();
+            }
+            if (modifier && event.key.toLowerCase() === 'y') {
+                event.preventDefault();
+                state.editor.redo();
+            }
+            if (
+                modifier &&
+                event.key.toLowerCase() === 'd' &&
+                state.selected &&
+                !state.selected.locked
+            ) {
+                event.preventDefault();
+                if (state.editor.draft.objects.length >= SCENE_LIMITS.hardMaxObjects) return;
+                const id = crypto.randomUUID(),
+                    sourceId = state.selected.id;
+                state.editor.setDraft((current) => duplicateObject(current, sourceId, id));
+                setSelectedId(id);
+            }
+            if (
+                (event.key === 'Delete' || event.key === 'Backspace') &&
+                state.selected &&
+                !state.selected.locked
+            ) {
+                event.preventDefault();
+                setDeleting(state.selected);
+            }
+            if (event.key === 'Escape') setSelectedId('');
+        }
+        window.addEventListener('keydown', keyboard);
+        return () => window.removeEventListener('keydown', keyboard);
+    }, []);
+    function exportScene() {
+        const blob = new Blob([JSON.stringify({ pageId: page.id, scene: editor.draft }, null, 2)], {
+            type: 'application/json',
+        });
+        const url = URL.createObjectURL(blob),
+            link = document.createElement('a');
+        link.href = url;
+        link.download = `bookaria-scene-${page.id}.json`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
     return (
-        <section className="scene-editor" aria-labelledby="scene-heading">
+        <section
+            className="scene-editor"
+            data-panel={panel}
+            data-layers={layersOpen}
+            aria-labelledby="scene-heading"
+        >
             <NavigationGuard
                 dirty={editor.dirty || settingsDirty || editor.uncertain}
-                saving={editor.busy || settingsBusy}
+                saving={editor.busy || settingsBusy || publicationBusy || pagesBusy}
             />
-            <div className="scene-heading">
-                <div>
-                    <h2 id="scene-heading">Nội dung AR của trang</h2>
-                    <p>
-                        {editor.draft.objects.length} / {SCENE_LIMITS.hardMaxObjects} đối tượng ·{' '}
-                        {editor.dirty ? 'Có thay đổi chưa lưu' : 'Đã đồng bộ nội dung'}
-                    </p>
+            <header className="scene-heading editor-header">
+                <div className="editor-project">
+                    <Link
+                        to={`/books/${book.id}`}
+                        className="editor-back"
+                        aria-label="Về cuốn sách"
+                    >
+                        <ArrowLeft size={20} />
+                    </Link>
+                    <div>
+                        <h1 id="scene-heading">{book.title}</h1>
+                        <p>
+                            Trang {page.orderIndex + 1} ·{' '}
+                            {editor.dirty ? 'Chưa lưu thay đổi' : 'Đã lưu nội dung'}
+                        </p>
+                    </div>
                 </div>
-                <div className="form-actions">
+                <fieldset className="editor-mode-switch" aria-label="Chế độ editor">
                     <Button
+                        variant="ghost"
+                        aria-pressed={panel !== 'preview'}
+                        onClick={() => setPanel('properties')}
+                    >
+                        <Pencil size={17} />
+                        Chỉnh sửa
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        aria-pressed={panel === 'preview'}
+                        onClick={() => setPanel('preview')}
+                    >
+                        <Eye size={17} />
+                        Xem trước
+                    </Button>
+                </fieldset>
+                <div className="form-actions editor-save-actions">
+                    <Button
+                        variant="ghost"
+                        aria-label="Hoàn tác (Ctrl Z)"
+                        title="Hoàn tác (Ctrl Z)"
+                        disabled={blocked || !editor.canUndo}
+                        onClick={editor.undo}
+                    >
+                        <Undo2 size={18} />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        aria-label="Làm lại (Ctrl Shift Z)"
+                        title="Làm lại (Ctrl Shift Z)"
+                        disabled={blocked || !editor.canRedo}
+                        onClick={editor.redo}
+                    >
+                        <Redo2 size={18} />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        aria-label="Xuất bản sao scene JSON"
+                        title="Xuất bản sao scene JSON"
+                        onClick={exportScene}
+                    >
+                        <Download size={18} />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        aria-label="Nhập scene JSON"
+                        title="Nhập scene JSON"
+                        disabled={blocked}
+                        onClick={() => importFile.current?.click()}
+                    >
+                        <Upload size={18} />
+                    </Button>
+                    <input
+                        ref={importFile}
+                        type="file"
+                        accept=".json,application/json"
+                        hidden
+                        onChange={async (event) => {
+                            const file = event.currentTarget.files?.[0];
+                            event.currentTarget.value = '';
+                            if (!file) return;
+                            try {
+                                if (file.size > 1024 * 1024)
+                                    throw new Error('Tệp JSON tối đa 1 MB.');
+                                const data = JSON.parse(await file.text());
+                                const parsed = SceneSchema.parse(data.scene ?? data);
+                                if (commands.current.blocked) return;
+                                editor.setDraft(parsed);
+                                setSelectedId(parsed.objects[0]?.id || '');
+                                setError(null);
+                            } catch {
+                                setError(
+                                    'Không nhập được scene. Hãy dùng bản JSON hợp lệ được xuất từ Bookaria (tối đa 1 MB).',
+                                );
+                            }
+                        }}
+                    />
+                    <Button
+                        aria-label="Lưu nội dung"
                         loading={editor.busy}
                         disabled={
                             disabled ||
@@ -113,13 +315,32 @@ export function SceneEditor({
                             void editor.save();
                         }}
                     >
-                        Lưu nội dung
+                        <Save size={17} /> Lưu
                     </Button>
-                    <Button variant="ghost" disabled={blocked} onClick={() => setResetting(true)}>
-                        Tải nội dung mới nhất
+                    <Button
+                        variant="ghost"
+                        aria-label="Tải nội dung mới nhất"
+                        title="Tải nội dung mới nhất"
+                        disabled={blocked}
+                        onClick={() => setResetting(true)}
+                    >
+                        <RefreshCw size={18} />
                     </Button>
                 </div>
-            </div>
+                <Button
+                    className="editor-publish"
+                    disabled={blocked || editor.dirty || settingsDirty}
+                    title={
+                        editor.dirty || settingsDirty
+                            ? 'Lưu thay đổi trước khi xuất bản'
+                            : 'Kiểm tra và xuất bản sách'
+                    }
+                    onClick={() => setPublishOpen(true)}
+                >
+                    <Send size={17} />
+                    Xuất bản
+                </Button>
+            </header>
             <Feedback error={error || editor.error} success={editor.notice} />
             {!validation.success && (
                 <Feedback
@@ -183,219 +404,437 @@ export function SceneEditor({
                     </div>
                 </div>
             )}
-            <div className="scene-add">
-                <label htmlFor="scene-new-kind">
-                    Loại đối tượng
-                    <select
-                        id="scene-new-kind"
-                        value={kind}
-                        disabled={blocked}
-                        onChange={(event) => setKind(event.currentTarget.value as SceneObjectType)}
+            <div className="workbench-body">
+                <div className="scene-add" role="toolbar" aria-label="Thêm đối tượng">
+                    {(
+                        [
+                            { type: 'model', icon: Box },
+                            { type: 'image', icon: Image },
+                            { type: 'text', icon: Type },
+                            { type: 'video', icon: Video },
+                            { type: 'audio', icon: Volume2 },
+                            { type: 'hotspot', icon: MousePointer2 },
+                            { type: 'label', icon: Tag },
+                        ] as const
+                    ).map((item) => (
+                        <Button
+                            key={item.type}
+                            variant="ghost"
+                            disabled={
+                                blocked ||
+                                editor.draft.objects.length >= SCENE_LIMITS.hardMaxObjects
+                            }
+                            onClick={() => {
+                                if (usesAsset(item.type)) setPicker({ type: item.type });
+                                else insert(item.type);
+                            }}
+                        >
+                            <item.icon size={18} />
+                            {objectLabels[item.type]}
+                        </Button>
+                    ))}
+                    <span className="rail-separator" />
+                    <Button
+                        variant="ghost"
+                        aria-label="Mở tương tác"
+                        title="Tương tác"
+                        onClick={() => setPanel('interactions')}
                     >
-                        {Object.entries(objectLabels).map(([value, label]) => (
-                            <option key={value} value={value}>
-                                {label}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-                <Button
-                    variant="secondary"
-                    disabled={blocked || editor.draft.objects.length >= SCENE_LIMITS.hardMaxObjects}
-                    onClick={() => {
-                        if (usesAsset(kind)) setPicker({ type: kind });
-                        else insert(kind);
-                    }}
-                >
-                    Thêm đối tượng
-                </Button>
-            </div>
-            <div className="scene-workspace">
-                <section className="scene-layers" aria-labelledby="layers-heading">
-                    <h3 id="layers-heading">Đối tượng trên trang</h3>
-                    {editor.draft.objects.length === 0 && (
-                        <p>Chưa có đối tượng. Thêm văn bản hoặc chọn tài nguyên để bắt đầu.</p>
-                    )}
-                    <ol>
-                        {editor.draft.objects.map((object, index) => (
-                            <li
-                                key={object.id}
-                                className={selected?.id === object.id ? 'is-selected' : ''}
-                            >
-                                <button
-                                    type="button"
-                                    className="scene-layer-select"
-                                    aria-pressed={selected?.id === object.id}
-                                    disabled={blocked}
-                                    onClick={() => setSelectedId(object.id)}
+                        <Zap size={22} />
+                        <span>Tương tác</span>
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        aria-label="Trang và nhận diện AR"
+                        title="Trang và nhận diện AR"
+                        disabled={blocked}
+                        onClick={onRecognition}
+                    >
+                        <QrCode size={22} />
+                        <span>AR Marker</span>
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        aria-label="Cài đặt trang"
+                        title="Cài đặt trang"
+                        onClick={() => setPanel('settings')}
+                    >
+                        <Settings2 size={22} />
+                        <span>Cài đặt</span>
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        aria-label="Hướng dẫn editor"
+                        title="Hướng dẫn editor"
+                        onClick={() => setHelpOpen(true)}
+                    >
+                        <CircleHelp size={22} />
+                        <span>Trợ giúp</span>
+                    </Button>
+                </div>
+                <div className="scene-workspace">
+                    <section
+                        className="scene-layers"
+                        aria-labelledby="layers-heading"
+                        hidden={!layersOpen}
+                    >
+                        <button
+                            className="layers-close"
+                            type="button"
+                            aria-label="Đóng danh sách đối tượng"
+                            onClick={() => setLayersOpen(false)}
+                        >
+                            <X size={16} />
+                        </button>
+                        <h3 id="layers-heading">
+                            Đối tượng <span>{editor.draft.objects.length}</span>
+                        </h3>
+                        <label className="layer-search">
+                            <span className="sr-only">Tìm đối tượng</span>
+                            <input
+                                type="search"
+                                placeholder="Tìm đối tượng…"
+                                value={layerSearch}
+                                onChange={(event) => setLayerSearch(event.currentTarget.value)}
+                            />
+                        </label>
+                        {editor.draft.objects.length === 0 && (
+                            <p>Chưa có đối tượng. Thêm văn bản hoặc chọn tài nguyên để bắt đầu.</p>
+                        )}
+                        <ol>
+                            {editor.draft.objects.map((object, index) => (
+                                <li
+                                    hidden={
+                                        Boolean(layerSearch) &&
+                                        !(object.name || objectLabels[object.type])
+                                            .toLocaleLowerCase()
+                                            .includes(layerSearch.toLocaleLowerCase())
+                                    }
+                                    key={object.id}
+                                    className={selected?.id === object.id ? 'is-selected' : ''}
                                 >
-                                    <span>{object.name || objectLabels[object.type]}</span>
-                                    <small>
-                                        {objectLabels[object.type]}
-                                        {!object.visible ? ' · Ẩn khi mở trang' : ''}
-                                    </small>
-                                    {object.locked && (
-                                        <LockKeyhole size={16} aria-label="Đã khóa" />
-                                    )}
-                                    {object.editorHidden && (
-                                        <EyeOff size={16} aria-label="Ẩn khỏi sơ đồ" />
-                                    )}
-                                </button>
-                                <div className="scene-layer-actions">
-                                    <Button
-                                        variant="ghost"
-                                        disabled={blocked || object.locked || index === 0}
-                                        aria-label={`Đưa đối tượng ${index + 1} lên`}
-                                        onClick={() =>
-                                            editor.setDraft((current) =>
-                                                moveObject(current, object.id, -1),
-                                            )
-                                        }
-                                    >
-                                        <ArrowUp size={16} aria-hidden="true" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        disabled={
-                                            blocked ||
-                                            object.locked ||
-                                            index === editor.draft.objects.length - 1
-                                        }
-                                        aria-label={`Đưa đối tượng ${index + 1} xuống`}
-                                        onClick={() =>
-                                            editor.setDraft((current) =>
-                                                moveObject(current, object.id, 1),
-                                            )
-                                        }
-                                    >
-                                        <ArrowDown size={16} aria-hidden="true" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        disabled={
-                                            blocked ||
-                                            object.locked ||
-                                            editor.draft.objects.length >=
-                                                SCENE_LIMITS.hardMaxObjects
-                                        }
-                                        aria-label={`Nhân bản đối tượng ${index + 1}`}
-                                        onClick={() => {
-                                            const id = crypto.randomUUID();
-                                            editor.setDraft((current) =>
-                                                duplicateObject(current, object.id, id),
-                                            );
-                                            setSelectedId(id);
-                                        }}
-                                    >
-                                        <Copy size={16} aria-hidden="true" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        disabled={blocked || object.locked}
-                                        aria-label={`Xóa đối tượng ${index + 1}`}
-                                        onClick={() => setDeleting(object)}
-                                    >
-                                        <Trash2 size={16} aria-hidden="true" />
-                                    </Button>
-                                </div>
-                            </li>
-                        ))}
-                    </ol>
-                </section>
-                <div className="scene-map-column">
-                    <h3>Sơ đồ vị trí</h3>
-                    <p className="field-hint">
-                        Mốc tâm của đối tượng nhìn từ trên. Chọn mốc hoặc hàng trong danh sách để
-                        sửa; sơ đồ chưa mô phỏng hình dạng 3D.
-                    </p>
-                    <div className="scene-map" style={{ aspectRatio: `1 / ${book.pageAspect}` }}>
-                        <img src={page.image.url} alt="Ảnh trang làm nền cho sơ đồ" />
-                        {editor.draft.objects
-                            .filter((object) => !object.editorHidden)
-                            .map((object) => {
-                                const point = previewPosition(object, book.pageAspect);
-                                return point ? (
                                     <button
                                         type="button"
-                                        key={object.id}
-                                        className={clsx('scene-map-point', {
-                                            'is-selected': selected?.id === object.id,
-                                            'is-hidden': !object.visible,
-                                        })}
-                                        style={{ left: `${point.left}%`, top: `${point.top}%` }}
+                                        className="scene-layer-select"
+                                        aria-pressed={selected?.id === object.id}
                                         disabled={blocked}
-                                        aria-label={`Chọn vị trí ${object.name || objectLabels[object.type]}`}
                                         onClick={() => setSelectedId(object.id)}
                                     >
-                                        <Box size={18} aria-hidden="true" />
                                         <span>{object.name || objectLabels[object.type]}</span>
+                                        <small>
+                                            {objectLabels[object.type]}
+                                            {!object.visible ? ' · Ẩn khi mở trang' : ''}
+                                        </small>
+                                        {object.locked && (
+                                            <LockKeyhole size={16} aria-label="Đã khóa" />
+                                        )}
+                                        {object.editorHidden && (
+                                            <EyeOff size={16} aria-label="Ẩn khỏi sơ đồ" />
+                                        )}
                                     </button>
-                                ) : null;
-                            })}
-                    </div>
-                </div>
-                {selected ? (
-                    <ObjectEditor
-                        key={selected.id}
-                        object={selected}
-                        assetRef={
-                            'assetId' in selected
-                                ? assets[selected.assetId] || page.assets[selected.assetId]
-                                : undefined
-                        }
+                                    <div className="scene-layer-actions">
+                                        <Button
+                                            variant="ghost"
+                                            disabled={blocked || object.locked || index === 0}
+                                            aria-label={`Đưa đối tượng ${index + 1} lên`}
+                                            onClick={() =>
+                                                editor.setDraft((current) =>
+                                                    moveObject(current, object.id, -1),
+                                                )
+                                            }
+                                        >
+                                            <ArrowUp size={16} aria-hidden="true" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            disabled={
+                                                blocked ||
+                                                object.locked ||
+                                                index === editor.draft.objects.length - 1
+                                            }
+                                            aria-label={`Đưa đối tượng ${index + 1} xuống`}
+                                            onClick={() =>
+                                                editor.setDraft((current) =>
+                                                    moveObject(current, object.id, 1),
+                                                )
+                                            }
+                                        >
+                                            <ArrowDown size={16} aria-hidden="true" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            disabled={
+                                                blocked ||
+                                                object.locked ||
+                                                editor.draft.objects.length >=
+                                                    SCENE_LIMITS.hardMaxObjects
+                                            }
+                                            aria-label={`Nhân bản đối tượng ${index + 1}`}
+                                            onClick={() => {
+                                                const id = crypto.randomUUID();
+                                                editor.setDraft((current) =>
+                                                    duplicateObject(current, object.id, id),
+                                                );
+                                                setSelectedId(id);
+                                            }}
+                                        >
+                                            <Copy size={16} aria-hidden="true" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            disabled={blocked || object.locked}
+                                            aria-label={`Xóa đối tượng ${index + 1}`}
+                                            onClick={() => setDeleting(object)}
+                                        >
+                                            <Trash2 size={16} aria-hidden="true" />
+                                        </Button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ol>
+                    </section>
+                    <SceneCanvas
+                        page={page}
+                        aspect={book.pageAspect}
+                        scene={editor.draft}
+                        assets={sceneAssets}
+                        selectedId={selected?.id}
                         disabled={blocked}
+                        onSelect={setSelectedId}
                         onChange={change}
-                        onChooseAsset={() => {
-                            if (usesAsset(selected.type))
-                                setPicker({ type: selected.type, replace: selected.id });
-                        }}
+                        onBegin={editor.begin}
+                        onEnd={editor.end}
+                        footer={
+                            <div className="editor-footer-actions">
+                                <Button
+                                    variant="ghost"
+                                    aria-pressed={layersOpen}
+                                    onClick={() => setLayersOpen(!layersOpen)}
+                                >
+                                    <Layers size={18} />
+                                    Đối tượng ({editor.draft.objects.length})
+                                </Button>
+                                <Button variant="ghost" onClick={() => setHelpOpen(true)}>
+                                    Phím tắt
+                                </Button>
+                            </div>
+                        }
                     />
-                ) : (
-                    <p className="scene-no-selection">
-                        Thuộc tính sẽ xuất hiện khi bạn thêm hoặc chọn một đối tượng.
-                    </p>
-                )}
-            </div>
-            {(warnings.length > 0 || (!editor.dirty && editor.warnings.length > 0)) && (
-                <div className="scene-warnings">
-                    <h3>Gợi ý trước khi xuất bản</h3>
-                    <ul>
-                        {[
-                            ...new Map(
-                                [...warnings, ...(!editor.dirty ? editor.warnings : [])].map(
-                                    (warning) => [
-                                        `${warning.code}-${warning.objectId || ''}`,
-                                        warning,
-                                    ],
-                                ),
-                            ).values(),
-                        ].map((warning) => (
-                            <li key={`${warning.code}-${warning.objectId || ''}`}>
-                                {warning.message}
-                            </li>
-                        ))}
-                    </ul>
+                    <aside className="workbench-panel" aria-label="Bảng chỉnh sửa">
+                        <div className="workbench-tabs" role="tablist" aria-label="Bảng công cụ">
+                            {(
+                                [
+                                    ['properties', 'Thuộc tính'],
+                                    ['interactions', 'Tương tác'],
+                                    ['settings', 'Cài đặt'],
+                                    ['preview', 'Xem thử'],
+                                ] as const
+                            ).map(([value, label]) => (
+                                <button
+                                    key={value}
+                                    id={`panel-tab-${value}`}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={panel === value}
+                                    aria-controls={`panel-${value}`}
+                                    tabIndex={panel === value ? 0 : -1}
+                                    onKeyDown={(event) => {
+                                        const tabs = [
+                                            'properties',
+                                            'interactions',
+                                            'settings',
+                                            'preview',
+                                        ] as const;
+                                        const index = tabs.indexOf(value);
+                                        const next =
+                                            event.key === 'ArrowRight'
+                                                ? tabs[(index + 1) % tabs.length]
+                                                : event.key === 'ArrowLeft'
+                                                  ? tabs[(index + tabs.length - 1) % tabs.length]
+                                                  : event.key === 'Home'
+                                                    ? tabs[0]
+                                                    : event.key === 'End'
+                                                      ? tabs.at(-1)
+                                                      : undefined;
+                                        if (next) {
+                                            event.preventDefault();
+                                            setPanel(next);
+                                            document.getElementById(`panel-tab-${next}`)?.focus();
+                                        }
+                                    }}
+                                    onClick={() => setPanel(value)}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                        <div
+                            id="panel-properties"
+                            role="tabpanel"
+                            aria-labelledby="panel-tab-properties"
+                            hidden={panel !== 'properties'}
+                        >
+                            {selected ? (
+                                <ObjectEditor
+                                    key={selected.id}
+                                    object={selected}
+                                    assetRef={
+                                        'assetId' in selected
+                                            ? assets[selected.assetId] ||
+                                              page.assets[selected.assetId]
+                                            : undefined
+                                    }
+                                    disabled={blocked}
+                                    onChange={change}
+                                    onDuplicate={() => {
+                                        if (
+                                            editor.draft.objects.length >=
+                                            SCENE_LIMITS.hardMaxObjects
+                                        ) {
+                                            setError('Trang đã đạt giới hạn đối tượng.');
+                                            return;
+                                        }
+                                        const id = crypto.randomUUID();
+                                        editor.setDraft((current) =>
+                                            duplicateObject(current, selected.id, id),
+                                        );
+                                        setSelectedId(id);
+                                    }}
+                                    onDelete={() => setDeleting(selected)}
+                                    onChooseAsset={() => {
+                                        if (usesAsset(selected.type))
+                                            setPicker({
+                                                type: selected.type,
+                                                replace: selected.id,
+                                            });
+                                    }}
+                                />
+                            ) : (
+                                <p className="scene-no-selection">
+                                    Thuộc tính sẽ xuất hiện khi bạn thêm hoặc chọn một đối tượng.
+                                </p>
+                            )}
+                        </div>
+                        <div
+                            id="panel-interactions"
+                            role="tabpanel"
+                            aria-labelledby="panel-tab-interactions"
+                            hidden={panel !== 'interactions'}
+                        >
+                            {(warnings.length > 0 ||
+                                (!editor.dirty && editor.warnings.length > 0)) && (
+                                <div className="scene-warnings">
+                                    <h3>Gợi ý trước khi xuất bản</h3>
+                                    <ul>
+                                        {[
+                                            ...new Map(
+                                                [
+                                                    ...warnings,
+                                                    ...(!editor.dirty ? editor.warnings : []),
+                                                ].map((warning) => [
+                                                    `${warning.code}-${warning.objectId || ''}`,
+                                                    warning,
+                                                ]),
+                                            ).values(),
+                                        ].map((warning) => (
+                                            <li key={`${warning.code}-${warning.objectId || ''}`}>
+                                                {warning.message}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            <InteractionEditor
+                                scene={editor.draft}
+                                assets={sceneAssets}
+                                disabled={blocked}
+                                onChange={(scene) => editor.setDraft(scene)}
+                            />
+                        </div>
+                        <div
+                            id="panel-settings"
+                            role="tabpanel"
+                            aria-labelledby="panel-tab-settings"
+                            hidden={panel !== 'settings'}
+                        >
+                            <PageSettingsEditor
+                                page={page}
+                                disabled={disabled || editor.busy || editor.uncertain}
+                                onDirtyChange={setSettingsDirty}
+                                onBusyChange={setSettingsBusy}
+                            />
+                        </div>
+                        <div
+                            id="panel-preview"
+                            role="tabpanel"
+                            aria-labelledby="panel-tab-preview"
+                            hidden={panel !== 'preview'}
+                        >
+                            <PreviewPanel
+                                page={page}
+                                book={book}
+                                scene={editor.draft}
+                                disabled={blocked || settingsDirty}
+                                unsaved={editor.dirty || settingsDirty}
+                            />
+                        </div>
+                    </aside>
                 </div>
-            )}
-            <InteractionEditor
-                scene={editor.draft}
-                assets={{ ...page.assets, ...assets }}
+            </div>
+            <PageStrip
+                bookId={book.id}
+                pageId={page.id}
+                pageAspect={book.pageAspect}
+                dirty={editor.dirty || settingsDirty}
                 disabled={blocked}
-                onChange={(scene) => editor.setDraft(scene)}
+                onBusyChange={setPagesBusy}
             />
-            <PageSettingsEditor
-                page={page}
-                disabled={disabled || editor.busy || editor.uncertain}
-                onDirtyChange={setSettingsDirty}
-                onBusyChange={setSettingsBusy}
-            />
-            <PreviewPanel
-                page={page}
-                book={book}
-                scene={editor.draft}
-                disabled={blocked || settingsDirty}
-                unsaved={editor.dirty || settingsDirty}
-            />
+            {helpOpen && (
+                <ConfirmDialog
+                    title="Thao tác trong editor"
+                    busy={false}
+                    onClose={() => setHelpOpen(false)}
+                >
+                    <dl className="editor-shortcuts">
+                        <dt>Chọn đối tượng</dt>
+                        <dd>Nhấp trên canvas hoặc mở Đối tượng</dd>
+                        <dt>Di chuyển / xoay / kích thước</dt>
+                        <dd>W / E / R</dd>
+                        <dt>Đưa đối tượng vào giữa</dt>
+                        <dd>F</dd>
+                        <dt>Hoàn tác / làm lại</dt>
+                        <dd>Ctrl Z / Ctrl Shift Z</dd>
+                        <dt>Nhân bản</dt>
+                        <dd>Ctrl D</dd>
+                        <dt>Xóa đối tượng</dt>
+                        <dd>Delete</dd>
+                        <dt>Lưu nội dung</dt>
+                        <dd>Ctrl S</dd>
+                        <dt>Bỏ chọn</dt>
+                        <dd>Esc</dd>
+                    </dl>
+                    <p>
+                        Kéo vùng trống để xoay góc nhìn; cuộn chuột để thu/phóng; kéo chuột phải để
+                        dịch góc nhìn. Trên macOS, dùng ⌘ thay cho Ctrl.
+                    </p>
+                    <Button onClick={() => setHelpOpen(false)}>Đã hiểu</Button>
+                </ConfirmDialog>
+            )}
+            {publishOpen && (
+                <ConfirmDialog
+                    className="editor-publication-dialog"
+                    title="Xuất bản sách"
+                    busy={publicationBusy}
+                    onClose={() => setPublishOpen(false)}
+                >
+                    <PublicationPanel
+                        book={book}
+                        disabled={disabled || editor.busy || editor.uncertain}
+                        unsaved={editor.dirty || settingsDirty}
+                        onBusyChange={setPublicationBusy}
+                    />
+                </ConfirmDialog>
+            )}
             {picker && (
                 <AssetPicker
                     type={objectAssetTypes[picker.type]}

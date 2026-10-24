@@ -6,12 +6,13 @@ import {
     Library,
     LogOut,
     Palette,
+    Plus,
     ShieldCheck,
     Trash2,
     UserRound,
 } from 'lucide-react';
 import { Suspense, useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { auth, useAuth } from '../features/auth';
 import { NotificationLink } from '../features/notifications/NotificationLink';
 import { errorMessage } from '../shared/api/errors';
@@ -20,6 +21,8 @@ import { Feedback } from '../shared/ui/Feedback';
 import './insights.css';
 
 export function StudioLayout() {
+    const location = useLocation();
+    const editing = /^\/books\/[^/]+\/pages\/[^/]+$/.test(location.pathname);
     const { user, signingOut } = useAuth();
     const [error, setError] = useState<string | null>(null);
     async function logout() {
@@ -30,8 +33,16 @@ export function StudioLayout() {
             setError(errorMessage(cause));
         }
     }
+    if (editing)
+        return (
+            <main id="main" className="studio-editor-root">
+                <Suspense fallback={<p role="status">Đang mở editor…</p>}>
+                    <Outlet />
+                </Suspense>
+            </main>
+        );
     return (
-        <div className="studio-shell">
+        <div className={editing ? 'studio-editing studio-shell' : 'studio-shell'}>
             <header className="studio-topbar">
                 <Link className="brand" to="/books">
                     <BookOpen size={25} aria-hidden="true" />
@@ -56,44 +67,48 @@ export function StudioLayout() {
             </header>
             <div className="studio-body">
                 <nav className="studio-nav" aria-label="Điều hướng Studio">
-                    <NavLink to="/explore">
+                    <Link className="nav-create" to="/books/new" title="Tạo sách mới">
+                        <Plus size={19} />
+                        <span>Tạo sách mới</span>
+                    </Link>
+                    <NavLink title="Thư viện công khai" to="/explore">
                         <BookOpen size={19} aria-hidden="true" />
-                        Thư viện công khai
+                        <span>Thư viện công khai</span>
                     </NavLink>
-                    <NavLink to="/books" end>
+                    <NavLink title="Sách của tôi" to="/books" end>
                         <Library size={19} aria-hidden="true" />
-                        Sách của tôi
+                        <span>Sách của tôi</span>
                     </NavLink>
-                    <NavLink to="/books/trash">
+                    <NavLink title="Thùng rác" to="/books/trash">
                         <Trash2 size={19} aria-hidden="true" />
-                        Thùng rác
+                        <span>Thùng rác</span>
                     </NavLink>
-                    <NavLink to="/assets">
+                    <NavLink title="Tài nguyên" to="/assets">
                         <FolderOpen size={19} aria-hidden="true" />
-                        Tài nguyên
+                        <span>Tài nguyên</span>
                     </NavLink>
-                    <NavLink to="/stats">
+                    <NavLink title="Thống kê" to="/stats">
                         <ChartColumn size={19} aria-hidden="true" />
-                        Thống kê
+                        <span>Thống kê</span>
                     </NavLink>
-                    <NavLink to="/notifications">
+                    <NavLink title="Thông báo" to="/notifications">
                         <Bell size={19} aria-hidden="true" />
-                        Thông báo
+                        <span>Thông báo</span>
                     </NavLink>
-                    <NavLink to="/profile">
+                    <NavLink title="Hồ sơ" to="/profile">
                         <UserRound size={19} aria-hidden="true" />
-                        Hồ sơ
+                        <span>Hồ sơ</span>
                     </NavLink>
                     {user?.role === 'ADMIN' && (
-                        <NavLink to="/admin">
+                        <NavLink title="Quản trị" to="/admin">
                             <ShieldCheck size={19} aria-hidden="true" />
-                            Quản trị
+                            <span>Quản trị</span>
                         </NavLink>
                     )}
                     {import.meta.env.DEV && (
-                        <NavLink to="/style-guide">
+                        <NavLink title="Giao diện mẫu" to="/style-guide">
                             <Palette size={19} aria-hidden="true" />
-                            Giao diện mẫu
+                            <span>Giao diện mẫu</span>
                         </NavLink>
                     )}
                 </nav>

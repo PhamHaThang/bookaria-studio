@@ -88,8 +88,8 @@ export function InteractionEditor({
                 </Button>
             </div>
             <p className="field-hint">
-                Chọn “khi nào”, rồi xếp các hành động theo thứ tự. Phần này thiết lập dữ liệu; chưa
-                chạy thử AR. Có thể dùng “Chờ” để tạo khoảng nghỉ giữa các hành động.
+                Chọn sự kiện bắt đầu, rồi xếp các hành động theo thứ tự. Mở Xem trước để thử tương
+                tác. Dùng “Chờ” để tạo khoảng nghỉ giữa các hành động.
             </p>
             {!scene.interactions.length && (
                 <p>

@@ -6,8 +6,8 @@
     "packageManager": "pnpm@10.34.6",
     "description": "Bookaria Studio is a Web Application for managing, organizing and editing your book collection.",
     "scripts": {
-        "dev": "vite",
-        "build": "tsc -b && vite build",
+        "dev": "node scripts/sync-pdf-assets.mjs && vite",
+        "build": "node scripts/sync-pdf-assets.mjs && tsc -b && vite build",
         "preview": "vite preview",
         "lint": "biome lint .",
         "format": "biome format --write .",
@@ -16,7 +16,8 @@
         "test": "tsx --test tests/*.test.mjs",
         "contract:sync": "node scripts/sync-contract.mjs",
         "contract:check": "node scripts/sync-contract.mjs --check",
-        "contract:verify": "node scripts/sync-contract.mjs --verify"
+        "contract:verify": "node scripts/sync-contract.mjs --verify",
+        "pdf:assets": "node scripts/sync-pdf-assets.mjs"
     },
     "dependencies": {
         "@fontsource/be-vietnam-pro": "5.3.0",
@@ -24,12 +25,14 @@
         "axios": "1.20.0",
         "clsx": "2.1.1",
         "lucide-react": "1.60.0",
+        "pdfjs-dist": "6.4.299",
         "qrcode": "1.5.4",
         "react": "19.3.1",
         "react-dom": "19.3.1",
         "react-router": "7.18.4",
         "react-router-dom": "7.18.4",
         "tailwind-merge": "3.7.0",
+        "three": "0.161.0",
         "zod": "4.6.5",
         "zustand": "5.0.15"
     },
@@ -40,6 +43,7 @@
         "@types/qrcode": "1.5.5",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
+        "@types/three": "0.161.2",
         "@vitejs/plugin-react": "^6.1.2",
         "tailwindcss": "4.3.3",
         "tsx": "4.23.15",
@@ -47,6 +51,6 @@
         "vite": "^8.3.4"
     },
     "engines": {
-        "node": ">=22.0.0"
+        "node": ">=22.13.0"
     }
 }

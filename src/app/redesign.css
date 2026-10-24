@@ -1,0 +1,440 @@
+.studio-topbar {
+    min-height: 66px;
+    padding: 0 28px 0 0;
+    gap: 20px;
+}
+.studio-topbar .brand {
+    min-width: 222px;
+    min-height: 66px;
+    align-self: stretch;
+    padding: 16px 20px;
+    background: var(--nav-ground);
+    color: var(--text-primary);
+    font-size: 20px;
+    gap: 8px;
+}
+.studio-topbar .brand span {
+    color: var(--nav-ink);
+    font-size: 10px;
+    padding-left: 8px;
+    border-color: var(--nav-muted);
+}
+.studio-topbar .brand svg {
+    color: var(--nav-active);
+}
+.account-actions {
+    gap: 20px;
+    font-size: 12px;
+}
+.account-actions .text-button {
+    font-size: 12px;
+}
+.studio-body {
+    max-width: none;
+    grid-template-columns: 222px minmax(0, 1fr);
+    min-height: calc(100dvh - 66px);
+}
+.studio-nav {
+    background: var(--nav-ground);
+    padding: 24px 12px;
+    gap: 5px;
+}
+.studio-nav a {
+    color: var(--nav-ink);
+    border-radius: 7px;
+    padding: 12px;
+    gap: 11px;
+    font-size: 12px;
+}
+.studio-nav a:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+.studio-nav a.active {
+    color: var(--action-primary);
+    background: var(--nav-active);
+}
+.studio-nav .nav-create {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    margin-bottom: 22px;
+    border: 1px solid var(--border-default);
+}
+.studio-nav .nav-create:hover {
+    background: var(--bg-selected);
+}
+.studio-main {
+    border: 0;
+    padding: 36px clamp(20px, 3vw, 56px) 60px;
+    min-width: 0;
+}
+.page-heading {
+    margin-bottom: 28px;
+}
+.page-heading h1 {
+    font-size: 28px;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+}
+.page-heading p {
+    font-size: 13px;
+}
+:where(
+    .studio-main > .page-heading,
+    .studio-main > .status-tabs,
+    .studio-main > .books-toolbar,
+    .studio-main > .list-summary
+) {
+    max-width: 1500px;
+    margin-inline: auto;
+}
+.books-toolbar {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    padding: 8px;
+    gap: 12px;
+}
+.books-toolbar .search-field {
+    border: 0;
+}
+.books-toolbar input,
+.books-toolbar select {
+    font-size: 12px;
+    min-height: 36px;
+}
+.status-tabs {
+    gap: 28px;
+}
+.status-tabs button {
+    font-size: 12px;
+}
+.list-summary {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+.book-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 22px;
+    border: 0;
+    max-width: 1500px;
+    margin-inline: auto;
+}
+.book-gallery .book-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    background: var(--bg-surface);
+    align-items: start;
+    overflow: hidden;
+}
+.book-gallery .book-cover {
+    width: 100%;
+    height: 190px;
+    grid-column: 1 / -1;
+    background: var(--bg-cover);
+    border-radius: 7px;
+}
+.book-gallery .book-cover img {
+    object-fit: contain;
+}
+.book-gallery .book-info {
+    grid-column: 1 / -1;
+    padding-inline: 3px;
+}
+.book-gallery .book-info h2 {
+    font-size: 15px;
+    line-height: 1.5;
+    margin-bottom: 5px;
+}
+.book-gallery .book-info p {
+    font-size: 11px;
+}
+.book-gallery .book-badges {
+    justify-content: flex-start;
+    padding-inline: 3px;
+}
+.book-gallery .book-actions {
+    justify-content: flex-end;
+}
+.book-gallery .book-actions .text-button {
+    padding: 3px;
+    min-height: 28px;
+}
+.studio-editing .studio-body {
+    grid-template-columns: 66px minmax(0, 1fr);
+}
+.studio-editing .studio-nav {
+    padding: 18px 8px;
+}
+.studio-editing .studio-nav a {
+    justify-content: center;
+    padding: 12px 8px;
+}
+.studio-editing .studio-nav a > span {
+    display: none;
+}
+.studio-editing .studio-nav .nav-create {
+    margin-bottom: 10px;
+}
+.studio-editing .studio-main {
+    padding: 18px 20px 28px;
+}
+.studio-editing .page-heading {
+    margin-bottom: 8px;
+}
+.studio-editing .page-heading h1 {
+    font-size: 21px;
+    display: inline;
+    margin-left: 16px;
+}
+.studio-editing .page-heading p {
+    display: inline;
+    font-size: 11px;
+    margin-left: 14px;
+}
+.studio-editing .back-link {
+    display: inline;
+    font-size: 12px;
+}
+.studio-editing .page-edit-modes {
+    margin-bottom: 10px;
+}
+.studio-editing .page-edit-modes .button {
+    min-height: 34px;
+    padding: 6px 12px;
+    font-size: 12px;
+}
+.studio-editing .page-warning {
+    font-size: 11px;
+    padding: 5px 10px;
+    margin: 4px 0;
+}
+.studio-shell ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.studio-shell ::-webkit-scrollbar-thumb {
+    background: var(--border-input);
+    border: 2px solid var(--bg-surface);
+    border-radius: 8px;
+}
+.studio-shell ::-webkit-scrollbar-track {
+    background: var(--bg-surface);
+}
+@media (max-width: 1000px) {
+    .studio-body {
+        grid-template-columns: 190px minmax(0, 1fr);
+    }
+    .studio-topbar .brand {
+        min-width: 190px;
+        font-size: 18px;
+        padding-inline: 14px;
+    }
+    .studio-main {
+        padding: 26px 20px;
+    }
+    .studio-nav a {
+        font-size: 11px;
+        gap: 8px;
+        padding: 12px 8px;
+    }
+}
+@media (max-width: 700px) {
+    .studio-topbar {
+        padding: 0 12px 0 0;
+        gap: 10px;
+    }
+    .studio-topbar .brand {
+        min-width: 0;
+        padding-inline: 12px;
+        font-size: 17px;
+    }
+    .studio-topbar .brand span {
+        display: none;
+    }
+    .account-actions {
+        gap: 10px;
+    }
+    .account-link {
+        max-width: 130px;
+    }
+    .account-link > span:last-child {
+        display: none;
+    }
+    .account-actions > .text-button {
+        font-size: 0;
+        gap: 0;
+    }
+    .account-actions > .text-button svg {
+        width: 18px;
+    }
+    .studio-body,
+    .studio-editing .studio-body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .studio-nav,
+    .studio-editing .studio-nav {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 7px;
+        gap: 4px;
+    }
+    .studio-nav a,
+    .studio-editing .studio-nav a {
+        flex-shrink: 0;
+        padding: 10px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+    .studio-nav .nav-create,
+    .studio-editing .studio-nav .nav-create {
+        margin: 0;
+    }
+    .studio-editing .studio-nav a > span {
+        display: none;
+    }
+    .studio-main,
+    .studio-editing .studio-main {
+        padding: 22px 14px 36px;
+    }
+    .page-heading h1 {
+        font-size: 25px;
+    }
+    .studio-editing .page-heading h1 {
+        display: block;
+        margin: 6px 0 0;
+    }
+    .studio-editing .page-heading p {
+        display: block;
+        margin: 4px 0;
+    }
+    .books-toolbar {
+        flex-wrap: wrap;
+    }
+    .book-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 14px;
+    }
+}
+@media (prefers-reduced-motion: no-preference) {
+    .studio-nav a {
+        transition:
+            background-color 150ms ease-out,
+            color 150ms ease-out;
+    }
+    .book-gallery .book-cover img {
+        transition: transform 180ms ease-out;
+    }
+    .book-gallery .book-row:hover .book-cover img {
+        transform: scale(1.025);
+    }
+}
+
+.studio-topbar .brand {
+    border-right: 1px solid var(--border-default);
+}
+.studio-nav {
+    border-right: 1px solid var(--border-default);
+}
+.studio-nav .nav-create {
+    color: var(--text-on-primary);
+    background: var(--action-primary);
+    border: 0;
+}
+.studio-nav .nav-create:hover {
+    background: var(--action-primary-hover);
+}
+.studio-nav a {
+    font-size: 13px;
+}
+.studio-topbar .brand svg {
+    color: var(--action-primary);
+}
+.studio-editor-root {
+    min-height: 100dvh;
+    background: var(--bg-surface);
+}
+.page-editor-screen[data-mode="content"] > .page-heading,
+.page-editor-screen[data-mode="content"] > .page-edit-modes,
+.page-editor-screen[data-mode="content"] > .page-warning {
+    display: none;
+}
+.page-editor-screen[data-mode="page"] {
+    padding: 24px;
+}
+.page-editor-screen > .alert {
+    margin: 0;
+    border-radius: 0;
+}
+
+.book-gallery .book-info {
+    grid-row: 2;
+}
+.book-gallery .book-badges {
+    grid-column: 1;
+    grid-row: 3;
+}
+.book-gallery .row-action {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: end;
+}
+
+.book-gallery .book-cover {
+    grid-row: 1;
+}
+.page-heading > div {
+    min-width: 0;
+}
+@media (max-width: 700px) {
+    .studio-topbar {
+        min-width: 0;
+        max-width: 100%;
+        padding-right: 10px;
+        gap: 8px;
+    }
+    .studio-topbar .brand {
+        flex: 0 1 auto;
+        min-width: 0;
+        margin-right: auto;
+    }
+    .studio-topbar .account-actions {
+        flex: 0 0 auto;
+        min-width: 0;
+        gap: 8px;
+    }
+    .account-actions .notification-header-link {
+        font-size: 0;
+        gap: 5px;
+    }
+    .account-actions .notification-header-link .badge {
+        font-size: 10px;
+    }
+    .account-actions .account-link {
+        flex: 0 0 32px;
+        max-width: 32px;
+    }
+    .account-actions > .text-button {
+        flex: 0 0 30px;
+        min-width: 30px;
+        padding: 5px;
+    }
+    .page-heading {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .page-heading > div {
+        flex: 1 1 180px;
+    }
+    .page-heading > .button {
+        flex: 0 0 auto;
+        max-width: 100%;
+    }
+}

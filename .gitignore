@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 .env
+
+# Generated from the pinned pdfjs-dist package before dev/build
+public/vendor/pdfjs/
