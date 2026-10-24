@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Button } from '@/shared/ui/Button';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { auth, useAuth } from '../features/auth';
 import {
     notificationKeys,
@@ -71,24 +73,29 @@ function NotificationsContent({ userId }: { userId: string }) {
     }
     return (
         <>
-            <div className="page-heading insights-heading">
+            <div className="page-heading insights-heading [&_h1]:wrap-anywhere mx-0 mt-0 mb-7 flex items-center justify-between gap-6 max-[760px]:mb-6 max-[640px]:flex-col max-[700px]:flex-wrap max-[640px]:items-start max-[700px]:items-start max-[760px]:items-start max-[700px]:gap-3 max-[760px]:gap-4 max-[700px]:[&_>_.button]:max-w-full max-[700px]:[&_>_.button]:flex-[0_0_auto] [&_>_div]:min-w-0 max-[640px]:[&_>_div]:w-full max-[700px]:[&_>_div]:flex-[1_1_180px] [&_h1]:font-semibold [&_h1]:text-[length:28px] [&_h1]:tracking-[-0.025em] max-[700px]:[&_h1]:text-[length:25px] max-[760px]:[&_h1]:text-[length:var(--text-2xl)] [&_p]:mx-0 [&_p]:mt-2 [&_p]:mb-0 [&_p]:max-w-[64ch] [&_p]:text-[length:13px] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-sm)] [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-2 [.studio-editing_&_h1]:ml-4 [.studio-editing_&_h1]:inline [.studio-editing_&_h1]:text-[length:21px] max-[700px]:[.studio-editing_&_h1]:mx-0 max-[700px]:[.studio-editing_&_h1]:mt-[6px] max-[700px]:[.studio-editing_&_h1]:mb-0 max-[700px]:[.studio-editing_&_h1]:block [.studio-editing_&_p]:ml-[14px] [.studio-editing_&_p]:inline [.studio-editing_&_p]:text-[length:11px] max-[700px]:[.studio-editing_&_p]:mx-0 max-[700px]:[.studio-editing_&_p]:my-1 max-[700px]:[.studio-editing_&_p]:block [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375">
                 <div>
                     <h1>Thông báo</h1>
                     <p>Tác vụ xử lý sách và các cập nhật tài khoản của bạn.</p>
                 </div>
-                <button
+                <Button
                     type="button"
-                    className="button secondary compact"
+                    variant="secondary"
                     disabled={
                         mutation.isPending || !unread.isSuccess || unread.data.meta.total === 0
                     }
                     onClick={() => void mark({ all: true })}
                 >
                     Đánh dấu tất cả đã đọc
-                </button>
+                </Button>
             </div>
             <Feedback error={error} success={message} />
-            <fieldset className="status-tabs" aria-label="Lọc thông báo">
+            <fieldset
+                className={
+                    'status-tabs mx-0 mt-0 mb-6 flex gap-7 border-b-[1px] border-b-border [border-bottom-style:solid] max-[760px]:gap-5 max-[760px]:overflow-x-auto max-[760px]:text-[length:var(--text-xs)] [&_button.selected]:border-b-primary [&_button.selected]:font-semibold [&_button.selected]:text-primary-hover [&_button]:min-h-11 [&_button]:whitespace-nowrap [&_button]:border-[transparent] [&_button]:border-t-[0] [&_button]:border-r-[0] [&_button]:border-b-[2px] [&_button]:border-l-[0] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:px-0 [&_button]:py-3 [&_button]:text-[length:12px] [&_button]:text-muted-foreground max-[540px]:[.page-heading:has(+_&[aria-label="Nguồn_tài_nguyên"])]:flex-wrap [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375'
+                }
+                aria-label="Lọc thông báo"
+            >
                 {[
                     { label: 'Tất cả', value: undefined },
                     { label: 'Chưa đọc', value: 'true' },
@@ -104,7 +111,7 @@ function NotificationsContent({ userId }: { userId: string }) {
                     </button>
                 ))}
             </fieldset>
-            <div className="notification-summary">
+            <div className="notification-summary mb-4 flex flex-wrap items-center justify-between gap-3">
                 <p role="status">
                     {unread.isSuccess
                         ? `${unread.data.meta.total} thông báo chưa đọc`
@@ -112,9 +119,9 @@ function NotificationsContent({ userId }: { userId: string }) {
                           ? 'Đang cập nhật số chưa đọc…'
                           : 'Chưa cập nhật được số chưa đọc'}
                 </p>
-                <button
+                <Button
                     type="button"
-                    className="button secondary compact"
+                    variant="secondary"
                     disabled={list.isFetching || unread.isFetching}
                     onClick={() => {
                         void list.refetch();
@@ -122,14 +129,14 @@ function NotificationsContent({ userId }: { userId: string }) {
                     }}
                 >
                     Tải lại danh sách
-                </button>
+                </Button>
             </div>
             {list.isPending && <p role="status">Đang tải thông báo…</p>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess && (
                 <>
                     {list.data.data.length ? (
-                        <ul className="notification-list">
+                        <ul className="notification-list [&_h2]:wrap-anywhere m-0 list-none p-0 [&_>_li]:border-b-[1px] [&_>_li]:border-b-border [&_>_li]:py-6 [&_>_li]:[border-bottom-style:solid] [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h2]:text-[length:var(--text-md)]">
                             {list.data.data.map((item) => {
                                 const target = notificationTarget(item.link);
                                 return (
@@ -141,8 +148,8 @@ function NotificationsContent({ userId }: { userId: string }) {
                                                 : 'notification-unread'
                                         }
                                     >
-                                        <div className="notification-item-content">
-                                            <div className="notification-item-labels">
+                                        <div className="notification-item-content min-w-0">
+                                            <div className="notification-item-labels mb-3 flex flex-wrap items-center gap-3 text-[length:var(--text-xs)] text-muted-foreground">
                                                 <Badge tone={item.readAt ? 'neutral' : 'info'}>
                                                     {item.readAt ? 'Đã đọc' : 'Chưa đọc'}
                                                 </Badge>
@@ -153,24 +160,26 @@ function NotificationsContent({ userId }: { userId: string }) {
                                             </div>
                                             <h2>{item.title}</h2>
                                             {item.body && (
-                                                <p className="notification-body">{item.body}</p>
+                                                <p className="notification-body wrap-anywhere max-w-[75ch] [white-space:pre-wrap]">
+                                                    {item.body}
+                                                </p>
                                             )}
-                                            <div className="notification-item-actions">
+                                            <div className="notification-item-actions mt-4 flex flex-wrap items-center gap-3">
                                                 {target && <Link to={target}>Xem nội dung</Link>}
                                                 {!item.readAt && (
-                                                    <button
+                                                    <Button
                                                         type="button"
-                                                        className="button secondary compact"
+                                                        variant="secondary"
                                                         disabled={mutation.isPending}
                                                         onClick={() =>
                                                             void mark({ ids: [item.id] })
                                                         }
                                                     >
                                                         Đánh dấu đã đọc
-                                                        <span className="sr-only">
+                                                        <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
                                                             : {item.title}
                                                         </span>
-                                                    </button>
+                                                    </Button>
                                                 )}
                                             </div>
                                         </div>
@@ -179,16 +188,24 @@ function NotificationsContent({ userId }: { userId: string }) {
                             })}
                         </ul>
                     ) : (
-                        <section className="empty-state">
-                            <h2>
-                                {query.unread ? 'Bạn đã đọc hết thông báo' : 'Chưa có thông báo'}
-                            </h2>
-                            <p>
-                                {query.unread
-                                    ? 'Các thông báo mới sẽ xuất hiện ở đây.'
-                                    : 'Khi có kết quả xử lý sách hoặc cập nhật tài khoản, bạn sẽ thấy ở đây.'}
-                            </p>
-                        </section>
+                        <Empty className="empty-state border-border border-t px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
+                            <EmptyHeader>
+                                <EmptyTitle>
+                                    <h2>
+                                        {query.unread
+                                            ? 'Bạn đã đọc hết thông báo'
+                                            : 'Chưa có thông báo'}
+                                    </h2>
+                                </EmptyTitle>
+                                <EmptyDescription>
+                                    <p>
+                                        {query.unread
+                                            ? 'Các thông báo mới sẽ xuất hiện ở đây.'
+                                            : 'Khi có kết quả xử lý sách hoặc cập nhật tài khoản, bạn sẽ thấy ở đây.'}
+                                    </p>
+                                </EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
                     )}
                     <Pagination
                         page={query.page}

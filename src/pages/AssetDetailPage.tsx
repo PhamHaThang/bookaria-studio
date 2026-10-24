@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { Spinner } from '@/shared/ui/primitives/spinner';
 import {
     assetKeys,
     assetStatusLabels,
@@ -22,11 +25,10 @@ import { Badge } from '../shared/ui/Badge';
 import { Button } from '../shared/ui/Button';
 import { ConfirmDialog } from '../shared/ui/ConfirmDialog';
 import { Feedback } from '../shared/ui/Feedback';
-import '../features/assets/ui/assets.css';
 
 function UsageList({ usages }: { usages: AssetUsage[] }) {
     return (
-        <ul className="asset-usages">
+        <ul className="asset-usages wrap-anywhere mb-6 pl-5 [&_li]:py-2">
             {usages.map((usage) => (
                 <li key={`${usage.bookId}-${usage.pageId}`}>
                     <Link to={`/books/${usage.bookId}`}>
@@ -45,7 +47,7 @@ function ImagePreview({ asset }: { asset: Asset }) {
         </Alert>
     ) : (
         <img
-            className="asset-image-preview"
+            className="asset-image-preview mx-auto mt-0 mb-5 block max-h-105 max-w-full object-contain"
             src={asset.url}
             alt={asset.name}
             onError={() => setFailed(true)}
@@ -73,66 +75,88 @@ function AssetMetadataForm({ asset, onSaved }: { asset: Asset; onSaved: () => Pr
     }
     return (
         <form
-            className="editor-form asset-metadata-form"
+            className="editor-form asset-metadata-form w-full max-w-180 rounded-[var(--radius-lg)] border border-border border-solid bg-surface p-6 p-8 max-[1100px]:max-w-180 max-[540px]:p-5 max-[760px]:px-5 max-[760px]:py-6 [&_.feedback]:mb-6"
             onSubmit={submit}
             aria-busy={mutation.isPending}
         >
-            <h2>Thông tin tài nguyên</h2>
-            <Feedback error={error} success={success} />
-            <fieldset disabled={mutation.isPending}>
-                <label htmlFor="asset-name">
-                    Tên tài nguyên
-                    <input
-                        id="asset-name"
-                        name="name"
-                        defaultValue={asset.name}
-                        maxLength={150}
-                        required
-                    />
-                </label>
-                <label htmlFor="asset-tags">
-                    Nhãn
-                    <input
-                        id="asset-tags"
-                        name="tags"
-                        defaultValue={asset.tags.join(', ')}
-                        aria-describedby="asset-tags-hint"
-                    />
-                </label>
-                <p id="asset-tags-hint" className="field-hint">
-                    Phân cách bằng dấu phẩy, tối đa 20 nhãn; mỗi nhãn tối đa 30 ký tự.
-                </p>
-                <label htmlFor="asset-author">
-                    Tác giả
-                    <input
-                        id="asset-author"
-                        name="authorName"
-                        defaultValue={asset.authorName || ''}
-                        maxLength={150}
-                    />
-                </label>
-                <label htmlFor="asset-license">
-                    Giấy phép
-                    <input
-                        id="asset-license"
-                        name="license"
-                        defaultValue={asset.license || ''}
-                        maxLength={50}
-                    />
-                </label>
-                <label htmlFor="asset-source">
-                    Đường dẫn nguồn
-                    <input
-                        id="asset-source"
-                        name="sourceUrl"
-                        type="url"
-                        defaultValue={asset.sourceUrl || ''}
-                    />
-                </label>
-                <Button type="submit" loading={mutation.isPending}>
-                    {mutation.isPending ? 'Đang lưu…' : 'Lưu thông tin tài nguyên'}
-                </Button>
-            </fieldset>
+            <FieldGroup className="contents">
+                <h2>Thông tin tài nguyên</h2>
+                <Feedback error={error} success={success} />
+                <fieldset disabled={mutation.isPending}>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="asset-name">
+                            Tên tài nguyên
+                            <Input
+                                id="asset-name"
+                                name="name"
+                                defaultValue={asset.name}
+                                maxLength={150}
+                                required
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="asset-tags">
+                            Nhãn
+                            <Input
+                                id="asset-tags"
+                                name="tags"
+                                defaultValue={asset.tags.join(', ')}
+                                aria-describedby="asset-tags-hint"
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <p
+                        id="asset-tags-hint"
+                        className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]"
+                    >
+                        Phân cách bằng dấu phẩy, tối đa 20 nhãn; mỗi nhãn tối đa 30 ký tự.
+                    </p>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="asset-author">
+                            Tác giả
+                            <Input
+                                id="asset-author"
+                                name="authorName"
+                                defaultValue={asset.authorName || ''}
+                                maxLength={150}
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="asset-license">
+                            Giấy phép
+                            <Input
+                                id="asset-license"
+                                name="license"
+                                defaultValue={asset.license || ''}
+                                maxLength={50}
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="asset-source">
+                            Đường dẫn nguồn
+                            <Input
+                                id="asset-source"
+                                name="sourceUrl"
+                                type="url"
+                                defaultValue={asset.sourceUrl || ''}
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Button
+                        type="submit"
+                        aria-busy={mutation.isPending}
+                        disabled={mutation.isPending}
+                    >
+                        {mutation.isPending && (
+                            <Spinner data-icon="inline-start" aria-hidden="true" />
+                        )}
+                        {mutation.isPending ? 'Đang lưu…' : 'Lưu thông tin tài nguyên'}
+                    </Button>
+                </fieldset>
+            </FieldGroup>
         </form>
     );
 }
@@ -188,7 +212,7 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
             <>
                 <h1>Chưa mở được tài nguyên</h1>
                 <Feedback error={errorMessage(detail.error)} />
-                <div className="form-actions">
+                <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                     <Button
                         onClick={() => {
                             void detail.refetch();
@@ -203,9 +227,12 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
     const asset = detail.data;
     return (
         <>
-            <div className="page-heading">
+            <div className="page-heading [&_h1]:wrap-anywhere mx-0 mt-0 mb-7 flex items-center justify-between gap-6 max-[760px]:mb-6 max-[700px]:flex-wrap max-[700px]:items-start max-[760px]:items-start max-[700px]:gap-3 max-[760px]:gap-4 max-[700px]:[&_>_.button]:max-w-full max-[700px]:[&_>_.button]:flex-[0_0_auto] [&_>_div]:min-w-0 max-[700px]:[&_>_div]:flex-[1_1_180px] [&_h1]:font-semibold [&_h1]:text-[length:28px] [&_h1]:tracking-[-0.025em] max-[700px]:[&_h1]:text-[length:25px] max-[760px]:[&_h1]:text-[length:var(--text-2xl)] [&_p]:mx-0 [&_p]:mt-2 [&_p]:mb-0 [&_p]:max-w-[64ch] [&_p]:text-[length:13px] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-sm)] [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-2 [.studio-editing_&_h1]:ml-4 [.studio-editing_&_h1]:inline [.studio-editing_&_h1]:text-[length:21px] max-[700px]:[.studio-editing_&_h1]:mx-0 max-[700px]:[.studio-editing_&_h1]:mt-[6px] max-[700px]:[.studio-editing_&_h1]:mb-0 max-[700px]:[.studio-editing_&_h1]:block [.studio-editing_&_p]:ml-[14px] [.studio-editing_&_p]:inline [.studio-editing_&_p]:text-[length:11px] max-[700px]:[.studio-editing_&_p]:mx-0 max-[700px]:[.studio-editing_&_p]:my-1 max-[700px]:[.studio-editing_&_p]:block [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375">
                 <div>
-                    <Link className="back-link" to="/assets">
+                    <Link
+                        className="back-link mb-4 inline-block text-[length:var(--text-sm)] [.studio-editing_&]:inline [.studio-editing_&]:text-[length:12px]"
+                        to="/assets"
+                    >
                         Tài nguyên
                     </Link>
                     <h1>{asset.name}</h1>
@@ -228,12 +255,11 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
             </div>
             {user?.role === 'ADMIN' && asset.scope === 'mine' && asset.status === 'READY' && (
                 <p>
-                    <Link
-                        className="button secondary compact"
-                        to={`/admin/library/new?asset=${asset.id}`}
-                    >
-                        Đưa vào thư viện dùng chung
-                    </Link>
+                    <Button variant="secondary" asChild>
+                        <Link to={`/admin/library/new?asset=${asset.id}`}>
+                            Đưa vào thư viện dùng chung
+                        </Link>
+                    </Button>
                 </p>
             )}
             {location.state?.uploaded && (
@@ -258,11 +284,14 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
             <div
                 className={
                     asset.scope === 'library'
-                        ? 'asset-detail-layout asset-detail-readonly'
-                        : 'asset-detail-layout'
+                        ? 'asset-detail-layout asset-detail-readonly grid grid-cols-[minmax(0,_1fr)_minmax(280px,_420px)] grid-cols-[minmax(0,_720px)] items-start gap-8 max-[1100px]:grid-cols-[minmax(0,_1fr)]'
+                        : 'asset-detail-layout grid grid-cols-[minmax(0,_1fr)_minmax(280px,_420px)] items-start gap-8 max-[1100px]:grid-cols-[minmax(0,_1fr)]'
                 }
             >
-                <section className="asset-preview-section" aria-label="Xem tài nguyên">
+                <section
+                    className="asset-preview-section min-w-0 max-[1100px]:max-w-180 [&_audio]:mb-5 [&_audio]:max-h-105 [&_audio]:w-full [&_audio]:min-w-0 [&_audio]:max-w-full [&_video]:mb-5 [&_video]:max-h-105 [&_video]:w-full [&_video]:min-w-0 [&_video]:max-w-full"
+                    aria-label="Xem tài nguyên"
+                >
                     {asset.status === 'READY' && asset.type === 'IMAGE' && (
                         <ImagePreview key={asset.url} asset={asset} />
                     )}
@@ -286,7 +315,7 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                         />
                     )}
                     {asset.type === 'MODEL' && (
-                        <p className="asset-scope-note">
+                        <p className="asset-scope-note mx-0 mt-0 mb-6 max-w-[70ch] text-muted-foreground">
                             Mô hình chưa có bản xem trước tại đây. Bạn có thể mở tệp bằng liên kết
                             bên dưới.
                         </p>
@@ -298,7 +327,7 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                             </a>
                         </p>
                     )}
-                    <dl className="asset-facts">
+                    <dl className="asset-facts [&_dd]:wrap-anywhere mx-0 my-6 [&_>_div]:grid [&_>_div]:grid-cols-[130px_minmax(0,_1fr)] [&_>_div]:gap-4 [&_>_div]:border-b-[1px] [&_>_div]:border-b-border [&_>_div]:px-0 [&_>_div]:py-3 [&_>_div]:text-[length:var(--text-sm)] [&_>_div]:[border-bottom-style:solid] max-[540px]:[&_>_div]:grid-cols-[minmax(0,_1fr)] max-[540px]:[&_>_div]:gap-1 [&_dd]:m-0 [&_dd]:tabular-nums [&_dt]:text-muted-foreground">
                         <div>
                             <dt>Định dạng</dt>
                             <dd>{asset.format.toUpperCase()}</dd>
@@ -377,7 +406,7 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                         </Alert>
                     ))}
                     {asset.scope === 'mine' && (
-                        <section className="asset-usage-section">
+                        <section className="asset-usage-section mt-8">
                             <h2>Nơi đang sử dụng</h2>
                             {usages.isPending ? (
                                 <p role="status">Đang kiểm tra nơi sử dụng…</p>
@@ -396,7 +425,7 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                             ) : usages.data.length ? (
                                 <UsageList usages={usages.data} />
                             ) : (
-                                <p className="asset-scope-note">
+                                <p className="asset-scope-note mx-0 mt-0 mb-6 max-w-[70ch] text-muted-foreground">
                                     Chưa được dùng trong trang sách. Phiên bản đã xuất bản vẫn có
                                     thể giữ tài nguyên này.
                                 </p>
@@ -434,7 +463,7 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                     </p>
                     <Feedback error={deleteError} />
                     {blockedUsages.length > 0 && <UsageList usages={blockedUsages} />}
-                    <div className="form-actions">
+                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                         <Button
                             variant="secondary"
                             disabled={removal.isPending}
@@ -442,7 +471,15 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                         >
                             Giữ lại
                         </Button>
-                        <Button variant="danger" loading={removal.isPending} onClick={remove}>
+                        <Button
+                            variant="danger"
+                            aria-busy={removal.isPending}
+                            onClick={remove}
+                            disabled={removal.isPending}
+                        >
+                            {removal.isPending && (
+                                <Spinner data-icon="inline-start" aria-hidden="true" />
+                            )}
                             Xóa tài nguyên
                         </Button>
                     </div>

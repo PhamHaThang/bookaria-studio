@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Button } from '@/shared/ui/Button';
 import { errorMessage } from '../../shared/api/errors';
 import { Pagination } from '../../shared/ui/Pagination';
 import { auth } from '../auth';
@@ -48,9 +49,9 @@ export function useAdminAction() {
 }
 export function AdminReload({ retry, busy = false }: { retry: () => void; busy?: boolean }) {
     return (
-        <button className="button secondary compact" type="button" disabled={busy} onClick={retry}>
+        <Button variant="secondary" type="button" disabled={busy} onClick={retry}>
             Tải lại dữ liệu
-        </button>
+        </Button>
     );
 }
 export function AdminPager({ page, meta }: { page: number; meta: { totalPages: number } }) {
@@ -87,8 +88,10 @@ export function AdminPager({ page, meta }: { page: number; meta: { totalPages: n
 }
 export function AdminTable({ label, children }: { label: string; children: ReactNode }) {
     return (
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: Labelled scroll region needs keyboard access on narrow screens.
-        <section className="stats-table-scroll admin-table" aria-label={label} tabIndex={0}>
+        <section
+            className="stats-table-scroll admin-table [&_th]:wrap-anywhere [&_td]:wrap-anywhere max-w-full overflow-x-auto [&_caption]:px-0 [&_caption]:py-3 [&_caption]:text-left [&_caption]:text-muted-foreground [&_table]:w-full [&_table]:min-w-95 [&_table]:text-[length:var(--text-sm)] [&_table]:[border-collapse:collapse] [&_td]:border-b-[1px] [&_td]:border-b-border [&_td]:p-3 [&_td]:text-left [&_td]:tabular-nums [&_td]:[border-bottom-style:solid] [&_td]:[vertical-align:top] [&_th]:min-w-30 [&_th]:border-b-[1px] [&_th]:border-b-border [&_th]:p-3 [&_th]:text-left [&_th]:[border-bottom-style:solid] [&_th]:[vertical-align:top] [&_thead]:bg-muted"
+            aria-label={label}
+        >
             {children}
         </section>
     );

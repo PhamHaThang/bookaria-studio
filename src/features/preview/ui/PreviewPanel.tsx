@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
+import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import { NativeSelect } from '@/shared/ui/primitives/native-select';
+import { Spinner } from '@/shared/ui/primitives/spinner';
 import { apiClient } from '../../../shared/api/client';
 import { errorMessage } from '../../../shared/api/errors';
 import { IdSchema } from '../../../shared/contracts/common.schema';
@@ -18,7 +21,6 @@ import {
     previewUrl,
     viewerOrigin,
 } from '../model/preview';
-import './preview.css';
 
 const api = createPreviewApi(apiClient);
 const messageSchema = z.object({
@@ -264,22 +266,26 @@ export function PreviewPanel({
         }
     }
     return (
-        <section className="scene-preview" aria-labelledby="preview-heading">
+        <section
+            className="scene-preview mt-6 border-t-[1px] border-t-border pt-5 [border-top-style:solid] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_p]:max-w-[75ch] [.workbench-panel_&]:m-0 [.workbench-panel_&]:border-0 [.workbench-panel_&]:border-[transparent] [.workbench-panel_&]:border-solid [.workbench-panel_&]:p-0"
+            aria-labelledby="preview-heading"
+        >
             <h3 id="preview-heading">Xem trước</h3>
             <p>
                 Bản trên máy dùng nội dung AR đang sửa và cài đặt trang đã lưu. Sau khi sửa tiếp,
                 bấm cập nhật để gửi bản mới sang Viewer.
             </p>
             <Feedback error={configError || error} />
-            <div className="form-actions">
+            <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                 <Button
                     variant="secondary"
-                    loading={loading}
-                    disabled={disabled || Boolean(configError)}
+                    aria-busy={loading}
+                    disabled={disabled || Boolean(configError) || loading}
                     onClick={() => {
                         void local();
                     }}
                 >
+                    {loading && <Spinner data-icon="inline-start" aria-hidden="true" />}
                     {embed ? 'Cập nhật bản xem trên máy' : 'Xem bản đang sửa trên máy'}
                 </Button>
                 {embed && (
@@ -301,14 +307,14 @@ export function PreviewPanel({
                         key={embed.nonce}
                         ref={frame}
                         title="Viewer xem trước nội dung AR"
-                        className="scene-preview-frame"
+                        className="scene-preview-frame mt-3 h-200 max-h-[85dvh] w-full rounded-[var(--radius-md)] border border-border border-solid bg-surface [.workbench-panel_&]:h-135 [.workbench-panel_&]:max-h-[65dvh]"
                         src={`${origin}/embed#${new URLSearchParams({ parent: location.origin, nonce: embed.nonce })}`}
                         sandbox="allow-scripts allow-same-origin allow-popups"
                         referrerPolicy="no-referrer"
                     />
                 </>
             )}
-            <div className="scene-preview-link">
+            <div className="scene-preview-link mt-6 [&_>_label]:mb-4 [&_>_label]:grid [&_>_label]:max-w-80 [&_>_label]:gap-2 [&_h4]:mx-0 [&_h4]:mt-0 [&_h4]:mb-3">
                 <h4>Xem trên điện thoại</h4>
                 <p>
                     Liên kết dùng bản đã lưu, khả dụng trong 24 giờ. Người có liên kết có thể xem;
@@ -316,37 +322,44 @@ export function PreviewPanel({
                 </p>
                 {origin &&
                     /^(localhost|.*\.localhost|127\.0\.0\.1)$/.test(new URL(origin).hostname) && (
-                        <p className="field-hint">
+                        <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                             Địa chỉ local hiện chỉ mở trên máy này. Để thử bằng điện thoại, dùng địa
                             chỉ HTTPS truy cập được từ điện thoại theo hướng dẫn FE09.
                         </p>
                     )}
                 {unsaved && (
-                    <p className="field-hint">
+                    <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                         Lưu nội dung AR và cài đặt trang trước khi tạo liên kết.
                     </p>
                 )}
-                <label htmlFor="preview-scope">
-                    Phạm vi
-                    <select
-                        id="preview-scope"
-                        value={scope}
-                        disabled={Boolean(jobId) || loading}
-                        onChange={(event) => setScope(event.currentTarget.value as 'PAGE' | 'BOOK')}
-                    >
-                        <option value="PAGE">Trang hiện tại</option>
-                        <option value="BOOK">Toàn bộ sách</option>
-                    </select>
-                </label>
-                <div className="form-actions">
+                <Field orientation="contents">
+                    <FieldLabel htmlFor="preview-scope">
+                        Phạm vi
+                        <NativeSelect
+                            id="preview-scope"
+                            value={scope}
+                            disabled={Boolean(jobId) || loading}
+                            onChange={(event) =>
+                                setScope(event.currentTarget.value as 'PAGE' | 'BOOK')
+                            }
+                        >
+                            <option value="PAGE">Trang hiện tại</option>
+                            <option value="BOOK">Toàn bộ sách</option>
+                        </NativeSelect>
+                    </FieldLabel>
+                </Field>
+                <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                     <Button
                         variant="secondary"
-                        loading={loading}
-                        disabled={disabled || unsaved || Boolean(jobId) || Boolean(configError)}
+                        aria-busy={loading}
+                        disabled={
+                            disabled || unsaved || Boolean(jobId) || Boolean(configError) || loading
+                        }
                         onClick={() => {
                             void create();
                         }}
                     >
+                        {loading && <Spinner data-icon="inline-start" aria-hidden="true" />}
                         Tạo liên kết xem trước 24 giờ
                     </Button>
                     {pollError && jobId && (
@@ -363,12 +376,14 @@ export function PreviewPanel({
                 </div>
                 {jobState && <p role="status">{jobState}</p>}
                 {link && (
-                    <div className="scene-preview-share">
+                    <div className="scene-preview-share [&_>_div]:wrap-anywhere mt-4 flex flex-wrap items-center gap-5 [&_>_div]:min-w-0 [&_>_div]:flex-[1_1_240px] [&_img]:h-auto [&_img]:max-w-full">
                         <div>
                             <a href={link} target="_blank" rel="noopener noreferrer">
                                 Mở bản xem trước
                             </a>
-                            <p className="field-hint">{link}</p>
+                            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
+                                {link}
+                            </p>
                             <Button
                                 variant="ghost"
                                 onClick={() => {

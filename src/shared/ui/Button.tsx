@@ -1,6 +1,6 @@
-import { LoaderCircle } from 'lucide-react';
-import type { ButtonHTMLAttributes } from 'react';
-import { cn } from '../lib/cn';
+import type { ComponentProps } from 'react';
+import { cn } from '@/shared/lib/cn';
+import { buttonVariants, Button as PrimitiveButton } from './primitives/button';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 interface ButtonStyleOptions {
@@ -9,6 +9,12 @@ interface ButtonStyleOptions {
     fullWidth?: boolean;
     className?: string;
 }
+const variants = {
+    primary: 'default',
+    secondary: 'secondary',
+    ghost: 'outline',
+    danger: 'destructive',
+} as const;
 export function buttonStyles({
     variant = 'primary',
     size = 'md',
@@ -16,37 +22,27 @@ export function buttonStyles({
     className,
 }: ButtonStyleOptions = {}) {
     return cn(
-        'button compact',
-        variant,
-        size === 'sm' && 'button-sm',
-        fullWidth && 'button-full',
+        buttonVariants({ variant: variants[variant], size: size === 'sm' ? 'sm' : 'default' }),
+        fullWidth && 'button-full w-full',
         className,
     );
 }
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, ButtonStyleOptions {
-    loading?: boolean;
-}
+export interface ButtonProps
+    extends Omit<ComponentProps<typeof PrimitiveButton>, 'variant' | 'size'>,
+        ButtonStyleOptions {}
 export function Button({
-    variant,
-    size,
+    variant = 'primary',
+    size = 'md',
     fullWidth,
     className,
-    loading = false,
-    disabled,
-    children,
-    type = 'button',
     ...props
 }: ButtonProps) {
     return (
-        <button
+        <PrimitiveButton
             {...props}
-            type={type}
-            className={buttonStyles({ variant, size, fullWidth, className })}
-            disabled={disabled || loading}
-            aria-busy={loading || props['aria-busy']}
-        >
-            {loading && <LoaderCircle className="button-spinner" size={18} aria-hidden="true" />}
-            {children}
-        </button>
+            variant={variants[variant]}
+            size={size === 'sm' ? 'sm' : 'default'}
+            className={cn(fullWidth && 'button-full w-full', className)}
+        />
     );
 }

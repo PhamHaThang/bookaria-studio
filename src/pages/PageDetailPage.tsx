@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
 import { assetKeys, assetsApi } from '../features/assets';
 import { uploadFile } from '../features/assets/api/upload-file';
 import { auth, useAuth } from '../features/auth';
@@ -18,7 +20,6 @@ import type { BookDetail, Page } from '../shared/contracts/dto.schema';
 import { defaultMarkerTransform, markerToMm } from '../shared/contracts/marker.schema';
 import { Button } from '../shared/ui/Button';
 import { Feedback } from '../shared/ui/Feedback';
-import '../features/pages/ui/pages.css';
 
 function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
     const { user } = useAuth(),
@@ -128,10 +129,13 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
         }, 'Đã lưu tên trang.');
     }
     return (
-        <div className="page-editor-screen" data-mode={mode}>
-            <div className="page-heading">
+        <div className="page-editor-screen [&[data-mode=page]]:p-6" data-mode={mode}>
+            <div className="page-heading [&_h1]:wrap-anywhere mx-0 mt-0 mb-7 flex items-center justify-between gap-6 max-[760px]:mb-6 max-[700px]:flex-wrap max-[700px]:items-start max-[760px]:items-start max-[700px]:gap-3 max-[760px]:gap-4 max-[700px]:[&_>_.button]:max-w-full max-[700px]:[&_>_.button]:flex-[0_0_auto] [&_>_div]:min-w-0 max-[700px]:[&_>_div]:flex-[1_1_180px] [&_h1]:font-semibold [&_h1]:text-[length:28px] [&_h1]:tracking-[-0.025em] max-[700px]:[&_h1]:text-[length:25px] max-[760px]:[&_h1]:text-[length:var(--text-2xl)] [&_p]:mx-0 [&_p]:mt-2 [&_p]:mb-0 [&_p]:max-w-[64ch] [&_p]:text-[length:13px] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-sm)] [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-2 [.studio-editing_&_h1]:ml-4 [.studio-editing_&_h1]:inline [.studio-editing_&_h1]:text-[length:21px] max-[700px]:[.studio-editing_&_h1]:mx-0 max-[700px]:[.studio-editing_&_h1]:mt-[6px] max-[700px]:[.studio-editing_&_h1]:mb-0 max-[700px]:[.studio-editing_&_h1]:block [.studio-editing_&_p]:ml-[14px] [.studio-editing_&_p]:inline [.studio-editing_&_p]:text-[length:11px] max-[700px]:[.studio-editing_&_p]:mx-0 max-[700px]:[.studio-editing_&_p]:my-1 max-[700px]:[.studio-editing_&_p]:block [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375">
                 <div>
-                    <Link className="back-link" to={`/books/${book.id}`}>
+                    <Link
+                        className="back-link mb-4 inline-block text-[length:var(--text-sm)] [.studio-editing_&]:inline [.studio-editing_&]:text-[length:12px]"
+                        to={`/books/${book.id}`}
+                    >
                         {book.title}
                     </Link>
                     <h1>{page.title || `Trang ${page.orderIndex + 1}`}</h1>
@@ -142,11 +146,17 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
             </div>
             <Feedback error={error} success={notice} />
             {[...new Set(page.markerWarnings)].map((warning) => (
-                <p className="page-warning" key={warning}>
+                <p
+                    className="page-warning rounded-[var(--radius-sm)] bg-warning px-4 py-3 text-warning-foreground [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mx-0 [.studio-editing_&]:my-1 [.studio-editing_&]:px-[10px] [.studio-editing_&]:py-[5px] [.studio-editing_&]:text-[length:11px]"
+                    key={warning}
+                >
                     {markerWarningText(warning)}
                 </p>
             ))}
-            <fieldset className="page-edit-modes" aria-label="Phần chỉnh sửa trang">
+            <fieldset
+                className="page-edit-modes mb-6 flex min-w-0 flex-wrap gap-3 border-0 border-[transparent] border-solid p-0 [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-[10px] [.studio-editing_&_.button]:min-h-[34px] [.studio-editing_&_.button]:px-3 [.studio-editing_&_.button]:py-[6px] [.studio-editing_&_.button]:text-[length:12px]"
+                aria-label="Phần chỉnh sửa trang"
+            >
                 <Button
                     variant={mode === 'content' ? 'primary' : 'ghost'}
                     aria-pressed={mode === 'content'}
@@ -174,10 +184,13 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                 />
             </div>
             <div hidden={mode !== 'page'}>
-                <div className="page-editor-layout">
-                    <section className="page-preview-section" aria-label="Xem trước trang sách">
+                <div className="page-editor-layout grid grid-cols-[minmax(0,_1fr)_minmax(0,_1.2fr)] items-start gap-8 max-[850px]:grid-cols-[1fr]">
+                    <section
+                        className="page-preview-section min-w-0"
+                        aria-label="Xem trước trang sách"
+                    >
                         <div
-                            className="page-paper"
+                            className="page-paper relative w-full max-w-115 overflow-hidden border border-border border-solid bg-surface max-[850px]:mx-auto max-[850px]:max-w-90 [&_>_img]:block [&_>_img]:size-full [&_>_img]:object-contain"
                             style={{ aspectRatio: `1 / ${book.pageAspect}` }}
                         >
                             <img
@@ -186,7 +199,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                             />
                             {page.markerMode === 'BOOKARIA_MARKER' && page.bookariaMarker && (
                                 <div
-                                    className="marker-placement"
+                                    className="marker-placement transform-[translate(-50%,_-50%)] absolute grid border-[2px] border-foreground border-dashed bg-surface font-semibold text-foreground [place-items:center]"
                                     style={{
                                         left: `${(transform.x + 0.5) * 100}%`,
                                         top: `${(0.5 - transform.y / book.pageAspect) * 100}%`,
@@ -199,34 +212,44 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                             )}
                         </div>
                         {page.markerMode === 'BOOKARIA_MARKER' && (
-                            <p className="field-hint">
+                            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                                 Ô số minh họa vị trí marker khi in. Đây không phải mẫu marker để
                                 quét.
                             </p>
                         )}
-                        <p className="field-hint">
+                        <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                             Ảnh gốc {page.image.width} × {page.image.height} px. Nội dung AR sẽ được
                             chỉnh ở phần tiếp theo.
                         </p>
                     </section>
-                    <div className="page-editor-controls">
-                        <form className="page-control-section" onSubmit={saveTitle}>
-                            <h2>Thông tin trang</h2>
-                            <label htmlFor="page-title">
-                                Tên trang
-                                <input
-                                    id="page-title"
-                                    name="title"
-                                    maxLength={150}
-                                    defaultValue={page.title || ''}
-                                    disabled={locked}
-                                />
-                            </label>
-                            <Button type="submit" disabled={locked}>
-                                Lưu tên trang
-                            </Button>
+                    <div className="page-editor-controls grid min-w-0 gap-6">
+                        <form
+                            className="page-control-section grid min-w-0 gap-4 rounded-[var(--radius-md)] border border-border border-solid bg-surface p-5 max-[540px]:p-4 [&_.button]:[justify-self:start] [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h3]:m-0 [&_input]:w-full [&_input]:min-w-0 [&_label]:grid [&_label]:gap-2 [&_label]:font-medium [&_p]:m-0"
+                            onSubmit={saveTitle}
+                        >
+                            <FieldGroup className="contents">
+                                <h2>Thông tin trang</h2>
+                                <Field orientation="contents">
+                                    <FieldLabel htmlFor="page-title">
+                                        Tên trang
+                                        <Input
+                                            id="page-title"
+                                            name="title"
+                                            maxLength={150}
+                                            defaultValue={page.title || ''}
+                                            disabled={locked}
+                                        />
+                                    </FieldLabel>
+                                </Field>
+                                <Button type="submit" disabled={locked}>
+                                    Lưu tên trang
+                                </Button>
+                            </FieldGroup>
                         </form>
-                        <section className="page-control-section" aria-labelledby="marker-heading">
+                        <section
+                            className="page-control-section grid min-w-0 gap-4 rounded-[var(--radius-md)] border border-border border-solid bg-surface p-5 max-[540px]:p-4 [&_.button]:[justify-self:start] [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h3]:m-0 [&_input]:w-full [&_input]:min-w-0 [&_label]:grid [&_label]:gap-2 [&_label]:font-medium [&_p]:m-0"
+                            aria-labelledby="marker-heading"
+                        >
                             <h2 id="marker-heading">Nhận diện AR</h2>
                             <p>
                                 Hiện tại:{' '}
@@ -237,7 +260,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                                       : 'Dùng ảnh trang để nhận diện'}
                                 .
                             </p>
-                            <div className="form-actions">
+                            <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                                 <Button
                                     variant="secondary"
                                     disabled={locked || page.markerMode === 'NONE'}
@@ -285,7 +308,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                                     Dùng ảnh trang
                                 </Button>
                             </div>
-                            <p className="field-hint">
+                            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                                 Dùng ảnh trang sẽ chuẩn bị dữ liệu nhận diện trên trình duyệt, có
                                 thể mất vài phút. Ảnh có nhiều chi tiết thường dễ quét hơn.
                             </p>
@@ -310,7 +333,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                             )}
                             {page.markerMode === 'BOOKARIA_MARKER' && (
                                 <form
-                                    className="marker-position-form"
+                                    className="marker-position-form grid gap-3 border-t-[1px] border-t-border pt-4 [border-top-style:solid]"
                                     key={`${page.id}-${JSON.stringify(transform)}`}
                                     onSubmit={(event) => {
                                         event.preventDefault();
@@ -323,54 +346,65 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                                         }, 'Đã lưu vị trí marker.');
                                     }}
                                 >
-                                    <h3>Vị trí trên bản in</h3>
-                                    <p className="field-hint">
-                                        Tâm marker tính từ góc trên bên trái. Cạnh tối thiểu 35 mm,
-                                        cách mép ít nhất 12 mm.
-                                    </p>
-                                    <fieldset disabled={locked} className="marker-measurements">
-                                        <label htmlFor="marker-x">
-                                            Tâm ngang (mm)
-                                            <input
-                                                id="marker-x"
-                                                name="centerX"
-                                                type="number"
-                                                step="0.1"
-                                                required
-                                                defaultValue={mm.centerXMm.toFixed(1)}
-                                            />
-                                        </label>
-                                        <label htmlFor="marker-y">
-                                            Tâm dọc (mm)
-                                            <input
-                                                id="marker-y"
-                                                name="centerY"
-                                                type="number"
-                                                step="0.1"
-                                                required
-                                                defaultValue={mm.centerYMm.toFixed(1)}
-                                            />
-                                        </label>
-                                        <label htmlFor="marker-size">
-                                            Cạnh (mm)
-                                            <input
-                                                id="marker-size"
-                                                name="size"
-                                                type="number"
-                                                step="0.1"
-                                                min="35"
-                                                required
-                                                defaultValue={mm.sizeMm.toFixed(1)}
-                                            />
-                                        </label>
-                                    </fieldset>
-                                    <Button type="submit" disabled={locked}>
-                                        Lưu vị trí marker
-                                    </Button>
+                                    <FieldGroup className="contents">
+                                        <h3>Vị trí trên bản in</h3>
+                                        <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
+                                            Tâm marker tính từ góc trên bên trái. Cạnh tối thiểu 35
+                                            mm, cách mép ít nhất 12 mm.
+                                        </p>
+                                        <fieldset
+                                            disabled={locked}
+                                            className="marker-measurements m-0 grid min-w-0 grid-cols-[repeat(3,_minmax(0,_1fr))] gap-3 border-0 border-[transparent] border-solid p-0 max-[540px]:grid-cols-[1fr]"
+                                        >
+                                            <Field orientation="contents">
+                                                <FieldLabel htmlFor="marker-x">
+                                                    Tâm ngang (mm)
+                                                    <Input
+                                                        id="marker-x"
+                                                        name="centerX"
+                                                        type="number"
+                                                        step="0.1"
+                                                        required
+                                                        defaultValue={mm.centerXMm.toFixed(1)}
+                                                    />
+                                                </FieldLabel>
+                                            </Field>
+                                            <Field orientation="contents">
+                                                <FieldLabel htmlFor="marker-y">
+                                                    Tâm dọc (mm)
+                                                    <Input
+                                                        id="marker-y"
+                                                        name="centerY"
+                                                        type="number"
+                                                        step="0.1"
+                                                        required
+                                                        defaultValue={mm.centerYMm.toFixed(1)}
+                                                    />
+                                                </FieldLabel>
+                                            </Field>
+                                            <Field orientation="contents">
+                                                <FieldLabel htmlFor="marker-size">
+                                                    Cạnh (mm)
+                                                    <Input
+                                                        id="marker-size"
+                                                        name="size"
+                                                        type="number"
+                                                        step="0.1"
+                                                        min="35"
+                                                        required
+                                                        defaultValue={mm.sizeMm.toFixed(1)}
+                                                    />
+                                                </FieldLabel>
+                                            </Field>
+                                        </fieldset>
+                                        <Button type="submit" disabled={locked}>
+                                            Lưu vị trí marker
+                                        </Button>
+                                    </FieldGroup>
                                 </form>
                             )}
                             {jobId && (
-                                <div className="page-score-status">
+                                <div className="page-score-status bg-info p-3 text-info-foreground">
                                     {job.isPending && (
                                         <p role="status">Đang kiểm tra tiến độ đánh giá…</p>
                                     )}
@@ -399,7 +433,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                                 </div>
                             )}
                             {page.markerMode === 'CUSTOM_MARKER' && (
-                                <div className="marker-report">
+                                <div className="marker-report grid gap-3 border-t-[1px] border-t-border pt-4 [border-top-style:solid]">
                                     <h3>Chất lượng ảnh nhận diện</h3>
                                     <p>
                                         {page.markerScore == null
@@ -437,7 +471,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                                             )}
                                         </>
                                     )}
-                                    <div className="form-actions">
+                                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                                         <Button
                                             variant="secondary"
                                             disabled={locked}
@@ -464,7 +498,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                             )}
                         </section>
                         <section
-                            className="page-control-section"
+                            className="page-control-section grid min-w-0 gap-4 rounded-[var(--radius-md)] border border-border border-solid bg-surface p-5 max-[540px]:p-4 [&_.button]:[justify-self:start] [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h3]:m-0 [&_input]:w-full [&_input]:min-w-0 [&_label]:grid [&_label]:gap-2 [&_label]:font-medium [&_p]:m-0"
                             aria-labelledby="replace-image-heading"
                         >
                             <h2 id="replace-image-heading">Thay ảnh trang</h2>
@@ -529,7 +563,7 @@ function PageDetailContent({ bookId, pageId }: { bookId: string; pageId: string 
             <>
                 <h1>Chưa mở được trang sách</h1>
                 <Feedback error={errorMessage(page.error || book.error)} />
-                <div className="form-actions">
+                <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                     <Button
                         variant="secondary"
                         onClick={() => {

@@ -1,5 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { Button } from '@/shared/ui/Button';
+import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { apiClient } from '../../shared/api/client';
 import type { Asset, AssetCategory } from '../../shared/contracts/dto.schema';
 import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
@@ -45,13 +49,14 @@ export function WriteFeedback({
         <>
             <Feedback error={error || action.error} />
             {action.uncertain && (
-                <button
-                    className="button secondary"
+                <Button
+                    variant="secondary"
+                    fullWidth
                     type="button"
                     onClick={() => window.location.reload()}
                 >
                     Tải lại trang và kiểm tra
-                </button>
+                </Button>
             )}
         </>
     );
@@ -74,26 +79,27 @@ export function LibraryConfirm({
     children: ReactNode;
 }) {
     return (
-        <ConfirmDialog title={title} busy={busy} onClose={onClose} className="admin-confirm">
+        <ConfirmDialog
+            title={title}
+            busy={busy}
+            onClose={onClose}
+            className="admin-confirm [&_p]:wrap-anywhere max-h-[calc(100dvh_-_32px)] max-w-[min(480px,_calc(100%_-_32px))] overflow-y-auto [&_p]:[white-space:pre-wrap]"
+        >
             {children}
             <Feedback error={error} />
-            <div className="admin-actions">
-                <button
-                    type="button"
-                    className="button"
-                    disabled={busy || blocked}
-                    onClick={onConfirm}
-                >
+            <div className="admin-actions flex flex-wrap items-center gap-3 max-[640px]:flex-col max-[640px]:items-stretch [.admin-confirm_&]:mt-5">
+                <Button type="button" fullWidth disabled={busy || blocked} onClick={onConfirm}>
                     {busy ? 'Đang xử lý…' : 'Xác nhận'}
-                </button>
-                <button
+                </Button>
+                <Button
                     type="button"
-                    className="button secondary"
+                    variant="secondary"
+                    fullWidth
                     disabled={busy}
                     onClick={onClose}
                 >
                     Quay lại
-                </button>
+                </Button>
             </div>
         </ConfirmDialog>
     );
@@ -114,22 +120,24 @@ export function CategorySelect({
     emptyLabel?: string;
 }) {
     return (
-        <label htmlFor={`library-${name}`}>
-            {label}
-            <select id={`library-${name}`} name={name} defaultValue={value}>
-                <option value="">{emptyLabel}</option>
-                {categories
-                    .filter((item) => !exclude.has(item.id))
-                    .map((item) => (
-                        <option key={item.id} value={item.id}>
-                            {item.name}
-                            {item.parentId
-                                ? ` — trong ${categories.find((parent) => parent.id === item.parentId)?.name || 'danh mục cha'}`
-                                : ''}
-                        </option>
-                    ))}
-            </select>
-        </label>
+        <Field orientation="contents">
+            <FieldLabel htmlFor={`library-${name}`}>
+                {label}
+                <NativeSelect id={`library-${name}`} name={name} defaultValue={value}>
+                    <option value="">{emptyLabel}</option>
+                    {categories
+                        .filter((item) => !exclude.has(item.id))
+                        .map((item) => (
+                            <option key={item.id} value={item.id}>
+                                {item.name}
+                                {item.parentId
+                                    ? ` — trong ${categories.find((parent) => parent.id === item.parentId)?.name || 'danh mục cha'}`
+                                    : ''}
+                            </option>
+                        ))}
+                </NativeSelect>
+            </FieldLabel>
+        </Field>
     );
 }
 export function LibraryMetadata({
@@ -141,51 +149,61 @@ export function LibraryMetadata({
 }) {
     return (
         <>
-            <label htmlFor="library-name">
-                Tên tài nguyên
-                <input
-                    id="library-name"
-                    name="name"
-                    required
-                    maxLength={150}
-                    defaultValue={asset.name}
-                />
-            </label>
+            <Field orientation="contents">
+                <FieldLabel htmlFor="library-name">
+                    Tên tài nguyên
+                    <Input
+                        id="library-name"
+                        name="name"
+                        required
+                        maxLength={150}
+                        defaultValue={asset.name}
+                    />
+                </FieldLabel>
+            </Field>
             <CategorySelect categories={categories} value={asset.categoryId || ''} />
-            <label htmlFor="library-license">
-                Giấy phép sử dụng
-                <input
-                    id="library-license"
-                    name="license"
-                    required
-                    maxLength={50}
-                    defaultValue={asset.license || ''}
-                />
-            </label>
-            <label htmlFor="library-author">
-                Tác giả gốc
-                <input
-                    id="library-author"
-                    name="authorName"
-                    required
-                    maxLength={150}
-                    defaultValue={asset.authorName || ''}
-                />
-            </label>
-            <label htmlFor="library-source">
-                Liên kết nguồn (không bắt buộc)
-                <input
-                    id="library-source"
-                    name="sourceUrl"
-                    type="url"
-                    defaultValue={asset.sourceUrl || ''}
-                />
-            </label>
-            <label htmlFor="library-tags">
-                Nhãn, ngăn cách bằng dấu phẩy
-                <input id="library-tags" name="tags" defaultValue={asset.tags.join(', ')} />
-            </label>
-            <p className="stats-note">
+            <Field orientation="contents">
+                <FieldLabel htmlFor="library-license">
+                    Giấy phép sử dụng
+                    <Input
+                        id="library-license"
+                        name="license"
+                        required
+                        maxLength={50}
+                        defaultValue={asset.license || ''}
+                    />
+                </FieldLabel>
+            </Field>
+            <Field orientation="contents">
+                <FieldLabel htmlFor="library-author">
+                    Tác giả gốc
+                    <Input
+                        id="library-author"
+                        name="authorName"
+                        required
+                        maxLength={150}
+                        defaultValue={asset.authorName || ''}
+                    />
+                </FieldLabel>
+            </Field>
+            <Field orientation="contents">
+                <FieldLabel htmlFor="library-source">
+                    Liên kết nguồn (không bắt buộc)
+                    <Input
+                        id="library-source"
+                        name="sourceUrl"
+                        type="url"
+                        defaultValue={asset.sourceUrl || ''}
+                    />
+                </FieldLabel>
+            </Field>
+            <Field orientation="contents">
+                <FieldLabel htmlFor="library-tags">
+                    Nhãn, ngăn cách bằng dấu phẩy
+                    <Input id="library-tags" name="tags" defaultValue={asset.tags.join(', ')} />
+                </FieldLabel>
+            </Field>
+            <p className="stats-note max-w-[75ch] text-[length:var(--text-sm)] text-muted-foreground [.admin-form_&]:mb-4">
                 Tối đa 20 nhãn, mỗi nhãn 30 ký tự. Giấy phép và tên tác giả phải thể hiện đúng quyền
                 sử dụng tệp.
             </p>

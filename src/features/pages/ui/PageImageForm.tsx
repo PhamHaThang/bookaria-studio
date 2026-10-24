@@ -1,4 +1,6 @@
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Spinner } from '@/shared/ui/primitives/spinner';
 import { ContractError } from '../../../shared/api/contract';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset } from '../../../shared/contracts/dto.schema';
@@ -138,98 +140,118 @@ export function PageImageForm({
     }
     return (
         <form
-            className="page-image-form"
+            className="page-image-form grid min-w-0 gap-4 [&_fieldset]:m-0 [&_fieldset]:grid [&_fieldset]:min-w-0 [&_fieldset]:gap-3 [&_fieldset]:border-0 [&_fieldset]:border-[transparent] [&_fieldset]:border-solid [&_fieldset]:p-0 [&_h3]:m-0 [&_input]:w-full [&_input]:min-w-0 [&_label]:grid [&_label]:gap-2 [&_label]:font-medium [&_select]:w-full [&_select]:min-w-0 [.book-pages_>_&]:mt-5 [.book-pages_>_&]:rounded-[var(--radius-md)] [.book-pages_>_&]:border [.book-pages_>_&]:border-border [.book-pages_>_&]:border-solid [.book-pages_>_&]:bg-surface [.book-pages_>_&]:p-5"
             onSubmit={submit}
             aria-label={title}
             aria-busy={Boolean(stage)}
         >
-            <h3>{title}</h3>
-            <Feedback error={error} success={notice} />
-            <fieldset disabled={disabled || Boolean(stage)}>
-                <label htmlFor={`${id}-image`}>Ảnh trang</label>
-                <input
-                    id={`${id}-image`}
-                    name="image"
-                    type="file"
-                    ref={input}
-                    accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-                    aria-describedby={`${id}-help`}
-                    onChange={(event) => {
-                        const value = event.currentTarget.files?.[0] || null;
-                        setReady(null);
-                        setCheckpoint(null);
-                        setProgress(0);
-                        setError(null);
-                        setNotice(null);
-                        try {
-                            if (value) uploadRequest(value, 'PAGE_IMAGE');
-                            setFile(value);
-                        } catch (cause) {
-                            setFile(null);
-                            setError(errorMessage(cause));
-                        }
-                    }}
-                />
-                <p id={`${id}-help`} className="field-hint">
-                    JPG hoặc PNG, tối đa 10 MB. Chọn ảnh rõ nét, đủ cả trang.
-                </p>
-                {preview && (
-                    <img className="page-upload-preview" src={preview} alt="Xem trước ảnh trang" />
-                )}
-                {file && <p className="page-file-name">{file.name}</p>}
-                {children}
-            </fieldset>
-            {stage && (
-                <div>
-                    <p role="status">
-                        {labels[stage]}
-                        {['uploading', 'compiling', 'uploading-marker'].includes(stage)
-                            ? ` ${progress}%`
-                            : ''}
-                    </p>
-                    {['uploading', 'compiling', 'uploading-marker'].includes(stage) && (
-                        <progress aria-label="Tiến độ chuẩn bị trang" max={100} value={progress} />
-                    )}
-                </div>
-            )}
-            {!stage && (ready || checkpoint?.uploaded) && (
-                <p className="field-hint">
-                    Ảnh đã tải xong. Thử lại sẽ dùng ảnh này, không tải trùng tệp.
-                </p>
-            )}
-            <div className="form-actions">
-                <Button type="submit" loading={Boolean(stage)} disabled={disabled || !file}>
-                    {stage ? 'Đang xử lý…' : error && file ? 'Thử lại' : action}
-                </Button>
-                {!stage && file && (
-                    <Button
-                        variant="ghost"
-                        disabled={disabled}
-                        onClick={() => {
-                            clear();
+            <FieldGroup className="contents">
+                <h3>{title}</h3>
+                <Feedback error={error} success={notice} />
+                <fieldset disabled={disabled || Boolean(stage)}>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor={`${id}-image`}>Ảnh trang</FieldLabel>
+                    </Field>
+                    <input
+                        id={`${id}-image`}
+                        name="image"
+                        type="file"
+                        ref={input}
+                        accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                        aria-describedby={`${id}-help`}
+                        onChange={(event) => {
+                            const value = event.currentTarget.files?.[0] || null;
+                            setReady(null);
+                            setCheckpoint(null);
+                            setProgress(0);
                             setError(null);
                             setNotice(null);
+                            try {
+                                if (value) uploadRequest(value, 'PAGE_IMAGE');
+                                setFile(value);
+                            } catch (cause) {
+                                setFile(null);
+                                setError(errorMessage(cause));
+                            }
                         }}
+                    />
+                    <p
+                        id={`${id}-help`}
+                        className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]"
                     >
-                        Bỏ lựa chọn
-                    </Button>
+                        JPG hoặc PNG, tối đa 10 MB. Chọn ảnh rõ nét, đủ cả trang.
+                    </p>
+                    {preview && (
+                        <img
+                            className="page-upload-preview max-h-60 max-w-full object-contain [justify-self:start]"
+                            src={preview}
+                            alt="Xem trước ảnh trang"
+                        />
+                    )}
+                    {file && <p className="page-file-name wrap-anywhere m-0">{file.name}</p>}
+                    {children}
+                </fieldset>
+                {stage && (
+                    <div>
+                        <p role="status">
+                            {labels[stage]}
+                            {['uploading', 'compiling', 'uploading-marker'].includes(stage)
+                                ? ` ${progress}%`
+                                : ''}
+                        </p>
+                        {['uploading', 'compiling', 'uploading-marker'].includes(stage) && (
+                            <progress
+                                aria-label="Tiến độ chuẩn bị trang"
+                                max={100}
+                                value={progress}
+                            />
+                        )}
+                    </div>
                 )}
-                {stage && stage !== 'saving' && stage !== 'completing' && (
+                {!stage && (ready || checkpoint?.uploaded) && (
+                    <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
+                        Ảnh đã tải xong. Thử lại sẽ dùng ảnh này, không tải trùng tệp.
+                    </p>
+                )}
+                <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                     <Button
-                        variant="secondary"
-                        onClick={() => {
-                            controller.current?.abort();
-                            controller.current = null;
-                            setStage(null);
-                            onBusyChange(false);
-                            setError(null);
-                            setNotice('Đã dừng chuẩn bị trang.');
-                        }}
+                        type="submit"
+                        aria-busy={Boolean(stage)}
+                        disabled={disabled || !file || Boolean(stage)}
                     >
-                        Dừng
+                        {Boolean(stage) && <Spinner data-icon="inline-start" aria-hidden="true" />}
+                        {stage ? 'Đang xử lý…' : error && file ? 'Thử lại' : action}
                     </Button>
-                )}
-            </div>
+                    {!stage && file && (
+                        <Button
+                            variant="ghost"
+                            disabled={disabled}
+                            onClick={() => {
+                                clear();
+                                setError(null);
+                                setNotice(null);
+                            }}
+                        >
+                            Bỏ lựa chọn
+                        </Button>
+                    )}
+                    {stage && stage !== 'saving' && stage !== 'completing' && (
+                        <Button
+                            variant="secondary"
+                            onClick={() => {
+                                controller.current?.abort();
+                                controller.current = null;
+                                setStage(null);
+                                onBusyChange(false);
+                                setError(null);
+                                setNotice('Đã dừng chuẩn bị trang.');
+                            }}
+                        >
+                            Dừng
+                        </Button>
+                    )}
+                </div>
+            </FieldGroup>
         </form>
     );
 }

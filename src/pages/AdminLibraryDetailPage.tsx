@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Button } from '@/shared/ui/Button';
+import { FieldGroup } from '@/shared/ui/primitives/field';
 import { libraryChanges, libraryFields } from '../features/admin/library-model';
 import {
     LibraryConfirm,
@@ -39,7 +41,7 @@ function LibraryEditor({
         <>
             <WriteFeedback action={action} error={error} />
             <form
-                className="admin-form"
+                className="admin-form my-6 max-w-160 [&_:is(input,_select,_textarea)]:w-full [&_label]:mb-4 [&_label]:grid [&_label]:gap-2 [&_textarea]:min-h-25"
                 onSubmit={(event) => {
                     event.preventDefault();
                     const parsed = UpdateLibraryAssetBodySchema.safeParse(
@@ -53,27 +55,30 @@ function LibraryEditor({
                     setDraft(parsed.data);
                 }}
             >
-                <fieldset disabled={action.busy || action.uncertain}>
-                    <LibraryMetadata asset={asset} categories={categories} />
-                    <button type="submit" className="button">
-                        Xem lại thay đổi
-                    </button>
-                </fieldset>
+                <FieldGroup className="contents">
+                    <fieldset disabled={action.busy || action.uncertain}>
+                        <LibraryMetadata asset={asset} categories={categories} />
+                        <Button type="submit" fullWidth>
+                            Xem lại thay đổi
+                        </Button>
+                    </fieldset>
+                </FieldGroup>
             </form>
-            <section className="admin-section">
+            <section className="admin-section mt-8">
                 <h2>Xóa khỏi thư viện</h2>
                 <p>
                     Máy chủ từ chối nếu tài nguyên còn được dùng trong bản nháp hoặc một phiên bản
                     đã xuất bản. Không tự xóa các tham chiếu trong sách.
                 </p>
-                <button
-                    className="button secondary"
+                <Button
+                    variant="secondary"
+                    fullWidth
                     type="button"
                     disabled={action.busy || action.uncertain}
                     onClick={() => setDraft('delete')}
                 >
                     Xóa tài nguyên dùng chung
-                </button>
+                </Button>
             </section>
             {draft && (
                 <LibraryConfirm

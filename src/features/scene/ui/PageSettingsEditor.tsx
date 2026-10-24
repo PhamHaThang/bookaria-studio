@@ -1,5 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import { NativeSelect } from '@/shared/ui/primitives/native-select';
+import { Spinner } from '@/shared/ui/primitives/spinner';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset, Page } from '../../../shared/contracts/dto.schema';
 import { type PageSettings, PageSettingsSchema } from '../../../shared/contracts/scene.schema';
@@ -63,10 +66,16 @@ export function PageSettingsEditor({
         setNotice(null);
     }
     return (
-        <section className="scene-settings" aria-labelledby="page-settings-title">
+        <section
+            className="scene-settings mt-6 border-t-[1px] border-t-border pt-5 [border-top-style:solid] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [.workbench-panel_&]:m-0 [.workbench-panel_&]:border-0 [.workbench-panel_&]:border-[transparent] [.workbench-panel_&]:border-solid [.workbench-panel_&]:p-0"
+            aria-labelledby="page-settings-title"
+        >
             <h3 id="page-settings-title">Âm thanh và ánh sáng của trang</h3>
             <Feedback error={error} success={notice} />
-            <fieldset disabled={disabled || busy} className="scene-settings-fields">
+            <fieldset
+                disabled={disabled || busy}
+                className="scene-settings-fields mx-0 mt-0 mb-4 grid min-w-0 grid-cols-[repeat(2,_minmax(0,_1fr))] gap-4 border-0 border-[transparent] border-solid p-0 max-[600px]:grid-cols-[1fr] [&_h4]:mx-0 [&_h4]:mt-0 [&_h4]:mb-2 [&_select]:w-full [&_select]:min-w-0 [.workbench-panel_&]:gap-[14px]"
+            >
                 {(['backgroundAudioAssetId', 'narrationAssetId'] as const).map((key) => (
                     <div key={key}>
                         <h4>
@@ -90,7 +99,7 @@ export function PageSettingsEditor({
                                     <track kind="captions" />
                                 </audio>
                             )}
-                        <div className="form-actions">
+                        <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                             <Button variant="secondary" onClick={() => setPicker(key)}>
                                 {key === 'backgroundAudioAssetId'
                                     ? 'Chọn âm thanh nền'
@@ -106,36 +115,42 @@ export function PageSettingsEditor({
                         </div>
                     </div>
                 ))}
-                <label className="checkbox">
-                    <input
-                        type="checkbox"
-                        checked={draft.backgroundLoop}
-                        onChange={(event) => update('backgroundLoop', event.currentTarget.checked)}
-                    />
-                    Lặp âm thanh nền
-                </label>
-                <label htmlFor="scene-lighting">
-                    Ánh sáng
-                    <select
-                        id="scene-lighting"
-                        value={draft.lighting}
-                        onChange={(event) =>
-                            update(
-                                'lighting',
-                                event.currentTarget.value as PageSettings['lighting'],
-                            )
-                        }
-                    >
-                        <option value="neutral">Trung tính</option>
-                        <option value="warm">Ấm</option>
-                        <option value="cool">Lạnh</option>
-                    </select>
-                </label>
+                <Field orientation="contents">
+                    <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
+                        <input
+                            type="checkbox"
+                            checked={draft.backgroundLoop}
+                            onChange={(event) =>
+                                update('backgroundLoop', event.currentTarget.checked)
+                            }
+                        />
+                        Lặp âm thanh nền
+                    </FieldLabel>
+                </Field>
+                <Field orientation="contents">
+                    <FieldLabel htmlFor="scene-lighting">
+                        Ánh sáng
+                        <NativeSelect
+                            id="scene-lighting"
+                            value={draft.lighting}
+                            onChange={(event) =>
+                                update(
+                                    'lighting',
+                                    event.currentTarget.value as PageSettings['lighting'],
+                                )
+                            }
+                        >
+                            <option value="neutral">Trung tính</option>
+                            <option value="warm">Ấm</option>
+                            <option value="cool">Lạnh</option>
+                        </NativeSelect>
+                    </FieldLabel>
+                </Field>
             </fieldset>
-            <div className="form-actions">
+            <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                 <Button
-                    loading={busy}
-                    disabled={disabled || !dirty}
+                    aria-busy={busy}
+                    disabled={disabled || !dirty || busy}
                     onClick={async () => {
                         if (disabled || guard.current || !dirty) return;
                         guard.current = true;
@@ -174,6 +189,7 @@ export function PageSettingsEditor({
                         }
                     }}
                 >
+                    {busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
                     Lưu cài đặt trang
                 </Button>
                 <Button

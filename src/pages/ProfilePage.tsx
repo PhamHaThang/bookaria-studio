@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 import { Button } from '@/shared/ui/Button';
+import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { Spinner } from '@/shared/ui/primitives/spinner';
+import { Textarea } from '@/shared/ui/primitives/textarea';
 import { ImageUploadEditor } from '../features/assets';
 import { auth, useAuth } from '../features/auth';
 import { profileApi, profileKey } from '../features/profile';
@@ -60,52 +64,79 @@ function ProfileForm({
         }
     }
     return (
-        <form className="editor-form" onSubmit={submit} aria-busy={mutation.isPending}>
-            <h2>Thông tin cá nhân</h2>
-            <Feedback error={error} success={success} />
-            <fieldset disabled={mutation.isPending || disabled}>
-                <label htmlFor="profile-name">
-                    Họ tên
-                    <input
-                        id="profile-name"
-                        autoComplete="name"
-                        value={values.displayName}
-                        onChange={(e) => setValues({ ...values, displayName: e.target.value })}
-                        maxLength={100}
-                        required
-                    />
-                </label>
-                <label htmlFor="profile-email">
-                    Email
-                    <input id="profile-email" type="email" value={me.email} readOnly />
-                    <span className="field-hint">
-                        {me.emailVerified ? 'Email đã được xác minh.' : 'Email chưa được xác minh.'}
-                    </span>
-                </label>
-                <label htmlFor="profile-organization">
-                    Đơn vị / trường học
-                    <input
-                        id="profile-organization"
-                        autoComplete="organization"
-                        value={values.organization}
-                        onChange={(e) => setValues({ ...values, organization: e.target.value })}
-                        maxLength={150}
-                    />
-                </label>
-                <label htmlFor="profile-bio">
-                    Giới thiệu
-                    <textarea
-                        id="profile-bio"
-                        rows={4}
-                        value={values.bio}
-                        onChange={(e) => setValues({ ...values, bio: e.target.value })}
-                        maxLength={500}
-                    />
-                </label>
-                <Button type="submit" loading={mutation.isPending}>
-                    {mutation.isPending ? 'Đang lưu…' : 'Lưu hồ sơ'}
-                </Button>
-            </fieldset>
+        <form
+            className="editor-form max-w-180 rounded-[var(--radius-lg)] border border-border border-solid bg-surface p-8 max-[760px]:px-5 max-[760px]:py-6 [&_.feedback]:mb-6"
+            onSubmit={submit}
+            aria-busy={mutation.isPending}
+        >
+            <FieldGroup className="contents">
+                <h2>Thông tin cá nhân</h2>
+                <Feedback error={error} success={success} />
+                <fieldset disabled={mutation.isPending || disabled}>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="profile-name">
+                            Họ tên
+                            <Input
+                                id="profile-name"
+                                autoComplete="name"
+                                value={values.displayName}
+                                onChange={(e) =>
+                                    setValues({ ...values, displayName: e.target.value })
+                                }
+                                maxLength={100}
+                                required
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="profile-email">
+                            Email
+                            <Input id="profile-email" type="email" value={me.email} readOnly />
+                            <span className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
+                                {me.emailVerified
+                                    ? 'Email đã được xác minh.'
+                                    : 'Email chưa được xác minh.'}
+                            </span>
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="profile-organization">
+                            Đơn vị / trường học
+                            <Input
+                                id="profile-organization"
+                                autoComplete="organization"
+                                value={values.organization}
+                                onChange={(e) =>
+                                    setValues({ ...values, organization: e.target.value })
+                                }
+                                maxLength={150}
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="profile-bio">
+                            Giới thiệu
+                            <Textarea
+                                id="profile-bio"
+                                rows={4}
+                                value={values.bio}
+                                onChange={(e) => setValues({ ...values, bio: e.target.value })}
+                                maxLength={500}
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Button
+                        type="submit"
+                        aria-busy={mutation.isPending}
+                        disabled={mutation.isPending}
+                    >
+                        {mutation.isPending && (
+                            <Spinner data-icon="inline-start" aria-hidden="true" />
+                        )}
+                        {mutation.isPending ? 'Đang lưu…' : 'Lưu hồ sơ'}
+                    </Button>
+                </fieldset>
+            </FieldGroup>
         </form>
     );
 }
@@ -139,52 +170,67 @@ function PasswordForm() {
     }
     return (
         <form
-            className="editor-form password-section"
+            className="editor-form password-section mt-8 max-w-180 rounded-[var(--radius-lg)] border border-border border-solid bg-surface p-8 max-[760px]:px-5 max-[760px]:py-6 [&_.feedback]:mb-6"
             onSubmit={submit}
             aria-busy={mutation.isPending}
         >
-            <h2>Đổi mật khẩu</h2>
-            <p className="section-description">
-                Nếu bạn đăng nhập bằng mật khẩu, hãy nhập mật khẩu hiện tại. Mật khẩu mới cần ít
-                nhất 8 ký tự và tối đa 72 byte.
-            </p>
-            <Feedback error={error} success={success} />
-            <fieldset disabled={mutation.isPending}>
-                <label htmlFor="currentPassword">
-                    Mật khẩu hiện tại
-                    <input
-                        id="currentPassword"
-                        name="currentPassword"
-                        type="password"
-                        autoComplete="current-password"
-                    />
-                </label>
-                <label htmlFor="newPassword">
-                    Mật khẩu mới
-                    <input
-                        id="newPassword"
-                        name="newPassword"
-                        type="password"
-                        autoComplete="new-password"
-                        minLength={8}
-                        maxLength={72}
-                        required
-                    />
-                </label>
-                <label htmlFor="confirmation">
-                    Nhập lại mật khẩu mới
-                    <input
-                        id="confirmation"
-                        name="confirmation"
-                        type="password"
-                        autoComplete="new-password"
-                        required
-                    />
-                </label>
-                <Button type="submit" loading={mutation.isPending}>
-                    {mutation.isPending ? 'Đang đổi…' : 'Đổi mật khẩu'}
-                </Button>
-            </fieldset>
+            <FieldGroup className="contents">
+                <h2>Đổi mật khẩu</h2>
+                <p className="section-description mx-0 mt-[-6px] mb-6 text-[length:var(--text-sm)] text-muted-foreground">
+                    Nếu bạn đăng nhập bằng mật khẩu, hãy nhập mật khẩu hiện tại. Mật khẩu mới cần ít
+                    nhất 8 ký tự và tối đa 72 byte.
+                </p>
+                <Feedback error={error} success={success} />
+                <fieldset disabled={mutation.isPending}>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="currentPassword">
+                            Mật khẩu hiện tại
+                            <Input
+                                id="currentPassword"
+                                name="currentPassword"
+                                type="password"
+                                autoComplete="current-password"
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="newPassword">
+                            Mật khẩu mới
+                            <Input
+                                id="newPassword"
+                                name="newPassword"
+                                type="password"
+                                autoComplete="new-password"
+                                minLength={8}
+                                maxLength={72}
+                                required
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="confirmation">
+                            Nhập lại mật khẩu mới
+                            <Input
+                                id="confirmation"
+                                name="confirmation"
+                                type="password"
+                                autoComplete="new-password"
+                                required
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Button
+                        type="submit"
+                        aria-busy={mutation.isPending}
+                        disabled={mutation.isPending}
+                    >
+                        {mutation.isPending && (
+                            <Spinner data-icon="inline-start" aria-hidden="true" />
+                        )}
+                        {mutation.isPending ? 'Đang đổi…' : 'Đổi mật khẩu'}
+                    </Button>
+                </fieldset>
+            </FieldGroup>
         </form>
     );
 }
@@ -206,27 +252,26 @@ export function ProfilePage() {
             <>
                 <h1>Hồ sơ</h1>
                 <Feedback error={errorMessage(profile.error)} />
-                <button
-                    className="button compact"
+                <Button
                     type="button"
                     onClick={() => {
                         void profile.refetch();
                     }}
                 >
                     Thử tải lại
-                </button>
+                </Button>
             </>
         );
     const me = profile.data;
     return (
         <>
-            <div className="page-heading">
+            <div className="page-heading [&_h1]:wrap-anywhere mx-0 mt-0 mb-7 flex items-center justify-between gap-6 max-[760px]:mb-6 max-[700px]:flex-wrap max-[700px]:items-start max-[760px]:items-start max-[700px]:gap-3 max-[760px]:gap-4 max-[700px]:[&_>_.button]:max-w-full max-[700px]:[&_>_.button]:flex-[0_0_auto] [&_>_div]:min-w-0 max-[700px]:[&_>_div]:flex-[1_1_180px] [&_h1]:font-semibold [&_h1]:text-[length:28px] [&_h1]:tracking-[-0.025em] max-[700px]:[&_h1]:text-[length:25px] max-[760px]:[&_h1]:text-[length:var(--text-2xl)] [&_p]:mx-0 [&_p]:mt-2 [&_p]:mb-0 [&_p]:max-w-[64ch] [&_p]:text-[length:13px] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-sm)] [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-2 [.studio-editing_&_h1]:ml-4 [.studio-editing_&_h1]:inline [.studio-editing_&_h1]:text-[length:21px] max-[700px]:[.studio-editing_&_h1]:mx-0 max-[700px]:[.studio-editing_&_h1]:mt-[6px] max-[700px]:[.studio-editing_&_h1]:mb-0 max-[700px]:[.studio-editing_&_h1]:block [.studio-editing_&_p]:ml-[14px] [.studio-editing_&_p]:inline [.studio-editing_&_p]:text-[length:11px] max-[700px]:[.studio-editing_&_p]:mx-0 max-[700px]:[.studio-editing_&_p]:my-1 max-[700px]:[.studio-editing_&_p]:block [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375">
                 <div>
                     <h1>Hồ sơ</h1>
                     <p>Quản lý thông tin cá nhân và bảo mật tài khoản.</p>
                 </div>
             </div>
-            <div className="profile-layout">
+            <div className="profile-layout grid grid-cols-[minmax(0,_720px)_minmax(180px,_240px)] items-start gap-8 max-[1100px]:grid-cols-[minmax(0,_1fr)]">
                 <div>
                     <ImageUploadEditor
                         key={`avatar-${me.id}`}
@@ -258,7 +303,10 @@ export function ProfilePage() {
                     />
                     <PasswordForm />
                 </div>
-                <aside className="storage-summary" aria-labelledby="storage-title">
+                <aside
+                    className="storage-summary pt-2 max-[1100px]:max-w-90 [&_h2]:mb-4 [&_h2]:text-[length:var(--text-md)] [&_p]:text-[length:var(--text-sm)] [&_p]:tabular-nums [&_progress]:h-[9px] [&_progress]:w-full [&_progress]:[accent-color:var(--action-primary)]"
+                    aria-labelledby="storage-title"
+                >
                     <h2 id="storage-title">Dung lượng tài nguyên</h2>
                     <p>
                         <strong>{formatBytes(me.storage.usedBytes)}</strong> /{' '}
@@ -269,7 +317,7 @@ export function ProfilePage() {
                         max={Math.max(1, me.storage.quotaBytes)}
                         value={Math.min(me.storage.usedBytes, Math.max(1, me.storage.quotaBytes))}
                     />
-                    <p className="field-hint">
+                    <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                         {me.storage.usedBytes >= me.storage.quotaBytes
                             ? 'Đã chạm hạn mức. Bạn có thể cần dọn tài nguyên trước khi tải thêm.'
                             : 'Dung lượng được cập nhật theo tài nguyên trong tài khoản.'}

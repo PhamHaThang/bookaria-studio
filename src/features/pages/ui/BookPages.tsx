@@ -2,6 +2,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { NativeSelect } from '@/shared/ui/primitives/native-select';
+import { Spinner } from '@/shared/ui/primitives/spinner';
 import { errorMessage } from '../../../shared/api/errors';
 import { AddPageBodySchema } from '../../../shared/contracts/api/pages.schema';
 import type { PageSummary } from '../../../shared/contracts/dto.schema';
@@ -20,7 +24,6 @@ import {
     uncertainWrite,
 } from '../model/pages';
 import { PageImageForm } from './PageImageForm';
-import './pages.css';
 
 export function BookPages({
     bookId,
@@ -77,8 +80,8 @@ export function BookPages({
         }
     }
     return (
-        <section className="book-pages" aria-labelledby="book-pages-title">
-            <div className="page-list-heading">
+        <section className="book-pages mt-8" aria-labelledby="book-pages-title">
+            <div className="page-list-heading flex flex-wrap items-center justify-between gap-4 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_p]:m-0 [&_p]:text-muted-foreground">
                 <div>
                     <h2 id="book-pages-title">Trang sách</h2>
                     <p>{pages.data?.length || 0} trang · Sắp xếp theo thứ tự đọc.</p>
@@ -88,20 +91,20 @@ export function BookPages({
                     disabled={locked}
                     onClick={() => setAdding((value) => !value)}
                 >
-                    <Plus size={18} aria-hidden="true" />
+                    <Plus data-icon="inline-start" aria-hidden="true" />
                     {adding ? 'Đóng phần thêm trang' : 'Thêm trang'}
                 </Button>
             </div>
             <Feedback error={deleting ? null : error} success={notice} />
             {uncertain && (
-                <div className="page-sync-notice">
+                <div className="page-sync-notice rounded-[var(--radius-sm)] bg-warning px-4 py-3 text-warning-foreground">
                     <p>
                         Chưa xác nhận được kết quả. Yêu cầu có thể đã được nhận; hãy tải lại danh
                         sách trước khi thao tác tiếp.
                     </p>
                     <Button
                         variant="secondary"
-                        loading={busy}
+                        aria-busy={busy}
                         onClick={async () => {
                             setBusy(true);
                             setError(null);
@@ -119,7 +122,9 @@ export function BookPages({
                                 setBusy(false);
                             }
                         }}
+                        disabled={busy}
                     >
+                        {busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
                         Tải lại danh sách
                     </Button>
                 </div>
@@ -141,15 +146,18 @@ export function BookPages({
             {pages.data && (
                 <>
                     {pages.data.length ? (
-                        <ol className="page-list">
+                        <ol className="page-list mx-0 my-5 list-none p-0">
                             {pages.data.map((page, index) => (
-                                <li className="page-list-row" key={page.id}>
+                                <li
+                                    className="page-list-row flex items-center gap-4 border-b-[1px] border-b-border px-0 py-4 [border-bottom-style:solid] max-[540px]:flex-wrap max-[540px]:gap-3"
+                                    key={page.id}
+                                >
                                     <img
-                                        className="page-row-image"
+                                        className="page-row-image h-22 w-16 shrink-0 bg-muted object-contain"
                                         src={page.thumbnailUrl}
                                         alt=""
                                     />
-                                    <div className="page-row-content">
+                                    <div className="page-row-content wrap-anywhere min-w-0 flex-[1] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-1 [&_p]:mx-0 [&_p]:mt-0 [&_p]:mb-1 [&_p]:text-[length:var(--text-sm)] [&_p]:text-muted-foreground">
                                         <h3>
                                             <Link to={`/books/${bookId}/pages/${page.id}`}>
                                                 {page.title || `Trang ${index + 1}`}
@@ -164,12 +172,15 @@ export function BookPages({
                                                   : 'Nhận diện bằng ảnh trang'}
                                         </p>
                                         {[...new Set(page.markerWarnings)].map((warning) => (
-                                            <p className="field-hint" key={warning}>
+                                            <p
+                                                className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]"
+                                                key={warning}
+                                            >
                                                 {markerWarningText(warning)}
                                             </p>
                                         ))}
                                     </div>
-                                    <div className="page-row-actions">
+                                    <div className="page-row-actions flex flex-wrap gap-1 max-[540px]:w-full max-[540px]:justify-end [&_.button]:min-h-11 [&_.button]:min-w-11 [&_.button]:p-2">
                                         <Button
                                             variant="ghost"
                                             disabled={locked || index === 0}
@@ -183,7 +194,7 @@ export function BookPages({
                                                     );
                                             }}
                                         >
-                                            <ArrowUp size={18} aria-hidden="true" />
+                                            <ArrowUp data-icon="inline-start" aria-hidden="true" />
                                         </Button>
                                         <Button
                                             variant="ghost"
@@ -198,7 +209,10 @@ export function BookPages({
                                                     );
                                             }}
                                         >
-                                            <ArrowDown size={18} aria-hidden="true" />
+                                            <ArrowDown
+                                                data-icon="inline-start"
+                                                aria-hidden="true"
+                                            />
                                         </Button>
                                         <Button
                                             variant="ghost"
@@ -212,7 +226,7 @@ export function BookPages({
                                                 );
                                             }}
                                         >
-                                            <Copy size={18} aria-hidden="true" />
+                                            <Copy data-icon="inline-start" aria-hidden="true" />
                                         </Button>
                                         <Button
                                             variant="ghost"
@@ -223,7 +237,7 @@ export function BookPages({
                                                 setDeleting(page);
                                             }}
                                         >
-                                            <Trash2 size={18} aria-hidden="true" />
+                                            <Trash2 data-icon="inline-start" aria-hidden="true" />
                                         </Button>
                                     </div>
                                 </li>
@@ -277,23 +291,31 @@ export function BookPages({
                                     });
                             }}
                         >
-                            <label htmlFor="new-page-title">
-                                Tên trang (không bắt buộc)
-                                <input id="new-page-title" name="title" maxLength={150} />
-                            </label>
-                            <label htmlFor="page-position">
-                                Vị trí thêm trang
-                                <select id="page-position" name="position" defaultValue="end">
-                                    <option value="end">Cuối sách</option>
-                                    <option value="start">Đầu sách</option>
-                                    {pages.data.map((page, index) => (
-                                        <option key={page.id} value={page.id}>
-                                            Sau trang {index + 1}
-                                            {page.title ? ` — ${page.title}` : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
+                            <Field orientation="contents">
+                                <FieldLabel htmlFor="new-page-title">
+                                    Tên trang (không bắt buộc)
+                                    <Input id="new-page-title" name="title" maxLength={150} />
+                                </FieldLabel>
+                            </Field>
+                            <Field orientation="contents">
+                                <FieldLabel htmlFor="page-position">
+                                    Vị trí thêm trang
+                                    <NativeSelect
+                                        id="page-position"
+                                        name="position"
+                                        defaultValue="end"
+                                    >
+                                        <option value="end">Cuối sách</option>
+                                        <option value="start">Đầu sách</option>
+                                        {pages.data.map((page, index) => (
+                                            <option key={page.id} value={page.id}>
+                                                Sau trang {index + 1}
+                                                {page.title ? ` — ${page.title}` : ''}
+                                            </option>
+                                        ))}
+                                    </NativeSelect>
+                                </FieldLabel>
+                            </Field>
                         </PageImageForm>
                     )}
                 </>
@@ -311,7 +333,7 @@ export function BookPages({
                         của nó sẽ bị xóa khỏi bản nháp. Tệp ảnh vẫn được giữ trong tài nguyên.
                     </p>
                     <Feedback error={error} />
-                    <div className="form-actions">
+                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                         <Button
                             variant="secondary"
                             disabled={busy}
@@ -321,11 +343,13 @@ export function BookPages({
                         </Button>
                         <Button
                             variant="danger"
-                            loading={busy}
+                            aria-busy={busy}
                             onClick={() => {
                                 void mutate(() => pagesApi.remove(deleting.id), 'Đã xóa trang.');
                             }}
+                            disabled={busy}
                         >
+                            {busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
                             Xóa trang
                         </Button>
                     </div>

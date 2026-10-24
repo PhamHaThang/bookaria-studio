@@ -1,18 +1,12 @@
 import { UserRound } from 'lucide-react';
-import { useState } from 'react';
-
-function AvatarImage({ url }: { url: string | null }) {
-    const [failed, setFailed] = useState(false);
-    return (
-        <span className="account-avatar" aria-hidden="true">
-            {url && !failed ? (
-                <img src={url} alt="" onError={() => setFailed(true)} />
-            ) : (
-                <UserRound size={18} />
-            )}
-        </span>
-    );
-}
+import { AvatarFallback, AvatarImage, Avatar as AvatarRoot } from './primitives/avatar';
 export function Avatar({ url }: { url: string | null }) {
-    return <AvatarImage key={url || 'empty'} url={url} />;
+    return (
+        <AvatarRoot className="account-avatar size-8" aria-hidden="true">
+            {url && <AvatarImage src={url} alt="" />}
+            <AvatarFallback>
+                <UserRound size={18} />
+            </AvatarFallback>
+        </AvatarRoot>
+    );
 }

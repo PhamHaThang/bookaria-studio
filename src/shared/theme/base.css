@@ -18,15 +18,15 @@
     }
     button,
     input,
-    select,
-    textarea {
+    select:not([data-slot]),
+    textarea:not([data-slot]) {
         font: inherit;
     }
     button,
     a,
     input,
-    select,
-    textarea {
+    select:not([data-slot]),
+    textarea:not([data-slot]) {
         -webkit-tap-highlight-color: transparent;
     }
     a {
@@ -98,9 +98,9 @@
         font-weight: var(--weight-semibold);
         margin-bottom: var(--space-5);
     }
-    input:not([type="checkbox"]),
-    select,
-    textarea {
+    input:not([type="checkbox"]):not([data-slot]),
+    select:not([data-slot]),
+    textarea:not([data-slot]) {
         display: block;
         width: 100%;
         margin-top: var(--space-2);
@@ -114,8 +114,8 @@
         caret-color: var(--action-primary);
         transition: border-color var(--duration-fast) var(--ease-out);
     }
-    input:not([type="checkbox"]),
-    select {
+    input:not([type="checkbox"]):not([data-slot]),
+    select:not([data-slot]) {
         min-height: var(--control-height);
         padding-block: var(--space-2);
     }
@@ -146,7 +146,7 @@
         height: 18px;
         accent-color: var(--action-primary);
     }
-    textarea {
+    textarea:not([data-slot]) {
         resize: vertical;
         line-height: var(--leading-normal);
     }

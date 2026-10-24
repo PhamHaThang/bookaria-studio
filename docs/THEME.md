@@ -14,12 +14,12 @@ Mở **http://localhost:5173/style-guide** hoặc chọn **Giao diện mẫu** t
 
 1. `src/shared/theme/tokens.css`: màu, font, cỡ chữ, khoảng cách, bo góc và chuyển động.
 2. `src/shared/theme/base.css`: kiểu mặc định cho chữ, focus, input/select/textarea và reduced motion.
-3. `src/shared/theme/components.css`: kiểu chung của nút, thông báo, badge, dialog.
-4. `src/shared/ui/Button.tsx`, `Badge.tsx`, `Alert.tsx`: API của các thành phần React.
-5. `src/pages/StyleGuidePage.tsx`: ví dụ sử dụng thực tế.
-6. `src/features/auth/ui/auth.css` và `src/app/studio.css`: bố cục riêng của từng khu vực.
+3. `src/index.css`: điểm nhập Tailwind v4, `tw-animate-css`, font, token, base và ánh xạ `@theme inline` cho utility/shadcn.
+4. `src/shared/ui/primitives/`: primitive shadcn dùng Radix, đã chỉnh biến thể và utility theo token Bookaria.
+5. `src/shared/ui/Button.tsx`, `Badge.tsx`, `Alert.tsx`: API wrapper React giữ cách gọi của sản phẩm.
+6. `src/pages/StyleGuidePage.tsx`: ví dụ sử dụng thực tế; các page/feature TSX giữ bố cục bằng utility.
 
-`src/index.css` là điểm nhập CSS duy nhất từ `main.tsx`. Nó nối Tailwind, font, token, base, component rồi bố cục. Base và component dùng CSS cascade layers; utility Tailwind có thể ghi đè chúng. CSS bố cục riêng không đặt trong layer, vì vậy tránh đặt lại màu/nút/form dùng chung ở đó.
+Chỉ còn bốn file CSS: `src/index.css`, `src/shared/theme/fonts.css`, `src/shared/theme/tokens.css` và `src/shared/theme/base.css`. `main.tsx` nhập `index.css` một lần. Base nằm trong cascade layer `base`; component và bố cục dùng class Tailwind trong TSX. Các tên class cũ còn lại là hook cho selector/ngữ cảnh, không cần tạo lại file CSS theo từng feature. Các control primitive có `data-slot` để tránh nhận chồng kiểu control native trong base.
 
 ## Đổi màu sau này tại một nơi
 
@@ -68,7 +68,7 @@ Cỡ dùng rem, theo cỡ chữ người dùng. Line-height 1.6 cho nội dung v
 
 `--space-1/2/3/4/5/6/8/10/12/16` tương ứng 4/8/12/16/20/24/32/40/48/64px ở cỡ gốc 16px. Dùng scale này cho padding/gap/margin; chiều rộng cột và breakpoint vẫn có thể riêng theo bố cục.
 
-`--radius-sm/md/lg/xl` = 6/8/12/16px. Input/nút dùng md, panel dùng lg. Nút mặc định cao 48px, cỡ nhỏ 40px. Dùng cỡ mặc định cho thao tác chính trên điện thoại. Focus 3px có offset, không xóa outline. Chuyển màu 120ms; người bật reduced motion sẽ không thấy spinner quay hoặc chuyển màu.
+`--radius-sm/md/lg/xl` = 6/8/12/16px. Input/nút dùng md, panel dùng lg. Nút mặc định cao 48px, cỡ nhỏ 40px. Dùng cỡ mặc định cho thao tác chính trên điện thoại. Focus 3px có offset, không xóa outline. Token chuyển động chung giữ 120/180ms; primitive Button hiện dùng chuyển màu 150ms. Spinner chỉ quay khi người dùng không yêu cầu reduced motion; hiệu ứng mới cần dùng `motion-safe:` hoặc `motion-reduce:` phù hợp.
 
 ## Dùng component khi viết màn mới
 
@@ -77,8 +77,12 @@ import { Link } from 'react-router-dom';
 import { Alert } from '@/shared/ui/Alert';
 import { Badge } from '@/shared/ui/Badge';
 import { Button, buttonStyles } from '@/shared/ui/Button';
+import { Spinner } from '@/shared/ui/primitives/spinner';
 
-<Button type="submit" loading={isPending}>Lưu thay đổi</Button>
+<Button type="submit" disabled={isPending} aria-busy={isPending}>
+    {isPending && <Spinner data-icon="inline-start" aria-hidden="true" />}
+    {isPending ? 'Đang lưu…' : 'Lưu thay đổi'}
+</Button>
 <Button variant="secondary" onClick={cancel}>Hủy bỏ</Button>
 <Button variant="danger" disabled={!canDelete} onClick={remove}>Xóa</Button>
 <Button size="sm">Thao tác phụ</Button>
@@ -88,46 +92,62 @@ import { Button, buttonStyles } from '@/shared/ui/Button';
 <Alert tone="danger">Không lưu được. Hãy thử lại.</Alert>
 ```
 
-`Button` mặc định `type="button"`, chỉ submit khi khai báo rõ. `loading` tự khóa nút, thêm spinner ẩn khỏi trình đọc màn hình và đặt `aria-busy`; vẫn truyền nhãn dễ hiểu như “Đang lưu…”. Không dùng nút để điều hướng. Các màn đã có class `button` vẫn tương thích; ưu tiên component cho code mới. `Button` mặc định rộng theo nội dung; `fullWidth` dành cho form xác thực. `buttonStyles` cũng dùng để làm đẹp thẻ Link.
+`Button` mặc định `type="button"`, chỉ submit khi khai báo rõ. Wrapper không có prop `loading`: nơi gọi chủ động truyền `disabled`, `aria-busy`, `Spinner` và nhãn dễ hiểu như “Đang lưu…”. Spinner trang trí trong nút có `aria-hidden`; trạng thái và nhãn của nút mô tả tiến trình. Điều hướng dùng Link với `buttonStyles` hoặc `Button asChild` bọc Link. `Button` mặc định rộng theo nội dung; `fullWidth` dành cho form xác thực.
+
+Wrapper giữ biến thể `primary/secondary/ghost/danger`, ánh xạ sang primitive `default/secondary/outline/destructive`; `ghost` của wrapper vẫn là nút viền mảnh. Primitive còn có `ghost` không viền, `link`, cỡ `icon` và `asChild`. Dùng `cn` từ `@/shared/lib/cn` để ghép class (`clsx` + `tailwind-merge`), giữ focus/disabled và màu ngữ nghĩa khi ghi đè bố cục.
 
 `Badge` có tone neutral/success/warning/danger/info. `Alert` có info/success/warning/danger: lỗi mặc định role alert, các tone còn lại role status. `Feedback` của các form hiện có dùng lại Alert; không phải thay API của form.
 
-Input/select/textarea dùng phần tử HTML chuẩn và kiểu base. Chưa tạo wrapper form vì chưa có nhu cầu lặp đủ phức tạp. Luôn nối lỗi/hint tới ô nhập:
+Biểu mẫu dùng `FieldGroup`, `Field`, `FieldLabel` cùng `Input`, `Textarea`, `NativeSelect` từ `@/shared/ui/primitives`. Các control vẫn giữ ngữ nghĩa và prop HTML native. `Field` mặc định xếp dọc; hướng `contents` đang dùng ở nhiều form để giữ bố cục gọn và nhãn bọc control của giao diện hiện có. Luôn nối lỗi/hint tới ô nhập; `data-invalid` của Field và `aria-invalid` của control phải dùng cùng điều kiện:
 
 ```tsx
-<div className="book-title-field">
-    <label htmlFor="book-title">Tên sách</label>
-    <input id="book-title" name="title" required
-        aria-invalid={Boolean(error)} aria-describedby="book-title-help" />
-    <span id="book-title-help" className={error ? 'field-error' : 'field-hint'}>
-        {error || 'Tối đa 200 ký tự.'}
-    </span>
-</div>
+import {
+    Field, FieldDescription, FieldError, FieldGroup, FieldLabel,
+} from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+
+<FieldGroup>
+    <Field orientation="contents" data-invalid={Boolean(error)}>
+        <FieldLabel htmlFor="book-title">
+            Tên sách
+            <Input id="book-title" name="title" required
+                aria-invalid={Boolean(error)} aria-describedby="book-title-help" />
+        </FieldLabel>
+        {error ? (
+            <FieldError id="book-title-help">{error}</FieldError>
+        ) : (
+            <FieldDescription id="book-title-help">Tối đa 200 ký tự.</FieldDescription>
+        )}
+    </Field>
+</FieldGroup>
 ```
+
+`Textarea` không ép chiều cao tối thiểu; giữ `rows` và cỡ gọn của inspector, tăng chữ lên 16px trên mobile theo lớp bố cục hiện có. `NativeSelect` giữ chọn lựa native. Một số input file/radio/range/color và menu trang dùng popover native được giữ để bảo toàn sự kiện/hành vi nền tảng; không cần thay chỉ để đồng nhất thư viện.
 
 Nếu form có nhiều trường, có thể khóa cả fieldset khi gửi. Phần kiểm tra Zod/API và state vẫn ở feature/model, không đưa nghiệp vụ vào shared UI.
 
-## CSS thường và Tailwind
+## Tailwind và primitive dùng chung
 
-```css
-.new-feature-section {
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    padding: var(--space-6);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-lg);
-}
-```
-
-Tailwind v4 cũng được nối tới cùng token bằng `@theme inline` trong `index.css`:
+Giữ bố cục/presentation trong utility TSX; không thêm stylesheet riêng cho từng phần. Tailwind v4 nối tới cùng token bằng `@theme inline` trong `index.css`, ví dụ:
 
 ```tsx
-<section className="bg-surface text-foreground border border-line p-6">
-    <p className="text-muted">Nội dung phụ</p>
+<section className="rounded-[var(--radius-lg)] border border-line bg-surface p-6 text-foreground">
+    <p className="text-muted-foreground">Nội dung phụ</p>
 </section>
 ```
 
-Các tên sẵn có: font-sans/font-mono, bg-canvas/bg-surface, text-foreground/text-muted, bg-primary/hover:bg-primary-hover, border-line, text-danger. Ưu tiên component cho nút để giữ focus/loading/disabled thống nhất. Không tạo thêm bảng màu độc lập trong từng feature hoặc lạm dụng giá trị tùy ý của Tailwind.
+Các tên dùng chung:
+
+- Font/nền/chữ: `font-sans`, `font-mono`, `bg-background`/`bg-canvas`, `bg-surface`, `text-foreground`, `text-muted-foreground`.
+- Hành động: `bg-primary`, `text-primary-foreground`, `hover:bg-primary-hover`, `bg-secondary`, `text-secondary-foreground`, `bg-destructive`, `text-destructive-foreground`, `text-destructive` cho chữ hành động xóa/hủy.
+- Chọn/hover/viền/focus: `bg-selected`/`bg-accent`, `text-accent-foreground`, `bg-hover`, `border-border`/`border-line`, `border-input`, `outline-ring`.
+- Trạng thái: `bg-success`/`text-success-foreground`, `bg-warning`/`text-warning-foreground`, `bg-danger`/`text-danger-foreground`, và các cặp `neutral`/`info` tương tự.
+
+`muted` nay là màu nền dịu (`--bg-surface-subtle`), nên chữ phụ phải dùng `text-muted-foreground`. `danger` là nền trạng thái lỗi; dùng `text-danger-foreground` cho chữ lỗi và `text-destructive` cho hành động phá hủy. Không dùng lại `text-muted` hoặc `text-danger` như màu chữ của bộ alias cũ. Ưu tiên wrapper/primitive cho nút để giữ focus/disabled thống nhất và truyền busy state rõ ràng. Không tạo thêm bảng màu độc lập trong từng feature hoặc lạm dụng giá trị tùy ý của Tailwind.
+
+`components.json` chọn `radix-nova`, icon Lucide và thư mục `@/shared/ui/primitives`; primitive là mã cục bộ có thể đọc/chỉnh theo token sản phẩm. Khi dùng Toggle/ToggleGroup của Radix, trạng thái chọn là `data-state="on"`; các selector dựa trên `aria-pressed` chỉ dùng khi control thực sự xuất thuộc tính đó. Dialog dùng primitive Radix; ConfirmDialog chặn tương tác bên ngoài và chặn Escape khi busy, cho phép Escape khi rảnh. Giữ quy tắc này ở các luồng tạo/xác nhận hiện có.
+
+Lucide là bộ icon hiện hành. Thông báo nội tuyến qua Alert/Feedback đang đủ cho các luồng này, nên chưa thêm thư viện toast.
 
 ## Khi đổi theme hoặc thêm component
 

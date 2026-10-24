@@ -1,22 +1,48 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 @import "./shared/theme/fonts.css";
 @import "./shared/theme/tokens.css";
 @import "./shared/theme/base.css";
-@import "./shared/theme/components.css";
-@import "./features/auth/ui/auth.css";
-@import "./app/studio.css";
-@import "./app/redesign.css";
 
-/* Tailwind utilities reference the same semantic tokens as regular CSS. */
+/* Product tokens are shared by utilities and shadcn primitives. */
 @theme inline {
     --font-sans: var(--font-body);
     --font-mono: var(--font-code);
+    --color-background: var(--bg-canvas);
     --color-canvas: var(--bg-canvas);
     --color-surface: var(--bg-surface);
     --color-foreground: var(--text-primary);
-    --color-muted: var(--text-muted);
+    --color-card: var(--bg-surface);
+    --color-card-foreground: var(--text-primary);
+    --color-popover: var(--bg-surface);
+    --color-popover-foreground: var(--text-primary);
     --color-primary: var(--action-primary);
+    --color-primary-foreground: var(--text-on-primary);
     --color-primary-hover: var(--action-primary-hover);
+    --color-secondary: var(--action-secondary);
+    --color-secondary-foreground: var(--action-primary);
+    --color-secondary-hover: var(--action-secondary-hover);
+    --color-muted: var(--bg-surface-subtle);
+    --color-muted-foreground: var(--text-muted);
+    --color-accent: var(--bg-selected);
+    --color-accent-foreground: var(--action-primary);
+    --color-selected: var(--bg-selected);
+    --color-hover: var(--bg-hover);
+    --color-destructive: var(--action-danger);
+    --color-destructive-hover: var(--action-danger-hover);
+    --color-destructive-foreground: var(--text-on-primary);
+    --color-border: var(--border-default);
     --color-line: var(--border-default);
-    --color-danger: var(--action-danger);
+    --color-input: var(--border-input);
+    --color-ring: var(--focus-color);
+    --color-neutral: var(--status-neutral-bg);
+    --color-neutral-foreground: var(--status-neutral-text);
+    --color-success: var(--status-success-bg);
+    --color-success-foreground: var(--status-success-text);
+    --color-warning: var(--status-warning-bg);
+    --color-warning-foreground: var(--status-warning-text);
+    --color-danger: var(--status-danger-bg);
+    --color-danger-foreground: var(--status-danger-text);
+    --color-info: var(--status-info-bg);
+    --color-info-foreground: var(--status-info-text);
 }

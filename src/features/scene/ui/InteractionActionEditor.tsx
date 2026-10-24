@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { errorMessage } from '../../../shared/api/errors';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import {
@@ -58,23 +61,28 @@ export function InteractionActionEditor({
     const patch = (value: Partial<Action>) => onChange({ ...action, ...value } as Action);
     return (
         <>
-            <fieldset disabled={disabled} className="interaction-fields">
-                <label htmlFor={`${id}-type`}>
-                    Loại hành động
-                    <select
-                        id={`${id}-type`}
-                        value={action.type}
-                        onChange={(event) =>
-                            onChange(newAction(event.currentTarget.value as ActionType))
-                        }
-                    >
-                        {Object.entries(actionLabels).map(([value, label]) => (
-                            <option key={value} value={value}>
-                                {label}
-                            </option>
-                        ))}
-                    </select>
-                </label>
+            <fieldset
+                disabled={disabled}
+                className="interaction-fields m-0 grid min-w-0 grid-cols-[repeat(2,_minmax(0,_1fr))] gap-4 border-0 border-[transparent] border-solid p-0 max-[600px]:grid-cols-[1fr] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[repeat(2,_minmax(0,_1fr))] [.workbench-panel_&]:grid-cols-[minmax(0,_1fr)] [.workbench-panel_&]:gap-3"
+            >
+                <Field orientation="contents">
+                    <FieldLabel htmlFor={`${id}-type`}>
+                        Loại hành động
+                        <NativeSelect
+                            id={`${id}-type`}
+                            value={action.type}
+                            onChange={(event) =>
+                                onChange(newAction(event.currentTarget.value as ActionType))
+                            }
+                        >
+                            {Object.entries(actionLabels).map(([value, label]) => (
+                                <option key={value} value={value}>
+                                    {label}
+                                </option>
+                            ))}
+                        </NativeSelect>
+                    </FieldLabel>
+                </Field>
                 {'objectId' in action && (
                     <InteractionTarget
                         id={`${id}-object`}
@@ -84,7 +92,7 @@ export function InteractionActionEditor({
                     />
                 )}
                 {(action.type === 'playAudio' || action.type === 'stopAudio') && (
-                    <div className="interaction-audio">
+                    <div className="interaction-audio col-[1_/_-1]">
                         <p>
                             {assetId
                                 ? `Âm thanh: ${detail.data?.name || assetId}`
@@ -92,7 +100,7 @@ export function InteractionActionEditor({
                                   ? 'Dừng tất cả âm thanh của trang.'
                                   : 'Chưa chọn âm thanh.'}
                         </p>
-                        <div className="form-actions">
+                        <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                             <Button variant="secondary" onClick={() => setPicking(true)}>
                                 {assetId ? 'Đổi âm thanh' : 'Chọn âm thanh'}
                             </Button>
@@ -110,14 +118,14 @@ export function InteractionActionEditor({
                                 </Button>
                             )}
                         </div>
-                        <p className="field-hint">
+                        <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                             Chọn tài nguyên AUDIO đã sẵn sàng; không cần thêm đối tượng âm thanh lên
                             trang.
                         </p>
                     </div>
                 )}
                 {detail.isError && (
-                    <div className="interaction-wide">
+                    <div className="interaction-wide col-[1_/_-1]">
                         <Feedback error={errorMessage(detail.error)} />
                         <Button
                             variant="ghost"
@@ -131,30 +139,35 @@ export function InteractionActionEditor({
                 )}
                 {action.type === 'playAnimation' && (
                     <>
-                        <label htmlFor={`${id}-clip`}>
-                            Tên clip animation
-                            <input
-                                id={`${id}-clip`}
-                                aria-label="Tên clip animation"
-                                aria-describedby={`${id}-clip-hint`}
-                                list={`${id}-clips`}
-                                maxLength={100}
-                                value={action.clip}
-                                onChange={(event) => patch({ clip: event.currentTarget.value })}
-                            />
-                            <datalist id={`${id}-clips`}>
-                                {clips.map((clip) => (
-                                    <option key={clip} value={clip} />
-                                ))}
-                            </datalist>
-                            <span id={`${id}-clip-hint`} className="field-hint">
-                                {clips.length
-                                    ? `Clip trong mô hình: ${clips.join(', ')}`
-                                    : 'Chọn mô hình rồi nhập đúng tên clip từ tài nguyên.'}
-                            </span>
-                        </label>
+                        <Field orientation="contents">
+                            <FieldLabel htmlFor={`${id}-clip`}>
+                                Tên clip animation
+                                <Input
+                                    id={`${id}-clip`}
+                                    aria-label="Tên clip animation"
+                                    aria-describedby={`${id}-clip-hint`}
+                                    list={`${id}-clips`}
+                                    maxLength={100}
+                                    value={action.clip}
+                                    onChange={(event) => patch({ clip: event.currentTarget.value })}
+                                />
+                                <datalist id={`${id}-clips`}>
+                                    {clips.map((clip) => (
+                                        <option key={clip} value={clip} />
+                                    ))}
+                                </datalist>
+                                <span
+                                    id={`${id}-clip-hint`}
+                                    className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]"
+                                >
+                                    {clips.length
+                                        ? `Clip trong mô hình: ${clips.join(', ')}`
+                                        : 'Chọn mô hình rồi nhập đúng tên clip từ tài nguyên.'}
+                                </span>
+                            </FieldLabel>
+                        </Field>
                         {asset && action.clip && !clips.includes(action.clip) && (
-                            <p className="scene-reference-error">
+                            <p className="scene-reference-error text-danger-foreground">
                                 Clip đang nhập không có trong metadata mô hình. Kiểm tra trước khi
                                 chạy thử.
                             </p>
@@ -162,14 +175,16 @@ export function InteractionActionEditor({
                     </>
                 )}
                 {(action.type === 'playAudio' || action.type === 'playAnimation') && (
-                    <label className="checkbox">
-                        <input
-                            type="checkbox"
-                            checked={action.loop}
-                            onChange={(event) => patch({ loop: event.currentTarget.checked })}
-                        />
-                        Phát lặp hành động
-                    </label>
+                    <Field orientation="contents">
+                        <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
+                            <input
+                                type="checkbox"
+                                checked={action.loop}
+                                onChange={(event) => patch({ loop: event.currentTarget.checked })}
+                            />
+                            Phát lặp hành động
+                        </FieldLabel>
+                    </Field>
                 )}
                 {action.type === 'playAudio' && (
                     <NumericField
@@ -180,31 +195,38 @@ export function InteractionActionEditor({
                     />
                 )}
                 {action.type === 'setVisible' && (
-                    <label className="checkbox">
-                        <input
-                            type="checkbox"
-                            checked={action.value}
-                            onChange={(event) => patch({ value: event.currentTarget.checked })}
-                        />
-                        Hiện đối tượng
-                    </label>
+                    <Field orientation="contents">
+                        <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
+                            <input
+                                type="checkbox"
+                                checked={action.value}
+                                onChange={(event) => patch({ value: event.currentTarget.checked })}
+                            />
+                            Hiện đối tượng
+                        </FieldLabel>
+                    </Field>
                 )}
                 {action.type === 'openUrl' && (
-                    <label htmlFor={`${id}-url`}>
-                        Liên kết HTTP hoặc HTTPS
-                        <input
-                            id={`${id}-url`}
-                            aria-label="Liên kết HTTP hoặc HTTPS"
-                            aria-describedby={`${id}-url-hint`}
-                            type="url"
-                            value={action.url}
-                            onChange={(event) => patch({ url: event.currentTarget.value })}
-                        />
-                        <span id={`${id}-url-hint`} className="field-hint">
-                            Trình đọc sẽ xử lý liên kết khi chạy tương tác. Kiểm tra địa chỉ trước
-                            khi xuất bản.
-                        </span>
-                    </label>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor={`${id}-url`}>
+                            Liên kết HTTP hoặc HTTPS
+                            <Input
+                                id={`${id}-url`}
+                                aria-label="Liên kết HTTP hoặc HTTPS"
+                                aria-describedby={`${id}-url-hint`}
+                                type="url"
+                                value={action.url}
+                                onChange={(event) => patch({ url: event.currentTarget.value })}
+                            />
+                            <span
+                                id={`${id}-url-hint`}
+                                className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]"
+                            >
+                                Trình đọc sẽ xử lý liên kết khi chạy tương tác. Kiểm tra địa chỉ
+                                trước khi xuất bản.
+                            </span>
+                        </FieldLabel>
+                    </Field>
                 )}
                 {action.type === 'wait' ? (
                     <NumericField
@@ -231,30 +253,32 @@ export function InteractionActionEditor({
                 )}
                 {action.type === 'transformTo' && (
                     <>
-                        <label htmlFor={`${id}-easing`}>
-                            Kiểu chuyển động
-                            <select
-                                id={`${id}-easing`}
-                                value={action.easing}
-                                onChange={(event) =>
-                                    patch({ easing: event.currentTarget.value as Easing })
-                                }
-                            >
-                                {EasingSchema.options.map((value) => (
-                                    <option key={value} value={value}>
-                                        {
+                        <Field orientation="contents">
+                            <FieldLabel htmlFor={`${id}-easing`}>
+                                Kiểu chuyển động
+                                <NativeSelect
+                                    id={`${id}-easing`}
+                                    value={action.easing}
+                                    onChange={(event) =>
+                                        patch({ easing: event.currentTarget.value as Easing })
+                                    }
+                                >
+                                    {EasingSchema.options.map((value) => (
+                                        <option key={value} value={value}>
                                             {
-                                                linear: 'Đều',
-                                                easeIn: 'Chậm rồi nhanh',
-                                                easeOut: 'Nhanh rồi chậm',
-                                                easeInOut: 'Chậm ở hai đầu',
-                                            }[value]
-                                        }
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <p className="field-hint interaction-wide">
+                                                {
+                                                    linear: 'Đều',
+                                                    easeIn: 'Chậm rồi nhanh',
+                                                    easeOut: 'Nhanh rồi chậm',
+                                                    easeInOut: 'Chậm ở hai đầu',
+                                                }[value]
+                                            }
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </FieldLabel>
+                        </Field>
+                        <p className="field-hint interaction-wide col-[1_/_-1] mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                             Bật ít nhất một thuộc tính đích. Vị trí theo chiều rộng trang; góc xoay
                             dùng độ; tỉ lệ phải lớn hơn 0.
                         </p>
@@ -265,26 +289,28 @@ export function InteractionActionEditor({
                                 scale: 'Tỉ lệ đích',
                             }[key];
                             return (
-                                <div key={key} className="interaction-wide">
-                                    <label className="checkbox">
-                                        <input
-                                            type="checkbox"
-                                            checked={action[key] !== undefined}
-                                            onChange={(event) =>
-                                                patch({
-                                                    [key]: event.currentTarget.checked
-                                                        ? [
-                                                              ...(target?.transform[key] ||
-                                                                  (key === 'scale'
-                                                                      ? [1, 1, 1]
-                                                                      : [0, 0, 0])),
-                                                          ]
-                                                        : undefined,
-                                                })
-                                            }
-                                        />
-                                        Thay đổi {label.toLowerCase()}
-                                    </label>
+                                <div key={key} className="interaction-wide col-[1_/_-1]">
+                                    <Field orientation="contents">
+                                        <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
+                                            <input
+                                                type="checkbox"
+                                                checked={action[key] !== undefined}
+                                                onChange={(event) =>
+                                                    patch({
+                                                        [key]: event.currentTarget.checked
+                                                            ? [
+                                                                  ...(target?.transform[key] ||
+                                                                      (key === 'scale'
+                                                                          ? [1, 1, 1]
+                                                                          : [0, 0, 0])),
+                                                              ]
+                                                            : undefined,
+                                                    })
+                                                }
+                                            />
+                                            Thay đổi {label.toLowerCase()}
+                                        </FieldLabel>
+                                    </Field>
                                     {action[key] !== undefined && (
                                         <VectorFields
                                             id={`${id}-${key}`}

@@ -1,17 +1,27 @@
-import type { HTMLAttributes } from 'react';
-import { cn } from '../lib/cn';
+import type { ComponentProps } from 'react';
+import { AlertDescription, Alert as PrimitiveAlert } from './primitives/alert';
 
+const variants = {
+    danger: 'destructive',
+    success: 'success',
+    warning: 'warning',
+    info: 'default',
+} as const;
 export function Alert({
     tone = 'info',
     className,
     role,
+    children,
     ...props
-}: HTMLAttributes<HTMLParagraphElement> & { tone?: 'danger' | 'success' | 'warning' | 'info' }) {
+}: Omit<ComponentProps<typeof PrimitiveAlert>, 'variant'> & { tone?: keyof typeof variants }) {
     return (
-        <p
+        <PrimitiveAlert
             {...props}
-            className={cn('feedback', `tone-${tone}`, className)}
+            variant={variants[tone]}
+            className={className}
             role={role || (tone === 'danger' ? 'alert' : 'status')}
-        />
+        >
+            <AlertDescription>{children}</AlertDescription>
+        </PrimitiveAlert>
     );
 }

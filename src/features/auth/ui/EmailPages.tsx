@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { Spinner } from '@/shared/ui/primitives/spinner';
 import { errorMessage } from '../../../shared/api/errors';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { auth, useAuth } from '../model/session';
@@ -26,7 +27,7 @@ export function CheckEmail() {
     return (
         <>
             <h1>{user?.emailVerified ? 'Email đã xác minh' : 'Kiểm tra email của bạn'}</h1>
-            <p className="intro">
+            <p className="intro mx-0 mt-0 mb-8 text-muted-foreground">
                 {user?.emailVerified ? (
                     'Tài khoản của bạn đã sẵn sàng cho bước xuất bản.'
                 ) : (
@@ -38,13 +39,14 @@ export function CheckEmail() {
             </p>
             <Feedback error={error} success={success} />
             {!user?.emailVerified && (
-                <Button fullWidth loading={busy} onClick={resend}>
+                <Button fullWidth aria-busy={busy} onClick={resend} disabled={busy}>
+                    {busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
                     {busy ? 'Đang gửi…' : 'Gửi lại email xác minh'}
                 </Button>
             )}
-            <Link className="button secondary" to="/books">
-                Vào Studio
-            </Link>
+            <Button variant="secondary" fullWidth asChild>
+                <Link to="/books">Vào Studio</Link>
+            </Button>
         </>
     );
 }
@@ -72,7 +74,7 @@ export function VerifyEmail() {
     return (
         <>
             <h1>{success ? 'Xác minh thành công' : 'Xác minh email'}</h1>
-            <p className="intro">
+            <p className="intro mx-0 mt-0 mb-8 text-muted-foreground">
                 {success
                     ? 'Email đã được xác nhận. Bạn có thể tiếp tục vào Studio.'
                     : 'Bấm xác minh để hoàn tất việc xác nhận email của bạn.'}
@@ -81,13 +83,16 @@ export function VerifyEmail() {
                 error={error || (!token ? 'Liên kết thiếu mã xác minh. Hãy mở lại email.' : null)}
             />
             {!success && token && (
-                <Button fullWidth loading={busy} onClick={verify}>
+                <Button fullWidth aria-busy={busy} onClick={verify} disabled={busy}>
+                    {busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
                     {busy ? 'Đang xác minh…' : 'Xác minh email'}
                 </Button>
             )}
-            <Link className="button secondary" to={success ? '/books' : '/check-email'}>
-                {success ? 'Tiếp tục vào Studio' : 'Gửi lại email xác minh'}
-            </Link>
+            <Button variant="secondary" fullWidth asChild>
+                <Link to={success ? '/books' : '/check-email'}>
+                    {success ? 'Tiếp tục vào Studio' : 'Gửi lại email xác minh'}
+                </Link>
+            </Button>
         </>
     );
 }

@@ -28,7 +28,7 @@ export function NavigationGuard({ dirty, saving }: { dirty: boolean; saving: boo
                     ? 'Đang lưu nội dung. Hãy đợi máy chủ phản hồi trước khi rời trang.'
                     : 'Bạn có thay đổi chưa lưu. Rời trang sẽ bỏ bản đang sửa trên trình duyệt.'}
             </p>
-            <div className="form-actions">
+            <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                 <Button variant="secondary" disabled={saving} onClick={() => blocker.reset()}>
                     Ở lại chỉnh sửa
                 </Button>

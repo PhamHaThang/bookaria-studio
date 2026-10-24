@@ -2,6 +2,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { z } from 'zod';
+import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { NativeSelect } from '@/shared/ui/primitives/native-select';
+import { Spinner } from '@/shared/ui/primitives/spinner';
+import { Textarea } from '@/shared/ui/primitives/textarea';
 import { apiClient } from '../../../shared/api/client';
 import { errorMessage } from '../../../shared/api/errors';
 import {
@@ -16,7 +21,6 @@ import { auth, useAuth } from '../../auth';
 import { bookKeys } from '../../books';
 import { createPublicationApi } from '../api/publication-api';
 import { usePublicationJob } from '../model/usePublicationJob';
-import './publication.css';
 
 const api = createPublicationApi(apiClient);
 const date = (value: string) => new Date(value).toLocaleString('vi-VN');
@@ -204,7 +208,7 @@ export function PublicationPanel({
         }
     }
     const issues = (items: PublishCheck['errors'] | PublishCheck['warnings']) => (
-        <ul className="publication-issues">
+        <ul className="publication-issues pl-6 [&_li_+_li]:mt-3">
             {items.map((item) => (
                 <li key={JSON.stringify(item)}>
                     <span>{item.message}</span>
@@ -236,7 +240,10 @@ export function PublicationPanel({
         </ul>
     );
     return (
-        <section className="publication" aria-labelledby="publication-heading">
+        <section
+            className="publication [&_a]:wrap-anywhere [&_code]:wrap-anywhere mt-10 border-t-[1px] border-t-border pt-8 [border-top-style:solid] [&_fieldset]:min-w-0 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-4 [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_p]:max-w-[75ch]"
+            aria-labelledby="publication-heading"
+        >
             <h2 id="publication-heading">Xuất bản và chia sẻ</h2>
             <p>
                 Bản nháp đã lưu được đóng thành một phiên bản khi xuất bản. Sửa tiếp bản nháp không
@@ -244,11 +251,11 @@ export function PublicationPanel({
             </p>
             <Feedback error={error || job.error} success={notice || null} />
             {unsaved && (
-                <p className="field-hint">
+                <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                     Bạn còn thông tin sách chưa lưu. Lưu thông tin trước khi kiểm tra và xuất bản.
                 </p>
             )}
-            <div className="form-actions">
+            <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                 <Button
                     variant="secondary"
                     disabled={locked || unsaved}
@@ -263,7 +270,10 @@ export function PublicationPanel({
                 </Button>
             </div>
             {check && (
-                <section className="publication-check" aria-label="Kết quả kiểm tra xuất bản">
+                <section
+                    className="publication-check mt-6 rounded-[var(--radius-md)] bg-muted p-5 [&_h3]:mt-5"
+                    aria-label="Kết quả kiểm tra xuất bản"
+                >
                     <p>
                         {check.summary.pageCount} trang · {check.summary.arPageCount} trang AR ·{' '}
                         {bytes(check.summary.downloadBytes)} tài nguyên
@@ -277,28 +287,40 @@ export function PublicationPanel({
                     <h3>Cảnh báo ({check.warnings.length})</h3>
                     {check.warnings.length ? issues(check.warnings) : <p>Không có cảnh báo.</p>}
                     <fieldset disabled={locked || unsaved}>
-                        <label htmlFor="publication-visibility">
-                            Cách chia sẻ
-                            <select
-                                id="publication-visibility"
-                                value={visibility}
-                                onChange={(event) =>
-                                    setVisibility(event.currentTarget.value as typeof visibility)
-                                }
-                            >
-                                <option value="UNLISTED">Không niêm yết — xem bằng liên kết</option>
-                                <option value="PUBLIC">Công khai — xuất hiện trong thư viện</option>
-                            </select>
-                        </label>
+                        <Field orientation="contents">
+                            <FieldLabel htmlFor="publication-visibility">
+                                Cách chia sẻ
+                                <NativeSelect
+                                    id="publication-visibility"
+                                    value={visibility}
+                                    onChange={(event) =>
+                                        setVisibility(
+                                            event.currentTarget.value as typeof visibility,
+                                        )
+                                    }
+                                >
+                                    <option value="UNLISTED">
+                                        Không niêm yết — xem bằng liên kết
+                                    </option>
+                                    <option value="PUBLIC">
+                                        Công khai — xuất hiện trong thư viện
+                                    </option>
+                                </NativeSelect>
+                            </FieldLabel>
+                        </Field>
                         {check.warnings.length > 0 && (
-                            <label className="publication-accept">
-                                <input
-                                    type="checkbox"
-                                    checked={accepted}
-                                    onChange={(event) => setAccepted(event.currentTarget.checked)}
-                                />
-                                Tôi đã đọc và chấp nhận các cảnh báo trên.
-                            </label>
+                            <Field orientation="contents">
+                                <FieldLabel className="publication-accept mb-4 flex items-start gap-3 [&_input]:size-[1.25rem] [&_input]:min-h-0 [&_input]:shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        checked={accepted}
+                                        onChange={(event) =>
+                                            setAccepted(event.currentTarget.checked)
+                                        }
+                                    />
+                                    Tôi đã đọc và chấp nhận các cảnh báo trên.
+                                </FieldLabel>
+                            </Field>
                         )}
                         <Button
                             disabled={!check.canPublish || (check.warnings.length > 0 && !accepted)}
@@ -311,7 +333,7 @@ export function PublicationPanel({
             )}
             {job.message && <p role="status">{job.message}</p>}
             {job.task?.jobId && !job.done && (
-                <p className="field-hint">
+                <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                     Mã tác vụ: <code>{job.task.jobId}</code>. Có thể tải lại trang để tiếp tục theo
                     dõi trong tab này.
                 </p>
@@ -322,7 +344,7 @@ export function PublicationPanel({
                 </Button>
             )}
             {job.task && !job.task.jobId && !job.posting && (
-                <div className="publication-check">
+                <div className="publication-check mt-6 rounded-[var(--radius-md)] bg-muted p-5 [&_h3]:mt-5">
                     <p>
                         Chưa xác định được máy chủ đã nhận yêu cầu hay chưa. Đối chiếu lịch sử phiên
                         bản, trạng thái xuất bản và tác vụ backend trước khi gửi lại; yêu cầu mới có
@@ -339,7 +361,7 @@ export function PublicationPanel({
                     cập nhật bên dưới.
                 </p>
             )}
-            <div className="publication-section">
+            <div className="publication-section mt-8 border-t-[1px] border-t-border pt-6 [border-top-style:solid]">
                 <h3>Liên kết và mã QR</h3>
                 {!available ? (
                     <p>
@@ -355,7 +377,7 @@ export function PublicationPanel({
                             />
                         )}
                         {share.data && !share.isError && (
-                            <div className="publication-share">
+                            <div className="publication-share mb-6 grid grid-cols-[minmax(0,_1fr)_240px] gap-6 max-[700px]:grid-cols-[minmax(0,_1fr)] [&_img]:h-auto [&_img]:max-w-full">
                                 <div>
                                     <a
                                         href={share.data.url}
@@ -364,15 +386,17 @@ export function PublicationPanel({
                                     >
                                         Mở sách đã xuất bản
                                     </a>
-                                    <label htmlFor="share-url">
-                                        Liên kết sách
-                                        <input
-                                            id="share-url"
-                                            readOnly
-                                            value={share.data.url}
-                                            onFocus={(e) => e.currentTarget.select()}
-                                        />
-                                    </label>
+                                    <Field orientation="contents">
+                                        <FieldLabel htmlFor="share-url">
+                                            Liên kết sách
+                                            <Input
+                                                id="share-url"
+                                                readOnly
+                                                value={share.data.url}
+                                                onFocus={(e) => e.currentTarget.select()}
+                                            />
+                                        </FieldLabel>
+                                    </Field>
                                     <Button
                                         variant="secondary"
                                         onClick={() => {
@@ -381,16 +405,18 @@ export function PublicationPanel({
                                     >
                                         Sao chép liên kết sách
                                     </Button>
-                                    <label htmlFor="share-embed">
-                                        Mã nhúng vào website
-                                        <textarea
-                                            id="share-embed"
-                                            rows={4}
-                                            readOnly
-                                            value={share.data.embedHtml}
-                                            onFocus={(e) => e.currentTarget.select()}
-                                        />
-                                    </label>
+                                    <Field orientation="contents">
+                                        <FieldLabel htmlFor="share-embed">
+                                            Mã nhúng vào website
+                                            <Textarea
+                                                id="share-embed"
+                                                rows={4}
+                                                readOnly
+                                                value={share.data.embedHtml}
+                                                onFocus={(e) => e.currentTarget.select()}
+                                            />
+                                        </FieldLabel>
+                                    </Field>
                                     <Button
                                         variant="ghost"
                                         onClick={() => {
@@ -399,12 +425,12 @@ export function PublicationPanel({
                                     >
                                         Sao chép mã nhúng
                                     </Button>
-                                    <p className="field-hint">
+                                    <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                                         Camera trong trang nhúng cần HTTPS và quyền camera của
                                         website chứa iframe. Địa chỉ localhost chỉ dùng trên máy
                                         này.
                                     </p>
-                                    <div className="form-actions">
+                                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                                         <a
                                             href={share.data.qrPngUrl}
                                             target="_blank"
@@ -448,7 +474,7 @@ export function PublicationPanel({
                     </>
                 )}
             </div>
-            <div className="publication-section">
+            <div className="publication-section mt-8 border-t-[1px] border-t-border pt-6 [border-top-style:solid]">
                 <h3>PDF để in</h3>
                 <p>
                     PDF dùng dữ liệu đã đóng của phiên bản đang xuất bản
@@ -472,75 +498,89 @@ export function PublicationPanel({
                         }
                     }}
                 >
-                    <fieldset disabled={locked || !available || unsaved}>
-                        <div className="form-grid">
-                            <label htmlFor="pdf-kind">
-                                Loại tệp
-                                <select
-                                    id="pdf-kind"
-                                    value={print.kind}
-                                    onChange={(event) =>
-                                        setPrint({
-                                            ...print,
-                                            kind: event.currentTarget.value as
-                                                | 'PRINT'
-                                                | 'MARKER_SHEET',
-                                        })
-                                    }
-                                >
-                                    <option value="PRINT">Sách để in</option>
-                                    <option value="MARKER_SHEET">Tờ tem marker Bookaria</option>
-                                </select>
-                            </label>
-                            <label htmlFor="pdf-qr">
-                                Vị trí QR
-                                <select
-                                    id="pdf-qr"
-                                    value={print.qrMode}
-                                    onChange={(event) =>
-                                        setPrint({
-                                            ...print,
-                                            qrMode: event.currentTarget.value as
-                                                | 'COVER_ONLY'
-                                                | 'ALL_AR_PAGES',
-                                        })
-                                    }
-                                >
-                                    <option value="COVER_ONLY">Chỉ trên bìa</option>
-                                    <option value="ALL_AR_PAGES">Bìa và mọi trang AR</option>
-                                </select>
-                            </label>
-                            <label htmlFor="pdf-bleed">
-                                Chừa xén (mm)
-                                <input
-                                    id="pdf-bleed"
-                                    type="number"
-                                    min={0}
-                                    max={10}
-                                    step="any"
-                                    required
-                                    value={Number.isFinite(print.bleedMm) ? print.bleedMm : ''}
-                                    onChange={(event) =>
-                                        setPrint({
-                                            ...print,
-                                            bleedMm:
-                                                event.currentTarget.value === ''
-                                                    ? Number.NaN
-                                                    : Number(event.currentTarget.value),
-                                        })
-                                    }
-                                />
-                            </label>
-                        </div>
-                        <p className="field-hint">
-                            Chừa xén từ 0 đến 10 mm. Tờ tem chỉ dùng cho trang có marker Bookaria;
-                            trang CUSTOM hoặc không có AR không có tem. Sách có marker CUSTOM cần
-                            chọn QR chỉ trên bìa để giữ nguyên ảnh nhận diện.
-                        </p>
-                        <Button type="submit" variant="secondary">
-                            Tạo PDF từ bản xuất bản
-                        </Button>
-                    </fieldset>
+                    <FieldGroup className="contents">
+                        <fieldset disabled={locked || !available || unsaved}>
+                            <div className="form-grid grid grid-cols-[1fr_1fr] gap-[0_var(--space-6)] max-[760px]:grid-cols-[1fr] max-[540px]:[.theme-demo-form_&]:grid-cols-[1fr]">
+                                <Field orientation="contents">
+                                    <FieldLabel htmlFor="pdf-kind">
+                                        Loại tệp
+                                        <NativeSelect
+                                            id="pdf-kind"
+                                            value={print.kind}
+                                            onChange={(event) =>
+                                                setPrint({
+                                                    ...print,
+                                                    kind: event.currentTarget.value as
+                                                        | 'PRINT'
+                                                        | 'MARKER_SHEET',
+                                                })
+                                            }
+                                        >
+                                            <option value="PRINT">Sách để in</option>
+                                            <option value="MARKER_SHEET">
+                                                Tờ tem marker Bookaria
+                                            </option>
+                                        </NativeSelect>
+                                    </FieldLabel>
+                                </Field>
+                                <Field orientation="contents">
+                                    <FieldLabel htmlFor="pdf-qr">
+                                        Vị trí QR
+                                        <NativeSelect
+                                            id="pdf-qr"
+                                            value={print.qrMode}
+                                            onChange={(event) =>
+                                                setPrint({
+                                                    ...print,
+                                                    qrMode: event.currentTarget.value as
+                                                        | 'COVER_ONLY'
+                                                        | 'ALL_AR_PAGES',
+                                                })
+                                            }
+                                        >
+                                            <option value="COVER_ONLY">Chỉ trên bìa</option>
+                                            <option value="ALL_AR_PAGES">
+                                                Bìa và mọi trang AR
+                                            </option>
+                                        </NativeSelect>
+                                    </FieldLabel>
+                                </Field>
+                                <Field orientation="contents">
+                                    <FieldLabel htmlFor="pdf-bleed">
+                                        Chừa xén (mm)
+                                        <Input
+                                            id="pdf-bleed"
+                                            type="number"
+                                            min={0}
+                                            max={10}
+                                            step="any"
+                                            required
+                                            value={
+                                                Number.isFinite(print.bleedMm) ? print.bleedMm : ''
+                                            }
+                                            onChange={(event) =>
+                                                setPrint({
+                                                    ...print,
+                                                    bleedMm:
+                                                        event.currentTarget.value === ''
+                                                            ? Number.NaN
+                                                            : Number(event.currentTarget.value),
+                                                })
+                                            }
+                                        />
+                                    </FieldLabel>
+                                </Field>
+                            </div>
+                            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
+                                Chừa xén từ 0 đến 10 mm. Tờ tem chỉ dùng cho trang có marker
+                                Bookaria; trang CUSTOM hoặc không có AR không có tem. Sách có marker
+                                CUSTOM cần chọn QR chỉ trên bìa để giữ nguyên ảnh nhận diện.
+                            </p>
+                            <Button type="submit" variant="secondary">
+                                Tạo PDF từ bản xuất bản
+                            </Button>
+                        </fieldset>
+                    </FieldGroup>
                 </form>
                 {pdf && (
                     <p role="status">
@@ -550,7 +590,7 @@ export function PublicationPanel({
                                 ? ` · yêu cầu khi đang ở phiên bản ${pdf.versionNo}`
                                 : ''}
                         </a>
-                        <span className="field-hint">
+                        <span className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                             {' '}
                             Lưu liên kết này trước khi rời trang. Mỗi biến thể có tệp riêng.
                         </span>
@@ -576,13 +616,13 @@ export function PublicationPanel({
                     />
                 )}
             </div>
-            <div className="publication-section">
+            <div className="publication-section mt-8 border-t-[1px] border-t-border pt-6 [border-top-style:solid]">
                 <h3>Lịch sử phiên bản</h3>
                 {versions.isPending && <p role="status">Đang tải lịch sử…</p>}
                 {versions.isError && <Feedback error={errorMessage(versions.error)} />}
                 {versions.data?.length === 0 && <p>Chưa có phiên bản đã xuất bản.</p>}
                 {versions.data && versions.data.length > 0 && (
-                    <ol className="publication-versions">
+                    <ol className="publication-versions list-none p-0 [&_li]:border-b-[1px] [&_li]:border-b-border [&_li]:px-0 [&_li]:py-4 [&_li]:[border-bottom-style:solid] [&_li_p]:mx-0 [&_li_p]:mt-1 [&_li_p]:mb-0 [&_li_p]:text-muted-foreground">
                         {versions.data.map((version) => (
                             <li key={version.id}>
                                 <strong>Phiên bản {version.versionNo}</strong> ·{' '}
@@ -616,10 +656,10 @@ export function PublicationPanel({
                               ? 'Sách chuyển về riêng tư. Người đọc không tải tiếp được bằng liên kết và QR cũ; các tệp đã tải xuống vẫn tồn tại.'
                               : 'Chỉ tiếp tục khi bạn đã xác định kết quả yêu cầu trước. Thao tác này bỏ chặn trên trình duyệt, không hủy tác vụ ở máy chủ.'}
                     </p>
-                    <div className="form-actions">
+                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                         <Button
                             variant={confirm === 'unpublish' ? 'danger' : 'primary'}
-                            loading={requesting || job.posting}
+                            aria-busy={requesting || job.posting}
                             onClick={() => {
                                 if (confirm === 'publish') void publish();
                                 else if (confirm === 'unpublish') void unpublish();
@@ -628,8 +668,11 @@ export function PublicationPanel({
                                     setConfirm(null);
                                 }
                             }}
+                            disabled={requesting || job.posting}
                         >
-                            {' '}
+                            {(requesting || job.posting) && (
+                                <Spinner data-icon="inline-start" aria-hidden="true" />
+                            )}{' '}
                             {confirm === 'publish'
                                 ? 'Xác nhận xuất bản'
                                 : confirm === 'unpublish'

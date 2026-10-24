@@ -5,7 +5,9 @@ export function AuditJson({ value }: { value: Record<string, unknown> | null }) 
     return value === null ? (
         <p>Không có dữ liệu bổ sung.</p>
     ) : (
-        <pre className="admin-json">{JSON.stringify(value, null, 2)}</pre>
+        <pre className="admin-json wrap-anywhere max-w-full bg-muted p-4 text-[length:var(--text-sm)] [white-space:pre-wrap]">
+            {JSON.stringify(value, null, 2)}
+        </pre>
     );
 }
 export function AdminActor({ actor }: { actor: { id: string; displayName: string } | null }) {

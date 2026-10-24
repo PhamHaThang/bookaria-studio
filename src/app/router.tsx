@@ -145,7 +145,10 @@ const StyleGuidePage = import.meta.env.DEV
 function RouterLayout() {
     return (
         <>
-            <a className="skip-link" href="#main">
+            <a
+                className="skip-link fixed top-[-100px] left-4 z-var(--layer-skip-link) bg-surface p-3 [&:focus]:top-3"
+                href="#main"
+            >
                 Đến nội dung chính
             </a>
             <Outlet />
@@ -166,7 +169,11 @@ const router = createBrowserRouter(
                     element={
                         <Suspense
                             fallback={
-                                <main id="main" className="session-state" role="status">
+                                <main
+                                    id="main"
+                                    className="session-state mx-auto my-[12vh] max-w-130 p-8 text-center"
+                                    role="status"
+                                >
                                     Đang mở bộ giao diện…
                                 </main>
                             }
@@ -238,7 +245,10 @@ const router = createBrowserRouter(
                 <Route
                     path="*"
                     element={
-                        <main id="main" className="session-state">
+                        <main
+                            id="main"
+                            className="session-state mx-auto my-[12vh] max-w-130 p-8 text-center"
+                        >
                             <h1>Không tìm thấy trang</h1>
                             <Link to="/books">Về Studio</Link>
                         </main>

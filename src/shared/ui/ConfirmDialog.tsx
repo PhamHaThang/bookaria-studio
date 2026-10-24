@@ -1,5 +1,6 @@
-import clsx from 'clsx';
-import { type ReactNode, useEffect, useId, useRef } from 'react';
+import type { ReactNode } from 'react';
+import { cn } from '@/shared/lib/cn';
+import { Dialog, DialogContent, DialogTitle } from './primitives/dialog';
 
 export function ConfirmDialog({
     title,
@@ -14,23 +15,25 @@ export function ConfirmDialog({
     onClose: () => void;
     className?: string;
 }) {
-    const dialog = useRef<HTMLDialogElement>(null);
-    const id = useId();
-    useEffect(() => {
-        if (dialog.current && !dialog.current.open) dialog.current.showModal();
-    }, []);
     return (
-        <dialog
-            className={clsx('confirm-dialog', className)}
-            ref={dialog}
-            aria-labelledby={id}
-            onCancel={(event) => {
-                if (busy) event.preventDefault();
+        <Dialog
+            open
+            onOpenChange={(open) => {
+                if (!open && !busy) onClose();
             }}
-            onClose={onClose}
         >
-            <h2 id={id}>{title}</h2>
-            {children}
-        </dialog>
+            <DialogContent
+                className={cn('confirm-dialog', className)}
+                showCloseButton={false}
+                aria-describedby={undefined}
+                onEscapeKeyDown={(event) => {
+                    if (busy) event.preventDefault();
+                }}
+                onInteractOutside={(event) => event.preventDefault()}
+            >
+                <DialogTitle>{title}</DialogTitle>
+                {children}
+            </DialogContent>
+        </Dialog>
     );
 }

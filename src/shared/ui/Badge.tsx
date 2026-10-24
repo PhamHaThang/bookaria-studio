@@ -1,11 +1,9 @@
-import type { HTMLAttributes } from 'react';
-import { cn } from '../lib/cn';
-
+import type { ComponentProps } from 'react';
+import { Badge as PrimitiveBadge } from './primitives/badge';
 export type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 export function Badge({
     tone = 'neutral',
-    className,
     ...props
-}: HTMLAttributes<HTMLSpanElement> & { tone?: BadgeTone }) {
-    return <span {...props} className={cn('badge', `badge-${tone}`, className)} />;
+}: Omit<ComponentProps<typeof PrimitiveBadge>, 'variant'> & { tone?: BadgeTone }) {
+    return <PrimitiveBadge {...props} variant={tone} />;
 }

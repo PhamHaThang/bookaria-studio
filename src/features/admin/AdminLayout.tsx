@@ -5,7 +5,6 @@ import { Feedback } from '../../shared/ui/Feedback';
 import { useAuth } from '../auth';
 import { adminApi, adminKeys } from './index';
 import { AdminReload } from './ui';
-import './admin.css';
 
 function AdminGate({ actor }: { actor: string }) {
     const gate = useQuery({
@@ -29,8 +28,11 @@ function AdminGate({ actor }: { actor: string }) {
             </>
         );
     return (
-        <div className="admin-area">
-            <nav className="admin-nav" aria-label="Điều hướng quản trị">
+        <div className="admin-area min-w-0">
+            <nav
+                className="admin-nav mb-6 flex flex-wrap gap-[var(--space-2)_var(--space-5)] border-b-[1px] border-b-border py-3 [border-bottom-style:solid] max-[640px]:gap-[var(--space-2)_var(--space-4)] [&_a.active]:font-semibold [&_a.active]:[text-decoration-thickness:2px] [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center"
+                aria-label="Điều hướng quản trị"
+            >
                 <NavLink end to="/admin">
                     Tổng quan
                 </NavLink>

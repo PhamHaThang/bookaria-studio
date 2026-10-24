@@ -1,6 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Button } from '@/shared/ui/Button';
+import {
+    Empty,
+    EmptyContent,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyTitle,
+} from '@/shared/ui/primitives/empty';
+import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { discoveryApi } from '../features/discovery';
 import { PublicBooks } from '../features/discovery/PublicBooks';
 import { readDiscoverySearch, updateDiscoverySearch } from '../features/discovery/search';
@@ -34,14 +45,14 @@ export function ExplorePage() {
     const filtered = Boolean(query.q || query.age !== undefined || query.topic || query.language);
     return (
         <>
-            <div className="page-heading">
+            <div className="page-heading [&_h1]:wrap-anywhere mx-0 mt-0 mb-7 flex items-center justify-between gap-6 max-[760px]:mb-6 max-[700px]:flex-wrap max-[700px]:items-start max-[760px]:items-start max-[700px]:gap-3 max-[760px]:gap-4 max-[700px]:[&_>_.button]:max-w-full max-[700px]:[&_>_.button]:flex-[0_0_auto] [&_>_div]:min-w-0 max-[700px]:[&_>_div]:flex-[1_1_180px] [&_h1]:font-semibold [&_h1]:text-[length:28px] [&_h1]:tracking-[-0.025em] max-[700px]:[&_h1]:text-[length:25px] max-[760px]:[&_h1]:text-[length:var(--text-2xl)] [&_p]:mx-0 [&_p]:mt-2 [&_p]:mb-0 [&_p]:max-w-[64ch] [&_p]:text-[length:13px] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-sm)] [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-2 [.studio-editing_&_h1]:ml-4 [.studio-editing_&_h1]:inline [.studio-editing_&_h1]:text-[length:21px] max-[700px]:[.studio-editing_&_h1]:mx-0 max-[700px]:[.studio-editing_&_h1]:mt-[6px] max-[700px]:[.studio-editing_&_h1]:mb-0 max-[700px]:[.studio-editing_&_h1]:block [.studio-editing_&_p]:ml-[14px] [.studio-editing_&_p]:inline [.studio-editing_&_p]:text-[length:11px] max-[700px]:[.studio-editing_&_p]:mx-0 max-[700px]:[.studio-editing_&_p]:my-1 max-[700px]:[.studio-editing_&_p]:block [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375">
                 <div>
                     <h1>Thư viện sách công khai</h1>
                     <p>Tìm sách tương tác và đọc cùng Bookaria.</p>
                 </div>
             </div>
             <form
-                className="discovery-filters"
+                className="discovery-filters grid grid-cols-[repeat(4,_minmax(0,_1fr))] gap-4 border-b-[1px] border-b-border pb-6 [border-bottom-style:solid] max-[640px]:grid-cols-[minmax(0,_1fr)] [&_label]:flex [&_label]:min-w-0 [&_label]:flex-col [&_label]:gap-2"
                 key={params.toString()}
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -55,107 +66,127 @@ export function ExplorePage() {
                     setParams((current) => updateDiscoverySearch(current, changes));
                 }}
             >
-                <label className="discovery-search">
-                    Tên sách
-                    <input
-                        name="q"
-                        type="search"
-                        maxLength={100}
-                        defaultValue={query.q || ''}
-                        placeholder="Tìm theo tên sách"
-                    />
-                </label>
-                <label>
-                    Độ tuổi
-                    <select name="age" defaultValue={query.age ?? ''}>
-                        <option value="">Tất cả độ tuổi</option>
-                        {ages.map((age) => (
-                            <option key={age} value={age}>
-                                {age} tuổi
-                            </option>
-                        ))}
-                    </select>
-                </label>
-                <label>
-                    Chủ đề
-                    <input
-                        name="topic"
-                        maxLength={50}
-                        defaultValue={query.topic || ''}
-                        placeholder="Nhập chủ đề"
-                    />
-                </label>
-                <label>
-                    Ngôn ngữ
-                    <input
-                        name="language"
-                        pattern="[a-z]{2}(-[A-Z]{2})?"
-                        title="Mã ngôn ngữ, ví dụ vi, en hoặc en-US"
-                        defaultValue={query.language || ''}
-                        placeholder="vi, en, en-US"
-                    />
-                </label>
-                <label>
-                    Sắp xếp
-                    <select name="sort" defaultValue={query.sort}>
-                        <option value="newest">Mới xuất bản</option>
-                        <option value="popular">Đọc nhiều</option>
-                    </select>
-                </label>
-                <div className="discovery-filter-actions">
-                    <button className="button compact" type="submit">
-                        Tìm sách
-                    </button>
-                    <Link to="/explore" className="button secondary compact">
-                        Xóa bộ lọc
-                    </Link>
-                </div>
+                <FieldGroup className="contents">
+                    <Field orientation="contents">
+                        <FieldLabel className="discovery-search col-[span_2] max-[640px]:col-[auto]">
+                            Tên sách
+                            <Input
+                                name="q"
+                                type="search"
+                                maxLength={100}
+                                defaultValue={query.q || ''}
+                                placeholder="Tìm theo tên sách"
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel>
+                            Độ tuổi
+                            <NativeSelect name="age" defaultValue={query.age ?? ''}>
+                                <option value="">Tất cả độ tuổi</option>
+                                {ages.map((age) => (
+                                    <option key={age} value={age}>
+                                        {age} tuổi
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel>
+                            Chủ đề
+                            <Input
+                                name="topic"
+                                maxLength={50}
+                                defaultValue={query.topic || ''}
+                                placeholder="Nhập chủ đề"
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel>
+                            Ngôn ngữ
+                            <Input
+                                name="language"
+                                pattern="[a-z]{2}(-[A-Z]{2})?"
+                                title="Mã ngôn ngữ, ví dụ vi, en hoặc en-US"
+                                defaultValue={query.language || ''}
+                                placeholder="vi, en, en-US"
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel>
+                            Sắp xếp
+                            <NativeSelect name="sort" defaultValue={query.sort}>
+                                <option value="newest">Mới xuất bản</option>
+                                <option value="popular">Đọc nhiều</option>
+                            </NativeSelect>
+                        </FieldLabel>
+                    </Field>
+                    <div className="discovery-filter-actions col-[span_2] flex flex-wrap items-end gap-3 max-[640px]:col-[auto]">
+                        <Button type="submit">Tìm sách</Button>
+                        <Button variant="secondary" asChild>
+                            <Link to="/explore">Xóa bộ lọc</Link>
+                        </Button>
+                    </div>
+                </FieldGroup>
             </form>
             {listing.isPending && (
-                <p className="list-state" role="status">
+                <p className="list-state px-0 py-12" role="status">
                     Đang tải sách…
                 </p>
             )}
             {listing.isError && (
-                <div className="list-state">
+                <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(listing.error)} />
-                    <button
-                        type="button"
-                        className="button compact"
-                        onClick={() => void listing.refetch()}
-                    >
+                    <Button type="button" onClick={() => void listing.refetch()}>
                         Thử tải lại
-                    </button>
+                    </Button>
                 </div>
             )}
             {listing.isSuccess && (
                 <>
-                    <p className="list-summary" role="status">
+                    <p
+                        className="mx-0 mt-0 mb-3 flex list-summary justify-between gap-4 text-[length:12px] text-muted-foreground [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
+                        role="status"
+                    >
                         {listing.data.meta.total} cuốn sách
                         {listing.isFetching ? ' · Đang cập nhật…' : ''}
                     </p>
                     {listing.data.data.length ? (
                         <PublicBooks books={listing.data.data} />
                     ) : (
-                        <section className="empty-state">
-                            <h2>
-                                {filtered
-                                    ? 'Chưa tìm thấy sách phù hợp'
-                                    : 'Thư viện chưa có sách công khai'}
-                            </h2>
-                            <p>
-                                {filtered
-                                    ? 'Thử từ khóa khác hoặc xóa bộ lọc để xem thêm sách.'
-                                    : 'Các sách được tác giả xuất bản công khai sẽ xuất hiện ở đây.'}
-                            </p>
-                            {filtered && <Link to="/explore">Xóa bộ lọc</Link>}
-                        </section>
+                        <Empty className="empty-state border-border border-t px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
+                            <EmptyHeader>
+                                <EmptyTitle>
+                                    <h2>
+                                        {filtered
+                                            ? 'Chưa tìm thấy sách phù hợp'
+                                            : 'Thư viện chưa có sách công khai'}
+                                    </h2>
+                                </EmptyTitle>
+                                <EmptyDescription>
+                                    <p>
+                                        {filtered
+                                            ? 'Thử từ khóa khác hoặc xóa bộ lọc để xem thêm sách.'
+                                            : 'Các sách được tác giả xuất bản công khai sẽ xuất hiện ở đây.'}
+                                    </p>
+                                </EmptyDescription>
+                            </EmptyHeader>
+                            <EmptyContent>
+                                {filtered && <Link to="/explore">Xóa bộ lọc</Link>}
+                            </EmptyContent>
+                        </Empty>
                     )}
                     {listing.data.meta.totalPages > 1 && (
-                        <nav className="pagination" aria-label="Phân trang thư viện">
-                            <button
+                        <nav
+                            className="pagination mt-8 flex items-center justify-end gap-5 text-[length:var(--text-sm)] tabular-nums max-[760px]:justify-between max-[760px]:gap-2 max-[760px]:text-[length:var(--text-xs)] max-[760px]:[&_.button]:p-3 max-[760px]:[&_.button]:text-[length:var(--text-xs)]"
+                            aria-label="Phân trang thư viện"
+                        >
+                            <Button
                                 type="button"
-                                className="button secondary compact"
+                                variant="secondary"
                                 disabled={query.page <= 1}
                                 onClick={() =>
                                     setParams((current) =>
@@ -166,13 +197,13 @@ export function ExplorePage() {
                                 }
                             >
                                 Trang trước
-                            </button>
+                            </Button>
                             <span>
                                 Trang {query.page} / {listing.data.meta.totalPages}
                             </span>
-                            <button
+                            <Button
                                 type="button"
-                                className="button secondary compact"
+                                variant="secondary"
                                 disabled={query.page >= listing.data.meta.totalPages}
                                 onClick={() =>
                                     setParams((current) =>
@@ -183,7 +214,7 @@ export function ExplorePage() {
                                 }
                             >
                                 Trang sau
-                            </button>
+                            </Button>
                         </nav>
                     )}
                 </>

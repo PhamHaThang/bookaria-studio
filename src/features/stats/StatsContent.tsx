@@ -1,10 +1,13 @@
 import type { ReactNode } from 'react';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import type { BookStats } from '../../shared/contracts/api/books.schema';
 
 function TableRegion({ label, children }: { label: string; children: ReactNode }) {
     return (
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need focus to scroll wide data tables.
-        <section className="stats-table-scroll" aria-label={label} tabIndex={0}>
+        <section
+            className="stats-table-scroll [&_th]:wrap-anywhere [&_td]:wrap-anywhere max-w-full overflow-x-auto [&_caption]:px-0 [&_caption]:py-3 [&_caption]:text-left [&_caption]:text-muted-foreground [&_table]:w-full [&_table]:min-w-95 [&_table]:text-[length:var(--text-sm)] [&_table]:[border-collapse:collapse] [&_td]:border-b-[1px] [&_td]:border-b-border [&_td]:p-3 [&_td]:text-left [&_td]:tabular-nums [&_td]:[border-bottom-style:solid] [&_td]:[vertical-align:top] [&_th]:border-b-[1px] [&_th]:border-b-border [&_th]:p-3 [&_th]:text-left [&_th]:[border-bottom-style:solid] [&_th]:[vertical-align:top] [&_thead]:bg-muted"
+            aria-label={label}
+        >
             {children}
         </section>
     );
@@ -25,8 +28,11 @@ export function StatsContent({ stats }: { stats: BookStats }) {
     const maximum = Math.max(1, ...days.map((day) => day.opens));
     const hasEvents = Object.values(stats.totals).some((value) => value > 0);
     return (
-        <div className="stats-content">
-            <dl className="stats-totals" aria-label="Tổng số trong khoảng đã chọn">
+        <div className="stats-content [&_>_section]:mt-8">
+            <dl
+                className="stats-totals m-0 grid grid-cols-[repeat(4,_minmax(0,_1fr))] gap-5 py-5 [border-block:1px_solid_var(--border-default)] max-[640px]:grid-cols-[repeat(2,_minmax(0,_1fr))] [&_dd]:mx-0 [&_dd]:mt-2 [&_dd]:mb-0 [&_dd]:font-semibold [&_dd]:text-[length:var(--text-2xl)] [&_dd]:tabular-nums [&_dt]:text-[length:var(--text-sm)] [&_dt]:text-muted-foreground max-[640px]:[&_dt]:min-h-[calc(2em_*_var(--leading-normal))]"
+                aria-label="Tổng số trong khoảng đã chọn"
+            >
                 {[
                     ['Lượt mở', stats.totals.opens],
                     ['Phiên đọc', stats.totals.sessions],
@@ -39,23 +45,32 @@ export function StatsContent({ stats }: { stats: BookStats }) {
                     </div>
                 ))}
             </dl>
-            <p className="stats-note">
+            <p className="stats-note max-w-[75ch] text-[length:var(--text-sm)] text-muted-foreground [.admin-form_&]:mb-4">
                 Phiên đọc không tương đương số người đọc duy nhất. Số liệu gồm các phiên bản đã xuất
                 bản; bản xem trước không được tính.
             </p>
             {!hasEvents && (
-                <section className="empty-state">
-                    <h2>Chưa có sự kiện đọc trong khoảng này</h2>
-                    <p>
-                        Chọn khoảng dài hơn hoặc chia sẻ sách đã xuất bản để bắt đầu nhận số liệu.
-                    </p>
-                </section>
+                <Empty className="empty-state border-border border-t px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
+                    <EmptyHeader>
+                        <EmptyTitle>
+                            <h2>Chưa có sự kiện đọc trong khoảng này</h2>
+                        </EmptyTitle>
+                        <EmptyDescription>
+                            <p>
+                                Chọn khoảng dài hơn hoặc chia sẻ sách đã xuất bản để bắt đầu nhận số
+                                liệu.
+                            </p>
+                        </EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
             )}
             <section aria-labelledby="daily-opens-title">
                 <h2 id="daily-opens-title">Lượt mở theo ngày</h2>
-                <p className="stats-note">Ngày được tính theo UTC.</p>
+                <p className="stats-note max-w-[75ch] text-[length:var(--text-sm)] text-muted-foreground [.admin-form_&]:mb-4">
+                    Ngày được tính theo UTC.
+                </p>
                 {days.some((day) => day.opens > 0) && (
-                    <figure className="stats-chart">
+                    <figure className="stats-chart mx-0 my-5 [&_figcaption]:flex [&_figcaption]:justify-between [&_figcaption]:gap-3 [&_figcaption]:pt-2 [&_figcaption]:text-[length:var(--text-xs)] [&_figcaption]:text-muted-foreground [&_svg]:block [&_svg]:h-45 [&_svg]:w-full [&_svg]:border-b-[1px] [&_svg]:border-b-input [&_svg]:[border-bottom-style:solid]">
                         <svg
                             viewBox="0 0 800 160"
                             preserveAspectRatio="none"
@@ -88,7 +103,7 @@ export function StatsContent({ stats }: { stats: BookStats }) {
                         </figcaption>
                     </figure>
                 )}
-                <details className="stats-days">
+                <details className="stats-days [&_summary]:cursor-pointer [&_summary]:py-3">
                     <summary>Xem số liệu từng ngày</summary>
                     <TableRegion label="Bảng lượt mở theo ngày">
                         <table>
@@ -113,7 +128,7 @@ export function StatsContent({ stats }: { stats: BookStats }) {
             </section>
             <section aria-labelledby="page-stats-title">
                 <h2 id="page-stats-title">Tương tác theo trang</h2>
-                <p className="stats-note">
+                <p className="stats-note max-w-[75ch] text-[length:var(--text-sm)] text-muted-foreground [.admin-form_&]:mb-4">
                     Bảng dùng danh sách trang hiện tại. Lần quét chưa nhận diện được tổng hợp cho cả
                     sách.
                 </p>

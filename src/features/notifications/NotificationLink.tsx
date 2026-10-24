@@ -8,7 +8,7 @@ export function NotificationLink({ userId }: { userId: string }) {
     const count = unread.isSuccess ? unread.data.meta.total : undefined;
     return (
         <Link
-            className="notification-header-link"
+            className="notification-header-link inline-flex min-h-11 items-center gap-2 whitespace-nowrap max-[700px]:[.account-actions_&]:gap-[5px] max-[700px]:[.account-actions_&]:text-[length:0] max-[700px]:[.account-actions_&_.badge]:text-[length:10px]"
             to="/notifications"
             aria-label={count === undefined ? 'Thông báo' : `Thông báo, ${count} chưa đọc`}
         >

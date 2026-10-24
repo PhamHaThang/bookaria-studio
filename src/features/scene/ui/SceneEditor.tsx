@@ -31,6 +31,9 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { Spinner } from '@/shared/ui/primitives/spinner';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset, BookDetail, Page } from '../../../shared/contracts/dto.schema';
 import {
@@ -66,8 +69,6 @@ import { ObjectEditor } from './ObjectEditor';
 import { PageSettingsEditor } from './PageSettingsEditor';
 import { PageStrip } from './PageStrip';
 import { SceneCanvas } from './SceneCanvas';
-import './scene.css';
-import './assemblr.css';
 
 export function SceneEditor({
     page,
@@ -196,7 +197,7 @@ export function SceneEditor({
     }
     return (
         <section
-            className="scene-editor"
+            className="scene-editor m-0 min-h-[100dvh] bg-surface p-0 [--control-height:40px] [--text-md:0.8125rem] [--text-sm:0.75rem] [--text-xs:0.6875rem] [&_audio]:my-3 [&_audio]:block [&_audio]:w-full [&_audio]:max-w-105 [&_input:not([type=checkbox])]:m-0 [&_label]:m-0 [&_select]:m-0 [&_textarea]:m-0 [.scene-editor_&_.button]:min-h-10 [.scene-editor_&_.button]:w-auto [.scene-editor_&_.button]:rounded-[10px] [.scene-editor_&_.button]:px-[13px] [.scene-editor_&_.button]:py-[9px] [.scene-editor_&_.button]:text-[length:12px]"
             data-panel={panel}
             data-layers={layersOpen}
             aria-labelledby="scene-heading"
@@ -205,18 +206,18 @@ export function SceneEditor({
                 dirty={editor.dirty || settingsDirty || editor.uncertain}
                 saving={editor.busy || settingsBusy || publicationBusy || pagesBusy}
             />
-            <header className="scene-heading editor-header">
-                <div className="editor-project">
+            <header className="scene-heading editor-header flex flex-wrap items-start justify-between gap-4 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_p]:m-0 [&_p]:text-muted-foreground [.scene-editor_&]:m-0 [.scene-editor_&]:flex [.scene-editor_&]:min-h-19 [.scene-editor_&]:items-center [.scene-editor_&]:gap-[14px] [.scene-editor_&]:border-b-[1px] [.scene-editor_&]:border-b-border [.scene-editor_&]:px-5 [.scene-editor_&]:py-3 [.scene-editor_&]:[border-bottom-style:solid] max-[760px]:[.scene-editor_&]:grid max-[760px]:[.scene-editor_&]:min-h-28 max-[760px]:[.scene-editor_&]:grid-cols-[minmax(0,_1fr)_auto] max-[760px]:[.scene-editor_&]:flex-wrap max-[760px]:[.scene-editor_&]:gap-2 max-[760px]:[.scene-editor_&]:px-3 max-[760px]:[.scene-editor_&]:py-[10px]">
+                <div className="editor-project mr-auto flex min-w-0 max-w-[30%] items-center gap-[13px] max-[1100px]:max-w-[23%] max-[760px]:max-w-[60%] max-[760px]:flex-[1] [&_>_div]:min-w-0 [&_h1]:m-0 [&_h1]:truncate [&_h1]:font-medium [&_h1]:text-[length:14px] [&_h1]:tracking-0 max-[760px]:[&_h1]:max-w-full max-[760px]:[&_h1]:text-[length:12px] [&_p]:mx-0 [&_p]:mt-[3px] [&_p]:mb-0 [&_p]:text-[length:10px] [&_p]:text-muted-foreground max-[760px]:[.scene-editor_&]:col-[1] max-[760px]:[.scene-editor_&]:row-[1] max-[760px]:[.scene-editor_&]:w-full max-[760px]:[.scene-editor_&]:max-w-full max-[760px]:[.scene-editor_&]:overflow-hidden max-[760px]:[.scene-editor_.editor-header_&]:col-[1_/_-1] max-[760px]:[.scene-editor_.editor-header_&]:w-[calc(100%_-_56px)] max-[760px]:[.scene-editor_.editor-header_&]:max-w-[calc(100%_-_56px)]">
                     <Link
                         to="/books"
-                        className="editor-brand"
+                        className="editor-brand inline-flex min-h-11 shrink-0 items-center justify-center rounded-[var(--radius-sm)] p-2 [&:hover]:bg-hover"
                         aria-label="Bookaria Studio — Sách của tôi"
                     >
                         <BookariaLogo symbol />
                     </Link>
                     <Link
                         to={`/books/${book.id}`}
-                        className="editor-back"
+                        className="editor-back rounded-[8px] p-2 text-muted-foreground [&:hover]:bg-hover"
                         aria-label="Về cuốn sách"
                     >
                         <ArrowLeft size={20} />
@@ -229,13 +230,16 @@ export function SceneEditor({
                         </p>
                     </div>
                 </div>
-                <fieldset className="editor-mode-switch" aria-label="Chế độ editor">
+                <fieldset
+                    className="editor-mode-switch flex gap-1 rounded-[13px] bg-muted p-1 max-[760px]:m-auto max-[760px]:[order:4] max-[760px]:[.scene-editor_&]:col-[2] max-[760px]:[.scene-editor_&]:row-[2] max-[760px]:[.scene-editor_&]:m-0 max-[760px]:[.scene-editor_&]:p-[2px] [.scene-editor_&_.button[aria-pressed=true]]:bg-surface [.scene-editor_&_.button[aria-pressed=true]]:text-foreground [.scene-editor_&_.button[aria-pressed=true]]:shadow-[0_2px_5px_#20283808] [.scene-editor_&_.button]:min-h-9 [.scene-editor_&_.button]:text-muted-foreground max-[760px]:[.scene-editor_&_.button]:min-h-8 max-[760px]:[.scene-editor_&_.button]:gap-1 max-[760px]:[.scene-editor_&_.button]:p-[6px] max-[1100px]:[.scene-editor_&_.button]:px-2 max-[760px]:[.scene-editor_&_.button]:text-[length:10px] max-[760px]:[.scene-editor_&_svg]:w-[14px]"
+                    aria-label="Chế độ editor"
+                >
                     <Button
                         variant="ghost"
                         aria-pressed={panel !== 'preview'}
                         onClick={() => setPanel('properties')}
                     >
-                        <Pencil size={17} />
+                        <Pencil data-icon="inline-start" />
                         Chỉnh sửa
                     </Button>
                     <Button
@@ -243,11 +247,11 @@ export function SceneEditor({
                         aria-pressed={panel === 'preview'}
                         onClick={() => setPanel('preview')}
                     >
-                        <Eye size={17} />
+                        <Eye data-icon="inline-start" />
                         Xem trước
                     </Button>
                 </fieldset>
-                <div className="form-actions editor-save-actions">
+                <div className="form-actions editor-save-actions mt-3 ml-auto flex flex-wrap flex-nowrap items-center gap-5 gap-[3px] max-[760px]:ml-0 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 [&_>_.button.primary:hover]:bg-hover [&_>_.button.primary]:gap-[7px] [&_>_.button.primary]:border [&_>_.button.primary]:border-border [&_>_.button.primary]:border-solid [&_>_.button.primary]:bg-surface [&_>_.button.primary]:px-[14px] [&_>_.button.primary]:text-[length:12px] [&_>_.button.primary]:text-foreground max-[1100px]:[&_>_.button:nth-child(3)]:hidden max-[1100px]:[&_>_.button:nth-child(4)]:hidden [&_>_.button]:min-w-9 [&_>_.button]:gap-0 [&_>_.button]:p-2 [&_>_.button]:text-[length:0] max-[760px]:[&_>_a]:text-center [&_>_input[hidden]]:hidden [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-editor_&]:w-auto [.scene-editor_&]:flex-row [.scene-editor_&]:flex-nowrap [.scene-editor_&]:items-center max-[760px]:[.scene-editor_&]:col-[1] max-[760px]:[.scene-editor_&]:row-[2] max-[760px]:[.scene-editor_&]:m-0 max-[760px]:[.scene-editor_&]:justify-start max-[760px]:[.scene-editor_&]:gap-[1px] max-[760px]:[.scene-editor_&_>_.button.primary]:gap-0 max-[760px]:[.scene-editor_&_>_.button.primary]:p-[6px] max-[760px]:[.scene-editor_&_>_.button.primary]:text-[length:0] max-[760px]:[.scene-editor_&_>_.button:last-child]:hidden max-[760px]:[.scene-editor_&_>_.button]:min-h-[34px] max-[760px]:[.scene-editor_&_>_.button]:min-w-[30px] max-[760px]:[.scene-editor_&_>_.button]:p-[6px] [.scene-object-asset_&]:gap-2">
                     <Button
                         variant="ghost"
                         aria-label="Hoàn tác (Ctrl Z)"
@@ -255,7 +259,7 @@ export function SceneEditor({
                         disabled={blocked || !editor.canUndo}
                         onClick={editor.undo}
                     >
-                        <Undo2 size={18} />
+                        <Undo2 data-icon="inline-start" />
                     </Button>
                     <Button
                         variant="ghost"
@@ -264,7 +268,7 @@ export function SceneEditor({
                         disabled={blocked || !editor.canRedo}
                         onClick={editor.redo}
                     >
-                        <Redo2 size={18} />
+                        <Redo2 data-icon="inline-start" />
                     </Button>
                     <Button
                         variant="ghost"
@@ -272,7 +276,7 @@ export function SceneEditor({
                         title="Xuất bản sao scene JSON"
                         onClick={exportScene}
                     >
-                        <Download size={18} />
+                        <Download data-icon="inline-start" />
                     </Button>
                     <Button
                         variant="ghost"
@@ -281,7 +285,7 @@ export function SceneEditor({
                         disabled={blocked}
                         onClick={() => importFile.current?.click()}
                     >
-                        <Upload size={18} />
+                        <Upload data-icon="inline-start" />
                     </Button>
                     <input
                         ref={importFile}
@@ -310,20 +314,22 @@ export function SceneEditor({
                     />
                     <Button
                         aria-label="Lưu nội dung"
-                        loading={editor.busy}
+                        aria-busy={editor.busy}
                         disabled={
                             disabled ||
                             settingsBusy ||
                             !editor.dirty ||
                             !validation.success ||
                             editor.conflict ||
-                            editor.uncertain
+                            editor.uncertain ||
+                            editor.busy
                         }
                         onClick={() => {
                             void editor.save();
                         }}
                     >
-                        <Save size={17} /> Lưu
+                        {editor.busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
+                        <Save data-icon="inline-start" /> Lưu
                     </Button>
                     <Button
                         variant="ghost"
@@ -332,11 +338,11 @@ export function SceneEditor({
                         disabled={blocked}
                         onClick={() => setResetting(true)}
                     >
-                        <RefreshCw size={18} />
+                        <RefreshCw data-icon="inline-start" />
                     </Button>
                 </div>
                 <Button
-                    className="editor-publish"
+                    className="editor-publish shrink-0 max-[760px]:[.scene-editor_&]:col-[2] max-[760px]:[.scene-editor_&]:row-[1] max-[760px]:[.scene-editor_&]:w-10 max-[760px]:[.scene-editor_&]:min-w-10 max-[760px]:[.scene-editor_&]:max-w-10 max-[760px]:[.scene-editor_&]:gap-0 max-[760px]:[.scene-editor_&]:p-[9px] max-[760px]:[.scene-editor_&]:text-[length:0] max-[760px]:[.scene-editor_&]:[justify-self:end]"
                     disabled={blocked || editor.dirty || settingsDirty}
                     title={
                         editor.dirty || settingsDirty
@@ -345,7 +351,7 @@ export function SceneEditor({
                     }
                     onClick={() => setPublishOpen(true)}
                 >
-                    <Send size={17} />
+                    <Send data-icon="inline-start" />
                     Xuất bản
                 </Button>
             </header>
@@ -356,22 +362,25 @@ export function SceneEditor({
                 />
             )}
             {(editor.conflict || editor.uncertain) && (
-                <div className="scene-reconcile">
+                <div className="scene-reconcile mx-3 my-2 rounded-[var(--radius-sm)] bg-warning p-4 text-warning-foreground">
                     <p>
                         {editor.uncertain
                             ? 'Chưa xác nhận được kết quả lưu. Hãy kiểm tra trước khi tiếp tục chỉnh sửa hoặc gửi lại.'
                             : 'Máy chủ có nội dung mới hơn. Bản đang sửa vẫn được giữ; tải bản sao trước khi chọn tải nội dung mới nhất.'}
                     </p>
-                    <div className="form-actions">
+                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                         {editor.uncertain && (
                             <Button
                                 variant="secondary"
-                                loading={editor.busy}
-                                disabled={disabled || settingsBusy}
+                                aria-busy={editor.busy}
+                                disabled={disabled || settingsBusy || editor.busy}
                                 onClick={() => {
                                     void editor.readLatest(false);
                                 }}
                             >
+                                {editor.busy && (
+                                    <Spinner data-icon="inline-start" aria-hidden="true" />
+                                )}
                                 Kiểm tra kết quả lưu
                             </Button>
                         )}
@@ -412,8 +421,12 @@ export function SceneEditor({
                     </div>
                 </div>
             )}
-            <div className="workbench-body">
-                <div className="scene-add" role="toolbar" aria-label="Thêm đối tượng">
+            <div className="workbench-body grid grid-cols-[72px_minmax(0,_1fr)] max-[760px]:grid-cols-[56px_minmax(0,_1fr)]">
+                <div
+                    className="scene-add m-0 flex h-[calc(100dvh_-_176px)] min-h-125 flex-col flex-wrap items-center gap-[6px] overflow-y-auto border-t-[0] border-t-[transparent] border-r-[1px] border-r-border border-b-[0] border-b-[transparent] border-l-[0] border-l-[transparent] border-solid px-[6px] py-5 max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:gap-[3px] max-[760px]:px-[3px] max-[760px]:py-3 max-[600px]:[&_>_.button]:w-full [&_label]:grid [&_label]:min-w-45 [&_label]:gap-2 max-[600px]:[&_label]:w-full [.scene-editor_&_.button:hover]:border-[transparent] [.scene-editor_&_.button:hover]:bg-selected [.scene-editor_&_.button:hover]:text-primary [.scene-editor_&_.button]:flex [.scene-editor_&_.button]:min-h-[54px] [.scene-editor_&_.button]:w-[58px] [.scene-editor_&_.button]:flex-col [.scene-editor_&_.button]:gap-[5px] [.scene-editor_&_.button]:rounded-[11px] [.scene-editor_&_.button]:border-[transparent] [.scene-editor_&_.button]:px-1 [.scene-editor_&_.button]:py-2 [.scene-editor_&_.button]:font-medium [.scene-editor_&_.button]:text-[length:9px] [.scene-editor_&_.button]:text-muted-foreground max-[760px]:[.scene-editor_&_.button]:min-h-12 max-[760px]:[.scene-editor_&_.button]:w-12 max-[760px]:[.scene-editor_&_.button]:text-[length:8px] [.scene-editor_&_.button_svg]:size-[22px]"
+                    role="toolbar"
+                    aria-label="Thêm đối tượng"
+                >
                     {(
                         [
                             { type: 'model', icon: Box },
@@ -441,14 +454,14 @@ export function SceneEditor({
                             {objectLabels[item.type]}
                         </Button>
                     ))}
-                    <span className="rail-separator" />
+                    <span className="rail-separator mx-0 my-2 w-7 border-t-[1px] border-t-border [border-top-style:solid] max-[760px]:[.scene-add_&]:my-[6px]" />
                     <Button
                         variant="ghost"
                         aria-label="Mở tương tác"
                         title="Tương tác"
                         onClick={() => setPanel('interactions')}
                     >
-                        <Zap size={22} />
+                        <Zap data-icon="inline-start" />
                         <span>Tương tác</span>
                     </Button>
                     <Button
@@ -458,7 +471,7 @@ export function SceneEditor({
                         disabled={blocked}
                         onClick={onRecognition}
                     >
-                        <QrCode size={22} />
+                        <QrCode data-icon="inline-start" />
                         <span>AR Marker</span>
                     </Button>
                     <Button
@@ -467,7 +480,7 @@ export function SceneEditor({
                         title="Cài đặt trang"
                         onClick={() => setPanel('settings')}
                     >
-                        <Settings2 size={22} />
+                        <Settings2 data-icon="inline-start" />
                         <span>Cài đặt</span>
                     </Button>
                     <Button
@@ -476,18 +489,18 @@ export function SceneEditor({
                         title="Hướng dẫn editor"
                         onClick={() => setHelpOpen(true)}
                     >
-                        <CircleHelp size={22} />
+                        <CircleHelp data-icon="inline-start" />
                         <span>Trợ giúp</span>
                     </Button>
                 </div>
-                <div className="scene-workspace">
+                <div className="scene-workspace relative m-0 grid h-[calc(100dvh_-_176px)] min-h-125 grid-cols-[minmax(0,_1fr)_340px] items-stretch gap-0 max-[760px]:h-auto max-[760px]:min-h-0 max-[1100px]:grid-cols-[minmax(0,_1fr)_300px] max-[1200px]:grid-cols-[minmax(180px,_0.8fr)_minmax(240px,_1fr)] max-[600px]:grid-cols-[1fr] max-[760px]:grid-cols-[minmax(0,_1fr)] min-[1600px]:grid-cols-[minmax(0,_1fr)_380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[minmax(0,_1fr)_minmax(480px,_45%)] [.scene-editor[data-panel=preview]_&]:grid-cols-[minmax(0,_1fr)]">
                     <section
-                        className="scene-layers"
+                        className="scene-layers absolute bottom-14 left-[18px] z-4 max-h-[70%] w-70 min-w-0 overflow-auto rounded-[14px] border border-border border-solid bg-surface px-3 py-[18px] shadow-[0_12px_30px_#20283820] max-[760px]:top-15 max-[760px]:bottom-auto max-[760px]:left-2 max-[760px]:w-[calc(100%_-_16px)] max-[760px]:max-w-70 [&[hidden]]:hidden [&_h3]:mt-0 [&_h3]:mr-[22px] [&_h3]:mb-[14px] [&_h3]:ml-1 [&_h3]:flex [&_h3]:gap-3 [&_h3]:text-[length:14px] [&_h3_span]:text-muted-foreground [&_h3_span]:tabular-nums [&_li.is-selected]:border-0 [&_li.is-selected]:border-[transparent] [&_li.is-selected]:border-solid [&_li.is-selected]:bg-selected [&_li:hover]:bg-hover [&_li[hidden]]:hidden [&_li]:rounded-[8px] [&_li]:border-0 [&_li]:border-[transparent] [&_li]:border-solid [&_li]:bg-[transparent] [&_li]:p-[3px] [&_ol]:m-0 [&_ol]:list-none [&_ol]:gap-[5px] [&_ol]:p-0"
                         aria-labelledby="layers-heading"
                         hidden={!layersOpen}
                     >
                         <button
-                            className="layers-close"
+                            className="layers-close absolute top-4 right-3 border-0 border-[transparent] border-solid bg-[transparent] p-1 text-muted-foreground"
                             type="button"
                             aria-label="Đóng danh sách đối tượng"
                             onClick={() => setLayersOpen(false)}
@@ -497,15 +510,19 @@ export function SceneEditor({
                         <h3 id="layers-heading">
                             Đối tượng <span>{editor.draft.objects.length}</span>
                         </h3>
-                        <label className="layer-search">
-                            <span className="sr-only">Tìm đối tượng</span>
-                            <input
-                                type="search"
-                                placeholder="Tìm đối tượng…"
-                                value={layerSearch}
-                                onChange={(event) => setLayerSearch(event.currentTarget.value)}
-                            />
-                        </label>
+                        <Field orientation="contents">
+                            <FieldLabel className="layer-search mx-1 mt-0 mb-[14px] [&_input]:min-h-[34px] [&_input]:px-2 [&_input]:py-[6px] [&_input]:text-[length:12px]">
+                                <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
+                                    Tìm đối tượng
+                                </span>
+                                <Input
+                                    type="search"
+                                    placeholder="Tìm đối tượng…"
+                                    value={layerSearch}
+                                    onChange={(event) => setLayerSearch(event.currentTarget.value)}
+                                />
+                            </FieldLabel>
+                        </Field>
                         {editor.draft.objects.length === 0 && (
                             <p>Chưa có đối tượng. Thêm văn bản hoặc chọn tài nguyên để bắt đầu.</p>
                         )}
@@ -523,7 +540,7 @@ export function SceneEditor({
                                 >
                                     <button
                                         type="button"
-                                        className="scene-layer-select"
+                                        className="scene-layer-select [&_span]:wrap-anywhere flex min-h-10 w-full flex-wrap items-center gap-[5px] border-0 border-[transparent] border-solid bg-[transparent] p-[6px] text-left text-[length:12px] text-foreground [&_small]:text-[length:10px] [&_small]:text-muted-foreground [&_span]:w-full [&_span]:font-semibold"
                                         aria-pressed={selected?.id === object.id}
                                         disabled={blocked}
                                         onClick={() => setSelectedId(object.id)}
@@ -540,7 +557,7 @@ export function SceneEditor({
                                             <EyeOff size={16} aria-label="Ẩn khỏi sơ đồ" />
                                         )}
                                     </button>
-                                    <div className="scene-layer-actions">
+                                    <div className="scene-layer-actions flex flex-wrap gap-0 px-1 py-1 max-[600px]:justify-end [.scene-editor_&_.button]:min-h-7 [.scene-editor_&_.button]:min-w-11 [.scene-editor_&_.button]:px-[7px] [.scene-editor_&_.button]:py-[3px]">
                                         <Button
                                             variant="ghost"
                                             disabled={blocked || object.locked || index === 0}
@@ -551,7 +568,7 @@ export function SceneEditor({
                                                 )
                                             }
                                         >
-                                            <ArrowUp size={16} aria-hidden="true" />
+                                            <ArrowUp data-icon="inline-start" aria-hidden="true" />
                                         </Button>
                                         <Button
                                             variant="ghost"
@@ -567,7 +584,10 @@ export function SceneEditor({
                                                 )
                                             }
                                         >
-                                            <ArrowDown size={16} aria-hidden="true" />
+                                            <ArrowDown
+                                                data-icon="inline-start"
+                                                aria-hidden="true"
+                                            />
                                         </Button>
                                         <Button
                                             variant="ghost"
@@ -586,7 +606,7 @@ export function SceneEditor({
                                                 setSelectedId(id);
                                             }}
                                         >
-                                            <Copy size={16} aria-hidden="true" />
+                                            <Copy data-icon="inline-start" aria-hidden="true" />
                                         </Button>
                                         <Button
                                             variant="ghost"
@@ -594,7 +614,7 @@ export function SceneEditor({
                                             aria-label={`Xóa đối tượng ${index + 1}`}
                                             onClick={() => setDeleting(object)}
                                         >
-                                            <Trash2 size={16} aria-hidden="true" />
+                                            <Trash2 data-icon="inline-start" aria-hidden="true" />
                                         </Button>
                                     </div>
                                 </li>
@@ -613,13 +633,13 @@ export function SceneEditor({
                         onBegin={editor.begin}
                         onEnd={editor.end}
                         footer={
-                            <div className="editor-footer-actions">
+                            <div className="editor-footer-actions absolute right-90 bottom-[118px] z-3 flex justify-center gap-2 bg-[transparent] p-0 max-[1100px]:right-80 max-[760px]:justify-center max-[760px]:bg-[var(--editor-ground)] max-[760px]:p-[10px] max-[760px]:[position:static] [.canvas-footer_&]:bg-[transparent] [.canvas-footer_&]:p-0 [.canvas-footer_&]:[position:static] max-[760px]:[.canvas-footer_&]:max-w-full max-[760px]:[.canvas-footer_&]:flex-wrap max-[760px]:[.canvas-footer_&]:justify-center max-[760px]:[.canvas-footer_&_.button]:min-w-0 max-[760px]:[.canvas-footer_&_.button]:px-[9px] max-[760px]:[.canvas-footer_&_.button]:py-[7px] max-[760px]:[.canvas-footer_&_.button]:text-[length:10px] [.scene-editor[data-panel=preview]_&]:hidden [.scene-editor_&_.button]:min-h-9 [.scene-editor_&_.button]:border [.scene-editor_&_.button]:border-border [.scene-editor_&_.button]:border-solid [.scene-editor_&_.button]:bg-surface [.scene-editor_&_.button]:text-[length:11px]">
                                 <Button
                                     variant="ghost"
                                     aria-pressed={layersOpen}
                                     onClick={() => setLayersOpen(!layersOpen)}
                                 >
-                                    <Layers size={18} />
+                                    <Layers data-icon="inline-start" />
                                     Đối tượng ({editor.draft.objects.length})
                                 </Button>
                                 <Button variant="ghost" onClick={() => setHelpOpen(true)}>
@@ -628,8 +648,15 @@ export function SceneEditor({
                             </div>
                         }
                     />
-                    <aside className="workbench-panel" aria-label="Bảng chỉnh sửa">
-                        <div className="workbench-tabs" role="tablist" aria-label="Bảng công cụ">
+                    <aside
+                        className="workbench-panel min-w-0 overflow-auto border-l-[1px] border-l-border bg-[#fafafa] [border-left-style:solid] max-[760px]:max-h-125 max-[760px]:border-t-[1px] max-[760px]:border-t-border max-[760px]:border-l-[0] max-[760px]:border-l-[transparent] max-[760px]:[border-left-style:solid] max-[760px]:[border-top-style:solid] [&_[role=tabpanel][hidden]]:hidden [&_[role=tabpanel]]:px-4 [&_[role=tabpanel]]:py-[18px] max-[760px]:[&_[role=tabpanel]]:m-auto max-[760px]:[&_[role=tabpanel]]:max-w-150 [&_h2]:text-[length:15px] [&_input:not([type=checkbox])]:mt-1 [&_input:not([type=checkbox])]:border-border [&_input:not([type=checkbox])]:p-2 [&_input:not([type=checkbox])]:text-[length:12px] max-[760px]:[&_input:not([type=checkbox])]:text-[length:16px] [&_label]:mb-[10px] [&_label]:text-[length:12px] [&_p]:text-[length:11px] [&_select]:mt-1 [&_select]:border-border [&_select]:p-2 [&_select]:text-[length:12px] max-[760px]:[&_select]:text-[length:16px] [&_textarea]:mt-1 [&_textarea]:border-border [&_textarea]:p-2 [&_textarea]:text-[length:12px] max-[760px]:[&_textarea]:text-[length:16px] [.scene-editor[data-panel=preview]_&]:border-l-[0] [.scene-editor[data-panel=preview]_&]:border-l-[transparent] [.scene-editor[data-panel=preview]_&]:bg-surface [.scene-editor[data-panel=preview]_&]:[border-left-style:solid] [.scene-editor[data-panel=preview]_&_[role=tabpanel]]:m-auto [.scene-editor[data-panel=preview]_&_[role=tabpanel]]:max-w-300"
+                        aria-label="Bảng chỉnh sửa"
+                    >
+                        <div
+                            className="workbench-tabs sticky top-0 z-2 flex border-b-[1px] border-b-border bg-surface px-[10px] py-0 [border-bottom-style:solid] [&_button[aria-selected=true]]:border-b-primary [&_button[aria-selected=true]]:font-semibold [&_button[aria-selected=true]]:text-primary [&_button]:flex-[1] [&_button]:whitespace-nowrap [&_button]:border-[transparent] [&_button]:border-t-[0] [&_button]:border-r-[0] [&_button]:border-b-[2px] [&_button]:border-l-[0] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:px-[2px] [&_button]:py-[18px] [&_button]:text-[length:11px] [&_button]:text-muted-foreground"
+                            role="tablist"
+                            aria-label="Bảng công cụ"
+                        >
                             {(
                                 [
                                     ['properties', 'Thuộc tính'],
@@ -731,7 +758,7 @@ export function SceneEditor({
                         >
                             {(warnings.length > 0 ||
                                 (!editor.dirty && editor.warnings.length > 0)) && (
-                                <div className="scene-warnings">
+                                <div className="scene-warnings mt-6 rounded-[var(--radius-sm)] border-t-[1px] border-t-border bg-warning p-4 text-warning-foreground [border-top-style:solid] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3">
                                     <h3>Gợi ý trước khi xuất bản</h3>
                                     <ul>
                                         {[
@@ -803,7 +830,7 @@ export function SceneEditor({
                     busy={false}
                     onClose={() => setHelpOpen(false)}
                 >
-                    <dl className="editor-shortcuts">
+                    <dl className="editor-shortcuts grid grid-cols-[1fr_1fr] gap-3 text-[length:13px] max-[760px]:grid-cols-[1fr] max-[760px]:gap-1 [&_dd]:m-0 [&_dd]:text-muted-foreground max-[760px]:[&_dd]:mb-[10px]">
                         <dt>Chọn đối tượng</dt>
                         <dd>Nhấp trên canvas hoặc mở Đối tượng</dd>
                         <dt>Di chuyển / xoay / kích thước</dt>
@@ -830,7 +857,7 @@ export function SceneEditor({
             )}
             {publishOpen && (
                 <ConfirmDialog
-                    className="editor-publication-dialog"
+                    className="editor-publication-dialog w-[min(900px,_calc(100vw_-_32px))] max-w-225"
                     title="Xuất bản sách"
                     busy={publicationBusy}
                     onClose={() => setPublishOpen(false)}
@@ -870,7 +897,7 @@ export function SceneEditor({
                         đang sửa. Tệp tài nguyên vẫn được giữ. Quy tắc tương tác liên quan sẽ được
                         giữ và đánh dấu để bạn sửa.
                     </p>
-                    <div className="form-actions">
+                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                         <Button variant="secondary" onClick={() => setDeleting(null)}>
                             Giữ đối tượng
                         </Button>
@@ -899,7 +926,7 @@ export function SceneEditor({
                             ? 'Bản đang sửa sẽ được thay bằng nội dung từ máy chủ. Cài đặt âm thanh và ánh sáng chưa lưu vẫn được giữ.'
                             : 'Lấy lại nội dung đối tượng và quy tắc đang lưu trên máy chủ.'}
                     </p>
-                    <div className="form-actions">
+                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                         <Button
                             variant="secondary"
                             disabled={editor.busy}
@@ -908,12 +935,14 @@ export function SceneEditor({
                             Giữ bản đang sửa
                         </Button>
                         <Button
-                            loading={editor.busy}
+                            aria-busy={editor.busy}
                             onClick={async () => {
                                 await editor.readLatest(true);
                                 setResetting(false);
                             }}
+                            disabled={editor.busy}
                         >
+                            {editor.busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
                             Xác nhận tải nội dung
                         </Button>
                     </div>

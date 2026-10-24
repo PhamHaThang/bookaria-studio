@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import type { Page } from '../../../shared/contracts/dto.schema';
 import type { Scene, SceneObject } from '../../../shared/contracts/scene.schema';
@@ -577,9 +578,23 @@ export function SceneCanvas(props: Props) {
         return () => window.removeEventListener('keydown', key);
     }, []);
     return (
-        <div className="scene-stage-column">
-            <div className="canvas-toolbar" role="toolbar" aria-label="Công cụ canvas">
-                <div className="canvas-tool-group">
+        <div className="scene-stage-column relative flex min-h-0 min-w-0 flex-col bg-[var(--editor-ground)] max-[760px]:min-h-120 [.scene-editor[data-panel=preview]_&]:hidden">
+            <div
+                className="canvas-toolbar absolute bottom-[58px] left-[18px] z-2 flex flex-col gap-[6px] rounded-[12px] bg-surface p-[5px] shadow-[0_4px_14px_#20283814] [&_button:hover]:bg-hover [&_button:hover]:text-foreground [&_button[aria-pressed=true]]:bg-selected [&_button[aria-pressed=true]]:text-primary [&_button[data-state=on]]:bg-selected [&_button[data-state=on]]:text-primary [&_button]:flex [&_button]:items-center [&_button]:gap-[5px] [&_button]:rounded-[8px] [&_button]:border-0 [&_button]:border-[transparent] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:p-[10px] [&_button]:text-[length:11px] [&_button]:text-muted-foreground [&_button_span]:hidden"
+                role="toolbar"
+                aria-label="Công cụ canvas"
+            >
+                <ToggleGroup
+                    type="single"
+                    orientation="vertical"
+                    value={mode}
+                    onValueChange={(value) => {
+                        if (value) setMode(value as Mode);
+                    }}
+                    disabled={props.disabled}
+                    aria-label="Chế độ biến đổi"
+                    className="canvas-tool-group flex-col gap-[3px]"
+                >
                     {(
                         [
                             { value: 'translate', label: 'Di chuyển (W)', icon: Move },
@@ -587,21 +602,19 @@ export function SceneCanvas(props: Props) {
                             { value: 'scale', label: 'Kích thước (R)', icon: Scaling },
                         ] as const
                     ).map((tool) => (
-                        <button
+                        <ToggleGroupItem
                             key={tool.value}
-                            type="button"
+                            value={tool.value}
                             title={tool.label}
                             aria-label={tool.label}
-                            aria-pressed={mode === tool.value}
                             disabled={props.disabled}
-                            onClick={() => setMode(tool.value)}
                         >
                             <tool.icon size={18} />
                             <span>{tool.label.split(' (')[0]}</span>
-                        </button>
+                        </ToggleGroupItem>
                     ))}
-                </div>
-                <div className="canvas-tool-group">
+                </ToggleGroup>
+                <div className="canvas-tool-group flex flex-col gap-[3px]">
                     <button
                         type="button"
                         title="Bắt bước: 0,025 đơn vị / 15°"
@@ -627,14 +640,23 @@ export function SceneCanvas(props: Props) {
                     </button>
                 </div>
             </div>
-            <div className="canvas-viewport">
-                <div className="scene-three-host" ref={host} />
+            <div className="canvas-viewport relative min-h-90 flex-[1] overflow-hidden">
+                <div
+                    className="scene-three-host absolute top-0 right-0 bottom-0 left-0 [touch-action:none] [&_canvas]:block [&_canvas]:size-full"
+                    ref={host}
+                />
                 {failure && (
-                    <p className="canvas-failure" role="alert">
+                    <p
+                        className="canvas-failure absolute top-[35%] right-[10%] bottom-auto left-[10%] bg-surface p-5 text-[length:13px]"
+                        role="alert"
+                    >
                         {failure}
                     </p>
                 )}
-                <fieldset className="canvas-view-switch" aria-label="Góc nhìn">
+                <fieldset
+                    className="canvas-view-switch absolute top-[18px] left-[18px] flex rounded-[10px] bg-surface p-[3px] shadow-[0_2px_6px_#2028380a] [&_button:hover]:bg-hover [&_button:hover]:text-foreground [&_button]:flex [&_button]:items-center [&_button]:gap-[5px] [&_button]:rounded-[8px] [&_button]:border-0 [&_button]:border-[transparent] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:p-[10px] [&_button]:text-[length:11px] [&_button]:text-muted-foreground"
+                    aria-label="Góc nhìn"
+                >
                     {[
                         ['front', 'Mặt trang'],
                         ['iso', 'Phối cảnh'],
@@ -646,13 +668,18 @@ export function SceneCanvas(props: Props) {
                     ))}
                 </fieldset>
                 {loading > 0 && (
-                    <p className="canvas-loading" role="status">
+                    <p
+                        className="canvas-loading absolute bottom-2 left-[74px] rounded-[5px] bg-surface px-[10px] py-[5px] text-[length:12px]"
+                        role="status"
+                    >
                         Đang tải {loading} đối tượng…
                     </p>
                 )}
             </div>
-            <div className="canvas-footer">{props.footer}</div>
-            <div className="canvas-status">
+            <div className="canvas-footer absolute right-[18px] bottom-[42px] z-3 max-[760px]:right-[10px] max-[760px]:bottom-[58px] max-[760px]:left-[10px] max-[760px]:max-w-[calc(100%_-_20px)]">
+                {props.footer}
+            </div>
+            <div className="canvas-status flex flex-wrap justify-center gap-3 bg-[var(--editor-ground)] px-[10px] py-2 text-[length:10px] text-muted-foreground [&_span:last-child]:hidden">
                 <span>Kéo vùng trống: xoay · Cuộn: thu/phóng · Chuột phải: dịch góc nhìn</span>
                 <span>1 đơn vị = chiều rộng trang</span>
             </div>
@@ -662,7 +689,11 @@ export function SceneCanvas(props: Props) {
                         id === 'page' || props.scene.objects.some((object) => object.id === id),
                 )
                 .map(([id, issue]) => (
-                    <p className="canvas-issue" role="alert" key={id}>
+                    <p
+                        className="canvas-issue m-0 bg-danger px-3 py-2 text-[length:12px] text-danger-foreground"
+                        role="alert"
+                        key={id}
+                    >
                         {issue}
                     </p>
                 ))}

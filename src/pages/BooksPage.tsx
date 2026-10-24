@@ -3,6 +3,18 @@ import { BookOpen, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/shared/ui/Badge';
+import { Button } from '@/shared/ui/Button';
+import {
+    Empty,
+    EmptyContent,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from '@/shared/ui/primitives/empty';
+import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { useAuth } from '../features/auth';
 import {
     bookKeys,
@@ -16,7 +28,6 @@ import type { BookSummary } from '../shared/contracts/dto.schema';
 import { formatDate } from '../shared/lib/format';
 import { ConfirmDialog } from '../shared/ui/ConfirmDialog';
 import { Feedback } from '../shared/ui/Feedback';
-import '../features/books/ui/creation.css';
 
 export function BooksPage({ trash = false }: { trash?: boolean }) {
     const { user } = useAuth();
@@ -73,7 +84,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
     }
     return (
         <>
-            <div className="page-heading">
+            <div className="page-heading [&_h1]:wrap-anywhere mx-0 mt-0 mb-7 flex items-center justify-between gap-6 max-[760px]:mb-6 max-[700px]:flex-wrap max-[700px]:items-start max-[760px]:items-start max-[700px]:gap-3 max-[760px]:gap-4 max-[700px]:[&_>_.button]:max-w-full max-[700px]:[&_>_.button]:flex-[0_0_auto] [&_>_div]:min-w-0 max-[700px]:[&_>_div]:flex-[1_1_180px] [&_h1]:font-semibold [&_h1]:text-[length:28px] [&_h1]:tracking-[-0.025em] max-[700px]:[&_h1]:text-[length:25px] max-[760px]:[&_h1]:text-[length:var(--text-2xl)] [&_p]:mx-0 [&_p]:mt-2 [&_p]:mb-0 [&_p]:max-w-[64ch] [&_p]:text-[length:13px] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-sm)] [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-2 [.studio-editing_&_h1]:ml-4 [.studio-editing_&_h1]:inline [.studio-editing_&_h1]:text-[length:21px] max-[700px]:[.studio-editing_&_h1]:mx-0 max-[700px]:[.studio-editing_&_h1]:mt-[6px] max-[700px]:[.studio-editing_&_h1]:mb-0 max-[700px]:[.studio-editing_&_h1]:block [.studio-editing_&_p]:ml-[14px] [.studio-editing_&_p]:inline [.studio-editing_&_p]:text-[length:11px] max-[700px]:[.studio-editing_&_p]:mx-0 max-[700px]:[.studio-editing_&_p]:my-1 max-[700px]:[.studio-editing_&_p]:block [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375">
                 <div>
                     <h1>{trash ? 'Thùng rác' : 'Sách của tôi'}</h1>
                     <p>
@@ -83,16 +94,23 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                     </p>
                 </div>
                 {!trash && (
-                    <Link className="button compact" to="/books/new">
-                        <Plus size={18} aria-hidden="true" />
-                        Tạo sách
-                    </Link>
+                    <Button asChild>
+                        <Link to="/books/new">
+                            <Plus data-icon="inline-start" aria-hidden="true" />
+                            Tạo sách
+                        </Link>
+                    </Button>
                 )}
             </div>
             <Feedback error={actionError} success={notice} />
             {!trash && (
                 <>
-                    <fieldset className="status-tabs" aria-label="Lọc trạng thái sách">
+                    <fieldset
+                        className={
+                            'status-tabs mx-0 mt-0 mb-6 flex gap-7 border-b-[1px] border-b-border [border-bottom-style:solid] max-[760px]:gap-5 max-[760px]:overflow-x-auto max-[760px]:text-[length:var(--text-xs)] [&_button.selected]:border-b-primary [&_button.selected]:font-semibold [&_button.selected]:text-primary-hover [&_button]:min-h-11 [&_button]:whitespace-nowrap [&_button]:border-[transparent] [&_button]:border-t-[0] [&_button]:border-r-[0] [&_button]:border-b-[2px] [&_button]:border-l-[0] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:px-0 [&_button]:py-3 [&_button]:text-[length:12px] [&_button]:text-muted-foreground max-[540px]:[.page-heading:has(+_&[aria-label="Nguồn_tài_nguyên"])]:flex-wrap [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375'
+                        }
+                        aria-label="Lọc trạng thái sách"
+                    >
                         {([undefined, 'DRAFT', 'PUBLISHED', 'CHANGED'] as const).map((status) => (
                             <button
                                 key={status || 'all'}
@@ -106,7 +124,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         ))}
                     </fieldset>
                     <form
-                        className="books-toolbar"
+                        className="books-toolbar mb-6 flex items-center gap-3 rounded-[8px] border border-border border-solid bg-surface p-2 max-[760px]:grid max-[760px]:grid-cols-[minmax(0,_1fr)_auto] max-[700px]:flex-wrap max-[760px]:gap-3 [&_input]:min-h-9 [&_input]:text-[length:12px] [&_label]:m-0 [&_select]:min-h-9 [&_select]:text-[length:12px] [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
                         key={`${query.q}-${query.sort}`}
                         onSubmit={(event) => {
                             event.preventDefault();
@@ -117,65 +135,81 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                             });
                         }}
                     >
-                        <label className="search-field" htmlFor="book-search">
-                            <span className="sr-only">Tìm sách</span>
-                            <Search size={18} aria-hidden="true" />
-                            <input
-                                id="book-search"
-                                name="q"
-                                type="search"
-                                defaultValue={query.q}
-                                maxLength={100}
-                                placeholder="Tìm theo tên sách"
-                            />
-                        </label>
-                        <label className="sort-field" htmlFor="book-sort">
-                            <span className="sr-only">Sắp xếp sách</span>
-                            <select
-                                id="book-sort"
-                                name="sort"
-                                defaultValue={query.sort}
-                                onChange={(event) => {
-                                    const form = event.currentTarget.form;
-                                    if (form) form.requestSubmit();
-                                }}
-                            >
-                                <option value="-updatedAt">Cập nhật gần nhất</option>
-                                <option value="updatedAt">Cập nhật cũ nhất</option>
-                                <option value="-createdAt">Mới tạo gần nhất</option>
-                                <option value="createdAt">Tạo cũ nhất</option>
-                                <option value="title">Tên A–Z</option>
-                                <option value="-title">Tên Z–A</option>
-                            </select>
-                        </label>
-                        <button className="button compact" type="submit">
-                            Tìm sách
-                        </button>
+                        <FieldGroup className="contents">
+                            <Field orientation="contents">
+                                <FieldLabel
+                                    className="search-field flex flex-[1] items-center gap-3 rounded-[var(--radius-md)] border border-input border-solid bg-surface px-3 py-0 max-[760px]:col-[1_/_-1] [&_input:not([type=checkbox])]:m-0 [&_input:not([type=checkbox])]:min-w-0 [&_input:not([type=checkbox])]:border-0 [&_input:not([type=checkbox])]:border-[transparent] [&_input:not([type=checkbox])]:border-solid [&_input:not([type=checkbox])]:bg-[transparent] [&_input:not([type=checkbox])]:px-0 [&_input:not([type=checkbox])]:py-3 [&_svg]:shrink-0 [&_svg]:text-muted-foreground [.asset-filters_&]:mt-2 [.asset-filters_&_input:not([type=checkbox])]:min-h-[calc(var(--control-height)_-_2_*_var(--border-width))] [.asset-filters_&_input:not([type=checkbox])]:py-2 [.books-toolbar_&]:border-0 [.books-toolbar_&]:border-[transparent] [.books-toolbar_&]:border-solid"
+                                    htmlFor="book-search"
+                                >
+                                    <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
+                                        Tìm sách
+                                    </span>
+                                    <Search size={18} aria-hidden="true" />
+                                    <Input
+                                        id="book-search"
+                                        name="q"
+                                        type="search"
+                                        defaultValue={query.q}
+                                        maxLength={100}
+                                        placeholder="Tìm theo tên sách"
+                                    />
+                                </FieldLabel>
+                            </Field>
+                            <Field orientation="contents">
+                                <FieldLabel
+                                    className="sort-field max-[760px]:min-w-0 [&_select]:m-0 [&_select]:min-w-[190px] [&_select]:text-[length:var(--text-sm)] max-[760px]:[&_select]:w-full max-[760px]:[&_select]:min-w-0"
+                                    htmlFor="book-sort"
+                                >
+                                    <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
+                                        Sắp xếp sách
+                                    </span>
+                                    <NativeSelect
+                                        id="book-sort"
+                                        name="sort"
+                                        defaultValue={query.sort}
+                                        onChange={(event) => {
+                                            const form = event.currentTarget.form;
+                                            if (form) form.requestSubmit();
+                                        }}
+                                    >
+                                        <option value="-updatedAt">Cập nhật gần nhất</option>
+                                        <option value="updatedAt">Cập nhật cũ nhất</option>
+                                        <option value="-createdAt">Mới tạo gần nhất</option>
+                                        <option value="createdAt">Tạo cũ nhất</option>
+                                        <option value="title">Tên A–Z</option>
+                                        <option value="-title">Tên Z–A</option>
+                                    </NativeSelect>
+                                </FieldLabel>
+                            </Field>
+                            <Button type="submit">Tìm sách</Button>
+                        </FieldGroup>
                     </form>
                 </>
             )}
             {listing.isPending && (
-                <p className="list-state" role="status">
+                <p className="list-state px-0 py-12" role="status">
                     Đang tải sách…
                 </p>
             )}
             {listing.isError && (
-                <div className="list-state">
+                <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(listing.error)} />
-                    <button
-                        className="button compact"
+                    <Button
                         type="button"
                         onClick={() => {
                             void listing.refetch();
                         }}
                     >
                         Thử tải lại
-                    </button>
+                    </Button>
                 </div>
             )}
             {listing.isSuccess && (
                 <>
-                    <div className="list-summary" aria-live="polite">
+                    <div
+                        className="mx-0 mt-0 mb-3 flex list-summary justify-between gap-4 text-[length:12px] text-muted-foreground [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
+                        aria-live="polite"
+                    >
                         <span>
                             {listing.data.meta.total} cuốn sách
                             {query.q && !trash ? ` khớp “${query.q}”` : ''}
@@ -183,41 +217,57 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         {listing.isFetching && <span>Đang cập nhật…</span>}
                     </div>
                     {listing.data.data.length === 0 ? (
-                        <section className="empty-state">
-                            <BookOpen size={38} aria-hidden="true" />
-                            <h2>
-                                {trash
-                                    ? 'Thùng rác đang trống'
-                                    : query.q || query.status
-                                      ? 'Không tìm thấy sách phù hợp'
-                                      : 'Bắt đầu cuốn sách đầu tiên'}
-                            </h2>
-                            <p>
-                                {trash
-                                    ? 'Những sách được chuyển vào thùng rác sẽ xuất hiện ở đây.'
-                                    : query.q || query.status
-                                      ? 'Thử tên khác hoặc xem tất cả trạng thái.'
-                                      : 'Tạo sách trống hoặc nhập PDF, ảnh để bắt đầu cuốn sách của bạn.'}
-                            </p>
-                            {!trash &&
-                                (query.q || query.status ? (
-                                    <button
-                                        className="text-button"
-                                        type="button"
-                                        onClick={() => setParams({})}
-                                    >
-                                        Xóa bộ lọc
-                                    </button>
-                                ) : (
-                                    <Link className="button compact" to="/books/new">
-                                        Tạo sách đầu tiên
-                                    </Link>
-                                ))}
-                        </section>
+                        <Empty className="empty-state border-border border-t px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
+                            <EmptyHeader>
+                                <EmptyMedia>
+                                    <BookOpen size={38} aria-hidden="true" />
+                                </EmptyMedia>
+                                <EmptyTitle>
+                                    <h2>
+                                        {trash
+                                            ? 'Thùng rác đang trống'
+                                            : query.q || query.status
+                                              ? 'Không tìm thấy sách phù hợp'
+                                              : 'Bắt đầu cuốn sách đầu tiên'}
+                                    </h2>
+                                </EmptyTitle>
+                                <EmptyDescription>
+                                    <p>
+                                        {trash
+                                            ? 'Những sách được chuyển vào thùng rác sẽ xuất hiện ở đây.'
+                                            : query.q || query.status
+                                              ? 'Thử tên khác hoặc xem tất cả trạng thái.'
+                                              : 'Tạo sách trống hoặc nhập PDF, ảnh để bắt đầu cuốn sách của bạn.'}
+                                    </p>
+                                </EmptyDescription>
+                            </EmptyHeader>
+                            <EmptyContent>
+                                {!trash &&
+                                    (query.q || query.status ? (
+                                        <button
+                                            className="inline-flex min-h-11 items-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-primary [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px]"
+                                            type="button"
+                                            onClick={() => setParams({})}
+                                        >
+                                            Xóa bộ lọc
+                                        </button>
+                                    ) : (
+                                        <Button asChild>
+                                            <Link to="/books/new">Tạo sách đầu tiên</Link>
+                                        </Button>
+                                    ))}
+                            </EmptyContent>
+                        </Empty>
                     ) : (
-                        <ul className={trash ? 'book-list' : 'book-list book-gallery'}>
+                        <ul
+                            className={
+                                trash
+                                    ? 'book-list m-0 list-none border-t-[1px] border-t-border p-0 [border-top-style:solid]'
+                                    : 'book-list book-gallery m-0 mx-auto grid max-w-375 list-none grid-cols-[repeat(auto-fill,_minmax(240px,_1fr))] gap-[22px] border-0 border-[transparent] border-t-[1px] border-t-border border-solid p-0 [border-top-style:solid] max-[700px]:grid-cols-[repeat(auto-fill,_minmax(210px,_1fr))] max-[700px]:gap-[14px]'
+                            }
+                        >
                             {!trash && (
-                                <li className="book-create-card">
+                                <li className="book-create-card min-h-[290px] rounded-[var(--radius-lg)] border border-input border-dashed [&:hover]:bg-selected [&_a]:flex [&_a]:size-full [&_a]:min-h-[290px] [&_a]:flex-col [&_a]:items-center [&_a]:justify-center [&_a]:gap-[14px] [&_a]:p-5 [&_a]:text-primary [&_a]:no-underline">
                                     <Link to="/books/new">
                                         <Plus size={32} aria-hidden="true" />
                                         <span>Tạo sách mới</span>
@@ -226,17 +276,21 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                             )}
                             {listing.data.data.map((book) => (
                                 <li
-                                    className={trash ? 'book-row trash-row' : 'book-row'}
+                                    className={
+                                        trash
+                                            ? 'book-row trash-row grid grid-cols-[52px_minmax(0,_1fr)_130px_44px] items-center gap-5 border-b-[1px] border-b-border px-1 py-6 [border-bottom-style:solid] max-[760px]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:gap-[var(--space-3)_var(--space-4)] max-[760px]:px-0 max-[760px]:py-5 [&:hover]:bg-muted [.book-gallery_&]:grid [.book-gallery_&]:grid-cols-[minmax(0,_1fr)_auto] [.book-gallery_&]:items-start [.book-gallery_&]:gap-3 [.book-gallery_&]:overflow-hidden [.book-gallery_&]:rounded-[12px] [.book-gallery_&]:border [.book-gallery_&]:border-border [.book-gallery_&]:border-solid [.book-gallery_&]:bg-surface [.book-gallery_&]:p-3 [.book-row&]:grid-cols-[52px_minmax(0,_1fr)_130px_110px] max-[760px]:[.book-row&]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:[.book-row&]:gap-[var(--space-3)_var(--space-4)] max-[760px]:[.book-row&]:px-0 max-[760px]:[.book-row&]:py-5'
+                                            : 'book-row grid grid-cols-[52px_minmax(0,_1fr)_130px_44px] items-center gap-5 border-b-[1px] border-b-border px-1 py-6 [border-bottom-style:solid] max-[760px]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:gap-[var(--space-3)_var(--space-4)] max-[760px]:px-0 max-[760px]:py-5 [&:hover]:bg-muted [.book-gallery_&]:grid [.book-gallery_&]:grid-cols-[minmax(0,_1fr)_auto] [.book-gallery_&]:items-start [.book-gallery_&]:gap-3 [.book-gallery_&]:overflow-hidden [.book-gallery_&]:rounded-[12px] [.book-gallery_&]:border [.book-gallery_&]:border-border [.book-gallery_&]:border-solid [.book-gallery_&]:bg-surface [.book-gallery_&]:p-3'
+                                    }
                                     key={book.id}
                                 >
-                                    <div className="book-cover">
+                                    <div className="book-cover motion-safe:[.book-gallery_.book-row:hover_&_img]:transform-[scale(1.025)] grid h-[66px] w-[50px] overflow-hidden rounded-[var(--radius-sm)] bg-[var(--bg-cover)] text-[var(--text-cover)] [place-items:center] max-[760px]:row-[span_2] max-[760px]:h-[54px] max-[760px]:w-10 [&_img]:size-full [&_img]:object-cover [.book-gallery_&]:col-[1_/_-1] [.book-gallery_&]:row-[1] [.book-gallery_&]:h-[190px] [.book-gallery_&]:w-full [.book-gallery_&]:rounded-[7px] [.book-gallery_&]:bg-[var(--bg-cover)] [.book-gallery_&_img]:object-contain motion-safe:[.book-gallery_&_img]:[transition:transform_180ms_ease-out]">
                                         {book.coverUrl ? (
                                             <img src={book.coverUrl} alt="" loading="lazy" />
                                         ) : (
                                             <BookOpen size={27} aria-hidden="true" />
                                         )}
                                     </div>
-                                    <div className="book-info">
+                                    <div className="book-info [&_h2]:wrap-anywhere min-w-0 max-[760px]:col-[2_/_4] [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h2]:text-[length:var(--text-md)] [&_h2]:leading-[1.4] max-[760px]:[&_h2]:text-[length:var(--text-md)] [&_h2_a:hover]:text-primary [&_h2_a:hover]:underline [&_h2_a]:text-[inherit] [&_h2_a]:no-underline [&_p]:m-0 [&_p]:text-[length:var(--text-xs)] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-xs)] [.book-gallery_&]:col-[1_/_-1] [.book-gallery_&]:row-[2] [.book-gallery_&]:px-[3px] [.book-gallery_&_h2]:mb-[5px] [.book-gallery_&_h2]:text-[length:15px] [.book-gallery_&_h2]:leading-[1.5] [.book-gallery_&_p]:text-[length:11px]">
                                         <h2>
                                             {trash ? (
                                                 book.title
@@ -255,7 +309,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                             )}
                                         </p>
                                     </div>
-                                    <div className="book-badges">
+                                    <div className="book-badges flex flex-col items-start gap-2 max-[760px]:col-[2] max-[760px]:flex-row max-[760px]:flex-wrap max-[760px]:items-center [.book-gallery_&]:col-[1] [.book-gallery_&]:row-[3] [.book-gallery_&]:justify-start [.book-gallery_&]:px-[3px]">
                                         <Badge
                                             tone={
                                                 book.status === 'PUBLISHED'
@@ -268,12 +322,14 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                             {bookStatusLabels[book.status]}
                                         </Badge>
                                         {book.takenDown && (
-                                            <span className="moderation-label">Đã bị gỡ</span>
+                                            <span className="moderation-label text-[length:var(--text-xs)] text-destructive">
+                                                Đã bị gỡ
+                                            </span>
                                         )}
                                     </div>
                                     {trash ? (
                                         <button
-                                            className="row-action text-button"
+                                            className="row-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-primary max-[760px]:col-[3] max-[760px]:row-[2] max-[760px]:min-h-11 max-[760px]:text-[length:var(--text-xs)] [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_&]:col-[2] [.book-gallery_&]:row-[3] [.book-gallery_&]:self-end [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px] [.book-row_&]:whitespace-nowrap"
                                             type="button"
                                             disabled={restore.isPending}
                                             aria-label={`Khôi phục ${book.title}`}
@@ -286,7 +342,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                         </button>
                                     ) : (
                                         <button
-                                            className="danger-text row-action text-button"
+                                            className="danger-text row-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-destructive max-[760px]:col-[3] max-[760px]:row-[2] max-[760px]:min-h-11 max-[760px]:text-[length:var(--text-xs)] [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_&]:col-[2] [.book-gallery_&]:row-[3] [.book-gallery_&]:self-end [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px] [.book-row_&]:whitespace-nowrap"
                                             type="button"
                                             aria-label={`Chuyển ${book.title} vào thùng rác`}
                                             onClick={() => {
@@ -295,7 +351,9 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                             }}
                                         >
                                             <Trash2 size={17} aria-hidden="true" />
-                                            <span className="sr-only">Chuyển vào thùng rác</span>
+                                            <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
+                                                Chuyển vào thùng rác
+                                            </span>
                                         </button>
                                     )}
                                 </li>
@@ -303,26 +361,29 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         </ul>
                     )}
                     {meta && meta.totalPages > 1 && (
-                        <nav className="pagination" aria-label="Phân trang sách">
-                            <button
-                                className="button compact secondary"
+                        <nav
+                            className="pagination mt-8 flex items-center justify-end gap-5 text-[length:var(--text-sm)] tabular-nums max-[760px]:justify-between max-[760px]:gap-2 max-[760px]:text-[length:var(--text-xs)] max-[760px]:[&_.button]:p-3 max-[760px]:[&_.button]:text-[length:var(--text-xs)]"
+                            aria-label="Phân trang sách"
+                        >
+                            <Button
+                                variant="secondary"
                                 type="button"
                                 disabled={query.page === 1 || listing.isFetching}
                                 onClick={() => change({ page: String(query.page - 1) })}
                             >
                                 Trang trước
-                            </button>
+                            </Button>
                             <span>
                                 Trang {query.page} / {meta.totalPages}
                             </span>
-                            <button
-                                className="button compact secondary"
+                            <Button
+                                variant="secondary"
                                 type="button"
                                 disabled={query.page >= meta.totalPages || listing.isFetching}
                                 onClick={() => change({ page: String(query.page + 1) })}
                             >
                                 Trang sau
-                            </button>
+                            </Button>
                         </nav>
                     )}
                 </>
@@ -338,17 +399,17 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         có thể khôi phục từ thùng rác.
                     </p>
                     <Feedback error={remove.error ? errorMessage(remove.error) : null} />
-                    <div className="form-actions">
-                        <button
-                            className="button compact secondary"
+                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
+                        <Button
+                            variant="secondary"
                             type="button"
                             disabled={remove.isPending}
                             onClick={() => setDeleting(null)}
                         >
                             Giữ sách
-                        </button>
-                        <button
-                            className="button compact danger"
+                        </Button>
+                        <Button
+                            variant="danger"
                             type="button"
                             disabled={remove.isPending}
                             onClick={() => {
@@ -356,7 +417,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                             }}
                         >
                             {remove.isPending ? 'Đang chuyển…' : 'Chuyển vào thùng rác'}
-                        </button>
+                        </Button>
                     </div>
                 </ConfirmDialog>
             )}

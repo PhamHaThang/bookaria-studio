@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Button } from '@/shared/ui/Button';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { auth, useAuth } from '../model/session';
 
@@ -10,24 +11,27 @@ export function SessionBoundary() {
     }, []);
     if (status === 'loading')
         return (
-            <main className="session-state" role="status">
+            <main
+                className="session-state mx-auto my-[12vh] max-w-130 p-8 text-center"
+                role="status"
+            >
                 Đang kiểm tra phiên đăng nhập…
             </main>
         );
     if (status === 'error')
         return (
-            <main className="session-state">
+            <main className="session-state mx-auto my-[12vh] max-w-130 p-8 text-center">
                 <h1>Chưa kết nối được</h1>
                 <Feedback error={message} />
-                <button
-                    className="button"
+                <Button
+                    fullWidth
                     type="button"
                     onClick={() => {
                         void auth.restore();
                     }}
                 >
                     Thử kết nối lại
-                </button>
+                </Button>
             </main>
         );
     return <Outlet />;

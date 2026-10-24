@@ -67,7 +67,7 @@ export function PageActionsMenu({
     return (
         <div
             id="page-actions-menu"
-            className="page-actions-popover"
+            className="page-actions-popover fixed top-auto right-auto bottom-auto left-auto m-0 max-h-[calc(100dvh_-_16px)] w-56 max-w-[calc(100vw_-_16px)] overflow-y-auto rounded-[var(--radius-lg)] border border-border border-solid bg-surface p-[6px] text-[length:13px] text-foreground shadow-[var(--shadow-popover)] [&_button:disabled]:opacity-55.00000000000001 [&_button:hover]:bg-hover [&_button]:flex [&_button]:min-h-10 [&_button]:w-full [&_button]:items-center [&_button]:gap-[10px] [&_button]:rounded-[var(--radius-sm)] [&_button]:border-0 [&_button]:border-[transparent] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:px-[10px] [&_button]:py-2 [&_button]:text-left [&_button]:text-foreground"
             ref={menu}
             popover="auto"
             role="menu"
@@ -101,7 +101,9 @@ export function PageActionsMenu({
                 }
             }}
         >
-            <p className="page-actions-title">{title}</p>
+            <p className="page-actions-title wrap-anywhere m-0 px-[10px] pt-[6px] pb-2 text-[length:12px] text-muted-foreground">
+                {title}
+            </p>
             <button type="button" role="menuitem" disabled={locked} onClick={onRename}>
                 <Pencil size={16} />
                 Đổi tên trang
@@ -131,7 +133,7 @@ export function PageActionsMenu({
             <button
                 type="button"
                 role="menuitem"
-                className="page-menu-delete"
+                className="page-menu-delete [.page-actions-popover_&]:text-destructive"
                 disabled={locked}
                 onClick={onDelete}
             >

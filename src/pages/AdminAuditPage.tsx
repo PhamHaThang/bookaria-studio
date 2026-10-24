@@ -1,5 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Button } from '@/shared/ui/Button';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
+import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import { adminDate, adminOperationsApi, auditLabel } from '../features/admin';
 import {
     formSearch,
@@ -27,7 +32,7 @@ export function AdminAuditPage() {
     });
     return (
         <>
-            <div className="page-heading insights-heading">
+            <div className="page-heading insights-heading [&_h1]:wrap-anywhere mx-0 mt-0 mb-7 flex items-center justify-between gap-6 max-[760px]:mb-6 max-[640px]:flex-col max-[700px]:flex-wrap max-[640px]:items-start max-[700px]:items-start max-[760px]:items-start max-[700px]:gap-3 max-[760px]:gap-4 max-[700px]:[&_>_.button]:max-w-full max-[700px]:[&_>_.button]:flex-[0_0_auto] [&_>_div]:min-w-0 max-[640px]:[&_>_div]:w-full max-[700px]:[&_>_div]:flex-[1_1_180px] [&_h1]:font-semibold [&_h1]:text-[length:28px] [&_h1]:tracking-[-0.025em] max-[700px]:[&_h1]:text-[length:25px] max-[760px]:[&_h1]:text-[length:var(--text-2xl)] [&_p]:mx-0 [&_p]:mt-2 [&_p]:mb-0 [&_p]:max-w-[64ch] [&_p]:text-[length:13px] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-sm)] [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-2 [.studio-editing_&_h1]:ml-4 [.studio-editing_&_h1]:inline [.studio-editing_&_h1]:text-[length:21px] max-[700px]:[.studio-editing_&_h1]:mx-0 max-[700px]:[.studio-editing_&_h1]:mt-[6px] max-[700px]:[.studio-editing_&_h1]:mb-0 max-[700px]:[.studio-editing_&_h1]:block [.studio-editing_&_p]:ml-[14px] [.studio-editing_&_p]:inline [.studio-editing_&_p]:text-[length:11px] max-[700px]:[.studio-editing_&_p]:mx-0 max-[700px]:[.studio-editing_&_p]:my-1 max-[700px]:[.studio-editing_&_p]:block [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375">
                 <div>
                     <h1>Nhật ký quản trị</h1>
                     <p>Đối chiếu người thực hiện, đối tượng và nội dung từng thao tác quản trị.</p>
@@ -35,7 +40,7 @@ export function AdminAuditPage() {
                 {query && <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />}
             </div>
             <form
-                className="admin-filters"
+                className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto] [&_select]:w-full"
                 key={params.toString()}
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -49,60 +54,68 @@ export function AdminAuditPage() {
                     );
                 }}
             >
-                <label htmlFor="audit-action">
-                    Thao tác
-                    <select
-                        id="audit-action"
-                        name="action"
-                        defaultValue={params.get('action') || ''}
-                    >
-                        <option value="">Tất cả thao tác</option>
-                        {AuditActionSchema.options.map((value) => (
-                            <option key={value} value={value}>
-                                {auditLabel[value]}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-                <label htmlFor="audit-actor">
-                    Mã người thực hiện (UUID)
-                    <input
-                        id="audit-actor"
-                        name="actorId"
-                        defaultValue={params.get('actorId') || ''}
-                        spellCheck={false}
-                        autoCapitalize="none"
-                    />
-                </label>
-                <label htmlFor="audit-target-type">
-                    Loại đối tượng
-                    <select
-                        id="audit-target-type"
-                        name="targetType"
-                        defaultValue={params.get('targetType') || ''}
-                    >
-                        <option value="">Tất cả đối tượng</option>
-                        {AuditTargetTypeSchema.options.map((value) => (
-                            <option key={value} value={value}>
-                                {targetLabel[value]}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-                <label htmlFor="audit-target">
-                    Mã đối tượng (UUID)
-                    <input
-                        id="audit-target"
-                        name="targetId"
-                        defaultValue={params.get('targetId') || ''}
-                        spellCheck={false}
-                        autoCapitalize="none"
-                    />
-                </label>
-                <button type="submit" className="button compact">
-                    Lọc nhật ký
-                </button>
-                <Link to="/admin/audit-logs">Xóa bộ lọc</Link>
+                <FieldGroup className="contents">
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="audit-action">
+                            Thao tác
+                            <NativeSelect
+                                id="audit-action"
+                                name="action"
+                                defaultValue={params.get('action') || ''}
+                            >
+                                <option value="">Tất cả thao tác</option>
+                                {AuditActionSchema.options.map((value) => (
+                                    <option key={value} value={value}>
+                                        {auditLabel[value]}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="audit-actor">
+                            Mã người thực hiện (UUID)
+                            <Input
+                                id="audit-actor"
+                                name="actorId"
+                                defaultValue={params.get('actorId') || ''}
+                                spellCheck={false}
+                                autoCapitalize="none"
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="audit-target-type">
+                            Loại đối tượng
+                            <NativeSelect
+                                id="audit-target-type"
+                                name="targetType"
+                                defaultValue={params.get('targetType') || ''}
+                            >
+                                <option value="">Tất cả đối tượng</option>
+                                {AuditTargetTypeSchema.options.map((value) => (
+                                    <option key={value} value={value}>
+                                        {targetLabel[value]}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="audit-target">
+                            Mã đối tượng (UUID)
+                            <Input
+                                id="audit-target"
+                                name="targetId"
+                                defaultValue={params.get('targetId') || ''}
+                                spellCheck={false}
+                                autoCapitalize="none"
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Button type="submit">Lọc nhật ký</Button>
+                    <Link to="/admin/audit-logs">Xóa bộ lọc</Link>
+                </FieldGroup>
             </form>
             {!parsed.success && (
                 <Feedback error="Bộ lọc không hợp lệ. Mã người thực hiện và mã đối tượng phải là UUID; hãy sửa hoặc xóa bộ lọc." />
@@ -113,7 +126,7 @@ export function AdminAuditPage() {
                 <>
                     <p role="status">{list.data.meta.total} bản ghi · mới nhất trước</p>
                     {list.data.data.length ? (
-                        <ul className="admin-rows">
+                        <ul className="admin-rows [&_>_li]:wrap-anywhere mx-0 my-4 list-none p-0 [&_>_li]:flex [&_>_li]:items-start [&_>_li]:justify-between [&_>_li]:gap-5 [&_>_li]:border-b-[1px] [&_>_li]:border-b-border [&_>_li]:py-5 [&_>_li]:[border-bottom-style:solid] max-[640px]:[&_>_li]:flex-col max-[640px]:[&_>_li]:gap-3 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h2]:text-[length:var(--text-md)] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-2 [&_h3]:text-[length:var(--text-md)] [&_p]:mx-0 [&_p]:my-2">
                             {list.data.data.map((log) => (
                                 <li key={log.id}>
                                     <div>
@@ -127,22 +140,35 @@ export function AdminAuditPage() {
                                         </p>
                                         <p>
                                             {targetLabel[log.target.type]}:{' '}
-                                            <code className="admin-id">{log.target.id}</code>
+                                            <code className="admin-id wrap-anywhere">
+                                                {log.target.id}
+                                            </code>
                                         </p>
-                                        <p className="admin-metadata">{adminDate(log.createdAt)}</p>
+                                        <p className="admin-metadata flex flex-wrap items-center gap-3 text-[length:var(--text-sm)] text-muted-foreground">
+                                            {adminDate(log.createdAt)}
+                                        </p>
                                     </div>
                                     <Link to={`/admin/audit-logs/${log.id}`}>
                                         Xem chi tiết
-                                        <span className="sr-only"> bản ghi {log.id}</span>
+                                        <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
+                                            {' '}
+                                            bản ghi {log.id}
+                                        </span>
                                     </Link>
                                 </li>
                             ))}
                         </ul>
                     ) : (
-                        <section className="empty-state">
-                            <h2>Không có nhật ký phù hợp</h2>
-                            <p>Thử bộ lọc khác hoặc đợi thao tác quản trị mới.</p>
-                        </section>
+                        <Empty className="empty-state border-border border-t px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
+                            <EmptyHeader>
+                                <EmptyTitle>
+                                    <h2>Không có nhật ký phù hợp</h2>
+                                </EmptyTitle>
+                                <EmptyDescription>
+                                    <p>Thử bộ lọc khác hoặc đợi thao tác quản trị mới.</p>
+                                </EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
                     )}
                     <AdminPager page={query.page} meta={list.data.meta} />
                 </>

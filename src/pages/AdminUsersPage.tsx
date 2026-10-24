@@ -1,5 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Button } from '@/shared/ui/Button';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
+import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import {
     adminApi,
     adminDate,
@@ -26,17 +31,17 @@ export function AdminUsersPage() {
     });
     return (
         <>
-            <div className="page-heading insights-heading">
+            <div className="page-heading insights-heading [&_h1]:wrap-anywhere mx-0 mt-0 mb-7 flex items-center justify-between gap-6 max-[760px]:mb-6 max-[640px]:flex-col max-[700px]:flex-wrap max-[640px]:items-start max-[700px]:items-start max-[760px]:items-start max-[700px]:gap-3 max-[760px]:gap-4 max-[700px]:[&_>_.button]:max-w-full max-[700px]:[&_>_.button]:flex-[0_0_auto] [&_>_div]:min-w-0 max-[640px]:[&_>_div]:w-full max-[700px]:[&_>_div]:flex-[1_1_180px] [&_h1]:font-semibold [&_h1]:text-[length:28px] [&_h1]:tracking-[-0.025em] max-[700px]:[&_h1]:text-[length:25px] max-[760px]:[&_h1]:text-[length:var(--text-2xl)] [&_p]:mx-0 [&_p]:mt-2 [&_p]:mb-0 [&_p]:max-w-[64ch] [&_p]:text-[length:13px] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-sm)] [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-2 [.studio-editing_&_h1]:ml-4 [.studio-editing_&_h1]:inline [.studio-editing_&_h1]:text-[length:21px] max-[700px]:[.studio-editing_&_h1]:mx-0 max-[700px]:[.studio-editing_&_h1]:mt-[6px] max-[700px]:[.studio-editing_&_h1]:mb-0 max-[700px]:[.studio-editing_&_h1]:block [.studio-editing_&_p]:ml-[14px] [.studio-editing_&_p]:inline [.studio-editing_&_p]:text-[length:11px] max-[700px]:[.studio-editing_&_p]:mx-0 max-[700px]:[.studio-editing_&_p]:my-1 max-[700px]:[.studio-editing_&_p]:block [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375">
                 <div>
                     <h1>Người dùng</h1>
                     <p>Tìm tài khoản, quản lý quyền và dung lượng.</p>
                 </div>
-                <Link className="button compact" to="/admin/users/new">
-                    Tạo người dùng
-                </Link>
+                <Button asChild>
+                    <Link to="/admin/users/new">Tạo người dùng</Link>
+                </Button>
             </div>
             <form
-                className="admin-filters"
+                className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto] [&_select]:w-full"
                 key={params.toString()}
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -47,51 +52,71 @@ export function AdminUsersPage() {
                     setParams(next);
                 }}
             >
-                <label htmlFor="admin-user-q">
-                    Tên hoặc email
-                    <input
-                        type="search"
-                        name="q"
-                        id="admin-user-q"
-                        maxLength={100}
-                        defaultValue={query.q}
-                    />
-                </label>
-                <label htmlFor="admin-user-role">
-                    Vai trò
-                    <select name="role" id="admin-user-role" defaultValue={query.role || ''}>
-                        <option value="">Tất cả</option>
-                        <option value="AUTHOR">Tác giả</option>
-                        <option value="ADMIN">Quản trị viên</option>
-                    </select>
-                </label>
-                <label htmlFor="admin-user-status">
-                    Trạng thái
-                    <select name="status" id="admin-user-status" defaultValue={query.status || ''}>
-                        <option value="">Tất cả</option>
-                        <option value="ACTIVE">Hoạt động</option>
-                        <option value="LOCKED">Đã khóa</option>
-                    </select>
-                </label>
-                <label htmlFor="admin-user-sort">
-                    Sắp xếp
-                    <select name="sort" id="admin-user-sort" defaultValue={query.sort}>
-                        <option value="-createdAt">Mới nhất</option>
-                        <option value="createdAt">Cũ nhất</option>
-                        <option value="displayName">Tên A–Z</option>
-                        <option value="-displayName">Tên Z–A</option>
-                        <option value="email">Email A–Z</option>
-                        <option value="-email">Email Z–A</option>
-                        <option value="updatedAt">Cập nhật cũ nhất</option>
-                        <option value="-updatedAt">Cập nhật mới nhất</option>
-                        <option value="storageUsedBytes">Dung lượng tăng dần</option>
-                        <option value="-storageUsedBytes">Dung lượng giảm dần</option>
-                    </select>
-                </label>
-                <button className="button compact" type="submit">
-                    Áp dụng bộ lọc
-                </button>
-                <Link to="/admin/users">Xóa bộ lọc</Link>
+                <FieldGroup className="contents">
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="admin-user-q">
+                            Tên hoặc email
+                            <Input
+                                type="search"
+                                name="q"
+                                id="admin-user-q"
+                                maxLength={100}
+                                defaultValue={query.q}
+                            />
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="admin-user-role">
+                            Vai trò
+                            <NativeSelect
+                                name="role"
+                                id="admin-user-role"
+                                defaultValue={query.role || ''}
+                            >
+                                <option value="">Tất cả</option>
+                                <option value="AUTHOR">Tác giả</option>
+                                <option value="ADMIN">Quản trị viên</option>
+                            </NativeSelect>
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="admin-user-status">
+                            Trạng thái
+                            <NativeSelect
+                                name="status"
+                                id="admin-user-status"
+                                defaultValue={query.status || ''}
+                            >
+                                <option value="">Tất cả</option>
+                                <option value="ACTIVE">Hoạt động</option>
+                                <option value="LOCKED">Đã khóa</option>
+                            </NativeSelect>
+                        </FieldLabel>
+                    </Field>
+                    <Field orientation="contents">
+                        <FieldLabel htmlFor="admin-user-sort">
+                            Sắp xếp
+                            <NativeSelect
+                                name="sort"
+                                id="admin-user-sort"
+                                defaultValue={query.sort}
+                            >
+                                <option value="-createdAt">Mới nhất</option>
+                                <option value="createdAt">Cũ nhất</option>
+                                <option value="displayName">Tên A–Z</option>
+                                <option value="-displayName">Tên Z–A</option>
+                                <option value="email">Email A–Z</option>
+                                <option value="-email">Email Z–A</option>
+                                <option value="updatedAt">Cập nhật cũ nhất</option>
+                                <option value="-updatedAt">Cập nhật mới nhất</option>
+                                <option value="storageUsedBytes">Dung lượng tăng dần</option>
+                                <option value="-storageUsedBytes">Dung lượng giảm dần</option>
+                            </NativeSelect>
+                        </FieldLabel>
+                    </Field>
+                    <Button type="submit">Áp dụng bộ lọc</Button>
+                    <Link to="/admin/users">Xóa bộ lọc</Link>
+                </FieldGroup>
             </form>
             <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />
             {list.isPending && <p role="status">Đang tải người dùng…</p>}
@@ -100,7 +125,7 @@ export function AdminUsersPage() {
                 <>
                     <p role="status">{list.data.meta.total} người dùng</p>
                     {list.data.data.length ? (
-                        <ul className="admin-rows admin-users">
+                        <ul className="admin-rows admin-users [&_>_li]:wrap-anywhere mx-0 my-4 list-none p-0 [&_>_li]:flex [&_>_li]:items-start [&_>_li]:justify-between [&_>_li]:gap-5 [&_>_li]:border-b-[1px] [&_>_li]:border-b-border [&_>_li]:py-5 [&_>_li]:[border-bottom-style:solid] max-[640px]:[&_>_li]:flex-col max-[640px]:[&_>_li]:gap-3 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h2]:text-[length:var(--text-md)] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-2 [&_h3]:text-[length:var(--text-md)] [&_p]:mx-0 [&_p]:my-2">
                             {list.data.data.map((item) => (
                                 <li key={item.id}>
                                     <div>
@@ -110,7 +135,7 @@ export function AdminUsersPage() {
                                             </Link>
                                         </h2>
                                         <p>{item.email}</p>
-                                        <div className="admin-metadata">
+                                        <div className="admin-metadata flex flex-wrap items-center gap-3 text-[length:var(--text-sm)] text-muted-foreground">
                                             <Badge
                                                 tone={item.role === 'ADMIN' ? 'info' : 'neutral'}
                                             >
@@ -126,7 +151,7 @@ export function AdminUsersPage() {
                                             <span>{item.bookCount} sách</span>
                                         </div>
                                     </div>
-                                    <div className="admin-row-detail">
+                                    <div className="admin-row-detail flex flex-col gap-2 text-[length:var(--text-sm)]">
                                         <span>
                                             {bytesLabel(item.storage.usedBytes)} /{' '}
                                             {bytesLabel(item.storage.quotaBytes)}
@@ -134,17 +159,26 @@ export function AdminUsersPage() {
                                         <span>Tạo: {adminDate(item.createdAt)}</span>
                                         <Link to={`/admin/users/${item.id}`}>
                                             Xem tài khoản
-                                            <span className="sr-only"> {item.email}</span>
+                                            <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
+                                                {' '}
+                                                {item.email}
+                                            </span>
                                         </Link>
                                     </div>
                                 </li>
                             ))}
                         </ul>
                     ) : (
-                        <section className="empty-state">
-                            <h2>Không có tài khoản phù hợp</h2>
-                            <p>Thử tìm tên hoặc email khác, hoặc xóa bộ lọc.</p>
-                        </section>
+                        <Empty className="empty-state border-border border-t px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
+                            <EmptyHeader>
+                                <EmptyTitle>
+                                    <h2>Không có tài khoản phù hợp</h2>
+                                </EmptyTitle>
+                                <EmptyDescription>
+                                    <p>Thử tìm tên hoặc email khác, hoặc xóa bộ lọc.</p>
+                                </EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
                     )}
                     <AdminPager page={query.page} meta={list.data.meta} />
                 </>

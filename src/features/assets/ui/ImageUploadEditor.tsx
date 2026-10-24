@@ -1,6 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ImagePlus, UserRound } from 'lucide-react';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
+import { cn } from '@/shared/lib/cn';
+import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Spinner } from '@/shared/ui/primitives/spinner';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset } from '../../../shared/contracts/dto.schema';
 import { formatBytes } from '../../../shared/lib/format';
@@ -10,7 +13,6 @@ import { uploadFile } from '../api/upload-file';
 import { assetKeys, assetsApi } from '../model/assets';
 import { imageUploadRequest, saveUploadedImage } from '../model/image';
 import type { UploadCheckpoint, UploadStage } from '../model/upload';
-import './image-upload.css';
 
 type Stage = UploadStage | 'saving';
 const stages: Record<Stage, string> = {
@@ -149,17 +151,25 @@ export function ImageUploadEditor({
     }
     const imageUrl = preview || currentUrl;
     return (
-        <section className="editor-form image-editor" aria-labelledby={`${id}-title`}>
+        <section
+            className="editor-form image-editor mb-6 max-w-180 rounded-[var(--radius-lg)] border border-border border-solid bg-surface p-8 max-[760px]:px-5 max-[760px]:py-6 [&_.feedback]:mb-6 [&_h2]:mt-0 [&_h2]:text-[length:var(--text-xl)]"
+            aria-labelledby={`${id}-title`}
+        >
             <h2 id={`${id}-title`}>{title}</h2>
-            <p className="section-description">
+            <p className="section-description mx-0 mt-[-6px] mb-6 text-[length:var(--text-sm)] text-muted-foreground">
                 {avatar
                     ? 'Ảnh hiển thị trên hồ sơ và góc tài khoản.'
                     : 'Ảnh giúp nhận diện sách trong danh sách của bạn.'}
             </p>
             <Feedback error={error} success={notice} />
-            <div className="image-editor-layout">
+            <div className="image-editor-layout grid grid-cols-[144px_minmax(0,_1fr)] items-start gap-6 max-[600px]:grid-cols-[minmax(0,_1fr)] [&_form]:min-w-0">
                 <div
-                    className={`image-editor-preview ${avatar ? 'avatar-preview' : 'cover-preview'}`}
+                    className={cn(
+                        'image-editor-preview flex flex-col items-center justify-center gap-2 overflow-hidden bg-muted text-[length:var(--text-xs)] text-muted-foreground [&_img]:block [&_img]:size-full',
+                        avatar
+                            ? 'avatar-preview size-32 rounded-[50%] [&_img]:object-cover'
+                            : 'cover-preview h-48 w-36 rounded-[var(--radius-sm)] [&_img]:object-contain',
+                    )}
                 >
                     {imageUrl ? (
                         <img
@@ -180,105 +190,131 @@ export function ImageUploadEditor({
                     aria-label={`Cập nhật ${title.toLowerCase()}`}
                     aria-busy={Boolean(stage)}
                 >
-                    <label htmlFor={`${id}-file`}>Chọn {title.toLowerCase()}</label>
-                    <input
-                        id={`${id}-file`}
-                        ref={input}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-                        disabled={disabled || Boolean(stage)}
-                        aria-describedby={`${id}-help`}
-                        onChange={(event) => {
-                            const selected = event.currentTarget.files?.[0];
-                            resetSelection(false);
-                            setError(null);
-                            setNotice(null);
-                            if (!selected) return;
-                            try {
-                                imageUploadRequest(selected, purpose);
-                                setFile(selected);
-                            } catch (cause) {
-                                setError(errorMessage(cause));
-                            }
-                        }}
-                    />
-                    <p id={`${id}-help`} className="field-hint">
-                        JPG, PNG hoặc WebP. Tối đa {avatar ? '2' : '10'} MB.
-                    </p>
-                    {file && (
-                        <p className="image-file-name">
-                            {file.name} · {formatBytes(file.size)}
+                    <FieldGroup className="contents">
+                        <Field orientation="contents">
+                            <FieldLabel htmlFor={`${id}-file`}>
+                                Chọn {title.toLowerCase()}
+                            </FieldLabel>
+                        </Field>
+                        <input
+                            id={`${id}-file`}
+                            ref={input}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                            disabled={disabled || Boolean(stage)}
+                            aria-describedby={`${id}-help`}
+                            onChange={(event) => {
+                                const selected = event.currentTarget.files?.[0];
+                                resetSelection(false);
+                                setError(null);
+                                setNotice(null);
+                                if (!selected) return;
+                                try {
+                                    imageUploadRequest(selected, purpose);
+                                    setFile(selected);
+                                } catch (cause) {
+                                    setError(errorMessage(cause));
+                                }
+                            }}
+                        />
+                        <p
+                            id={`${id}-help`}
+                            className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]"
+                        >
+                            JPG, PNG hoặc WebP. Tối đa {avatar ? '2' : '10'} MB.
                         </p>
-                    )}
-                    {stage && (
-                        <div className="image-upload-progress">
-                            <p role="status">
-                                {stages[stage]}
-                                {stage === 'uploading' ? ` ${progress}%` : ''}
+                        {file && (
+                            <p className="image-file-name wrap-anywhere text-[length:var(--text-sm)]">
+                                {file.name} · {formatBytes(file.size)}
                             </p>
-                            {stage === 'uploading' && (
-                                <progress aria-label="Tiến độ tải ảnh" value={progress} max={100} />
+                        )}
+                        {stage && (
+                            <div className="image-upload-progress [&_progress]:w-full">
+                                <p role="status">
+                                    {stages[stage]}
+                                    {stage === 'uploading' ? ` ${progress}%` : ''}
+                                </p>
+                                {stage === 'uploading' && (
+                                    <progress
+                                        aria-label="Tiến độ tải ảnh"
+                                        value={progress}
+                                        max={100}
+                                    />
+                                )}
+                            </div>
+                        )}
+                        {!stage && readyAsset && (
+                            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
+                                Ảnh đã tải xong. Bấm Thử lưu lại để cập nhật, không cần tải ảnh lần
+                                nữa.
+                            </p>
+                        )}
+                        {!stage && !readyAsset && checkpoint?.uploaded && (
+                            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
+                                Ảnh đã tải xong, đang chờ xác nhận. Bạn có thể thử lại.
+                            </p>
+                        )}
+                        <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
+                            {file && (
+                                <Button
+                                    type="submit"
+                                    disabled={disabled || Boolean(stage)}
+                                    aria-busy={Boolean(stage)}
+                                >
+                                    {Boolean(stage) && (
+                                        <Spinner data-icon="inline-start" aria-hidden="true" />
+                                    )}
+                                    {stage
+                                        ? 'Đang xử lý…'
+                                        : readyAsset
+                                          ? 'Thử lưu lại'
+                                          : error
+                                            ? 'Thử lại'
+                                            : avatar
+                                              ? 'Lưu ảnh đại diện'
+                                              : 'Lưu ảnh bìa'}
+                                </Button>
+                            )}
+                            {stage && stage !== 'completing' && stage !== 'saving' && (
+                                <Button variant="secondary" onClick={cancel}>
+                                    Dừng tải ảnh
+                                </Button>
+                            )}
+                            {!stage && file && (
+                                <Button
+                                    variant="ghost"
+                                    disabled={disabled}
+                                    onClick={() => {
+                                        resetSelection();
+                                        setError(null);
+                                        setNotice(null);
+                                    }}
+                                >
+                                    Bỏ lựa chọn
+                                </Button>
+                            )}
+                            {!file && currentUrl && (
+                                <Button
+                                    variant="secondary"
+                                    disabled={disabled || Boolean(stage)}
+                                    aria-busy={Boolean(stage)}
+                                    onClick={() => {
+                                        void remove();
+                                    }}
+                                >
+                                    {Boolean(stage) && (
+                                        <Spinner data-icon="inline-start" aria-hidden="true" />
+                                    )}
+                                    {avatar ? 'Gỡ ảnh đại diện' : 'Gỡ ảnh bìa'}
+                                </Button>
                             )}
                         </div>
-                    )}
-                    {!stage && readyAsset && (
-                        <p className="field-hint">
-                            Ảnh đã tải xong. Bấm Thử lưu lại để cập nhật, không cần tải ảnh lần nữa.
-                        </p>
-                    )}
-                    {!stage && !readyAsset && checkpoint?.uploaded && (
-                        <p className="field-hint">
-                            Ảnh đã tải xong, đang chờ xác nhận. Bạn có thể thử lại.
-                        </p>
-                    )}
-                    <div className="form-actions">
-                        {file && (
-                            <Button type="submit" disabled={disabled} loading={Boolean(stage)}>
-                                {stage
-                                    ? 'Đang xử lý…'
-                                    : readyAsset
-                                      ? 'Thử lưu lại'
-                                      : error
-                                        ? 'Thử lại'
-                                        : avatar
-                                          ? 'Lưu ảnh đại diện'
-                                          : 'Lưu ảnh bìa'}
-                            </Button>
+                        {currentUrl && (
+                            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
+                                Gỡ ảnh chỉ bỏ liên kết, không xóa tệp đã tải.
+                            </p>
                         )}
-                        {stage && stage !== 'completing' && stage !== 'saving' && (
-                            <Button variant="secondary" onClick={cancel}>
-                                Dừng tải ảnh
-                            </Button>
-                        )}
-                        {!stage && file && (
-                            <Button
-                                variant="ghost"
-                                disabled={disabled}
-                                onClick={() => {
-                                    resetSelection();
-                                    setError(null);
-                                    setNotice(null);
-                                }}
-                            >
-                                Bỏ lựa chọn
-                            </Button>
-                        )}
-                        {!file && currentUrl && (
-                            <Button
-                                variant="secondary"
-                                disabled={disabled}
-                                loading={Boolean(stage)}
-                                onClick={() => {
-                                    void remove();
-                                }}
-                            >
-                                {avatar ? 'Gỡ ảnh đại diện' : 'Gỡ ảnh bìa'}
-                            </Button>
-                        )}
-                    </div>
-                    {currentUrl && (
-                        <p className="field-hint">Gỡ ảnh chỉ bỏ liên kết, không xóa tệp đã tải.</p>
-                    )}
+                    </FieldGroup>
                 </form>
             </div>
         </section>

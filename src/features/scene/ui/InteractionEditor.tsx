@@ -1,5 +1,8 @@
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { NativeSelect } from '@/shared/ui/primitives/native-select';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import {
     type Action,
@@ -26,7 +29,6 @@ import {
 } from '../model/interactions';
 import { InteractionActionEditor } from './InteractionActionEditor';
 import { InteractionTarget } from './InteractionTarget';
-import './interactions.css';
 
 export function InteractionEditor({
     scene,
@@ -66,8 +68,11 @@ export function InteractionEditor({
             );
     };
     return (
-        <section className="scene-interactions" aria-labelledby="interaction-heading">
-            <div className="scene-heading">
+        <section
+            className="scene-interactions mt-6 border-t-[1px] border-t-border pt-5 [border-top-style:solid] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [.workbench-panel_&]:m-0 [.workbench-panel_&]:border-0 [.workbench-panel_&]:border-[transparent] [.workbench-panel_&]:border-solid [.workbench-panel_&]:p-0"
+            aria-labelledby="interaction-heading"
+        >
+            <div className="scene-heading flex flex-wrap items-start justify-between gap-4 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_p]:m-0 [&_p]:text-muted-foreground">
                 <div>
                     <h3 id="interaction-heading">Quy tắc tương tác</h3>
                     <p>
@@ -87,7 +92,7 @@ export function InteractionEditor({
                     Thêm quy tắc
                 </Button>
             </div>
-            <p className="field-hint">
+            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                 Chọn sự kiện bắt đầu, rồi xếp các hành động theo thứ tự. Mở Xem trước để thử tương
                 tác. Dùng “Chờ” để tạo khoảng nghỉ giữa các hành động.
             </p>
@@ -98,7 +103,7 @@ export function InteractionEditor({
                 </p>
             )}
             {issues.length > 0 && (
-                <div className="scene-reference-error">
+                <div className="scene-reference-error text-danger-foreground">
                     <p>
                         Có đích không còn phù hợp. Có thể lưu bản nháp; cần sửa trước khi xuất bản,
                         kể cả quy tắc đang tắt.
@@ -108,7 +113,7 @@ export function InteractionEditor({
                             <li key={`${issue.interactionId}-${issue.actionIndex ?? 'trigger'}`}>
                                 <button
                                     type="button"
-                                    className="interaction-issue-link"
+                                    className="interaction-issue-link cursor-pointer border-0 border-[transparent] border-solid bg-[transparent] px-0 py-2 text-left text-[inherit] underline"
                                     onClick={() => {
                                         setSelectedId(issue.interactionId);
                                         requestAnimationFrame(() =>
@@ -133,8 +138,11 @@ export function InteractionEditor({
                 </div>
             )}
             {selected && (
-                <div className="interaction-workspace">
-                    <nav className="interaction-list" aria-label="Danh sách quy tắc">
+                <div className="interaction-workspace mt-5 grid grid-cols-[minmax(180px,_0.7fr)_minmax(0,_2fr)] items-start gap-6 max-[900px]:grid-cols-[1fr] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[140px_minmax(0,_1fr)] [.workbench-panel_&]:grid-cols-[minmax(0,_1fr)] [.workbench-panel_&]:gap-3">
+                    <nav
+                        className="interaction-list [&_button]:wrap-anywhere grid gap-2 [&_button:hover]:border-primary [&_button:hover]:bg-selected [&_button[aria-current=true]]:border-primary [&_button[aria-current=true]]:bg-selected [&_button]:cursor-pointer [&_button]:rounded-[var(--radius-sm)] [&_button]:border [&_button]:border-border [&_button]:border-solid [&_button]:bg-surface [&_button]:p-3 [&_button]:text-left [&_button]:text-foreground [&_span]:mt-1 [&_span]:block [&_span]:text-[length:var(--text-sm)] [&_strong]:block"
+                        aria-label="Danh sách quy tắc"
+                    >
                         {scene.interactions.map((rule, index) => (
                             <button
                                 type="button"
@@ -159,55 +167,67 @@ export function InteractionEditor({
                         ))}
                     </nav>
                     <section
-                        className="interaction-detail"
+                        className="interaction-detail wrap-anywhere min-w-0 [&_h4]:mx-0 [&_h4]:mt-0 [&_h4]:mb-4 [&_h4]:text-[length:var(--text-md)] [&_h5]:mx-0 [&_h5]:mt-6 [&_h5]:mb-4 [&_h5]:text-[length:var(--text-md)]"
                         key={selected.id}
                         aria-labelledby={`rule-${selected.id}`}
                     >
                         <h4 id={`rule-${selected.id}`} tabIndex={-1}>
                             Chỉnh quy tắc: {selected.name || 'Chưa đặt tên'}
                         </h4>
-                        <fieldset disabled={disabled} className="interaction-rule-fields">
-                            <label htmlFor={`rule-${selected.id}-name`}>
-                                Tên quy tắc
-                                <input
-                                    id={`rule-${selected.id}-name`}
-                                    maxLength={100}
-                                    value={selected.name || ''}
-                                    onChange={(event) => patch({ name: event.currentTarget.value })}
-                                />
-                            </label>
-                            <label className="checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={selected.enabled}
-                                    onChange={(event) =>
-                                        patch({ enabled: event.currentTarget.checked })
-                                    }
-                                />
-                                Bật quy tắc
-                            </label>
-                            <label htmlFor={`rule-${selected.id}-trigger`}>
-                                Sự kiện
-                                <select
-                                    id={`rule-${selected.id}-trigger`}
-                                    value={selected.trigger.type}
-                                    onChange={(event) => {
-                                        const type = event.currentTarget.value as Trigger['type'];
-                                        patch({
-                                            trigger:
-                                                type === 'onTap'
-                                                    ? { type, objectId: '' }
-                                                    : { type },
-                                        });
-                                    }}
-                                >
-                                    {Object.entries(triggerLabels).map(([value, label]) => (
-                                        <option key={value} value={value}>
-                                            {label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
+                        <fieldset
+                            disabled={disabled}
+                            className="interaction-rule-fields m-0 grid min-w-0 grid-cols-[repeat(2,_minmax(0,_1fr))] gap-4 border-0 border-[transparent] border-solid p-0 max-[600px]:grid-cols-[1fr] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[repeat(2,_minmax(0,_1fr))] [.workbench-panel_&]:grid-cols-[minmax(0,_1fr)] [.workbench-panel_&]:gap-3"
+                        >
+                            <Field orientation="contents">
+                                <FieldLabel htmlFor={`rule-${selected.id}-name`}>
+                                    Tên quy tắc
+                                    <Input
+                                        id={`rule-${selected.id}-name`}
+                                        maxLength={100}
+                                        value={selected.name || ''}
+                                        onChange={(event) =>
+                                            patch({ name: event.currentTarget.value })
+                                        }
+                                    />
+                                </FieldLabel>
+                            </Field>
+                            <Field orientation="contents">
+                                <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
+                                    <input
+                                        type="checkbox"
+                                        checked={selected.enabled}
+                                        onChange={(event) =>
+                                            patch({ enabled: event.currentTarget.checked })
+                                        }
+                                    />
+                                    Bật quy tắc
+                                </FieldLabel>
+                            </Field>
+                            <Field orientation="contents">
+                                <FieldLabel htmlFor={`rule-${selected.id}-trigger`}>
+                                    Sự kiện
+                                    <NativeSelect
+                                        id={`rule-${selected.id}-trigger`}
+                                        value={selected.trigger.type}
+                                        onChange={(event) => {
+                                            const type = event.currentTarget
+                                                .value as Trigger['type'];
+                                            patch({
+                                                trigger:
+                                                    type === 'onTap'
+                                                        ? { type, objectId: '' }
+                                                        : { type },
+                                            });
+                                        }}
+                                    >
+                                        {Object.entries(triggerLabels).map(([value, label]) => (
+                                            <option key={value} value={value}>
+                                                {label}
+                                            </option>
+                                        ))}
+                                    </NativeSelect>
+                                </FieldLabel>
+                            </Field>
                             {selected.trigger.type === 'onTap' && (
                                 <InteractionTarget
                                     id={`rule-${selected.id}-target`}
@@ -218,23 +238,25 @@ export function InteractionEditor({
                                     }
                                 />
                             )}
-                            <label htmlFor={`rule-${selected.id}-retrigger`}>
-                                Khi sự kiện lặp lại lúc đang chạy
-                                <select
-                                    id={`rule-${selected.id}-retrigger`}
-                                    value={selected.onRetrigger}
-                                    onChange={(event) =>
-                                        patch({
-                                            onRetrigger: event.currentTarget
-                                                .value as InteractionRule['onRetrigger'],
-                                        })
-                                    }
-                                >
-                                    <option value="ignore">Bỏ qua lần mới</option>
-                                    <option value="restart">Chạy lại từ đầu</option>
-                                </select>
-                            </label>
-                            <div className="form-actions interaction-wide">
+                            <Field orientation="contents">
+                                <FieldLabel htmlFor={`rule-${selected.id}-retrigger`}>
+                                    Khi sự kiện lặp lại lúc đang chạy
+                                    <NativeSelect
+                                        id={`rule-${selected.id}-retrigger`}
+                                        value={selected.onRetrigger}
+                                        onChange={(event) =>
+                                            patch({
+                                                onRetrigger: event.currentTarget
+                                                    .value as InteractionRule['onRetrigger'],
+                                            })
+                                        }
+                                    >
+                                        <option value="ignore">Bỏ qua lần mới</option>
+                                        <option value="restart">Chạy lại từ đầu</option>
+                                    </NativeSelect>
+                                </FieldLabel>
+                            </Field>
+                            <div className="form-actions interaction-wide col-[1_/_-1] mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                                 <Button
                                     variant="ghost"
                                     aria-label="Đưa quy tắc lên"
@@ -249,7 +271,7 @@ export function InteractionEditor({
                                         )
                                     }
                                 >
-                                    <ArrowUp size={18} aria-hidden="true" />
+                                    <ArrowUp data-icon="inline-start" aria-hidden="true" />
                                     Lên
                                 </Button>
                                 <Button
@@ -266,7 +288,7 @@ export function InteractionEditor({
                                         )
                                     }
                                 >
-                                    <ArrowDown size={18} aria-hidden="true" />
+                                    <ArrowDown data-icon="inline-start" aria-hidden="true" />
                                     Xuống
                                 </Button>
                                 <Button
@@ -286,7 +308,10 @@ export function InteractionEditor({
                             </div>
                         </fieldset>
                         {validation && !validation.success && (
-                            <p role="alert" className="scene-reference-error">
+                            <p
+                                role="alert"
+                                className="scene-reference-error text-danger-foreground"
+                            >
                                 {validation.error.issues
                                     .map(
                                         (issue) =>
@@ -299,14 +324,14 @@ export function InteractionEditor({
                             Hành động theo thứ tự ({selected.actions.length}/
                             {SCENE_LIMITS.maxActionsPerRule})
                         </h5>
-                        <ol className="interaction-actions">
+                        <ol className="interaction-actions mx-0 mt-0 mb-4 list-none p-0 [&_>_li]:border-t-[1px] [&_>_li]:border-t-border [&_>_li]:[border-top-style:solid] [&_summary]:cursor-pointer [&_summary]:py-4 [&_summary]:font-semibold">
                             {selected.actions.map((action, index) => (
                                 <li key={`${actionKey(action)}-${action.type}`}>
                                     <details open>
                                         <summary>
                                             Hành động {index + 1}: {actionLabels[action.type]}
                                         </summary>
-                                        <div className="interaction-action-body">
+                                        <div className="interaction-action-body grid gap-4 pb-5">
                                             <InteractionActionEditor
                                                 id={`action-${selected.id}-${index}`}
                                                 action={action}
@@ -322,7 +347,7 @@ export function InteractionEditor({
                                                     });
                                                 }}
                                             />
-                                            <div className="form-actions">
+                                            <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                                                 <Button
                                                     variant="ghost"
                                                     disabled={disabled || index === 0}
@@ -337,7 +362,10 @@ export function InteractionEditor({
                                                         })
                                                     }
                                                 >
-                                                    <ArrowUp size={18} aria-hidden="true" />
+                                                    <ArrowUp
+                                                        data-icon="inline-start"
+                                                        aria-hidden="true"
+                                                    />
                                                     Lên
                                                 </Button>
                                                 <Button
@@ -357,7 +385,10 @@ export function InteractionEditor({
                                                         })
                                                     }
                                                 >
-                                                    <ArrowDown size={18} aria-hidden="true" />
+                                                    <ArrowDown
+                                                        data-icon="inline-start"
+                                                        aria-hidden="true"
+                                                    />
                                                     Xuống
                                                 </Button>
                                                 <Button
@@ -397,7 +428,7 @@ export function InteractionEditor({
                         >
                             Thêm hành động
                         </Button>
-                        <p className="field-hint">
+                        <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                             Mỗi quy tắc cần ít nhất một hành động. Các giá trị thời gian tính bằng
                             mili giây (1000 ms = 1 giây).
                         </p>
@@ -414,7 +445,7 @@ export function InteractionEditor({
                         Quy tắc “{deleting.name || 'Chưa đặt tên'}” cùng các hành động sẽ bị bỏ khỏi
                         bản đang sửa.
                     </p>
-                    <div className="form-actions">
+                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                         <Button
                             variant="secondary"
                             disabled={disabled}
