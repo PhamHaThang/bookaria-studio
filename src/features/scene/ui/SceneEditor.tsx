@@ -40,6 +40,7 @@ import {
     type SceneObjectType,
     SceneSchema,
 } from '../../../shared/contracts/scene.schema';
+import { BookariaLogo } from '../../../shared/ui/BookariaLogo';
 import { Button } from '../../../shared/ui/Button';
 import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
@@ -206,6 +207,13 @@ export function SceneEditor({
             />
             <header className="scene-heading editor-header">
                 <div className="editor-project">
+                    <Link
+                        to="/books"
+                        className="editor-brand"
+                        aria-label="Bookaria Studio — Sách của tôi"
+                    >
+                        <BookariaLogo symbol />
+                    </Link>
                     <Link
                         to={`/books/${book.id}`}
                         className="editor-back"

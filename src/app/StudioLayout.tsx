@@ -17,6 +17,7 @@ import { auth, useAuth } from '../features/auth';
 import { NotificationLink } from '../features/notifications/NotificationLink';
 import { errorMessage } from '../shared/api/errors';
 import { Avatar } from '../shared/ui/Avatar';
+import { BookariaLogo } from '../shared/ui/BookariaLogo';
 import { Feedback } from '../shared/ui/Feedback';
 import './insights.css';
 
@@ -45,8 +46,8 @@ export function StudioLayout() {
         <div className={editing ? 'studio-editing studio-shell' : 'studio-shell'}>
             <header className="studio-topbar">
                 <Link className="brand" to="/books">
-                    <BookOpen size={25} aria-hidden="true" />
-                    Bookaria<span>Studio</span>
+                    <BookariaLogo />
+                    <span>Studio</span>
                 </Link>
                 <div className="account-actions">
                     <NotificationLink userId={user?.id || ''} />

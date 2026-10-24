@@ -1,0 +1,37 @@
+.bookaria-logo {
+    display: block;
+    flex: 0 0 auto;
+    width: 176px;
+    height: auto;
+    object-fit: contain;
+}
+.studio-topbar .bookaria-logo {
+    width: 128px;
+}
+.editor-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+}
+.editor-brand:hover {
+    background: var(--bg-hover);
+}
+.bookaria-logo-symbol {
+    width: 36px;
+}
+@media (max-width: 760px) {
+    .scene-editor .editor-header .editor-project {
+        grid-column: 1 / -1;
+        width: calc(100% - 56px);
+        max-width: calc(100% - 56px);
+    }
+}
+@media (max-width: 700px) {
+    .studio-topbar .bookaria-logo {
+        width: 120px;
+    }
+}

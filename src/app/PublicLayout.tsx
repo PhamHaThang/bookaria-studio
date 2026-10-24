@@ -1,15 +1,14 @@
-import { BookOpen } from 'lucide-react';
 import { Suspense } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import '../features/discovery/public.css';
+import { BookariaLogo } from '../shared/ui/BookariaLogo';
 
 export function PublicLayout() {
     return (
         <div className="public-shell">
             <header className="studio-topbar public-topbar">
                 <Link className="brand" to="/explore">
-                    <BookOpen size={25} aria-hidden="true" />
-                    Bookaria
+                    <BookariaLogo />
                 </Link>
                 <nav aria-label="Điều hướng công khai">
                     <NavLink to="/explore">Thư viện</NavLink>
