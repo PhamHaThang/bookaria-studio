@@ -5,7 +5,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { Disclosure } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
-import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { Progress } from '@/shared/ui/primitives/progress';
@@ -30,7 +29,10 @@ import { blankPageImage } from '../../pages/model/blank-page';
 import { NavigationGuard } from '../../scene/ui/NavigationGuard';
 import { bookKeys, booksApi } from '../model/books';
 import { type CreationCheckpoint, createBookWithPages } from '../model/create-book';
-import { type ImportSource, prepareImport, selectedPages } from '../model/import-source';
+import type { ImportSource } from '../model/import-source';
+import { customBookSize } from '../model/page-size';
+import { BookImportField, type BookImportValue } from './BookImportField';
+import { BookSizeFields } from './BookSizeFields';
 
 export function BookCreateDialog() {
     const navigate = useNavigate(),
@@ -41,19 +43,19 @@ export function BookCreateDialog() {
     const actor = useRef(user?.id),
         alive = useRef(true),
         active = useRef(false);
-    const fileInput = useRef<HTMLInputElement>(null);
-    const sourceRef = useRef<ImportSource | null>(null),
-        preparation = useRef<AbortController | null>(null);
+    const sourceRef = useRef<ImportSource | null>(null);
     const checkpoint = useRef<CreationCheckpoint>({ pages: [] });
     const submission = useRef<{ body: CreateBookBody; indices: number[] } | null>(null);
     const [mode, setMode] = useState<'blank' | 'import'>('blank');
     const [source, setSource] = useState<ImportSource | null>(null);
     const [title, setTitle] = useState('');
-    const [format, setFormat] = useState('A4'),
-        [aspect, setAspect] = useState('1.4142');
+    const [format, setFormat] = useState('A4');
+    const [width, setWidth] = useState('210'),
+        [height, setHeight] = useState('297');
+    const [detectedPage, setDetectedPage] = useState<number | null>(null);
     const [description, setDescription] = useState(''),
         [topic, setTopic] = useState('');
-    const [range, setRange] = useState('');
+    const [selection, setSelection] = useState<number[]>([]);
     const [preparing, setPreparing] = useState(false),
         [busy, setBusy] = useState(false);
     const [stage, setStage] = useState(''),
@@ -69,7 +71,6 @@ export function BookCreateDialog() {
         alive.current = true;
         return () => {
             alive.current = false;
-            preparation.current?.abort();
             sourceRef.current?.dispose();
         };
     }, []);
@@ -89,42 +90,45 @@ export function BookCreateDialog() {
             { replace: true },
         );
     }
-    async function chooseFiles(files: File[]) {
-        if (!files.length || locked || active.current) return;
-        preparation.current?.abort();
-        sourceRef.current?.dispose();
-        sourceRef.current = null;
-        const controller = new AbortController();
-        preparation.current = controller;
-        setSource(null);
-        setRange('');
-        setPreparing(true);
+    function changeImport(value: BookImportValue | null) {
+        const previousSource = sourceRef.current;
+        const size = value?.source.pageSizesMm?.[value.indices[0]];
+        if (
+            value?.source.kind === 'pdf' &&
+            size &&
+            (value.source !== previousSource || value.indices[0] !== selection[0])
+        ) {
+            setFormat('CUSTOM');
+            setWidth(String(size.widthMm));
+            setHeight(String(size.heightMm));
+            setDetectedPage(value.indices[0] + 1);
+        }
+        if (value?.source.kind !== 'pdf') setDetectedPage(null);
+        if (sourceRef.current !== value?.source) sourceRef.current?.dispose();
+        sourceRef.current = value?.source || null;
+        setSource(value?.source || null);
+        setSelection(value?.indices || []);
+        if (value)
+            setTitle(
+                (current) =>
+                    current ||
+                    (value.source.kind === 'pdf'
+                        ? value.source.name
+                        : value.source.labels[0]
+                    ).replace(/\.[^.]+$/, ''),
+            );
         setError(null);
-        try {
-            const result = await prepareImport(files, controller.signal);
-            if (controller.signal.aborted || !alive.current) {
-                result.dispose();
-                return;
-            }
-            sourceRef.current = result;
-            setSource(result);
-            setTitle((current) => current || files[0].name.replace(/\.[^.]+$/, ''));
-        } catch (cause) {
-            if (!controller.signal.aborted && alive.current) setError(errorMessage(cause));
-        } finally {
-            if (!controller.signal.aborted && alive.current) setPreparing(false);
-        }
-    }
-    let selection: number[] = [],
-        rangeError = '';
-    if (source) {
-        try {
-            selection = selectedPages(source.kind === 'pdf' ? range : '', source.count);
-        } catch (cause) {
-            rangeError = errorMessage(cause);
-        }
     }
     const count = mode === 'blank' ? 1 : selection.length;
+    const firstSize = source?.pageSizesMm?.[selection[0]];
+    const mixedPageSizes =
+        firstSize &&
+        selection.some((index) => {
+            const size = source?.pageSizesMm?.[index];
+            return (
+                size && (size.widthMm !== firstSize.widthMm || size.heightMm !== firstSize.heightMm)
+            );
+        });
     const dirty = Boolean(
         title ||
             description ||
@@ -134,7 +138,8 @@ export function BookCreateDialog() {
             locked ||
             mode !== 'blank' ||
             format !== 'A4' ||
-            aspect !== '1.4142',
+            width !== '210' ||
+            height !== '297',
     );
     async function submit(event: FormEvent) {
         event.preventDefault();
@@ -143,15 +148,15 @@ export function BookCreateDialog() {
         try {
             if (!locked) {
                 if (!title.trim()) throw new Error('Nhập tên sách trước khi tạo.');
-                if (mode === 'import' && (!source || rangeError || !selection.length))
-                    throw new Error(rangeError || 'Chọn PDF hoặc ảnh để nhập.');
+                if (mode === 'import' && (!source || !selection.length))
+                    throw new Error('Chọn PDF hoặc ảnh và ít nhất một trang để nhập.');
                 submission.current = {
                     body: CreateBookBodySchema.parse({
                         title,
                         description: description.trim() || undefined,
                         topic: topic.trim() || undefined,
                         pageFormat: format,
-                        pageAspect: format === 'CUSTOM' ? Number(aspect) : undefined,
+                        ...(format === 'CUSTOM' ? customBookSize(width, height) : {}),
                         source: { type: 'BLANK' },
                     }),
                     indices: mode === 'blank' ? [0] : selection,
@@ -263,7 +268,7 @@ export function BookCreateDialog() {
                         <div className="creation-body overflow-y-auto px-7 pt-0 pb-6 [overscroll-behavior:contain] [scrollbar-color:var(--border-input)_var(--bg-surface)] [scrollbar-width:thin] max-[600px]:px-[18px]">
                             <fieldset
                                 disabled={busy || locked}
-                                className="creation-fields m-0 min-w-0 border-0 border-[transparent] border-solid p-0 [&_>_label]:block [&_>_label]:font-semibold [&_>_label]:text-[length:14px] [&_[data-slot=select-trigger]]:mt-2 [&_[data-slot=select-trigger]]:flex [&_[data-slot=select-trigger]]:min-h-11 [&_[data-slot=select-trigger]]:w-full [&_input::placeholder]:text-muted-foreground [&_input::placeholder]:opacity-100 [&_input:not([type=radio])]:mt-2 [&_input:not([type=radio])]:block [&_input:not([type=radio])]:min-h-11 [&_input:not([type=radio])]:w-full [&_textarea]:mt-2 [&_textarea]:block [&_textarea]:min-h-11 [&_textarea]:w-full"
+                                className="creation-fields m-0 min-w-0 border-0 border-[transparent] border-solid p-0 [&_>_label]:block [&_>_label]:font-semibold [&_>_label]:text-[length:14px] [&_[data-slot=select-trigger]]:mt-2 [&_[data-slot=select-trigger]]:flex [&_[data-slot=select-trigger]]:min-h-11 [&_[data-slot=select-trigger]]:w-full [&_input::placeholder]:text-muted-foreground [&_input::placeholder]:opacity-100 [&_input:not([type=radio]):not([type=file])]:mt-2 [&_input:not([type=radio]):not([type=file])]:block [&_input:not([type=radio]):not([type=file])]:min-h-11 [&_input:not([type=radio]):not([type=file])]:w-full [&_textarea]:mt-2 [&_textarea]:block [&_textarea]:min-h-11 [&_textarea]:w-full"
                             >
                                 <Field orientation="contents">
                                     <FieldLabel htmlFor="new-book-title">
@@ -278,10 +283,11 @@ export function BookCreateDialog() {
                                         />
                                     </FieldLabel>
                                 </Field>
-                                <FieldSet className="creation-modes mx-0 mt-6 mb-0 grid min-w-0 grid-cols-[1fr_1fr] gap-3 border-0 border-[transparent] border-solid p-0 max-[600px]:grid-cols-[1fr] max-[600px]:gap-2 [&_input]:size-4 [&_input]:shrink-0 [&_input]:[accent-color:var(--action-primary)] [&_legend]:mb-[10px] [&_legend]:font-semibold [&_legend]:text-[length:14px] [&_small]:mt-1 [&_small]:block [&_small]:text-[length:12px] [&_small]:text-muted-foreground [&_small]:leading-[1.6] [&_strong]:block [&_strong]:font-semibold [&_strong]:text-[length:14px] [&_svg]:shrink-0 [&_svg]:text-primary">
+                                <FieldSet className="creation-modes mx-0 mt-6 mb-0 grid min-w-0 grid-cols-[1fr_1fr] gap-3 border-0 border-[transparent] border-solid p-0 max-[600px]:grid-cols-[1fr] max-[600px]:gap-2 [&_input]:size-4 [&_input]:shrink-0 [&_input]:[accent-color:var(--action-primary)] [&_legend]:mb-[10px] [&_legend]:font-semibold [&_legend]:text-[length:14px] [&_small]:mt-1 [&_small]:block [&_small]:text-[length:12px] [&_small]:text-current [&_small]:leading-[1.6] [&_strong]:block [&_strong]:font-semibold [&_strong]:text-[length:14px] [&_svg]:shrink-0 [&_svg]:text-current">
                                     <FieldLegend>Bắt đầu với</FieldLegend>
                                     <RadioGroup
                                         name="creation-source"
+                                        disabled={preparing}
                                         value={mode}
                                         onValueChange={(value) => setMode(value as typeof mode)}
                                         className="contents"
@@ -290,11 +296,14 @@ export function BookCreateDialog() {
                                         <Field orientation="contents">
                                             <FieldLabel
                                                 className={cn(
-                                                    'creation-mode-option m-0 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-border border-solid px-3 py-4 [&.selected]:border-primary [&.selected]:bg-selected [.creation-fields:disabled_&]:[cursor:default]',
+                                                    'creation-mode-option relative m-0 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-primary border-solid bg-surface px-4 py-4 text-primary transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring has-[:focus-visible]:outline-offset-3 [&.selected]:bg-primary [&.selected]:text-primary-foreground [.creation-fields:disabled_&]:cursor-default',
                                                     mode === 'blank' ? 'selected' : '',
                                                 )}
                                             >
-                                                <RadioGroupItem value="blank" />
+                                                <RadioGroupItem
+                                                    value="blank"
+                                                    className="sr-only absolute"
+                                                />
                                                 <BookOpen size={23} aria-hidden="true" />
                                                 <span>
                                                     <strong>Sách trống</strong>
@@ -305,11 +314,14 @@ export function BookCreateDialog() {
                                         <Field orientation="contents">
                                             <FieldLabel
                                                 className={cn(
-                                                    'creation-mode-option m-0 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-border border-solid px-3 py-4 [&.selected]:border-primary [&.selected]:bg-selected [.creation-fields:disabled_&]:[cursor:default]',
+                                                    'creation-mode-option relative m-0 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-primary border-solid bg-surface px-4 py-4 text-primary transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring has-[:focus-visible]:outline-offset-3 [&.selected]:bg-primary [&.selected]:text-primary-foreground [.creation-fields:disabled_&]:cursor-default',
                                                     mode === 'import' ? 'selected' : '',
                                                 )}
                                             >
-                                                <RadioGroupItem value="import" />
+                                                <RadioGroupItem
+                                                    value="import"
+                                                    className="sr-only absolute"
+                                                />
                                                 <FileUp size={23} aria-hidden="true" />
                                                 <span>
                                                     <strong>Nhập PDF / ảnh</strong>
@@ -321,106 +333,14 @@ export function BookCreateDialog() {
                                         </Field>
                                     </RadioGroup>
                                 </FieldSet>
-                                {mode === 'import' && (
-                                    <div className="creation-import mt-4">
-                                        <ActionButton
-                                            variant="plain"
-                                            className="creation-file flex w-full cursor-pointer flex-wrap items-center justify-center gap-2 rounded-[var(--radius-md)] border border-input border-dashed bg-muted p-4 text-center text-foreground [font:inherit] [&_span]:basis-full [&_span]:font-normal [&_span]:text-[length:12px] [&_span]:text-muted-foreground"
-                                            type="button"
-                                            onClick={() => fileInput.current?.click()}
-                                            aria-describedby="creation-file-limits"
-                                        >
-                                            <FileUp size={22} aria-hidden="true" />
-                                            <strong>
-                                                {source ? 'Chọn file khác' : 'Chọn PDF hoặc ảnh'}
-                                            </strong>
-                                            <span id="creation-file-limits">
-                                                Một PDF ≤ 50 MB hoặc JPG/PNG ≤ 10 MB/ảnh. Tối đa 100
-                                                trang.
-                                            </span>
-                                        </ActionButton>
-                                        <Input
-                                            ref={fileInput}
-                                            hidden
-                                            id="book-source-file"
-                                            type="file"
-                                            accept=".pdf,.jpg,.jpeg,.png"
-                                            multiple
-                                            onChange={(event) => {
-                                                const files = Array.from(event.target.files || []);
-                                                event.target.value = '';
-                                                void chooseFiles(files);
-                                            }}
-                                        />
-                                        {preparing && (
-                                            <p role="status">
-                                                <LoaderCircle
-                                                    size={17}
-                                                    className="button-spinner shrink-0 motion-safe:animate-spin"
-                                                />
-                                                Đang đọc tài liệu…
-                                            </p>
-                                        )}
-                                        {source && (
-                                            <div className="creation-source-summary [&_strong]:wrap-anywhere mt-4 grid grid-cols-[88px_minmax(0,_1fr)] items-start gap-4 [&_img]:h-29 [&_img]:w-22 [&_img]:border [&_img]:border-border [&_img]:border-solid [&_img]:bg-background [&_img]:object-contain [&_label]:block [&_label]:text-[length:12px] [&_p]:mx-0 [&_p]:my-2 [&_p]:text-[length:12px] [&_strong]:block [&_strong]:text-[length:14px]">
-                                                <img
-                                                    src={source.preview}
-                                                    alt="Xem trước trang đầu của tài liệu"
-                                                />
-                                                <div>
-                                                    <strong>{source.name}</strong>
-                                                    <p>
-                                                        {source.count} trang
-                                                        {source.kind === 'images'
-                                                            ? ' · Theo thứ tự tên file (1, 2, 10)'
-                                                            : ' · PDF gốc chỉ được đọc trên máy bạn'}
-                                                    </p>
-                                                    {source.kind === 'pdf' ? (
-                                                        <Field
-                                                            orientation="contents"
-                                                            data-invalid={Boolean(rangeError)}
-                                                        >
-                                                            <FieldLabel htmlFor="pdf-pages">
-                                                                Trang cần nhập
-                                                                <Input
-                                                                    id="pdf-pages"
-                                                                    value={range}
-                                                                    onChange={(event) =>
-                                                                        setRange(event.target.value)
-                                                                    }
-                                                                    placeholder={`Tất cả ${source.count} trang (ví dụ: 1-3, 5)`}
-                                                                    aria-invalid={Boolean(
-                                                                        rangeError,
-                                                                    )}
-                                                                    aria-describedby="range-message"
-                                                                />
-                                                                <span
-                                                                    id="range-message"
-                                                                    className={
-                                                                        rangeError
-                                                                            ? 'field-error mx-0 mt-2 mb-0 text-[length:var(--text-xs)] text-danger-foreground'
-                                                                            : 'field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]'
-                                                                    }
-                                                                >
-                                                                    {rangeError ||
-                                                                        `Sẽ nhập ${selection.length} trang theo thứ tự tài liệu.`}
-                                                                </span>
-                                                            </FieldLabel>
-                                                        </Field>
-                                                    ) : (
-                                                        <p className="creation-file-order max-h-16 overflow-y-auto">
-                                                            {source.labels.join(' → ')}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-                                        <p className="creation-import-note mx-0 my-2 text-[length:12px]">
-                                            Nội dung được chuyển thành ảnh nền trang. Bạn có thể
-                                            thêm chữ, mô hình 3D và tương tác trong editor.
-                                        </p>
-                                    </div>
-                                )}
+                                <div className={mode === 'import' ? undefined : 'hidden'}>
+                                    <BookImportField
+                                        value={source ? { source, indices: selection } : null}
+                                        disabled={busy || locked}
+                                        onChange={changeImport}
+                                        onBusyChange={setPreparing}
+                                    />
+                                </div>
                                 <div className="creation-format mt-6 grid grid-cols-[repeat(2,_minmax(0,_1fr))] gap-4 [&_>_label]:block [&_>_label]:font-semibold [&_>_label]:text-[length:14px]">
                                     <Field orientation="contents">
                                         <FieldLabel htmlFor="new-book-format">
@@ -428,7 +348,10 @@ export function BookCreateDialog() {
                                             <FormSelect
                                                 id="new-book-format"
                                                 value={format}
-                                                onValueChange={(value) => setFormat(value)}
+                                                onValueChange={(value) => {
+                                                    setFormat(value);
+                                                    setDetectedPage(null);
+                                                }}
                                                 options={[
                                                     { value: 'A4', label: 'A4 · Dọc' },
                                                     { value: 'A5', label: 'A5 · Dọc' },
@@ -439,25 +362,35 @@ export function BookCreateDialog() {
                                         </FieldLabel>
                                     </Field>
                                     {format === 'CUSTOM' && (
-                                        <Field orientation="contents">
-                                            <FieldLabel htmlFor="new-book-aspect">
-                                                Tỉ lệ cao / rộng
-                                                <Input
-                                                    id="new-book-aspect"
-                                                    type="number"
-                                                    min="0.2"
-                                                    max="5"
-                                                    step="any"
-                                                    required
-                                                    value={aspect}
-                                                    onChange={(event) =>
-                                                        setAspect(event.target.value)
-                                                    }
-                                                />
-                                            </FieldLabel>
-                                        </Field>
+                                        <BookSizeFields
+                                            className="col-span-full"
+                                            idPrefix="new-book"
+                                            width={width}
+                                            height={height}
+                                            onWidthChange={(value) => {
+                                                setWidth(value);
+                                                setDetectedPage(null);
+                                            }}
+                                            onHeightChange={(value) => {
+                                                setHeight(value);
+                                                setDetectedPage(null);
+                                            }}
+                                        />
                                     )}
                                 </div>
+                                {format === 'CUSTOM' && (
+                                    <p className="mt-2 mb-0 text-muted-foreground text-xs leading-relaxed">
+                                        {detectedPage !== null
+                                            ? `Đã lấy kích thước từ trang PDF ${detectedPage}. Bạn có thể chỉnh lại trước khi tạo.`
+                                            : 'Nhập kích thước mỗi trang bằng milimét.'}
+                                    </p>
+                                )}
+                                {mode === 'import' && mixedPageSizes && (
+                                    <p className="mt-2 mb-0 text-muted-foreground text-xs leading-relaxed">
+                                        PDF có nhiều khổ trang. Các trang được chọn sẽ được đặt vừa
+                                        khổ sách bên trên.
+                                    </p>
+                                )}
                                 {mode === 'import' && (
                                     <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                                         Ảnh luôn nằm trọn trong khổ sách; phần dư được thêm nền
@@ -509,7 +442,7 @@ export function BookCreateDialog() {
                                 )}
                                 {busy && (
                                     <div
-                                        className="creation-progress mt-0 flex items-center gap-3 text-[length:14px] text-primary [&_small]:mt-[6px] [&_small]:block [&_small]:text-muted-foreground"
+                                        className="creation-progress mt-0 flex items-center gap-3 text-[length:14px] text-primary [&_small]:mt-[6px] [&_small]:block [&_small]:text-current"
                                         role="status"
                                     >
                                         <LoaderCircle
@@ -558,8 +491,7 @@ export function BookCreateDialog() {
                                         aria-busy={busy}
                                         disabled={
                                             preparing ||
-                                            (mode === 'import' &&
-                                                (!source || Boolean(rangeError))) ||
+                                            (mode === 'import' && (!source || !selection.length)) ||
                                             busy
                                         }
                                     >

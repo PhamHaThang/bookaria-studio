@@ -1,10 +1,21 @@
 import { GlobalWorkerOptions, getDocument, version } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { canvasFile, type ImportSource, MAX_IMPORT_PAGES, pageFit } from './import-source';
+import {
+    canvasFile,
+    type ImportProgress,
+    type ImportSource,
+    MAX_IMPORT_PAGES,
+    pageFit,
+} from './import-source';
+import { type PageSizeMm, pdfPageSizeMm } from './page-size';
 
 GlobalWorkerOptions.workerSrc = workerUrl;
 
-export async function preparePdf(file: File, signal: AbortSignal): Promise<ImportSource> {
+export async function preparePdf(
+    file: File,
+    signal: AbortSignal,
+    onProgress?: ImportProgress,
+): Promise<ImportSource> {
     const base = `${import.meta.env.BASE_URL}vendor/pdfjs/${version}/`;
     const task = getDocument({
         data: new Uint8Array(await file.arrayBuffer()),
@@ -29,6 +40,8 @@ export async function preparePdf(file: File, signal: AbortSignal): Promise<Impor
             throw new Error(
                 `PDF cần có từ 1 đến ${MAX_IMPORT_PAGES} trang. Hãy tách tài liệu lớn trước khi nhập.`,
             );
+        onProgress?.(0, document.numPages);
+        const pageSizesMm: PageSizeMm[] = [];
         // Validate page geometry without retaining full rendered images in memory.
         for (let index = 1; index <= document.numPages; index++) {
             signal.throwIfAborted();
@@ -36,7 +49,9 @@ export async function preparePdf(file: File, signal: AbortSignal): Promise<Impor
             const view = page.getViewport({ scale: 1 });
             if (!Number.isFinite(view.width + view.height) || view.width <= 0 || view.height <= 0)
                 throw new Error(`Trang ${index} có kích thước không hợp lệ.`);
+            pageSizesMm.push(pdfPageSizeMm(view.width, view.height));
             page.cleanup();
+            onProgress?.(index, document.numPages);
         }
         async function renderCanvas(index: number, aspect?: number) {
             const page = await document.getPage(index + 1);
@@ -70,12 +85,34 @@ export async function preparePdf(file: File, signal: AbortSignal): Promise<Impor
         first.width = first.height = 0;
         signal.throwIfAborted();
         signal.removeEventListener('abort', abort);
+        const thumbnails = new Map<number, string>([[0, preview]]);
+        // Render visible thumbnails one at a time, keeping memory bounded for large PDFs.
+        let queue: Promise<unknown> = Promise.resolve();
         return {
             kind: 'pdf',
             name: file.name,
             count: document.numPages,
             preview,
             labels: Array.from({ length: document.numPages }, (_, i) => `Trang PDF ${i + 1}`),
+            pageSizesMm,
+            thumbnail(index, signal) {
+                const result = queue.then(async () => {
+                    signal.throwIfAborted();
+                    const cached = thumbnails.get(index);
+                    if (cached) return cached;
+                    const canvas = await renderCanvas(index);
+                    try {
+                        signal.throwIfAborted();
+                        const url = canvas.toDataURL('image/jpeg', 0.8);
+                        thumbnails.set(index, url);
+                        return url;
+                    } finally {
+                        canvas.width = canvas.height = 0;
+                    }
+                });
+                queue = result.catch(() => undefined);
+                return result;
+            },
             dispose: () => {
                 void task.destroy();
             },

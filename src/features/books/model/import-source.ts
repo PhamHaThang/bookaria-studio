@@ -1,3 +1,5 @@
+import type { PageSizeMm } from './page-size';
+
 export const MAX_IMPORT_PAGES = 100;
 export interface ImportSource {
     kind: 'pdf' | 'images';
@@ -5,8 +7,25 @@ export interface ImportSource {
     count: number;
     preview: string;
     labels: string[];
+    /** Displayed page dimensions in PDF order, including rotation and crop box. */
+    pageSizesMm?: PageSizeMm[];
+    thumbnail: (index: number, signal: AbortSignal) => Promise<string>;
     render: (index: number, aspect: number) => Promise<File>;
     dispose: () => void;
+}
+export type ImportProgress = (current: number, total: number) => void;
+
+/** Keep previous selections, ignore the same file selected again, then validate the combined batch. */
+export function mergeImageFiles(existing: File[], incoming: File[]) {
+    const files = new Map<string, File>();
+    for (const file of [...existing, ...incoming]) {
+        const key = JSON.stringify([file.name, file.size, file.lastModified, file.type]);
+        if (!files.has(key)) files.set(key, file);
+    }
+    const result = validateImportFiles([...files.values()]);
+    if (result.kind !== 'images')
+        throw new Error('Chọn ảnh JPG/PNG. Dùng Đổi tài liệu để chọn PDF.');
+    return result.files;
 }
 
 export function selectedPages(value: string, count: number): number[] {
@@ -86,44 +105,63 @@ export async function canvasFile(canvas: HTMLCanvasElement, name: string) {
     return new File([blob], name, { type: 'image/jpeg' });
 }
 
-export async function prepareImport(input: File[], signal: AbortSignal): Promise<ImportSource> {
+async function readImage(file: File) {
+    try {
+        return await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch {
+        throw new Error(`Không đọc được ảnh “${file.name}”. Hãy kiểm tra hoặc chọn ảnh khác.`);
+    }
+}
+
+export async function prepareImport(
+    input: File[],
+    signal: AbortSignal,
+    onProgress?: ImportProgress,
+): Promise<ImportSource> {
     const { kind, files } = validateImportFiles(input);
     signal.throwIfAborted();
     if (kind === 'pdf') {
         const { preparePdf } = await import('./pdf-import');
         signal.throwIfAborted();
-        return preparePdf(files[0], signal);
+        return preparePdf(files[0], signal, onProgress);
     }
     // Decode one image at a time; validate every source before creating a book.
-    let preview = '';
+    const previews: string[] = [];
+    onProgress?.(0, files.length);
     for (const [index, file] of files.entries()) {
-        const image = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        const image = await readImage(file);
         try {
             signal.throwIfAborted();
             if (image.width * image.height > 40_000_000)
                 throw new Error(`Ảnh “${file.name}” quá lớn (tối đa 40 megapixel).`);
-            if (index === 0) {
+            {
                 const canvas = document.createElement('canvas');
                 const scale = Math.min(240 / image.width, 320 / image.height);
                 canvas.width = Math.max(1, Math.round(image.width * scale));
                 canvas.height = Math.max(1, Math.round(image.height * scale));
                 canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height);
-                preview = canvas.toDataURL('image/jpeg', 0.8);
+                previews.push(canvas.toDataURL('image/jpeg', 0.8));
                 canvas.width = canvas.height = 0;
             }
         } finally {
             image.close();
         }
+        onProgress?.(index + 1, files.length);
     }
     return {
         kind,
         name: `${files.length} ảnh`,
         count: files.length,
-        preview,
+        preview: previews[0],
         labels: files.map((file) => file.name),
+        async thumbnail(index, signal) {
+            signal.throwIfAborted();
+            if (!previews[index]) throw new Error('Không tìm thấy ảnh xem trước.');
+            return previews[index];
+        },
         dispose: () => undefined,
         async render(index, aspect) {
-            const image = await createImageBitmap(files[index], { imageOrientation: 'from-image' });
+            const image = await readImage(files[index]);
             const canvas = document.createElement('canvas');
             try {
                 const fit = pageFit(image.width, image.height, aspect);

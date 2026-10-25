@@ -8,6 +8,8 @@ import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import type { BookDetail } from '../../../shared/contracts/dto.schema';
 import { Feedback } from '../../../shared/ui/Feedback';
+import { bookPageSize } from '../model/page-size';
+import { BookSizeFields } from './BookSizeFields';
 
 export function BookForm({
     book,
@@ -25,6 +27,8 @@ export function BookForm({
     onDirtyChange?: (dirty: boolean) => void;
 }) {
     const [format, setFormat] = useState(book?.pageFormat || 'A4');
+    const [width, setWidth] = useState(() => String(bookPageSize(book).widthMm));
+    const [height, setHeight] = useState(() => String(bookPageSize(book).heightMm));
     function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (!busy) onSubmit(new FormData(event.currentTarget));
@@ -82,24 +86,14 @@ export function BookForm({
                             </FieldLabel>
                         </Field>
                         {format === 'CUSTOM' && (
-                            <Field orientation="contents">
-                                <FieldLabel htmlFor="pageAspect">
-                                    Tỷ lệ cao / rộng
-                                    <Input
-                                        id="pageAspect"
-                                        name="pageAspect"
-                                        type="number"
-                                        min="0.2"
-                                        max="5"
-                                        step="any"
-                                        defaultValue={book?.pageAspect}
-                                        required
-                                    />
-                                    <span className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
-                                        Ví dụ: 1,5 nếu chiều cao bằng 1,5 lần chiều rộng.
-                                    </span>
-                                </FieldLabel>
-                            </Field>
+                            <BookSizeFields
+                                className="col-span-full"
+                                idPrefix="book-size"
+                                width={width}
+                                height={height}
+                                onWidthChange={setWidth}
+                                onHeightChange={setHeight}
+                            />
                         )}
                         <Field orientation="contents">
                             <FieldLabel htmlFor="language">

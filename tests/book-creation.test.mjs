@@ -3,10 +3,37 @@ import { test } from 'node:test';
 import { AxiosError } from 'axios';
 import { createBookWithPages } from '../src/features/books/model/create-book.ts';
 import {
+    mergeImageFiles,
     pageFit,
     selectedPages,
     validateImportFiles,
 } from '../src/features/books/model/import-source.ts';
+
+test('adding image batches keeps chosen files, deduplicates repeated files and sorts naturally', () => {
+    const first = new File(['first'], '10.png', { type: 'image/png', lastModified: 1 });
+    const same = new File(['first'], '10.png', { type: 'image/png', lastModified: 1 });
+    const second = new File(['second'], '2.png', { type: 'image/png', lastModified: 2 });
+    const previous = [first];
+    assert.deepEqual(mergeImageFiles(previous, [same, second]), [second, first]);
+    assert.deepEqual(previous, [first]);
+});
+
+test('adding a batch applies limits to the combined selection without changing the previous files', () => {
+    const previous = Array.from({ length: 100 }, (_, index) => new File(['x'], `${index}.png`));
+    assert.throws(() => mergeImageFiles(previous, [new File(['y'], 'extra.png')]), /100/);
+    assert.equal(previous.length, 100);
+    assert.throws(
+        () => mergeImageFiles(previous.slice(0, 1), [new File(['x'], 'wrong.webp')]),
+        /PDF, JPG và PNG/,
+    );
+});
+
+test('a new PDF belongs to replacement rather than an appended image selection', () => {
+    assert.throws(() => mergeImageFiles([], [new File(['pdf'], 'book.pdf')]), /Đổi tài liệu/);
+    const first = new File(['a'], 'same.png', { lastModified: 1 });
+    const edited = new File(['b'], 'same.png', { lastModified: 2 });
+    assert.deepEqual(mergeImageFiles([first], [edited]), [first, edited]);
+});
 
 test('PDF ranges deduplicate and preserve document order; blank means every page', () => {
     assert.deepEqual(selectedPages('', 3), [0, 1, 2]);

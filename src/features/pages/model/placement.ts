@@ -14,7 +14,7 @@ export function placementFromForm(form: FormData, page: PageGeometry): MarkerTra
         return Number(text);
     });
     const [x, y, size] = values;
-    const width = pageWidthMm(page.format);
+    const width = pageWidthMm(page.format, page.widthMm);
     const transform = MarkerTransformSchema.parse({
         x: x / width - 0.5,
         y: page.aspect / 2 - y / width,

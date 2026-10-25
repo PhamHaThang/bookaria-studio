@@ -132,7 +132,7 @@ test('page image policy accepts JPG/PNG only up to 10 MB', () => {
 });
 test('millimetre coordinates round trip for all paper formats and enforce print margins', () => {
     for (const format of ['A4', 'A5', 'SQUARE', 'CUSTOM']) {
-        const page = { format, aspect: 1.4 },
+        const page = { format, aspect: 1.4, widthMm: format === 'CUSTOM' ? 300 : undefined },
             form = new FormData();
         form.set('centerX', '60');
         form.set('centerY', '60');

@@ -2,11 +2,16 @@ import {
     CreateBookBodySchema,
     UpdateBookBodySchema,
 } from '../../../shared/contracts/api/books.schema';
+import { customBookSize } from './page-size';
 
 function fields(form: FormData, editing: boolean) {
     const text = (key: string) => String(form.get(key) ?? '');
     const age = (key: string) =>
         text(key) === '' ? (editing ? null : undefined) : Number(text(key));
+    const dimensions =
+        text('pageFormat') === 'CUSTOM' && (form.has('pageWidthMm') || form.has('pageHeightMm'))
+            ? customBookSize(text('pageWidthMm'), text('pageHeightMm'))
+            : undefined;
     return {
         title: text('title'),
         description: text('description'),
@@ -16,9 +21,11 @@ function fields(form: FormData, editing: boolean) {
         language: text('language'),
         pageFormat: text('pageFormat'),
         pageAspect:
-            text('pageFormat') === 'CUSTOM' && text('pageAspect') !== ''
+            dimensions?.pageAspect ??
+            (text('pageFormat') === 'CUSTOM' && text('pageAspect') !== ''
                 ? Number(text('pageAspect'))
-                : undefined,
+                : undefined),
+        pageWidthMm: dimensions?.pageWidthMm,
     };
 }
 export function createBookForm(form: FormData) {

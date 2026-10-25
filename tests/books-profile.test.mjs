@@ -108,6 +108,19 @@ test('create form enforces custom ratio and age order using backend schema', () 
     assert.throws(() => createBookForm(form({ ageMin: '10', ageMax: '5' })));
     assert.equal(createBookForm(form({ pageFormat: 'CUSTOM', pageAspect: '1.5' })).pageAspect, 1.5);
 });
+test('book forms use width and height fields, retain legacy ratios and ignore custom sizes for fixed formats', () => {
+    const custom = form({ pageFormat: 'CUSTOM', pageWidthMm: '180', pageHeightMm: '270' });
+    assert.equal(createBookForm(custom).pageWidthMm, 180);
+    assert.equal(updateBookForm(custom).pageAspect, 1.5);
+    assert.throws(() =>
+        updateBookForm(form({ pageFormat: 'CUSTOM', pageWidthMm: '180', pageHeightMm: '' })),
+    );
+    assert.equal(
+        createBookForm(form({ pageFormat: 'A4', pageWidthMm: '5000', pageHeightMm: '-1' }))
+            .pageWidthMm,
+        undefined,
+    );
+});
 test('clearing ages in edit sends null to remove previous values', () => {
     const body = updateBookForm(form());
     assert.equal(body.ageMin, null);

@@ -57,7 +57,11 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
     });
     const scoring = Boolean(jobId) && !['SUCCEEDED', 'FAILED'].includes(job.data?.status || '');
     const locked = busy || imageBusy || scoring || sceneBusy;
-    const geometry = { format: book.pageFormat, aspect: book.pageAspect };
+    const geometry = {
+        format: book.pageFormat,
+        aspect: book.pageAspect,
+        widthMm: book.pageWidthMm,
+    };
     const transform =
         page.bookariaMarker?.transform || defaultMarkerTransform(geometry, page.orderIndex);
     const mm = markerToMm(transform, geometry);
