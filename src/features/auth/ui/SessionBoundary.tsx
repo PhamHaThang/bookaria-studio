@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { protectedLogin } from '../model/dialog';
 import { auth, useAuth } from '../model/session';
@@ -12,12 +13,12 @@ export function SessionBoundary() {
     }, []);
     if (status === 'loading')
         return (
-            <main
-                className="session-state mx-auto my-[12vh] max-w-130 p-8 text-center"
-                role="status"
-            >
-                <p>Đang kiểm tra phiên đăng nhập…</p>
-                <Link to="/">Về trang chủ</Link>
+            <main id="main">
+                <LoadingScreen fullScreen message="Đang kiểm tra phiên đăng nhập…">
+                    <Link className="text-muted-foreground text-sm underline" to="/">
+                        Về trang chủ
+                    </Link>
+                </LoadingScreen>
             </main>
         );
     if (status === 'error')

@@ -15,7 +15,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { AdminAccess } from '@/features/admin/AdminAccess';
 import { BookariaLogo } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
-import { LoadingState } from '@/shared/ui/LoadingState';
+import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import {
     Sidebar,
     SidebarContent,
@@ -111,7 +111,7 @@ export function AdminLayout() {
                         </SidebarContent>
                     </Sidebar>
                     <main id="main" className="admin-main min-w-0 flex-1 px-8 pt-9 pb-15">
-                        <Suspense fallback={<LoadingState>Đang mở trang quản trị…</LoadingState>}>
+                        <Suspense fallback={<LoadingScreen message="Đang mở trang quản trị…" />}>
                             <Outlet />
                         </Suspense>
                     </main>

@@ -3,7 +3,7 @@ import { type CSSProperties, Suspense } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { StudioStorageUsage } from '@/features/profile/ui/StudioStorageUsage';
 import { Alert } from '@/shared/ui/Alert';
-import { LoadingState } from '@/shared/ui/LoadingState';
+import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { Separator } from '@/shared/ui/primitives/separator';
 import {
     Sidebar,
@@ -30,7 +30,7 @@ export function StudioLayout() {
     if (editing)
         return (
             <main id="main" className="studio-editor-root min-h-[100dvh] bg-surface">
-                <Suspense fallback={<LoadingState layout="editor">Đang mở editor…</LoadingState>}>
+                <Suspense fallback={<LoadingScreen fullScreen message="Đang mở editor…" />}>
                     <Outlet />
                 </Suspense>
             </main>
@@ -145,7 +145,7 @@ export function StudioLayout() {
                             </div>
                         </Alert>
                     )}
-                    <Suspense fallback={<LoadingState>Đang mở trang…</LoadingState>}>
+                    <Suspense fallback={<LoadingScreen message="Đang mở trang…" />}>
                         <Outlet />
                     </Suspense>
                 </main>

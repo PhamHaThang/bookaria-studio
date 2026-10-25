@@ -8,7 +8,7 @@ import { errorMessage } from '../shared/api/errors';
 import { IdSchema } from '../shared/contracts/common.schema';
 import { Button } from '../shared/ui/Button';
 import { Feedback } from '../shared/ui/Feedback';
-import { LoadingState } from '../shared/ui/LoadingState';
+import { LoadingScreen } from '../shared/ui/LoadingScreen';
 
 /** Resolve the current first page on demand; opening an editor never creates a page. */
 function BookEditorContent({ bookId }: { bookId: string }) {
@@ -43,7 +43,8 @@ function BookEditorContent({ bookId }: { bookId: string }) {
                 </div>
             </div>
         );
-    if (book.isPending || !entry || !book.data) return <LoadingState>Đang mở editor…</LoadingState>;
+    if (book.isPending || !entry || !book.data)
+        return <LoadingScreen fullScreen message="Đang mở editor…" />;
     if (entry === 'empty') return <EmptyBookEditor book={book.data} />;
 
     const firstPage = book.data.pages.reduce<(typeof book.data.pages)[number] | undefined>(

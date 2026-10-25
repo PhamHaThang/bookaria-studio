@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -601,7 +602,7 @@ function PageDetailContent({ bookId, pageId }: { bookId: string; pageId: string 
             </>
         );
     if (!page.data || !book.data)
-        return <LoadingState layout="editor">Đang tải trang sách…</LoadingState>;
+        return <LoadingScreen fullScreen message="Đang tải trang sách…" />;
     return (
         <>
             {(page.isError || book.isError) && (

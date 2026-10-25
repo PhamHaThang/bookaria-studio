@@ -2,15 +2,53 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="/favicon.ico" sizes="48x48" />
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico?v=adaptive-1" sizes="48x48" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=adaptive-1" sizes="any" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
     <title>Bookaria Studio</title>
+    <style>
+      #root > .app-boot {
+        box-sizing: border-box;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 32px;
+        padding: 48px 24px;
+        background: #fff;
+        color: #626262;
+        font: 14px/1.6 "Be Vietnam Pro", "Segoe UI", sans-serif;
+        text-align: center;
+      }
+      .app-boot-brand { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+      .app-boot img { display: block; height: auto; }
+      .app-boot p { margin: 0; }
+      @keyframes bookaria-loading-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.45; }
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .app-boot-brand { animation: bookaria-loading-pulse 1.8s ease-in-out infinite; }
+      }
+      body { margin: 0; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main id="main" class="app-boot" role="status" aria-busy="true">
+        <div class="app-boot-brand" aria-hidden="true">
+          <img src="/brand/bookaria-symbol.svg" alt="" width="96" height="49" />
+        </div>
+        <p>Đang mở Bookaria…</p>
+      </main>
+    </div>
+    <noscript>
+      <style>#root > .app-boot { display: none; }</style>
+      <p>Bạn cần bật JavaScript để sử dụng Bookaria.</p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

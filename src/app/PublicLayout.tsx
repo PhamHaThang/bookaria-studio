@@ -1,6 +1,6 @@
 import { Suspense, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { LoadingState } from '@/shared/ui/LoadingState';
+import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { PublicHeader } from './PublicHeader';
 import { SiteFooter } from './SiteFooter';
 
@@ -38,7 +38,7 @@ export function PublicLayout() {
                 tabIndex={-1}
                 className="public-main mx-auto w-full max-w-320 flex-1 px-8 py-12"
             >
-                <Suspense fallback={<LoadingState>Đang mở trang…</LoadingState>}>
+                <Suspense fallback={<LoadingScreen message="Đang mở trang…" />}>
                     <Outlet />
                 </Suspense>
             </main>
