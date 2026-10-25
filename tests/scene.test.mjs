@@ -40,6 +40,8 @@ test('all seven authoring object types use backend defaults and valid stable ids
             kinds[type] ? asset(kinds[type]) : undefined,
         );
         assert.equal(validatedScene(addObject(empty(), object)).objects[0].type, type);
+        assert.equal(object.snapToPaper, false);
+        assert.deepEqual(object.transform.position, [0, 0, 0]);
         if (type === 'model') assert.deepEqual(object.transform.rotation, [90, 0, 0]);
     }
     assert.throws(() => newObject('text', 'invalid id'));
@@ -208,4 +210,34 @@ test('lost write response reconciliation never silently accepts different remote
     assert.equal(reconcileSave(attempt, { scene: empty(), revision: 2 }), 'retry');
     assert.equal(reconcileSave(attempt, { scene: empty(), revision: 3 }), 'conflict');
     assert.throws(() => reconcileSave(attempt, { scene, revision: 1 }), /phiên bản cũ/);
+});
+
+test('scene round trips use the new snapping default and preserve explicit legacy choices', () => {
+    const omitted = newObject('text', 'missing-snap');
+    delete omitted.snapToPaper;
+    const pinned = { ...newObject('text', 'legacy-pinned'), snapToPaper: true };
+    const free = {
+        ...newObject('text', 'free-object'),
+        transform: { position: [0.1, 0.2, 0.5], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    };
+    const parsed = validatedScene({
+        schemaVersion: 1,
+        objects: [omitted, pinned, free],
+        interactions: [],
+    });
+    assert.deepEqual(
+        parsed.objects.map((object) => object.snapToPaper),
+        [false, true, false],
+    );
+    const saved = validatedScene(JSON.parse(JSON.stringify(parsed)));
+    assert.deepEqual(saved, parsed);
+    assert.deepEqual(saved.objects[2].transform.position, [0.1, 0.2, 0.5]);
+    assert.equal(
+        duplicateObject(saved, 'legacy-pinned', 'pinned-copy').objects.at(-1).snapToPaper,
+        true,
+    );
+    assert.equal(
+        duplicateObject(saved, 'free-object', 'free-copy').objects.at(-1).snapToPaper,
+        false,
+    );
 });

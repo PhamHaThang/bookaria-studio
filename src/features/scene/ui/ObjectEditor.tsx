@@ -16,6 +16,7 @@ import { Feedback } from '../../../shared/ui/Feedback';
 import { assetKeys, assetsApi } from '../../assets';
 import { useAuth } from '../../auth';
 import { objectLabels } from '../model/objects';
+import { withObjectPosition, withPaperSnap } from '../model/transforms';
 import { NumericField, VectorFields } from './NumericField';
 
 export function ObjectEditor({
@@ -266,7 +267,6 @@ export function ObjectEditor({
                                     [
                                         ['visible', 'Hiện khi mở trang'],
                                         ['billboard', 'Luôn hướng về camera'],
-                                        ['snapToPaper', 'Bám mặt giấy'],
                                         ['editorHidden', 'Ẩn khỏi sơ đồ chỉnh sửa'],
                                     ] as const
                                 ).map(([key, label]) => (
@@ -302,6 +302,23 @@ export function ObjectEditor({
                                 Tâm trang là (0, 0, 0). Một đơn vị bằng chiều rộng trang; X sang
                                 phải, Y lên trên, Z nhô khỏi giấy. Góc xoay tính bằng độ.
                             </p>
+                            <Field className="mb-4 gap-2">
+                                <FieldLabel className="mb-0">
+                                    <span className="flex items-center gap-2 font-normal">
+                                        <Checkbox
+                                            checked={object.snapToPaper}
+                                            onCheckedChange={(checked) =>
+                                                onChange(withPaperSnap(object, checked === true))
+                                            }
+                                        />
+                                        Bám mặt giấy (Z = 0)
+                                    </span>{' '}
+                                </FieldLabel>
+                                <p className="m-0 text-muted-foreground text-xs">
+                                    Kéo trục Z hoặc nhập độ cao để di chuyển trong 3D. Chọn Phối
+                                    cảnh để dễ kéo Z.
+                                </p>
+                            </Field>
                             {(['position', 'rotation', 'scale'] as const).map((key) => (
                                 <VectorFields
                                     key={key}
@@ -314,9 +331,14 @@ export function ObjectEditor({
                                         }[key]
                                     }
                                     values={object.transform[key]}
-                                    onChange={(values) =>
-                                        patch({ transform: { ...object.transform, [key]: values } })
-                                    }
+                                    onChange={(values) => {
+                                        if (key === 'position')
+                                            onChange(withObjectPosition(object, values));
+                                        else
+                                            patch({
+                                                transform: { ...object.transform, [key]: values },
+                                            });
+                                    }}
                                 />
                             ))}
                         </div>

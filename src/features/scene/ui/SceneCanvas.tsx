@@ -13,7 +13,7 @@ import type { Scene, SceneObject } from '../../../shared/contracts/scene.schema'
 import { createFrontGuide } from '../model/front-guide';
 import { objectLabels } from '../model/objects';
 import { wrapText } from '../model/text';
-import { safeTransform } from '../model/transforms';
+import { objectFromGizmo } from '../model/transforms';
 
 type Mode = 'translate' | 'rotate' | 'scale';
 type Props = {
@@ -381,6 +381,7 @@ export function SceneCanvas(props: Props) {
                     visible: _v,
                     locked: _l,
                     editorHidden: _h,
+                    snapToPaper: _snap,
                     ...content
                 } = spec;
                 const asset = 'assetId' in spec ? value.assets[spec.assetId] : undefined;
@@ -427,7 +428,7 @@ export function SceneCanvas(props: Props) {
                 !value.disabled
             ) {
                 if (controls.object !== selected.root) controls.attach(selected.root);
-                controls.showZ = !(selected.spec.snapToPaper && controls.mode === 'translate');
+                controls.showZ = true;
             } else controls.detach();
             if (selected?.root.visible) {
                 outline.setFromObject(selected.root);
@@ -441,7 +442,8 @@ export function SceneCanvas(props: Props) {
                 (object) => object.id === root.userData.objectId,
             );
             if (!spec || spec.locked) return;
-            const transform = safeTransform(
+            const next = objectFromGizmo(
+                spec,
                 {
                     position: root.position.toArray(),
                     rotation: [root.rotation.x, root.rotation.y, root.rotation.z].map(
@@ -449,10 +451,10 @@ export function SceneCanvas(props: Props) {
                     ) as [number, number, number],
                     scale: root.scale.toArray(),
                 },
-                spec.snapToPaper,
                 controls.mode === 'translate',
+                controls.axis,
             );
-            if (transform) latest.current.onChange({ ...spec, transform });
+            if (next) latest.current.onChange(next);
         };
         controls.addEventListener('objectChange', changed);
         controls.addEventListener('mouseDown', () => {

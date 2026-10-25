@@ -8,7 +8,12 @@ import {
     undoHistory,
 } from '../src/features/scene/model/history.ts';
 import { newObject } from '../src/features/scene/model/objects.ts';
-import { safeTransform } from '../src/features/scene/model/transforms.ts';
+import {
+    objectFromGizmo,
+    safeTransform,
+    withObjectPosition,
+    withPaperSnap,
+} from '../src/features/scene/model/transforms.ts';
 
 const scene = () => ({
     schemaVersion: 1,
@@ -66,4 +71,98 @@ test('canvas transform keeps schema degrees, clamps positive scale and snaps onl
     });
     assert.equal(safeTransform(t, true, false).position[2], 1);
     assert.equal(safeTransform({ ...t, position: [NaN, 0, 0] }, false, true), null);
+});
+
+test('lifting Z, XZ, YZ or the free handle unpins existing objects without losing height', () => {
+    const pinned = withPaperSnap(newObject('text', 'lifted'), true);
+    for (const axis of ['Z', 'XZ', 'YZ', 'XYZ']) {
+        const value = { ...pinned.transform, position: [0.1, -0.2, 0.35] };
+        const lifted = objectFromGizmo(pinned, value, true, axis);
+        assert.equal(lifted.snapToPaper, false);
+        assert.deepEqual(lifted.transform.position, [0.1, -0.2, 0.35]);
+        const xy = objectFromGizmo(lifted, { ...value, position: [0.2, 0.1, 0.35] }, true, 'X');
+        assert.equal(xy.transform.position[2], 0.35);
+    }
+    assert.equal(pinned.snapToPaper, true);
+    assert.equal(pinned.transform.position[2], 0);
+});
+
+test('XY remains on paper, and clicking a Z handle without lifting does not unpin', () => {
+    const pinned = withPaperSnap(newObject('text', 'pinned'), true);
+    const moved = objectFromGizmo(
+        pinned,
+        { ...pinned.transform, position: [0.2, 0.1, 0.1] },
+        true,
+        'XY',
+    );
+    assert.deepEqual(moved.transform.position, [0.2, 0.1, 0]);
+    assert.equal(moved.snapToPaper, true);
+    assert.equal(objectFromGizmo(pinned, pinned.transform, true, 'Z').snapToPaper, true);
+});
+
+test('numeric height edits, re-pinning and undo keep snapping and height consistent', () => {
+    const original = withPaperSnap(newObject('text', 'numeric-height'), true);
+    const lifted = withObjectPosition(original, [0.1, 0.2, 0.5]);
+    assert.equal(lifted.snapToPaper, false);
+    const pinned = withPaperSnap(lifted, true);
+    assert.equal(pinned.snapToPaper, true);
+    assert.deepEqual(pinned.transform.position, [0.1, 0.2, 0]);
+    const first = createHistory({ schemaVersion: 1, objects: [lifted], interactions: [] });
+    const history = commitHistory(first, { ...first.present, objects: [pinned] });
+    assert.deepEqual(undoHistory(history).present.objects[0], lifted);
+    assert.deepEqual(redoHistory(undoHistory(history)).present.objects[0], pinned);
+    const invalid = withObjectPosition(original, [0, 0, Number.NaN]);
+    assert.ok(Number.isNaN(invalid.transform.position[2]));
+    assert.equal(objectFromGizmo(original, invalid.transform, true, 'Z'), null);
+});
+
+test('a previously elevated object keeps its stored height on its next XY drag', () => {
+    const old = {
+        ...newObject('text', 'old-height'),
+        snapToPaper: true,
+        transform: { position: [0, 0, 0.4], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    };
+    const result = objectFromGizmo(
+        old,
+        { ...old.transform, position: [0.1, 0.2, 0.4] },
+        true,
+        'XY',
+    );
+    assert.equal(result.snapToPaper, false);
+    assert.equal(result.transform.position[2], 0.4);
+    const rotated = objectFromGizmo(old, { ...old.transform, rotation: [45, 0, 0] }, false, 'X');
+    assert.equal(rotated.snapToPaper, true);
+    assert.equal(rotated.transform.position[2], 0.4);
+});
+
+test('new objects move freely in 3D and stay unpinned when returning to zero height', () => {
+    const original = newObject('text', 'free-height');
+    assert.equal(original.snapToPaper, false);
+    const lifted = objectFromGizmo(
+        original,
+        { ...original.transform, position: [0.1, 0.2, 0.4] },
+        true,
+        'Z',
+    );
+    assert.equal(lifted.snapToPaper, false);
+    const moved = objectFromGizmo(
+        lifted,
+        { ...lifted.transform, position: [0.3, 0.2, 0.4] },
+        true,
+        'XY',
+    );
+    assert.deepEqual(moved.transform.position, [0.3, 0.2, 0.4]);
+    assert.equal(moved.snapToPaper, false);
+    const onPaper = withObjectPosition(moved, [0.3, 0.2, 0]);
+    assert.equal(onPaper.snapToPaper, false);
+    const pinned = withPaperSnap(moved, true);
+    const released = withPaperSnap(pinned, false);
+    assert.equal(released.snapToPaper, false);
+    assert.deepEqual(released.transform.position, [0.3, 0.2, 0]);
+    const history = commitHistory(
+        createHistory({ schemaVersion: 1, objects: [original], interactions: [] }),
+        { schemaVersion: 1, objects: [moved], interactions: [] },
+    );
+    assert.deepEqual(undoHistory(history).present.objects[0], original);
+    assert.deepEqual(redoHistory(undoHistory(history)).present.objects[0], moved);
 });
