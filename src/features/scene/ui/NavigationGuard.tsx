@@ -4,7 +4,17 @@ import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Button } from '../../../shared/ui/Button';
 
-export function NavigationGuard({ dirty, saving }: { dirty: boolean; saving: boolean }) {
+export function NavigationGuard({
+    dirty,
+    saving,
+    title = 'Rời trang đang chỉnh sửa?',
+    dirtyDescription = 'Bạn có thay đổi chưa lưu. Rời trang sẽ bỏ bản đang sửa trên trình duyệt.',
+}: {
+    dirty: boolean;
+    saving: boolean;
+    title?: string;
+    dirtyDescription?: string;
+}) {
     const blocker = useBlocker(
         ({ currentLocation, nextLocation }) =>
             (dirty || saving) && currentLocation.pathname !== nextLocation.pathname,
@@ -26,9 +36,9 @@ export function NavigationGuard({ dirty, saving }: { dirty: boolean; saving: boo
             description={
                 saving
                     ? 'Đang lưu nội dung. Hãy đợi máy chủ phản hồi trước khi rời trang.'
-                    : 'Bạn có thay đổi chưa lưu. Rời trang sẽ bỏ bản đang sửa trên trình duyệt.'
+                    : dirtyDescription
             }
-            title="Rời trang đang chỉnh sửa?"
+            title={title}
             busy={saving}
             onClose={() => blocker.reset()}
         >

@@ -118,6 +118,9 @@ const BooksPage = lazy(() =>
 const BookCreatePage = lazy(() =>
     import('../pages/BookCreatePage').then((module) => ({ default: module.BookCreatePage })),
 );
+const BookEditorPage = lazy(() =>
+    import('../pages/BookEditorPage').then((module) => ({ default: module.BookEditorPage })),
+);
 const BookDetailPage = lazy(() =>
     import('../pages/BookDetailPage').then((module) => ({ default: module.BookDetailPage })),
 );
@@ -242,6 +245,7 @@ const router = createBrowserRouter(
                         />
                         <Route path="/books/trash" element={<BooksPage key="trash" trash />} />
                         <Route path="/books/new" element={<BookCreatePage />} />
+                        <Route path="/books/:bookId/edit" element={<BookEditorPage />} />
                         <Route path="/books/:bookId" element={<BookDetailPage />} />
                         <Route path="/books/:bookId/pages/:pageId" element={<PageDetailPage />} />
                         <Route path="/assets" element={<AssetsPage />} />

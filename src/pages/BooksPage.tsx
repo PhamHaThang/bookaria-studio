@@ -40,6 +40,7 @@ import {
     readBookSearch,
     updateBookSearch,
 } from '../features/books';
+import { BookActionsDialog } from '../features/books/ui/BookActionsDialog';
 import { errorMessage } from '../shared/api/errors';
 import type { BookSummary } from '../shared/contracts/dto.schema';
 import { formatDate } from '../shared/lib/format';
@@ -49,8 +50,10 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
     const { user } = useAuth();
     const [params, setParams] = useSearchParams();
     const query = readBookSearch(params);
+    const createBookTo = { pathname: '/books/new', search: params.toString() };
     const cache = useQueryClient();
     const [deleting, setDeleting] = useState<BookSummary | null>(null);
+    const [actions, setActions] = useState<{ book: BookSummary; opener: HTMLElement } | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const listing = useQuery({
@@ -65,6 +68,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
         mutationFn: (id: string) => booksApi.remove(id),
         onSuccess: async () => {
             setDeleting(null);
+            setActions(null);
             setNotice('Đã chuyển sách vào thùng rác.');
             await cache.invalidateQueries({ queryKey: bookKeys.all });
         },
@@ -111,7 +115,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                 </div>
                 {!trash && (
                     <Button asChild>
-                        <Link to="/books/new">
+                        <Link to={createBookTo}>
                             <Plus data-icon="inline-start" aria-hidden="true" />
                             Tạo sách
                         </Link>
@@ -260,7 +264,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                         </ActionButton>
                                     ) : (
                                         <Button asChild>
-                                            <Link to="/books/new">Tạo sách đầu tiên</Link>
+                                            <Link to={createBookTo}>Tạo sách đầu tiên</Link>
                                         </Button>
                                     ))}
                             </EmptyContent>
@@ -275,7 +279,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         >
                             {!trash && (
                                 <li className="book-create-card min-h-[290px] rounded-[var(--radius-lg)] border border-input border-dashed [&:hover]:bg-selected [&_a]:flex [&_a]:size-full [&_a]:min-h-[290px] [&_a]:flex-col [&_a]:items-center [&_a]:justify-center [&_a]:gap-[14px] [&_a]:p-5 [&_a]:text-primary [&_a]:no-underline">
-                                    <Link to="/books/new">
+                                    <Link to={createBookTo}>
                                         <Plus size={32} aria-hidden="true" />
                                         <span>Tạo sách mới</span>
                                     </Link>
@@ -287,10 +291,28 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                         className={
                                             trash
                                                 ? 'book-row trash-row grid grid-cols-[52px_minmax(0,_1fr)_130px_44px] items-center gap-5 border-b-[1px] border-b-border px-1 py-6 [border-bottom-style:solid] max-[760px]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:gap-[var(--space-3)_var(--space-4)] max-[760px]:px-0 max-[760px]:py-5 [&:hover]:bg-muted [.book-gallery_&]:grid [.book-gallery_&]:grid-cols-[minmax(0,_1fr)_auto] [.book-gallery_&]:items-start [.book-gallery_&]:gap-3 [.book-gallery_&]:overflow-hidden [.book-gallery_&]:rounded-[12px] [.book-gallery_&]:border [.book-gallery_&]:border-border [.book-gallery_&]:border-solid [.book-gallery_&]:bg-surface [.book-gallery_&]:p-3 [.book-row&]:grid-cols-[52px_minmax(0,_1fr)_130px_110px] max-[760px]:[.book-row&]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:[.book-row&]:gap-[var(--space-3)_var(--space-4)] max-[760px]:[.book-row&]:px-0 max-[760px]:[.book-row&]:py-5'
-                                                : 'book-row grid grid-cols-[52px_minmax(0,_1fr)_130px_44px] items-center gap-5 border-b-[1px] border-b-border px-1 py-6 [border-bottom-style:solid] max-[760px]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:gap-[var(--space-3)_var(--space-4)] max-[760px]:px-0 max-[760px]:py-5 [&:hover]:bg-muted [.book-gallery_&]:grid [.book-gallery_&]:grid-cols-[minmax(0,_1fr)_auto] [.book-gallery_&]:items-start [.book-gallery_&]:gap-3 [.book-gallery_&]:overflow-hidden [.book-gallery_&]:rounded-[12px] [.book-gallery_&]:border [.book-gallery_&]:border-border [.book-gallery_&]:border-solid [.book-gallery_&]:bg-surface [.book-gallery_&]:p-3'
+                                                : 'book-row relative grid grid-cols-[52px_minmax(0,_1fr)_130px_44px] items-center gap-5 border-b-[1px] border-b-border px-1 py-6 [border-bottom-style:solid] max-[760px]:grid-cols-[42px_minmax(0,_1fr)_auto] max-[760px]:gap-[var(--space-3)_var(--space-4)] max-[760px]:px-0 max-[760px]:py-5 [&:hover]:bg-muted [.book-gallery_&]:grid [.book-gallery_&]:grid-cols-[minmax(0,_1fr)_auto] [.book-gallery_&]:items-start [.book-gallery_&]:gap-3 [.book-gallery_&]:overflow-hidden [.book-gallery_&]:rounded-[12px] [.book-gallery_&]:border [.book-gallery_&]:border-border [.book-gallery_&]:border-solid [.book-gallery_&]:bg-surface [.book-gallery_&]:p-3'
                                         }
                                         key={book.id}
                                     >
+                                        {!trash && (
+                                            <ActionButton
+                                                variant="plain"
+                                                className="absolute inset-0 size-full cursor-pointer rounded-[inherit]"
+                                                aria-label={`Thao tác với sách: ${book.title}`}
+                                                aria-haspopup="dialog"
+                                                onClick={(event) =>
+                                                    setActions({
+                                                        book,
+                                                        opener: event.currentTarget,
+                                                    })
+                                                }
+                                            >
+                                                <span className="sr-only">
+                                                    Mở lựa chọn cho {book.title}
+                                                </span>
+                                            </ActionButton>
+                                        )}
                                         <CardContent asChild className="p-0">
                                             <div className="book-cover motion-safe:[.book-gallery_.book-row:hover_&_img]:transform-[scale(1.025)] grid h-[66px] w-[50px] overflow-hidden rounded-[var(--radius-sm)] bg-[var(--bg-cover)] text-[var(--text-cover)] [place-items:center] max-[760px]:row-[span_2] max-[760px]:h-[54px] max-[760px]:w-10 [&_img]:size-full [&_img]:object-cover [.book-gallery_&]:col-[1_/_-1] [.book-gallery_&]:row-[1] [.book-gallery_&]:h-[190px] [.book-gallery_&]:w-full [.book-gallery_&]:rounded-[7px] [.book-gallery_&]:bg-[var(--bg-cover)] [.book-gallery_&_img]:object-contain motion-safe:[.book-gallery_&_img]:[transition:transform_180ms_ease-out]">
                                                 {book.coverUrl ? (
@@ -307,15 +329,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                         <CardHeader asChild className="gap-0 p-0">
                                             <div className="book-info [&_h2]:wrap-anywhere min-w-0 max-[760px]:col-[2_/_4] [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h2]:text-[length:var(--text-md)] [&_h2]:leading-[1.4] max-[760px]:[&_h2]:text-[length:var(--text-md)] [&_h2_a:hover]:text-primary [&_h2_a:hover]:underline [&_h2_a]:text-[inherit] [&_h2_a]:no-underline [&_p]:m-0 [&_p]:text-[length:var(--text-xs)] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-xs)] [.book-gallery_&]:col-[1_/_-1] [.book-gallery_&]:row-[2] [.book-gallery_&]:px-[3px] [.book-gallery_&_h2]:mb-[5px] [.book-gallery_&_h2]:text-[length:15px] [.book-gallery_&_h2]:leading-[1.5] [.book-gallery_&_p]:text-[length:11px]">
                                                 <CardTitle asChild>
-                                                    <h2>
-                                                        {trash ? (
-                                                            book.title
-                                                        ) : (
-                                                            <Link to={`/books/${book.id}`}>
-                                                                {book.title}
-                                                            </Link>
-                                                        )}
-                                                    </h2>
+                                                    <h2>{book.title}</h2>
                                                 </CardTitle>
                                                 <CardDescription asChild>
                                                     <p>
@@ -368,7 +382,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                         ) : (
                                             <ActionButton
                                                 variant="plain"
-                                                className="danger-text row-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-destructive max-[760px]:col-[3] max-[760px]:row-[2] max-[760px]:min-h-11 max-[760px]:text-[length:var(--text-xs)] [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_&]:col-[2] [.book-gallery_&]:row-[3] [.book-gallery_&]:self-end [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px] [.book-row_&]:whitespace-nowrap"
+                                                className="danger-text relative row-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-destructive max-[760px]:col-[3] max-[760px]:row-[2] max-[760px]:min-h-11 max-[760px]:text-[length:var(--text-xs)] [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_&]:col-[2] [.book-gallery_&]:row-[3] [.book-gallery_&]:self-end [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px] [.book-row_&]:whitespace-nowrap"
                                                 type="button"
                                                 aria-label={`Chuyển ${book.title} vào thùng rác`}
                                                 onClick={() => {
@@ -424,6 +438,18 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         </PaginationRoot>
                     )}
                 </>
+            )}
+            {actions && (
+                <BookActionsDialog
+                    key={actions.book.id}
+                    book={actions.book}
+                    opener={actions.opener}
+                    onClose={() => setActions(null)}
+                    onDelete={() => {
+                        remove.reset();
+                        setDeleting(actions.book);
+                    }}
+                />
             )}
             {deleting && (
                 <ConfirmationDialog

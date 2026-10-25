@@ -1,13 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, BookOpen, FileUp, LoaderCircle, X } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { Disclosure } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
+import { Progress } from '@/shared/ui/primitives/progress';
 import { RadioGroup, RadioGroupItem } from '@/shared/ui/primitives/radio-group';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
@@ -34,6 +35,8 @@ import { type ImportSource, prepareImport, selectedPages } from '../model/import
 export function BookCreateDialog() {
     const navigate = useNavigate(),
         cache = useQueryClient();
+    const location = useLocation();
+    const returnSearch = useRef(location.search).current;
     const { user } = useAuth();
     const actor = useRef(user?.id),
         alive = useRef(true),
@@ -57,6 +60,7 @@ export function BookCreateDialog() {
         [error, setError] = useState<string | null>(null);
     const [target, setTarget] = useState<string | null>(null);
     const [locked, setLocked] = useState(false);
+    const [completed, setCompleted] = useState(0);
     const checkSession = () => {
         if (!alive.current || auth.store.getState().user?.id !== actor.current)
             throw new Error('Phiên đăng nhập đã thay đổi. Hãy đăng nhập lại để kiểm tra sách.');
@@ -75,9 +79,15 @@ export function BookCreateDialog() {
 
     function close() {
         if (active.current) return;
-        navigate(checkpoint.current.bookId ? `/books/${checkpoint.current.bookId}` : '/books', {
-            replace: true,
-        });
+        navigate(
+            {
+                pathname: checkpoint.current.bookId
+                    ? `/books/${checkpoint.current.bookId}`
+                    : '/books',
+                search: checkpoint.current.bookId ? '' : returnSearch,
+            },
+            { replace: true },
+        );
     }
     async function chooseFiles(files: File[]) {
         if (!files.length || locked || active.current) return;
@@ -115,7 +125,17 @@ export function BookCreateDialog() {
         }
     }
     const count = mode === 'blank' ? 1 : selection.length;
-    const completed = checkpoint.current.pages.filter((page) => page.result).length;
+    const dirty = Boolean(
+        title ||
+            description ||
+            topic ||
+            source ||
+            preparing ||
+            locked ||
+            mode !== 'blank' ||
+            format !== 'A4' ||
+            aspect !== '1.4142',
+    );
     async function submit(event: FormEvent) {
         event.preventDefault();
         if (active.current || preparing || checkpoint.current.uncertain) return;
@@ -157,6 +177,7 @@ export function BookCreateDialog() {
                 onStage: setStage,
                 onCheckpoint: (value) => {
                     checkpoint.current = value;
+                    setCompleted(value.pages.filter((page) => page.result).length);
                 },
                 async upload(file, saved, save) {
                     checkSession();
@@ -207,7 +228,18 @@ export function BookCreateDialog() {
     }
     return (
         <>
-            <NavigationGuard dirty={false} saving={busy} />
+            <NavigationGuard
+                dirty={dirty && !target}
+                saving={busy}
+                title="Rời luồng tạo sách?"
+                dirtyDescription={
+                    checkpoint.current.bookId
+                        ? `Sách và ${completed} trang đã nhập vẫn được giữ. Rời trang sẽ bỏ phần nhập còn lại; bạn chỉ có thể tiếp tục lần nhập này khi ở lại tab hiện tại.`
+                        : checkpoint.current.uncertain
+                          ? 'Máy chủ có thể đã tạo sách. Hãy kiểm tra Sách của tôi trước khi tạo lại để tránh trùng. Thông tin trong hộp thoại này sẽ bị bỏ.'
+                          : 'Thông tin sách và tài liệu bạn đã chọn chưa được lưu. Rời trang sẽ bỏ phần đang nhập.'
+                }
+            />
             <ConfirmDialog
                 title="Tạo sách mới"
                 className="book-create-dialog [&[data-state=open]]:flex [&[data-state=open]]:flex-col [&_>_form]:flex [&_>_form]:min-h-0 [&_>_form]:flex-col [&_>_h2]:mx-0 [&_>_h2]:mt-0 [&_>_h2]:mb-2 [&_>_h2]:pr-17 [&_>_h2]:pl-7 [&_>_h2]:text-[length:var(--text-xl)] max-[600px]:[&_>_h2]:pl-[18px] [.confirm-dialog&]:max-h-[calc(100dvh_-_32px)] [.confirm-dialog&]:w-[min(760px,_calc(100vw_-_32px))] [.confirm-dialog&]:max-w-[calc(100vw_-_32px)] [.confirm-dialog&]:overflow-hidden [.confirm-dialog&]:border-0 [.confirm-dialog&]:border-[transparent] [.confirm-dialog&]:border-solid [.confirm-dialog&]:px-0 [.confirm-dialog&]:pt-7 [.confirm-dialog&]:pb-0 [.confirm-dialog&]:shadow-[var(--shadow-popover)] max-[600px]:[.confirm-dialog&]:max-h-[calc(100dvh_-_16px)] max-[600px]:[.confirm-dialog&]:w-[calc(100vw_-_16px)] max-[600px]:[.confirm-dialog&]:max-w-[calc(100vw_-_16px)] max-[600px]:[.confirm-dialog&]:pt-[22px]"
@@ -433,14 +465,7 @@ export function BookCreateDialog() {
                                     </p>
                                 )}
                                 <Disclosure
-                                    title={
-                                        <>
-                                            Thông tin bổ sung{' '}
-                                            <span className="creation-optional ml-2 font-normal text-[length:12px] text-muted-foreground">
-                                                Không bắt buộc
-                                            </span>
-                                        </>
-                                    }
+                                    title={<>Thông tin bổ sung</>}
                                     className="creation-details mt-6 border-t-[1px] border-t-border pt-[18px] [border-top-style:solid] [&_>_label]:block [&_>_label]:font-semibold [&_>_label]:text-[length:14px] [&_[data-slot=accordion-trigger]]:min-h-[30px] [&_[data-slot=accordion-trigger]]:cursor-pointer [&_[data-slot=accordion-trigger]]:font-semibold [&_[data-slot=accordion-trigger]]:text-[length:14px] [&_label]:mt-[14px]"
                                 >
                                     <Field orientation="contents">
@@ -493,9 +518,23 @@ export function BookCreateDialog() {
                                         />
                                         <span>
                                             {stage}
-                                            <small>Giữ trang này mở đến khi hoàn tất.</small>
+                                            <small>
+                                                {completed}/{count} trang đã hoàn tất. Giữ trang này
+                                                mở đến khi hoàn tất.
+                                            </small>
                                         </span>
                                     </div>
+                                )}
+                                {locked && (
+                                    <Progress
+                                        value={completed}
+                                        max={count}
+                                        className="mt-3"
+                                        aria-label="Tiến độ tạo trang sách"
+                                        getValueLabel={() =>
+                                            `${completed}/${count} trang đã hoàn tất`
+                                        }
+                                    />
                                 )}
                             </div>
                         )}
