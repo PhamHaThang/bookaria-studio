@@ -106,6 +106,7 @@ export function SceneEditor({
         [publicationBusy, setPublicationBusy] = useState(false);
     const [layerSearch, setLayerSearch] = useState('');
     const [pagesBusy, setPagesBusy] = useState(false);
+    const [pagesDirty, setPagesDirty] = useState(false);
     const importFile = useRef<HTMLInputElement>(null);
     const [deleting, setDeleting] = useState<SceneObject | null>(null),
         [resetting, setResetting] = useState(false);
@@ -216,7 +217,12 @@ export function SceneEditor({
             aria-labelledby="scene-heading"
         >
             <NavigationGuard
-                dirty={editor.dirty || settingsDirty || editor.uncertain}
+                dirty={editor.dirty || settingsDirty || editor.uncertain || pagesDirty}
+                dirtyDescription={
+                    pagesDirty
+                        ? 'Tài liệu và tiến độ thêm trang chỉ được giữ trong tab hiện tại. Trang đã thêm vẫn ở trong sách; rời editor sẽ bỏ phần nhập còn lại.'
+                        : undefined
+                }
                 saving={editor.busy || settingsBusy || publicationBusy || pagesBusy}
             />
             <header className="scene-heading editor-header flex flex-wrap items-start justify-between gap-4 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_p]:m-0 [&_p]:text-muted-foreground [.scene-editor_&]:m-0 [.scene-editor_&]:flex [.scene-editor_&]:min-h-19 [.scene-editor_&]:items-center [.scene-editor_&]:gap-[14px] [.scene-editor_&]:border-b-[1px] [.scene-editor_&]:border-b-border [.scene-editor_&]:px-5 [.scene-editor_&]:py-3 [.scene-editor_&]:[border-bottom-style:solid] max-[760px]:[.scene-editor_&]:grid max-[760px]:[.scene-editor_&]:min-h-28 max-[760px]:[.scene-editor_&]:grid-cols-[minmax(0,_1fr)_auto] max-[760px]:[.scene-editor_&]:flex-wrap max-[760px]:[.scene-editor_&]:gap-2 max-[760px]:[.scene-editor_&]:px-3 max-[760px]:[.scene-editor_&]:py-[10px]">
@@ -813,12 +819,12 @@ export function SceneEditor({
                 </div>
             </div>
             <PageStrip
-                bookId={book.id}
+                book={book}
                 pageId={page.id}
-                pageAspect={book.pageAspect}
                 dirty={editor.dirty || settingsDirty}
                 disabled={blocked}
                 onBusyChange={setPagesBusy}
+                onDraftChange={setPagesDirty}
             />
             {helpOpen && (
                 <ConfirmDialog

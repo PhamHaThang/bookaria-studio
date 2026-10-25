@@ -1,4 +1,4 @@
-import { Eye, FileUp, Images, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, FileUp, Images, Trash2 } from 'lucide-react';
 import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../../../shared/api/errors';
 import { Button } from '../../../shared/ui/Button';
@@ -27,11 +27,13 @@ export function BookImportField({
     disabled,
     onChange,
     onBusyChange,
+    allowReorder = false,
 }: {
     value: BookImportValue | null;
     disabled: boolean;
     onChange: (value: BookImportValue | null) => void;
     onBusyChange: (busy: boolean) => void;
+    allowReorder?: boolean;
 }) {
     const input = useRef<HTMLInputElement>(null);
     const host = useRef<HTMLDivElement>(null);
@@ -86,6 +88,10 @@ export function BookImportField({
         setReading(true);
         onBusyChange(true);
         try {
+            const previous =
+                allowReorder && intent.current === 'append' && value?.source.kind === 'images'
+                    ? value.indices.map((index) => files[index])
+                    : [];
             const batch =
                 intent.current === 'append' && value?.source.kind === 'images'
                     ? mergeImageFiles(
@@ -107,11 +113,22 @@ export function BookImportField({
                     initial: Array.from({ length: source.count }, (_, index) => index),
                 });
             } else {
+                const indices = Array.from({ length: source.count }, (_, index) => index);
+                if (previous.length) {
+                    const key = (file: File) =>
+                        JSON.stringify([file.name, file.size, file.lastModified, file.type]);
+                    const positions = new Map(
+                        previous.map((file, position) => [key(file), position]),
+                    );
+                    // Preserve the arranged pages; append newly selected files in natural filename order.
+                    indices.sort(
+                        (a, b) =>
+                            (positions.get(key(batch[a])) ?? previous.length + a) -
+                            (positions.get(key(batch[b])) ?? previous.length + b),
+                    );
+                }
                 setFiles(batch);
-                onChange({
-                    source,
-                    indices: Array.from({ length: source.count }, (_, index) => index),
-                });
+                onChange({ source, indices });
             }
         } catch (cause) {
             if (!active.signal.aborted) setError(errorMessage(cause));
@@ -243,7 +260,9 @@ export function BookImportField({
             {images && (
                 <>
                     <p className="m-0 text-muted-foreground text-xs">
-                        Ảnh được xếp theo tên file. Bấm vào ảnh để xem lớn; xóa ảnh không muốn nhập.
+                        {allowReorder
+                            ? 'Dùng mũi tên để đổi thứ tự trang. Bấm vào ảnh để xem lớn; xóa ảnh không muốn nhập.'
+                            : 'Ảnh được xếp theo tên file. Bấm vào ảnh để xem lớn; xóa ảnh không muốn nhập.'}
                     </p>
                     <div className="grid grid-cols-4 gap-3">
                         {images.indices.map((index, position) => (
@@ -271,10 +290,49 @@ export function BookImportField({
                                 >
                                     {images.source.labels[index]}
                                 </span>
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
                                     <span className="text-muted-foreground text-xs">
                                         Trang {position + 1}
                                     </span>
+                                    {allowReorder && (
+                                        <div className="flex items-center gap-1">
+                                            {([-1, 1] as const).map((direction) => (
+                                                <ActionButton
+                                                    key={direction}
+                                                    variant="ghost"
+                                                    size="icon-xs"
+                                                    aria-label={`${direction === -1 ? 'Đưa lên trước' : 'Đưa ra sau'} ảnh ${images.source.labels[index]}`}
+                                                    disabled={
+                                                        disabled ||
+                                                        reading ||
+                                                        position + direction < 0 ||
+                                                        position + direction >=
+                                                            images.indices.length
+                                                    }
+                                                    onClick={() => {
+                                                        const indices = [...images.indices];
+                                                        [
+                                                            indices[position],
+                                                            indices[position + direction],
+                                                        ] = [
+                                                            indices[position + direction],
+                                                            indices[position],
+                                                        ];
+                                                        onChange({
+                                                            source: images.source,
+                                                            indices,
+                                                        });
+                                                    }}
+                                                >
+                                                    {direction === -1 ? (
+                                                        <ArrowLeft aria-hidden="true" />
+                                                    ) : (
+                                                        <ArrowRight aria-hidden="true" />
+                                                    )}
+                                                </ActionButton>
+                                            ))}
+                                        </div>
+                                    )}
                                     <ActionButton
                                         variant="ghost"
                                         size="icon-xs"

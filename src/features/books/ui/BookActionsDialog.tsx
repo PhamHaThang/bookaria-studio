@@ -211,7 +211,6 @@ export function BookActionsDialog({
                                 Thống kê
                             </Link>
                         </ActionButton>
-                        <Separator className="my-2" />
                         <ActionButton
                             variant="ghost"
                             className="min-h-14 justify-start gap-3 px-3"

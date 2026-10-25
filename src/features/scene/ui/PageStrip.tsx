@@ -1,15 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ImagePlus, MoreHorizontal, Plus, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { MoreHorizontal, Plus, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import { DropdownMenu, DropdownMenuTrigger } from '@/shared/ui/primitives/dropdown-menu';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { errorMessage } from '../../../shared/api/errors';
-import type { Page, PageSummary } from '../../../shared/contracts/dto.schema';
+import type { BookDetail, Page, PageSummary } from '../../../shared/contracts/dto.schema';
 import { Button } from '../../../shared/ui/Button';
 import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
@@ -17,28 +16,27 @@ import { assetKeys } from '../../assets';
 import { auth, useAuth } from '../../auth';
 import { bookKeys } from '../../books';
 import { pageKeys, pagesApi } from '../../pages';
-import { type BlankPageCheckpoint, createBlankPage } from '../../pages/model/blank-page';
-import { type BlankUploadCheckpoint, uploadBlankPage } from '../../pages/model/blank-page-upload';
 import { movedPageIds, uncertainWrite } from '../../pages/model/operations';
-import { PageImageForm } from '../../pages/ui/PageImageForm';
+import { AddPagesDialog } from '../../pages/ui/AddPagesDialog';
 import { PageActionsMenu } from './PageActionsMenu';
 
 export function PageStrip({
-    bookId,
+    book,
     pageId,
-    pageAspect,
     disabled,
     dirty,
     onBusyChange,
+    onDraftChange,
 }: {
-    bookId: string;
+    book: BookDetail;
     pageId: string;
-    pageAspect: number;
     disabled: boolean;
     dirty: boolean;
     onBusyChange: (busy: boolean) => void;
+    onDraftChange: (dirty: boolean) => void;
 }) {
     const { user } = useAuth();
+    const bookId = book.id;
     const cache = useQueryClient(),
         navigate = useNavigate();
     const [busy, setBusy] = useState(false),
@@ -48,13 +46,12 @@ export function PageStrip({
     const [menu, setMenu] = useState<PageSummary | null>(null);
     const [renaming, setRenaming] = useState(false);
     const menuAnchor = useRef<HTMLButtonElement | null>(null);
+    const addAnchor = useRef<HTMLButtonElement | null>(null);
     const [deleting, setDeleting] = useState(false),
-        [addingImage, setAddingImage] = useState(false);
+        [adding, setAdding] = useState(false);
     const [target, setTarget] = useState<string | null>(null);
     const active = useRef(false),
         alive = useRef(true);
-    const blank = useRef<BlankPageCheckpoint>({}),
-        upload = useRef<BlankUploadCheckpoint>({});
     const actor = useRef(user?.id);
     const currentSession = () => alive.current && auth.store.getState().user?.id === actor.current;
     const listing = useQuery({
@@ -73,10 +70,13 @@ export function PageStrip({
     useEffect(() => {
         if (target && !busy && !disabled) navigate(target, { state: { created: true } });
     }, [target, busy, disabled, navigate]);
-    function busyChange(value: boolean) {
-        setBusy(value);
-        onBusyChange(value);
-    }
+    const busyChange = useCallback(
+        (value: boolean) => {
+            setBusy(value);
+            onBusyChange(value);
+        },
+        [onBusyChange],
+    );
     async function refresh() {
         await Promise.all([
             cache.invalidateQueries({ queryKey: bookKeys.all }),
@@ -107,40 +107,6 @@ export function PageStrip({
                 setStage('');
             }
         }
-    }
-    async function addBlank() {
-        await run(async () => {
-            const result = await createBlankPage({
-                bookId,
-                checkpoint: blank.current,
-                onCheckpoint: (value) => {
-                    blank.current = value;
-                },
-                upload: () =>
-                    uploadBlankPage({
-                        aspect: pageAspect,
-                        checkpoint: upload.current,
-                        onCheckpoint: (value) => {
-                            upload.current = value;
-                        },
-                        signal: new AbortController().signal,
-                        onStage: (value) => {
-                            if (!currentSession()) throw new Error('Phiên đăng nhập đã thay đổi.');
-                            setStage(value);
-                        },
-                    }),
-                add: (id, body) => {
-                    if (!currentSession()) throw new Error('Phiên đăng nhập đã thay đổi.');
-                    setStage('Đang thêm trang…');
-                    return pagesApi.add(id, body);
-                },
-            });
-            if (!currentSession()) return;
-            blank.current = {};
-            upload.current = {};
-            void cache.invalidateQueries({ queryKey: assetKeys.all });
-            setTarget(`/books/${bookId}/pages/${result.page.id}`);
-        }, true);
     }
     async function move(page: PageSummary, direction: -1 | 1) {
         await run(async () => {
@@ -251,24 +217,15 @@ export function PageStrip({
                     className="strip-add-page [.editor-page-strip_&]:flex [.editor-page-strip_&]:flex-[0_0_100px] [.editor-page-strip_&]:flex-col [.editor-page-strip_&]:items-center [.editor-page-strip_&]:justify-center [.editor-page-strip_&]:gap-[5px] [.editor-page-strip_&]:text-[length:10px] [.editor-page-strip_&]:no-underline [.editor-page-strip_&_>_span]:[position:static] [.editor-page-strip_a:not(&)]:relative [.editor-page-strip_a:not(&)]:flex [.editor-page-strip_a:not(&)]:h-[70px] [.editor-page-strip_a:not(&)]:flex-[0_0_54px] [.editor-page-strip_a:not(&)]:rounded-[8px] [.editor-page-strip_a:not(&)]:border [.editor-page-strip_a:not(&)]:border-border [.editor-page-strip_a:not(&)]:border-solid [.editor-page-strip_a:not(&)]:bg-muted [.editor-page-strip_a:not(&)]:p-[3px] [.editor-page-strip_a:not(&)]:no-underline [.scene-page-strip_button&]:min-h-18 [.scene-page-strip_button&]:w-19 [.scene-page-strip_button&]:flex-[0_0_76px] [.scene-page-strip_button&]:rounded-[var(--radius-md)] [.scene-page-strip_button&]:border [.scene-page-strip_button&]:border-input [.scene-page-strip_button&]:border-dashed [.scene-page-strip_button&]:bg-muted [.scene-page-strip_button&]:text-primary"
                     type="button"
                     disabled={locked || listing.isPending || listing.isError}
-                    title={dirty ? 'Lưu nội dung trước khi thêm trang' : 'Thêm trang trắng'}
-                    onClick={() => void addBlank()}
-                >
-                    <Plus size={20} aria-hidden="true" />
-                    <span>Thêm trang</span>
-                </ActionButton>
-                <ActionButton
-                    variant="plain"
-                    className="strip-image-page flex shrink-0 items-center gap-[6px] border-0 border-[transparent] border-solid bg-[transparent] p-3 text-[length:12px] text-primary"
-                    type="button"
-                    disabled={locked}
+                    title={dirty ? 'Lưu nội dung trước khi thêm trang' : 'Thêm trang'}
+                    ref={addAnchor}
                     onClick={() => {
-                        setAddingImage(true);
+                        setAdding(true);
                         setError(null);
                     }}
                 >
-                    <ImagePlus size={18} aria-hidden="true" />
-                    <span>Thêm từ ảnh</span>
+                    <Plus size={20} aria-hidden="true" />
+                    <span>Thêm trang</span>
                 </ActionButton>
             </nav>
             {busy && (
@@ -301,9 +258,6 @@ export function PageStrip({
                                 setUncertain(false);
                                 setError(null);
                                 setMenu(null);
-                                setAddingImage(false);
-                                blank.current = {};
-                                upload.current = {};
                             }
                             if (currentSession()) busyChange(false);
                         }}
@@ -419,51 +373,32 @@ export function PageStrip({
                     )}
                 </ConfirmDialog>
             )}
-            {addingImage && (
-                <ConfirmationDialog
-                    title="Thêm trang từ ảnh"
-                    busy={busy}
-                    className="page-actions-dialog max-h-[calc(100dvh_-_32px)] w-[min(480px,_calc(100vw_-_24px))] overflow-y-auto [&_form]:my-5 [&_form_>_.button]:mt-3 max-[760px]:[&_input]:text-[length:16px]"
+            {adding && (
+                <AddPagesDialog
+                    book={book}
+                    disabled={disabled || dirty || uncertain}
+                    opener={addAnchor.current}
+                    onBusyChange={busyChange}
+                    onDraftChange={onDraftChange}
                     onClose={() => {
-                        if (!busy) setAddingImage(false);
+                        setAdding(false);
+                        void refresh();
+                        void cache.invalidateQueries({ queryKey: assetKeys.all });
                     }}
-                >
-                    <PageImageForm
-                        title="Ảnh trang"
-                        action="Thêm trang và mở editor"
-                        disabled={disabled || uncertain || dirty}
-                        onBusyChange={busyChange}
-                        onUploaded={() => {
-                            void cache.invalidateQueries({ queryKey: assetKeys.all });
-                        }}
-                        onAttach={async (asset, form) => {
-                            if (!currentSession()) throw new Error('Phiên đăng nhập đã thay đổi.');
-                            try {
-                                const result = await pagesApi.add(bookId, {
-                                    imageAssetId: asset.id,
-                                    title: String(form.get('title') || '').trim() || undefined,
-                                });
-                                if (currentSession()) {
-                                    await refresh();
-                                    setTarget(`/books/${bookId}/pages/${result.page.id}`);
-                                }
-                            } catch (cause) {
-                                if (currentSession() && uncertainWrite(cause)) setUncertain(true);
-                                throw cause;
-                            }
-                        }}
-                    >
-                        <Field orientation="contents">
-                            <FieldLabel htmlFor="image-page-title">
-                                Tên trang (không bắt buộc)
-                                <Input id="image-page-title" name="title" maxLength={150} />
-                            </FieldLabel>
-                        </Field>
-                    </PageImageForm>
-                    <Button variant="ghost" disabled={busy} onClick={() => setAddingImage(false)}>
-                        Đóng
-                    </Button>
-                </ConfirmationDialog>
+                    onComplete={async (id) => {
+                        await refresh();
+                        void cache.invalidateQueries({ queryKey: assetKeys.all });
+                        if (currentSession()) {
+                            setAdding(false);
+                            setTarget(`/books/${bookId}/pages/${id}`);
+                        }
+                    }}
+                    onInspect={async () => {
+                        await refresh();
+                        void cache.invalidateQueries({ queryKey: assetKeys.all });
+                        if (currentSession()) setAdding(false);
+                    }}
+                />
             )}
         </div>
     );
