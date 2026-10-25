@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { FolderOpen, Plus, Search } from 'lucide-react';
+import { FolderOpen, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { FilterBar } from '@/shared/ui/FilterBar';
@@ -21,6 +21,7 @@ import {
     PaginationItem,
     Pagination as PaginationRoot,
 } from '@/shared/ui/primitives/pagination';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import {
     AssetThumbnail,
     assetKeys,
@@ -67,21 +68,18 @@ function AssetFilters({
             }}
         >
             <FieldGroup className="contents">
-                <Field orientation="contents">
-                    <FieldLabel className="asset-search-label" htmlFor="asset-search">
+                <Field className="block min-w-0">
+                    <FieldLabel htmlFor="asset-search" className="m-0">
                         Tìm tài nguyên
-                        <span className="search-field flex flex-[1] items-center gap-3 rounded-[var(--radius-md)] border border-input border-solid bg-surface px-3 py-0 max-[760px]:col-[1_/_-1] [&_input:not([type=checkbox])]:m-0 [&_input:not([type=checkbox])]:min-w-0 [&_input:not([type=checkbox])]:border-0 [&_input:not([type=checkbox])]:border-[transparent] [&_input:not([type=checkbox])]:border-solid [&_input:not([type=checkbox])]:bg-[transparent] [&_input:not([type=checkbox])]:px-0 [&_input:not([type=checkbox])]:py-3 [&_svg]:shrink-0 [&_svg]:text-muted-foreground [.asset-filters_&]:mt-2 [.asset-filters_&_input:not([type=checkbox])]:min-h-[calc(var(--control-height)_-_2_*_var(--border-width))] [.asset-filters_&_input:not([type=checkbox])]:py-2 [.books-toolbar_&]:border-0 [.books-toolbar_&]:border-[transparent] [.books-toolbar_&]:border-solid">
-                            <Search size={18} aria-hidden="true" />
-                            <Input
-                                id="asset-search"
-                                name="q"
-                                type="search"
-                                defaultValue={query.q || ''}
-                                maxLength={100}
-                                placeholder="Tìm theo tên tài nguyên"
-                            />
-                        </span>
                     </FieldLabel>
+                    <SearchInput
+                        className="mt-2"
+                        id="asset-search"
+                        name="q"
+                        defaultValue={query.q || ''}
+                        maxLength={100}
+                        placeholder="Tìm theo tên tài nguyên"
+                    />
                 </Field>
                 <div>
                     <Field orientation="contents">

@@ -5,7 +5,7 @@ import { FormSelect } from '@/shared/ui/FormSelect';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import { libraryKeys, readLibrarySearch } from '../features/admin/library-model';
 import { CategorySelect, libraryApi } from '../features/admin/library-ui';
 import { AdminPager, AdminReload } from '../features/admin/ui';
@@ -49,17 +49,17 @@ export function AdminLibraryPage() {
                 }}
             >
                 <FieldGroup className="contents">
-                    <Field orientation="contents">
-                        <FieldLabel htmlFor="library-q">
+                    <Field className="block w-auto min-w-0 flex-[1_1_150px] max-[640px]:w-full max-[640px]:flex-auto">
+                        <FieldLabel htmlFor="library-q" className="m-0">
                             Tên tài nguyên
-                            <Input
-                                id="library-q"
-                                name="q"
-                                type="search"
-                                maxLength={100}
-                                defaultValue={query.q}
-                            />
                         </FieldLabel>
+                        <SearchInput
+                            className="mt-2"
+                            id="library-q"
+                            name="q"
+                            maxLength={100}
+                            defaultValue={query.q}
+                        />
                     </Field>
                     <Field orientation="contents">
                         <FieldLabel htmlFor="library-type">

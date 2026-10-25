@@ -5,7 +5,7 @@ import { Button } from '@/shared/ui/Button';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import { libraryFields, readLibrarySearch } from '../features/admin/library-model';
 import {
     LibraryConfirm,
@@ -141,17 +141,17 @@ export function AdminLibraryNewPage() {
                 }}
             >
                 <FieldGroup className="contents">
-                    <Field orientation="contents">
-                        <FieldLabel htmlFor="promote-q">
+                    <Field className="block w-auto min-w-0 flex-[1_1_150px] max-[640px]:w-full max-[640px]:flex-auto">
+                        <FieldLabel htmlFor="promote-q" className="m-0">
                             Tìm tài nguyên cá nhân
-                            <Input
-                                name="q"
-                                id="promote-q"
-                                type="search"
-                                maxLength={100}
-                                defaultValue={query.q}
-                            />
                         </FieldLabel>
+                        <SearchInput
+                            className="mt-2"
+                            name="q"
+                            id="promote-q"
+                            maxLength={100}
+                            defaultValue={query.q}
+                        />
                     </Field>
                     <Button type="submit">Tìm tài nguyên</Button>
                 </FieldGroup>

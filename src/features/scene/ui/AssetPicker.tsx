@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Box, Info, Plus, RefreshCw, Search, Trash2, Upload, X } from 'lucide-react';
+import { Box, Info, Plus, RefreshCw, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Badge } from '@/shared/ui/primitives/badge';
@@ -17,12 +17,6 @@ import {
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import {
-    InputGroup,
-    InputGroupAddon,
-    InputGroupButton,
-    InputGroupInput,
-} from '@/shared/ui/primitives/input-group';
-import {
     Popover,
     PopoverContent,
     PopoverDescription,
@@ -33,6 +27,7 @@ import {
 import { Skeleton } from '@/shared/ui/primitives/skeleton';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset } from '../../../shared/contracts/dto.schema';
 import type { AssetType } from '../../../shared/contracts/enums.schema';
@@ -200,45 +195,24 @@ export function AssetPicker({
                     <FieldLabel htmlFor="scene-asset-search" className="sr-only">
                         Tìm tài nguyên
                     </FieldLabel>
-                    <InputGroup>
-                        <InputGroupInput
-                            id="scene-asset-search"
-                            type="search"
-                            placeholder="Tìm theo tên tài nguyên…"
-                            maxLength={100}
-                            value={search}
-                            disabled={blocked}
-                            className="[&::-webkit-search-cancel-button]:appearance-none"
-                            onChange={(event) => setSearch(event.currentTarget.value)}
-                            onKeyDown={(event) => {
-                                if (event.key === 'Enter') {
-                                    event.preventDefault();
-                                    setQuery(search.trim());
-                                }
-                            }}
-                        />
-                        <InputGroupAddon align="inline-start">
-                            <Search aria-hidden="true" />
-                        </InputGroupAddon>
-                        {(search || (list.isFetching && !list.isFetchingNextPage)) && (
-                            <InputGroupAddon align="inline-end">
-                                {(search.trim() !== query ||
-                                    (list.isFetching && !list.isFetchingNextPage)) && (
-                                    <Spinner aria-hidden="true" />
-                                )}
-                                {search && (
-                                    <InputGroupButton
-                                        size="icon-xs"
-                                        aria-label="Xóa từ khóa"
-                                        disabled={blocked}
-                                        onClick={clearSearch}
-                                    >
-                                        <X />
-                                    </InputGroupButton>
-                                )}
-                            </InputGroupAddon>
-                        )}
-                    </InputGroup>
+                    <SearchInput
+                        id="scene-asset-search"
+                        placeholder="Tìm theo tên tài nguyên…"
+                        maxLength={100}
+                        value={search}
+                        disabled={blocked}
+                        loading={
+                            search.trim() !== query || (list.isFetching && !list.isFetchingNextPage)
+                        }
+                        onValueChange={setSearch}
+                        onClear={clearSearch}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                                event.preventDefault();
+                                setQuery(search.trim());
+                            }
+                        }}
+                    />
                 </Field>
                 <Field className="w-60 shrink-0">
                     <FieldLabel className="sr-only" htmlFor="scene-asset-category">

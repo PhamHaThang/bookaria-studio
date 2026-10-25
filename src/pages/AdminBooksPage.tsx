@@ -5,7 +5,7 @@ import { FormSelect } from '@/shared/ui/FormSelect';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import {
     adminApi,
     adminDate,
@@ -125,17 +125,17 @@ export function AdminBooksPage() {
                 }}
             >
                 <FieldGroup className="contents">
-                    <Field orientation="contents">
-                        <FieldLabel htmlFor="admin-book-q">
+                    <Field className="block w-auto min-w-0 flex-[1_1_150px] max-[640px]:w-full max-[640px]:flex-auto">
+                        <FieldLabel htmlFor="admin-book-q" className="m-0">
                             Tên sách
-                            <Input
-                                id="admin-book-q"
-                                name="q"
-                                type="search"
-                                defaultValue={query.q}
-                                maxLength={100}
-                            />
                         </FieldLabel>
+                        <SearchInput
+                            className="mt-2"
+                            id="admin-book-q"
+                            name="q"
+                            defaultValue={query.q}
+                            maxLength={100}
+                        />
                     </Field>
                     <Field orientation="contents">
                         <FieldLabel htmlFor="admin-book-visibility">

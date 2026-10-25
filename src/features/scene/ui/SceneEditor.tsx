@@ -40,6 +40,7 @@ import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset, BookDetail, Page } from '../../../shared/contracts/dto.schema';
 import {
@@ -628,18 +629,16 @@ export function SceneEditor({
                         <h3 id="layers-heading">
                             Đối tượng <span>{editor.draft.objects.length}</span>
                         </h3>
-                        <Field orientation="contents">
-                            <FieldLabel className="layer-search mx-1 mt-0 mb-[14px] [&_input]:min-h-[34px] [&_input]:px-2 [&_input]:py-[6px] [&_input]:text-[length:12px]">
-                                <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
-                                    Tìm đối tượng
-                                </span>
-                                <Input
-                                    type="search"
-                                    placeholder="Tìm đối tượng…"
-                                    value={layerSearch}
-                                    onChange={(event) => setLayerSearch(event.currentTarget.value)}
-                                />
+                        <Field className="mx-1 mb-3 block w-auto">
+                            <FieldLabel htmlFor="scene-object-search" className="sr-only">
+                                Tìm đối tượng
                             </FieldLabel>
+                            <SearchInput
+                                id="scene-object-search"
+                                placeholder="Tìm đối tượng…"
+                                value={layerSearch}
+                                onValueChange={setLayerSearch}
+                            />
                         </Field>
                         <div className="mb-3 flex flex-wrap items-center gap-2">
                             <Button variant="ghost" disabled={blocked} onClick={chooseAll}>

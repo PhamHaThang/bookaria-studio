@@ -5,7 +5,7 @@ import { Button } from '@/shared/ui/Button';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import { useAuth } from '../features/auth';
 import { bookKeys, booksApi, readBookSearch } from '../features/books';
 import { errorMessage } from '../shared/api/errors';
@@ -59,17 +59,17 @@ export function StatsBooksPage() {
                 }}
             >
                 <FieldGroup className="contents">
-                    <Field orientation="contents">
-                        <FieldLabel htmlFor="stats-book-search">
+                    <Field className="block w-auto min-w-50 flex-1 max-[640px]:min-w-0">
+                        <FieldLabel htmlFor="stats-book-search" className="m-0">
                             Tìm sách của tôi
-                            <Input
-                                id="stats-book-search"
-                                name="q"
-                                type="search"
-                                maxLength={100}
-                                defaultValue={query.q || ''}
-                            />
                         </FieldLabel>
+                        <SearchInput
+                            className="mt-2"
+                            id="stats-book-search"
+                            name="q"
+                            maxLength={100}
+                            defaultValue={query.q || ''}
+                        />
                     </Field>
                     <Button type="submit">Tìm sách</Button>
                 </FieldGroup>

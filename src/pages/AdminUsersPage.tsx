@@ -5,7 +5,7 @@ import { FormSelect } from '@/shared/ui/FormSelect';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import {
     adminApi,
     adminDate,
@@ -54,17 +54,17 @@ export function AdminUsersPage() {
                 }}
             >
                 <FieldGroup className="contents">
-                    <Field orientation="contents">
-                        <FieldLabel htmlFor="admin-user-q">
+                    <Field className="block w-auto min-w-0 flex-[1_1_150px] max-[640px]:w-full max-[640px]:flex-auto">
+                        <FieldLabel htmlFor="admin-user-q" className="m-0">
                             Tên hoặc email
-                            <Input
-                                type="search"
-                                name="q"
-                                id="admin-user-q"
-                                maxLength={100}
-                                defaultValue={query.q}
-                            />
                         </FieldLabel>
+                        <SearchInput
+                            className="mt-2"
+                            name="q"
+                            id="admin-user-q"
+                            maxLength={100}
+                            defaultValue={query.q}
+                        />
                     </Field>
                     <Field orientation="contents">
                         <FieldLabel htmlFor="admin-user-role">

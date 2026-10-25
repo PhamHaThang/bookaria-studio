@@ -18,6 +18,7 @@ import {
     PaginationItem,
     Pagination as PaginationRoot,
 } from '@/shared/ui/primitives/pagination';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import { discoveryApi } from '../features/discovery';
 import { PublicBooks } from '../features/discovery/PublicBooks';
 import { readDiscoverySearch, updateDiscoverySearch } from '../features/discovery/search';
@@ -73,17 +74,18 @@ export function ExplorePage() {
                 }}
             >
                 <FieldGroup className="contents">
-                    <Field orientation="contents">
-                        <FieldLabel className="discovery-search col-[span_2] max-[640px]:col-[auto]">
+                    <Field className="col-span-2 block min-w-0 max-[640px]:col-auto">
+                        <FieldLabel htmlFor="explore-book-search" className="m-0">
                             Tên sách
-                            <Input
-                                name="q"
-                                type="search"
-                                maxLength={100}
-                                defaultValue={query.q || ''}
-                                placeholder="Tìm theo tên sách"
-                            />
                         </FieldLabel>
+                        <SearchInput
+                            className="mt-2"
+                            id="explore-book-search"
+                            name="q"
+                            maxLength={100}
+                            defaultValue={query.q || ''}
+                            placeholder="Tìm theo tên sách"
+                        />
                     </Field>
                     <Field orientation="contents">
                         <FieldLabel>

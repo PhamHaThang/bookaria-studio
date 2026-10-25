@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { BookOpen, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/shared/ui/Badge';
@@ -26,12 +26,12 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
 import {
     PaginationContent,
     PaginationItem,
     Pagination as PaginationRoot,
 } from '@/shared/ui/primitives/pagination';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import { useAuth } from '../features/auth';
 import {
     bookKeys,
@@ -142,7 +142,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         ]}
                     />
                     <form
-                        className="books-toolbar mb-6 flex items-center gap-3 rounded-[8px] border border-border border-solid bg-surface p-2 max-[760px]:grid max-[760px]:grid-cols-[minmax(0,_1fr)_auto] max-[700px]:flex-wrap max-[760px]:gap-3 [&_[data-slot=select-trigger]]:min-h-9 [&_[data-slot=select-trigger]]:text-[length:12px] [&_input]:min-h-9 [&_input]:text-[length:12px] [&_label]:m-0 [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
+                        className="books-toolbar mb-6 flex items-center gap-3 rounded-[8px] border border-border border-solid bg-surface p-2 max-[760px]:grid max-[760px]:grid-cols-[minmax(0,_1fr)_auto] max-[700px]:flex-wrap max-[760px]:gap-3 [&_[data-slot=select-trigger]]:min-h-9 [&_[data-slot=select-trigger]]:text-[length:12px] [&_label]:m-0 [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
                         key={`${query.q}-${query.sort}`}
                         onSubmit={(event) => {
                             event.preventDefault();
@@ -154,24 +154,17 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         }}
                     >
                         <FieldGroup className="contents">
-                            <Field orientation="contents">
-                                <FieldLabel
-                                    className="search-field flex flex-[1] items-center gap-3 rounded-[var(--radius-md)] border border-input border-solid bg-surface px-3 py-0 max-[760px]:col-[1_/_-1] [&_input:not([type=checkbox])]:m-0 [&_input:not([type=checkbox])]:min-w-0 [&_input:not([type=checkbox])]:border-0 [&_input:not([type=checkbox])]:border-[transparent] [&_input:not([type=checkbox])]:border-solid [&_input:not([type=checkbox])]:bg-[transparent] [&_input:not([type=checkbox])]:px-0 [&_input:not([type=checkbox])]:py-3 [&_svg]:shrink-0 [&_svg]:text-muted-foreground [.asset-filters_&]:mt-2 [.asset-filters_&_input:not([type=checkbox])]:min-h-[calc(var(--control-height)_-_2_*_var(--border-width))] [.asset-filters_&_input:not([type=checkbox])]:py-2 [.books-toolbar_&]:border-0 [.books-toolbar_&]:border-[transparent] [.books-toolbar_&]:border-solid"
-                                    htmlFor="book-search"
-                                >
-                                    <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
-                                        Tìm sách
-                                    </span>
-                                    <Search size={18} aria-hidden="true" />
-                                    <Input
-                                        id="book-search"
-                                        name="q"
-                                        type="search"
-                                        defaultValue={query.q}
-                                        maxLength={100}
-                                        placeholder="Tìm theo tên sách"
-                                    />
+                            <Field className="block min-w-0 flex-1 max-[760px]:col-span-full">
+                                <FieldLabel htmlFor="book-search" className="sr-only">
+                                    Tìm sách
                                 </FieldLabel>
+                                <SearchInput
+                                    id="book-search"
+                                    name="q"
+                                    defaultValue={query.q}
+                                    maxLength={100}
+                                    placeholder="Tìm theo tên sách"
+                                />
                             </Field>
                             <Field orientation="contents">
                                 <FieldLabel
