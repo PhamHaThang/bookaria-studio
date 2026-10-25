@@ -10,6 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-grou
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import type { Page } from '../../../shared/contracts/dto.schema';
 import type { Scene, SceneObject } from '../../../shared/contracts/scene.schema';
+import { createFrontGuide } from '../model/front-guide';
 import { objectLabels } from '../model/objects';
 import { wrapText } from '../model/text';
 import { safeTransform } from '../model/transforms';
@@ -74,8 +75,18 @@ export function SceneCanvas(props: Props) {
         const themeColor = (token: string) => new THREE.Color(theme.getPropertyValue(token).trim());
         scene.background = themeColor('--editor-ground');
         const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100);
-        camera.position.set(0, -0.9, 2.2);
+        // Frame the whole page and its front guide without changing scene coordinates.
+        const stageDistance = () => {
+            const tangent = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+            return Math.max(
+                2.2,
+                ((latest.current.aspect + 0.6) / (2 * tangent)) * 1.1,
+                0.65 / (camera.aspect * tangent),
+            );
+        };
+        camera.position.set(0, -0.9, stageDistance());
         const orbit = new OrbitControls(camera, renderer.domElement);
+        orbit.target.set(0, -0.18, 0);
         orbit.enableDamping = true;
         orbit.minDistance = 0.15;
         orbit.maxDistance = 15;
@@ -91,7 +102,7 @@ export function SceneCanvas(props: Props) {
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.domElement.setAttribute(
             'aria-label',
-            'Canvas 3D: chọn đối tượng, kéo trục để chỉnh; kéo vùng trống để xoay góc nhìn',
+            'Canvas 3D: chọn đối tượng, kéo trục để chỉnh; kéo vùng trống để xoay góc nhìn. Nhãn FRONT đánh dấu hướng trước ở mép dưới trang.',
         );
         renderer.domElement.tabIndex = 0;
         element.append(renderer.domElement);
@@ -109,6 +120,14 @@ export function SceneCanvas(props: Props) {
         grid.rotation.x = Math.PI / 2;
         grid.position.z = -0.008;
         scene.add(grid);
+        const frontGuide = createFrontGuide(latest.current.aspect, {
+            surface: theme.getPropertyValue('--bg-surface').trim(),
+            foreground: theme.getPropertyValue('--text-primary').trim(),
+            border: theme.getPropertyValue('--border-default').trim(),
+            font: theme.getPropertyValue('--font-body').trim(),
+            anisotropy: renderer.capabilities.getMaxAnisotropy(),
+        });
+        if (frontGuide) scene.add(frontGuide.mesh);
         const paper = new THREE.Mesh(
             new THREE.PlaneGeometry(1, latest.current.aspect),
             new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
@@ -514,12 +533,22 @@ export function SceneCanvas(props: Props) {
                 sync();
             },
             view(view) {
-                const distance = Math.max(1.6, latest.current.aspect * 1.5);
-                orbit.target.set(0, 0, 0);
-                if (view === 'front') camera.position.set(0, 0, distance);
-                else if (view === 'side') camera.position.set(distance, 0, 0.01);
-                else camera.position.set(distance * 0.65, -distance * 0.65, distance);
+                // Clear the last orbit/pan gesture before applying an exact preset.
+                const damping = orbit.enableDamping;
+                orbit.enableDamping = false;
                 orbit.update();
+                const distance = stageDistance();
+                orbit.target.set(0, -0.18, 0);
+                if (view === 'front') camera.position.set(0, orbit.target.y, distance);
+                else if (view === 'side') camera.position.set(distance, orbit.target.y, 0.01);
+                else
+                    camera.position.set(
+                        distance * 0.65,
+                        orbit.target.y - distance * 0.65,
+                        distance,
+                    );
+                orbit.update();
+                orbit.enableDamping = damping;
             },
             focus() {
                 const selected = latest.current.selectedId
@@ -548,6 +577,7 @@ export function SceneCanvas(props: Props) {
             orbit.dispose();
             for (const node of nodes.values()) node.dispose();
             draco.dispose();
+            frontGuide?.dispose();
             paper.material.map?.dispose();
             paper.geometry.dispose();
             paper.material.dispose();
