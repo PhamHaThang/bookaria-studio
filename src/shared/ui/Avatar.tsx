@@ -4,7 +4,7 @@ export function Avatar({ url }: { url: string | null }) {
     return (
         <AvatarRoot className="account-avatar size-8" aria-hidden="true">
             {url && <AvatarImage src={url} alt="" />}
-            <AvatarFallback>
+            <AvatarFallback className="bg-surface text-primary">
                 <UserRound size={18} />
             </AvatarFallback>
         </AvatarRoot>

@@ -99,6 +99,7 @@ function SignedInActions({
                         variant="ghost"
                         size={variant === 'compact' ? 'icon' : 'default'}
                         className={cn(
+                            'group/account focus-visible:bg-primary focus-visible:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground',
                             variant === 'full' && 'max-w-68 justify-start gap-3 px-2 py-1.5',
                         )}
                         data-account-variant={variant}
@@ -139,7 +140,7 @@ function SignedInActions({
                                 <span className="block truncate font-semibold text-sm">
                                     {user.displayName}
                                 </span>
-                                <span className="mt-0.5 block truncate font-normal text-muted-foreground text-xs">
+                                <span className="mt-0.5 block truncate font-normal text-muted-foreground text-xs transition-colors group-hover/account:text-primary-foreground group-focus-visible/account:text-primary-foreground group-data-[state=open]/account:text-primary-foreground">
                                     {user.email}
                                 </span>
                             </span>
