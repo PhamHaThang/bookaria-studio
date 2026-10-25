@@ -185,7 +185,7 @@ export function BookActionsDialog({
                             asChild
                         >
                             <Link to={`/books/${book.id}/edit`}>
-                                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-primary">
                                     <Pencil aria-hidden="true" />
                                 </span>
                                 Mở editor
@@ -199,7 +199,7 @@ export function BookActionsDialog({
                                 onInfo();
                             }}
                         >
-                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-primary">
                                 <FileText aria-hidden="true" />
                             </span>
                             Thông tin sách
@@ -210,7 +210,7 @@ export function BookActionsDialog({
                             asChild
                         >
                             <Link to={`/books/${book.id}/stats`}>
-                                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-primary">
                                     <ChartNoAxesCombined aria-hidden="true" />
                                 </span>
                                 Thống kê
@@ -225,7 +225,7 @@ export function BookActionsDialog({
                                 setError(null);
                             }}
                         >
-                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-primary">
                                 <Type aria-hidden="true" />
                             </span>
                             Đổi tên
