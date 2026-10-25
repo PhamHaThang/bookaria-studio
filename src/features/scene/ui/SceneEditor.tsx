@@ -1029,6 +1029,9 @@ export function SceneEditor({
             {picker && (
                 <AssetPicker
                     type={objectAssetTypes[picker.type]}
+                    usedAssetIds={editor.draft.objects.flatMap((object) =>
+                        'assetId' in object ? [object.assetId] : [],
+                    )}
                     onClose={() => setPicker(null)}
                     onChoose={(asset) => {
                         setAssets((current) => ({ ...current, [asset.id]: asset }));
