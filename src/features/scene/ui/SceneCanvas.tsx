@@ -14,6 +14,13 @@ import { createFrontGuide } from '../model/front-guide';
 import { objectLabels } from '../model/objects';
 import { wrapText } from '../model/text';
 import { objectFromGizmo } from '../model/transforms';
+import {
+    createViewGizmoProjection,
+    rotateSceneView,
+    setAxisView,
+    type ViewGizmoController,
+} from '../model/view-gizmo';
+import { SceneViewGizmo } from './SceneViewGizmo';
 
 type Mode = 'translate' | 'rotate' | 'scale';
 type Props = {
@@ -39,6 +46,8 @@ type Node = {
 
 export function SceneCanvas(props: Props) {
     const host = useRef<HTMLDivElement>(null),
+        gizmoHost = useRef<HTMLFieldSetElement>(null),
+        gizmoController = useRef<ViewGizmoController | null>(null),
         latest = useRef(props);
     latest.current = props;
     const api = useRef<{
@@ -94,6 +103,50 @@ export function SceneCanvas(props: Props) {
             LEFT: THREE.MOUSE.ROTATE,
             MIDDLE: THREE.MOUSE.DOLLY,
             RIGHT: THREE.MOUSE.PAN,
+        };
+        const viewGizmo = gizmoHost.current
+            ? createViewGizmoProjection(gizmoHost.current, camera)
+            : null;
+        function stopOrbitMomentum() {
+            const damping = orbit.enableDamping;
+            const position = camera.position.clone();
+            const target = orbit.target.clone();
+            orbit.enableDamping = false;
+            orbit.update();
+            // Flush internal deltas, then retain the view the user was actually seeing.
+            camera.position.copy(position);
+            orbit.target.copy(target);
+            orbit.update();
+            orbit.enableDamping = damping;
+        }
+        gizmoController.current = {
+            begin() {
+                if (disposed || dragging) return false;
+                stopOrbitMomentum();
+                orbit.enabled = false;
+                return true;
+            },
+            rotate(dx, dy) {
+                if (disposed || dragging) return;
+                rotateSceneView(
+                    camera,
+                    orbit.target,
+                    dx,
+                    dy,
+                    orbit.minPolarAngle,
+                    orbit.maxPolarAngle,
+                );
+                orbit.update();
+            },
+            axis(axis) {
+                if (disposed || dragging) return;
+                stopOrbitMomentum();
+                setAxisView(camera, orbit.target, axis);
+                orbit.update();
+            },
+            end() {
+                if (!disposed) orbit.enabled = !dragging;
+            },
         };
         const controls = new TransformControls(camera, renderer.domElement);
         controls.setSize(0.8);
@@ -524,6 +577,7 @@ export function SceneCanvas(props: Props) {
                 : undefined;
             if (selected && outline.visible) outline.setFromObject(selected.root);
             renderer.render(scene, camera);
+            viewGizmo?.update();
         }
         api.current = {
             sync,
@@ -536,9 +590,7 @@ export function SceneCanvas(props: Props) {
             },
             view(view) {
                 // Clear the last orbit/pan gesture before applying an exact preset.
-                const damping = orbit.enableDamping;
-                orbit.enableDamping = false;
-                orbit.update();
+                stopOrbitMomentum();
                 const distance = stageDistance();
                 orbit.target.set(0, -0.18, 0);
                 if (view === 'front') camera.position.set(0, orbit.target.y, distance);
@@ -550,7 +602,6 @@ export function SceneCanvas(props: Props) {
                         distance,
                     );
                 orbit.update();
-                orbit.enableDamping = damping;
             },
             focus() {
                 const selected = latest.current.selectedId
@@ -573,6 +624,8 @@ export function SceneCanvas(props: Props) {
             disposed = true;
             cancelAnimationFrame(frame);
             api.current = null;
+            gizmoController.current = null;
+            viewGizmo?.dispose();
             resize.disconnect();
             controls.detach();
             controls.dispose();
@@ -695,6 +748,13 @@ export function SceneCanvas(props: Props) {
                     className="scene-three-host absolute top-0 right-0 bottom-0 left-0 [touch-action:none] [&_canvas]:block [&_canvas]:size-full"
                     ref={host}
                 />
+                {!failure && (
+                    <SceneViewGizmo
+                        key={`${props.page.id}:${props.page.image.url}:${props.aspect}`}
+                        hostRef={gizmoHost}
+                        controller={gizmoController}
+                    />
+                )}
                 {failure && (
                     <p
                         className="canvas-failure absolute top-[35%] right-[10%] bottom-auto left-[10%] bg-surface p-5 text-[length:13px]"
