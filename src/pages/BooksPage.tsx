@@ -487,6 +487,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                 type="button"
                                 disabled={remove.isPending}
                                 onClick={() => {
+                                    setNotice(null);
                                     void remove.mutateAsync(deleting.id).catch(() => undefined);
                                 }}
                             >

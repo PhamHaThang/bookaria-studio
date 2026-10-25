@@ -128,7 +128,10 @@ export function AdminJobsPage() {
             )}
             {accepted && (
                 <section className="admin-section mt-8" aria-label="Tác vụ vừa được nhận">
-                    <Feedback success="Máy chủ đã nhận yêu cầu thử lại. Tác vụ mới chưa được xác nhận hoàn tất." />
+                    <Feedback
+                        successMode="inline"
+                        success="Máy chủ đã nhận yêu cầu thử lại. Tác vụ mới chưa được xác nhận hoàn tất."
+                    />
                     <p>
                         Mã mới: <code className="admin-id wrap-anywhere">{accepted.next}</code>
                     </p>

@@ -31,7 +31,7 @@ export function CheckEmail({ onContinue, continueLabel, ...props }: EmailDialogP
                     )}
                 </DialogDescription>
             </DialogHeader>
-            <Feedback error={request.error} success={success} />
+            <Feedback error={request.error} success={success} successMode="inline" />
             <div className="flex flex-col gap-3">
                 {!user?.emailVerified && (
                     <Button

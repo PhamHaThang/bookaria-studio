@@ -116,6 +116,7 @@ export function AuthForm({
             <Feedback
                 error={request.error || (mode === 'login' ? session.message : null)}
                 success={success}
+                successMode="inline"
             />
             {!(mode === 'reset' && success) && (
                 <form onSubmit={submit} aria-busy={request.busy}>

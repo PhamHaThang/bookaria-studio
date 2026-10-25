@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -26,20 +26,34 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
     const { user } = useAuth(),
         cache = useQueryClient(),
         location = useLocation();
+    const navigate = useNavigate();
     const [busy, setBusy] = useState(false),
         [imageBusy, setImageBusy] = useState(false);
     const [stage, setStage] = useState<string | null>(null),
         [progress, setProgress] = useState(0);
     const [error, setError] = useState<string | null>(null),
         [notice, setNotice] = useState<string | null>(
-            location.state?.created
-                ? page.markerMode === 'NONE' &&
-                  Array.isArray(location.state?.warnings) &&
-                  location.state.warnings.includes('NO_MARKER_AVAILABLE')
-                    ? 'Đã thêm trang sách. Chưa có marker Bookaria khả dụng; bạn có thể dùng ảnh trang để nhận diện.'
-                    : 'Đã thêm trang sách.'
-                : null,
+            location.state?.created ? 'Đã thêm trang sách.' : null,
         );
+    const [createdWarning] = useState<string | null>(() =>
+        location.state?.created &&
+        page.markerMode === 'NONE' &&
+        Array.isArray(location.state?.warnings) &&
+        location.state.warnings.includes('NO_MARKER_AVAILABLE')
+            ? 'Chưa có marker Bookaria khả dụng; bạn có thể dùng ảnh trang để nhận diện.'
+            : null,
+    );
+    // Consume the one-time navigation result so reload/back does not replay an old success.
+    useEffect(() => {
+        if (!location.state?.created) return;
+        const state = { ...location.state };
+        delete state.created;
+        delete state.warnings;
+        navigate(
+            { pathname: location.pathname, search: location.search, hash: location.hash },
+            { replace: true, state },
+        );
+    }, [location, navigate]);
     const [mode, setMode] = useState<'content' | 'page'>('content');
     const [sceneBusy, setSceneBusy] = useState(false);
     const [jobId, setJobId] = useState<string | null>(null);
@@ -149,7 +163,11 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                     </p>
                 </div>
             </div>
-            <Feedback error={error} success={notice} />
+            <Feedback
+                error={error}
+                success={notice}
+                warning={page.markerMode === 'NONE' ? createdWarning : null}
+            />
             {[...new Set(page.markerWarnings)].map((warning) => (
                 <p
                     className="page-warning rounded-[var(--radius-sm)] bg-warning px-4 py-3 text-warning-foreground [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mx-0 [.studio-editing_&]:my-1 [.studio-editing_&]:px-[10px] [.studio-editing_&]:py-[5px] [.studio-editing_&]:text-[length:11px]"

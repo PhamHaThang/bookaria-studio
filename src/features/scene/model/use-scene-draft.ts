@@ -26,6 +26,7 @@ export function useSceneDraft(page: Page) {
         [uncertain, setUncertain] = useState<SaveAttempt | null>(null);
     const [error, setError] = useState<string | null>(null),
         [notice, setNotice] = useState<string | null>(null),
+        [warning, setWarning] = useState<string | null>(null),
         [warnings, setWarnings] = useState<SceneWarning[]>([]);
     const active = useRef(false),
         alive = useRef(true),
@@ -78,6 +79,7 @@ export function useSceneDraft(page: Page) {
         setBusy(true);
         setError(null);
         setNotice(null);
+        setWarning(null);
         try {
             const attempt = { scene: validatedScene(draft), revision: base.revision };
             await cache.cancelQueries({ queryKey: pageKeys.detail(user?.id || '', page.id) });
@@ -115,6 +117,7 @@ export function useSceneDraft(page: Page) {
         setBusy(true);
         setError(null);
         setNotice(null);
+        setWarning(null);
         try {
             const remote = await pagesApi.detail(page.id, controller.signal);
             if (!currentSession() || controller.signal.aborted) return;
@@ -131,7 +134,7 @@ export function useSceneDraft(page: Page) {
                     setNotice('Máy chủ đã lưu nội dung. Không gửi lại yêu cầu.');
                 } else if (outcome === 'retry') {
                     setUncertain(null);
-                    setNotice('Máy chủ chưa ghi nhận bản này. Bạn có thể bấm lưu lại.');
+                    setWarning('Máy chủ chưa ghi nhận bản này. Bạn có thể bấm lưu lại.');
                 } else {
                     setUncertain(null);
                     setConflict(true);
@@ -160,6 +163,7 @@ export function useSceneDraft(page: Page) {
         uncertain: Boolean(uncertain),
         error,
         notice,
+        warning,
         warnings,
         save,
         readLatest,

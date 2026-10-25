@@ -47,6 +47,7 @@ export function BookPages({
     const [uncertain, setUncertain] = useState(false),
         [error, setError] = useState<string | null>(null),
         [notice, setNotice] = useState<string | null>(null);
+    const [warning, setWarning] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<PageSummary | null>(null);
     const pages = useQuery({
         queryKey: pageKeys.list(user?.id || '', bookId),
@@ -69,6 +70,7 @@ export function BookPages({
         setBusy(true);
         setError(null);
         setNotice(null);
+        setWarning(null);
         try {
             await action();
             await refresh();
@@ -98,7 +100,7 @@ export function BookPages({
                     {adding ? 'Đóng phần thêm trang' : 'Thêm trang'}
                 </Button>
             </div>
-            <Feedback error={deleting ? null : error} success={notice} />
+            <Feedback error={deleting ? null : error} success={notice} warning={warning} />
             {uncertain && (
                 <Alert tone="warning" className="my-4">
                     <p>
@@ -116,7 +118,7 @@ export function BookPages({
                                 setUncertain(false);
                                 setAdding(false);
                                 setDeleting(null);
-                                setNotice(
+                                setWarning(
                                     'Đã tải lại danh sách. Hãy kiểm tra trang vừa thao tác trước khi thử tiếp.',
                                 );
                             } catch (cause) {

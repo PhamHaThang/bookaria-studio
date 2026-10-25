@@ -374,7 +374,11 @@ export function SceneEditor({
                     Xuất bản
                 </Button>
             </header>
-            <Feedback error={error || editor.error} success={editor.notice} />
+            <Feedback
+                error={error || editor.error}
+                success={editor.notice}
+                warning={editor.warning}
+            />
             {!validation.success && (
                 <Feedback
                     error={`Nội dung chưa hợp lệ${typeof validation.error.issues[0]?.path[1] === 'number' ? ` ở ${validation.error.issues[0].path[0] === 'interactions' ? 'quy tắc' : 'đối tượng'} ${Number(validation.error.issues[0].path[1]) + 1}` : ''}: ${validation.error.issues[0]?.message || 'Kiểm tra các trường đang nhập.'}`}

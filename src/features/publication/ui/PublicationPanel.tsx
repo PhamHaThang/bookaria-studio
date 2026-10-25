@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import type { z } from 'zod';
 import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
@@ -56,6 +57,7 @@ export function PublicationPanel({
     const [confirm, setConfirm] = useState<'publish' | 'unpublish' | 'release' | null>(null);
     const [error, setError] = useState<string | null>(null),
         [notice, setNotice] = useState('');
+    const [warning, setWarning] = useState<string | null>(null);
     const [failedQr, setFailedQr] = useState<string | null>(null);
     const [print, setPrint] = useState<z.input<typeof PrintPdfBodySchema>>({
         kind: 'PRINT',
@@ -129,6 +131,7 @@ export function PublicationPanel({
         setAccepted(false);
         setCheck(null);
         setNotice('');
+        setWarning(null);
         try {
             const result = await api.check(book.id);
             if (session()) setCheck(result);
@@ -157,7 +160,9 @@ export function PublicationPanel({
             if (JSON.stringify(fresh) !== JSON.stringify(check)) {
                 setCheck(fresh);
                 setAccepted(false);
-                setNotice('Kết quả kiểm tra đã thay đổi. Đọc lại lỗi/cảnh báo trước khi xuất bản.');
+                setWarning(
+                    'Kết quả kiểm tra đã thay đổi. Đọc lại lỗi/cảnh báo trước khi xuất bản.',
+                );
                 return;
             }
             await job.start('PUBLISH_BOOK', null, () =>
@@ -165,6 +170,7 @@ export function PublicationPanel({
             );
             if (session()) {
                 setCheck(null);
+                setWarning(null);
                 setAccepted(false);
             }
         } catch (cause) {
@@ -205,7 +211,7 @@ export function PublicationPanel({
     async function copy(value: string) {
         try {
             await navigator.clipboard.writeText(value);
-            if (session()) setNotice('Đã sao chép.');
+            if (session()) toast.success('Đã sao chép.');
         } catch {
             if (session())
                 setError('Chưa sao chép tự động được. Chọn nội dung trong ô rồi sao chép.');
@@ -253,7 +259,7 @@ export function PublicationPanel({
                 Bản nháp đã lưu được đóng thành một phiên bản khi xuất bản. Sửa tiếp bản nháp không
                 thay đổi phiên bản người đọc đang xem.
             </p>
-            <Feedback error={error || job.error} success={notice || null} />
+            <Feedback error={error || job.error} success={notice || null} warning={warning} />
             {unsaved && (
                 <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                     Bạn còn thông tin sách chưa lưu. Lưu thông tin trước khi kiểm tra và xuất bản.
