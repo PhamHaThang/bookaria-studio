@@ -235,7 +235,7 @@ export function AssetPicker({
                         ]}
                     />
                 </Field>
-                <div className="ml-auto flex items-center gap-4">
+                <div className="ml-auto flex shrink-0 items-center gap-4">
                     {type === 'MODEL' && (
                         <Field orientation="horizontal">
                             <Checkbox
@@ -263,24 +263,24 @@ export function AssetPicker({
                     >
                         <RefreshCw />
                     </Button>
+                    {scope === 'mine' && (
+                        <Button
+                            variant="default"
+                            className="shrink-0"
+                            disabled={blocked}
+                            title={importHint[type]}
+                            onClick={openUpload}
+                        >
+                            <Upload data-icon="inline-start" aria-hidden="true" />
+                            Tải lên
+                        </Button>
+                    )}
                 </div>
             </div>
             {categories.isError && (
                 <p className="mb-4 text-muted-foreground text-xs">
                     Chưa tải được danh mục. Bạn vẫn có thể chọn tài nguyên trong danh sách.
                 </p>
-            )}
-            {scope === 'mine' && (
-                <Button
-                    variant="secondary"
-                    className="mb-4 w-full py-3"
-                    disabled={blocked}
-                    onClick={openUpload}
-                >
-                    <Upload data-icon="inline-start" />
-                    {type === 'MODEL' ? 'Tải mô hình 3D của bạn' : 'Tải tài nguyên từ máy'}
-                    <span className="ml-3 font-normal text-xs">{importHint[type]}</span>
-                </Button>
             )}
             {list.isPending && (
                 <div
