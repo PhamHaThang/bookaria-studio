@@ -109,7 +109,7 @@ export function AdminMarkersPage() {
                             </EmptyHeader>
                         </Empty>
                     )}
-                    <AdminPager page={query.page} meta={list.data.meta} />
+                    <AdminPager page={query.page} meta={list.data.meta} busy={list.isFetching} />
                 </>
             )}
             <p className="stats-note max-w-[75ch] text-[length:var(--text-sm)] text-muted-foreground [.admin-form_&]:mb-4">

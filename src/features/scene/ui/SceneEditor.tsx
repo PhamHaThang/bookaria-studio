@@ -350,7 +350,7 @@ export function SceneEditor({
                     aria-label="Chế độ editor"
                 >
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         aria-pressed={panel !== 'preview'}
                         onClick={() => setPanel('properties')}
                     >
@@ -358,7 +358,7 @@ export function SceneEditor({
                         Chỉnh sửa
                     </Button>
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         aria-pressed={panel === 'preview'}
                         onClick={() => setPanel('preview')}
                     >
@@ -368,7 +368,7 @@ export function SceneEditor({
                 </fieldset>
                 <div className="form-actions editor-save-actions mt-3 ml-auto flex flex-wrap flex-nowrap items-center gap-5 gap-[3px] max-[760px]:ml-0 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 [&_>_.button.primary:hover]:bg-hover [&_>_.button.primary]:gap-[7px] [&_>_.button.primary]:border [&_>_.button.primary]:border-border [&_>_.button.primary]:border-solid [&_>_.button.primary]:bg-surface [&_>_.button.primary]:px-[14px] [&_>_.button.primary]:text-[length:12px] [&_>_.button.primary]:text-foreground max-[1100px]:[&_>_.button:nth-child(3)]:hidden max-[1100px]:[&_>_.button:nth-child(4)]:hidden [&_>_.button]:min-w-9 [&_>_.button]:gap-0 [&_>_.button]:p-2 [&_>_.button]:text-[length:0] max-[760px]:[&_>_a]:text-center [&_>_input[hidden]]:hidden [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-editor_&]:w-auto [.scene-editor_&]:flex-row [.scene-editor_&]:flex-nowrap [.scene-editor_&]:items-center max-[760px]:[.scene-editor_&]:col-[1] max-[760px]:[.scene-editor_&]:row-[2] max-[760px]:[.scene-editor_&]:m-0 max-[760px]:[.scene-editor_&]:justify-start max-[760px]:[.scene-editor_&]:gap-[1px] max-[760px]:[.scene-editor_&_>_.button.primary]:gap-0 max-[760px]:[.scene-editor_&_>_.button.primary]:p-[6px] max-[760px]:[.scene-editor_&_>_.button.primary]:text-[length:0] max-[760px]:[.scene-editor_&_>_.button:last-child]:hidden max-[760px]:[.scene-editor_&_>_.button]:min-h-[34px] max-[760px]:[.scene-editor_&_>_.button]:min-w-[30px] max-[760px]:[.scene-editor_&_>_.button]:p-[6px] [.scene-object-asset_&]:gap-2">
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         aria-label="Hoàn tác (Ctrl Z)"
                         title="Hoàn tác (Ctrl Z)"
                         disabled={blocked || !editor.canUndo}
@@ -377,7 +377,7 @@ export function SceneEditor({
                         <Undo2 data-icon="inline-start" />
                     </Button>
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         aria-label="Làm lại (Ctrl Shift Z)"
                         title="Làm lại (Ctrl Shift Z)"
                         disabled={blocked || !editor.canRedo}
@@ -386,7 +386,7 @@ export function SceneEditor({
                         <Redo2 data-icon="inline-start" />
                     </Button>
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         aria-label="Xuất bản sao scene JSON"
                         title="Xuất bản sao scene JSON"
                         onClick={exportScene}
@@ -394,7 +394,7 @@ export function SceneEditor({
                         <Download data-icon="inline-start" />
                     </Button>
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         aria-label="Nhập scene JSON"
                         title="Nhập scene JSON"
                         disabled={blocked}
@@ -447,7 +447,7 @@ export function SceneEditor({
                         <Save data-icon="inline-start" /> Lưu
                     </Button>
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         aria-label="Tải nội dung mới nhất"
                         title="Tải nội dung mới nhất"
                         disabled={blocked}
@@ -504,7 +504,7 @@ export function SceneEditor({
                             </Button>
                         )}
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             disabled={!validation.success || editor.busy}
                             onClick={() => {
                                 if (!validation.success) return;
@@ -559,7 +559,7 @@ export function SceneEditor({
                     ).map((item) => (
                         <Button
                             key={item.type}
-                            variant="ghost"
+                            variant="outline"
                             disabled={
                                 blocked ||
                                 editor.draft.objects.length >= SCENE_LIMITS.hardMaxObjects
@@ -574,7 +574,7 @@ export function SceneEditor({
                         </Button>
                     ))}
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         aria-label="Mở tương tác"
                         title="Tương tác"
                         onClick={() => setPanel('interactions')}
@@ -583,7 +583,7 @@ export function SceneEditor({
                         <span>Tương tác</span>
                     </Button>
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         aria-label="Trang và nhận diện AR"
                         title="Trang và nhận diện AR"
                         disabled={blocked}
@@ -593,7 +593,7 @@ export function SceneEditor({
                         <span>AR Marker</span>
                     </Button>
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         aria-label="Cài đặt trang"
                         title="Cài đặt trang"
                         onClick={() => setPanel('settings')}
@@ -602,7 +602,7 @@ export function SceneEditor({
                         <span>Cài đặt</span>
                     </Button>
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         aria-label="Hướng dẫn editor"
                         title="Hướng dẫn editor"
                         onClick={() => setHelpOpen(true)}
@@ -641,11 +641,11 @@ export function SceneEditor({
                             />
                         </Field>
                         <div className="mb-3 flex flex-wrap items-center gap-2">
-                            <Button variant="ghost" disabled={blocked} onClick={chooseAll}>
+                            <Button variant="outline" disabled={blocked} onClick={chooseAll}>
                                 Chọn tất cả
                             </Button>
                             <Button
-                                variant="ghost"
+                                variant="outline"
                                 disabled={blocked || !activeIds.length}
                                 onClick={() => setSelectedId('')}
                             >
@@ -700,7 +700,7 @@ export function SceneEditor({
                                     </ActionButton>
                                     <div className="scene-layer-actions flex flex-wrap gap-0 px-1 py-1 max-[600px]:justify-end [.scene-editor_&_.button]:min-h-7 [.scene-editor_&_.button]:min-w-11 [.scene-editor_&_.button]:px-[7px] [.scene-editor_&_.button]:py-[3px]">
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             disabled={blocked || object.locked || index === 0}
                                             aria-label={`Đưa đối tượng ${index + 1} lên`}
                                             onClick={() =>
@@ -712,7 +712,7 @@ export function SceneEditor({
                                             <ArrowUp data-icon="inline-start" aria-hidden="true" />
                                         </Button>
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             disabled={
                                                 blocked ||
                                                 object.locked ||
@@ -731,7 +731,7 @@ export function SceneEditor({
                                             />
                                         </Button>
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             disabled={
                                                 blocked ||
                                                 object.locked ||
@@ -750,7 +750,7 @@ export function SceneEditor({
                                             <Copy data-icon="inline-start" aria-hidden="true" />
                                         </Button>
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             disabled={blocked || object.locked}
                                             aria-label={`Xóa đối tượng ${index + 1}`}
                                             onClick={() => setDeleting([object])}
@@ -782,14 +782,14 @@ export function SceneEditor({
                         footer={
                             <div className="editor-footer-actions absolute right-90 bottom-[118px] z-3 flex justify-center gap-2 bg-[transparent] p-0 max-[1100px]:right-80 max-[760px]:justify-center max-[760px]:bg-[var(--editor-ground)] max-[760px]:p-[10px] max-[760px]:[position:static] [.canvas-footer_&]:bg-[transparent] [.canvas-footer_&]:p-0 [.canvas-footer_&]:[position:static] max-[760px]:[.canvas-footer_&]:max-w-full max-[760px]:[.canvas-footer_&]:flex-wrap max-[760px]:[.canvas-footer_&]:justify-center max-[760px]:[.canvas-footer_&_.button]:min-w-0 max-[760px]:[.canvas-footer_&_.button]:px-[9px] max-[760px]:[.canvas-footer_&_.button]:py-[7px] max-[760px]:[.canvas-footer_&_.button]:text-[length:10px] [.scene-editor[data-panel=preview]_&]:hidden [.scene-editor_&_.button]:min-h-9 [.scene-editor_&_.button]:border [.scene-editor_&_.button]:border-border [.scene-editor_&_.button]:border-solid [.scene-editor_&_.button]:bg-surface [.scene-editor_&_.button]:text-[length:11px]">
                                 <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     aria-pressed={layersOpen}
                                     onClick={() => setLayersOpen(!layersOpen)}
                                 >
                                     <Layers data-icon="inline-start" />
                                     Đối tượng ({editor.draft.objects.length})
                                 </Button>
-                                <Button variant="ghost" onClick={() => setHelpOpen(true)}>
+                                <Button variant="outline" onClick={() => setHelpOpen(true)}>
                                     Phím tắt
                                 </Button>
                             </div>
@@ -1075,7 +1075,7 @@ export function SceneEditor({
                             onClick={(event) => event.preventDefault()}
                         >
                             <Button
-                                variant="danger"
+                                variant="destructive"
                                 onClick={() => {
                                     if (blocked) return;
                                     try {

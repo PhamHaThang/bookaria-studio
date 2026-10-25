@@ -218,7 +218,7 @@ export function AdminLibraryNewPage() {
                             </EmptyHeader>
                         </Empty>
                     )}
-                    <AdminPager page={query.page} meta={mine.data.meta} />
+                    <AdminPager page={query.page} meta={mine.data.meta} busy={mine.isFetching} />
                 </>
             )}
             <section className="admin-section mt-8">

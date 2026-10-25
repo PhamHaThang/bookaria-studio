@@ -45,7 +45,7 @@ export function FeedbackSamples() {
                         >
                             Thử toast thông tin
                         </Button>
-                        <Button variant="ghost" onClick={() => toast.dismiss()}>
+                        <Button variant="outline" onClick={() => toast.dismiss()}>
                             Đóng toast mẫu
                         </Button>
                     </div>
@@ -82,7 +82,7 @@ export function FeedbackSamples() {
                             >
                                 Tăng 20%
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setProgress(0)}>
+                            <Button size="sm" variant="outline" onClick={() => setProgress(0)}>
                                 Đặt lại tiến độ
                             </Button>
                         </div>

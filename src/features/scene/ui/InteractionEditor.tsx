@@ -266,7 +266,7 @@ export function InteractionEditor({
                             </Field>
                             <div className="form-actions interaction-wide col-[1_/_-1] mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                                 <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     aria-label="Đưa quy tắc lên"
                                     disabled={scene.interactions[0].id === selected.id}
                                     onClick={() =>
@@ -283,7 +283,7 @@ export function InteractionEditor({
                                     Lên
                                 </Button>
                                 <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     aria-label="Đưa quy tắc xuống"
                                     disabled={scene.interactions.at(-1)?.id === selected.id}
                                     onClick={() =>
@@ -300,7 +300,7 @@ export function InteractionEditor({
                                     Xuống
                                 </Button>
                                 <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     disabled={scene.interactions.length >= SCENE_LIMITS.maxRules}
                                     onClick={() => {
                                         const id = crypto.randomUUID();
@@ -310,7 +310,7 @@ export function InteractionEditor({
                                 >
                                     Nhân bản quy tắc
                                 </Button>
-                                <Button variant="danger" onClick={() => setDeleting(selected)}>
+                                <Button variant="destructive" onClick={() => setDeleting(selected)}>
                                     Xóa quy tắc
                                 </Button>
                             </div>
@@ -361,7 +361,7 @@ export function InteractionEditor({
                                             />
                                             <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                                                 <Button
-                                                    variant="ghost"
+                                                    variant="outline"
                                                     disabled={disabled || index === 0}
                                                     aria-label={`Đưa hành động ${index + 1} lên`}
                                                     onClick={() =>
@@ -381,7 +381,7 @@ export function InteractionEditor({
                                                     Lên
                                                 </Button>
                                                 <Button
-                                                    variant="ghost"
+                                                    variant="outline"
                                                     disabled={
                                                         disabled ||
                                                         index === selected.actions.length - 1
@@ -404,7 +404,7 @@ export function InteractionEditor({
                                                     Xuống
                                                 </Button>
                                                 <Button
-                                                    variant="ghost"
+                                                    variant="outline"
                                                     disabled={
                                                         disabled || selected.actions.length === 1
                                                     }
@@ -475,7 +475,7 @@ export function InteractionEditor({
                             onClick={(event) => event.preventDefault()}
                         >
                             <Button
-                                variant="danger"
+                                variant="destructive"
                                 disabled={disabled}
                                 onClick={() => {
                                     changeRules(

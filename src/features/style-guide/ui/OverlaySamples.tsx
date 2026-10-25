@@ -81,7 +81,7 @@ export function OverlaySamples() {
                                 </Field>
                                 <div className="mt-6 flex justify-end gap-3">
                                     <DialogClose asChild>
-                                        <Button variant="ghost">Đóng mẫu</Button>
+                                        <Button variant="outline">Đóng mẫu</Button>
                                     </DialogClose>
                                     <Button type="submit" disabled={!name.trim()}>
                                         Lưu tên mẫu
@@ -95,7 +95,10 @@ export function OverlaySamples() {
                     title="Xác nhận hành động"
                     source="@/shared/ui/ConfirmationDialog → AlertDialog"
                 >
-                    <Button variant="danger" onClick={(event) => setConfirm(event.currentTarget)}>
+                    <Button
+                        variant="destructive"
+                        onClick={(event) => setConfirm(event.currentTarget)}
+                    >
                         Mở xác nhận mẫu
                     </Button>
                     {confirm && (

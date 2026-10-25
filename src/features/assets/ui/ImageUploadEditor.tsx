@@ -306,7 +306,7 @@ export function ImageUploadEditor({
                             )}
                             {!stage && file && (
                                 <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     disabled={disabled}
                                     onClick={() => {
                                         resetSelection();

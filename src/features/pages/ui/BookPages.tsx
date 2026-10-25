@@ -189,7 +189,7 @@ export function BookPages({
                                     </div>
                                     <div className="page-row-actions flex flex-wrap gap-1 max-[540px]:w-full max-[540px]:justify-end [&_.button]:min-h-11 [&_.button]:min-w-11 [&_.button]:p-2">
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             disabled={locked || index === 0}
                                             aria-label={`Đưa trang ${index + 1} lên`}
                                             onClick={() => {
@@ -204,7 +204,7 @@ export function BookPages({
                                             <ArrowUp data-icon="inline-start" aria-hidden="true" />
                                         </Button>
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             disabled={locked || index === pages.data.length - 1}
                                             aria-label={`Đưa trang ${index + 1} xuống`}
                                             onClick={() => {
@@ -222,7 +222,7 @@ export function BookPages({
                                             />
                                         </Button>
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             disabled={locked}
                                             aria-label={`Nhân bản trang ${index + 1}`}
                                             onClick={() => {
@@ -236,7 +236,7 @@ export function BookPages({
                                             <Copy data-icon="inline-start" aria-hidden="true" />
                                         </Button>
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             disabled={locked}
                                             aria-label={`Xóa trang ${index + 1}`}
                                             onClick={() => {
@@ -363,7 +363,7 @@ export function BookPages({
                             onClick={(event) => event.preventDefault()}
                         >
                             <Button
-                                variant="danger"
+                                variant="destructive"
                                 aria-busy={busy}
                                 onClick={() => {
                                     void mutate(

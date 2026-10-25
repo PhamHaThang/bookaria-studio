@@ -107,7 +107,7 @@ export function PageSettingsEditor({
                                     : 'Chọn lời thuyết minh'}
                             </Button>
                             <Button
-                                variant="ghost"
+                                variant="outline"
                                 disabled={!draft[key]}
                                 onClick={() => update(key, null)}
                             >
@@ -191,7 +191,7 @@ export function PageSettingsEditor({
                     Lưu cài đặt trang
                 </Button>
                 <Button
-                    variant="ghost"
+                    variant="outline"
                     disabled={disabled || busy || !dirty}
                     onClick={() => {
                         setDraft(base);

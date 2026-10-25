@@ -38,14 +38,14 @@ export function EmptyBookEditor({ book }: { book: BookDetail }) {
                 dirtyDescription="Tài liệu hoặc thông tin bạn đang chọn chưa được lưu. Trang đã thêm vẫn được giữ trong sách."
             />
             <header className="flex min-h-19 items-center justify-between gap-5 border-border border-b bg-surface px-6 py-4">
-                <Button variant="ghost" asChild>
+                <Button variant="outline" asChild>
                     <Link to="/books">
                         <ArrowLeft data-icon="inline-start" />
                         Sách của tôi
                     </Link>
                 </Button>
                 <Button
-                    variant="ghost"
+                    variant="outline"
                     ref={infoAnchor}
                     aria-label="Thông tin sách"
                     disabled={busy || infoBusy || Boolean(target)}

@@ -54,7 +54,15 @@ export function AdminReload({ retry, busy = false }: { retry: () => void; busy?:
         </Button>
     );
 }
-export function AdminPager({ page, meta }: { page: number; meta: { totalPages: number } }) {
+export function AdminPager({
+    page,
+    meta,
+    busy = false,
+}: {
+    page: number;
+    meta: { totalPages: number };
+    busy?: boolean;
+}) {
     const [, setParams] = useSearchParams();
     const change = (nextPage: number, replace = false) =>
         setParams(
@@ -82,6 +90,7 @@ export function AdminPager({ page, meta }: { page: number; meta: { totalPages: n
             page={page}
             totalPages={meta.totalPages}
             label="Phân trang quản trị"
+            busy={busy}
             onPage={change}
         />
     );

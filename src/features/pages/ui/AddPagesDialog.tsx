@@ -397,7 +397,7 @@ export function AddPagesDialog({
                         <Button variant="secondary" onClick={() => setDiscard(false)}>
                             Ở lại
                         </Button>
-                        <Button variant="danger" onClick={onClose}>
+                        <Button variant="destructive" onClick={onClose}>
                             Đóng hộp thoại
                         </Button>
                     </div>

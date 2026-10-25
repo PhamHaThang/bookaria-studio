@@ -2,29 +2,29 @@
 export const auditNotes = [
     {
         group: 'Button',
-        status: 'Tên gọi khác nhau',
+        status: 'Đã đồng bộ',
         finding:
-            'Bookaria dùng primary / danger / ghost; primitive dùng default / destructive / outline. Cùng một nguồn style, nhưng ghost của hai lớp khác nhau.',
+            'Button Bookaria và primitive dùng chung default / secondary / outline / ghost / destructive / link. ghost luôn không viền; outline luôn có viền. Các chỗ gọi cũ đã được chuyển để giữ giao diện.',
         recommendation:
-            'Màn nghiệp vụ dùng shared/ui/Button. Nút icon, link và công cụ editor dùng primitives/button khi cần thêm biến thể.',
+            'Màn nghiệp vụ dùng shared/ui/Button, có thêm fullWidth. Primitive dùng khi cần nút plain tùy chỉnh. Hai lớp cùng size default / sm / icon và cùng nguồn style.',
         source: 'shared/ui/Button.tsx → primitives/button.tsx',
     },
     {
         group: 'Phân trang',
-        status: 'Còn lặp cách ghép',
+        status: 'Đã đồng bộ',
         finding:
-            'Sách, tài nguyên và khám phá ghép PaginationContent thủ công. Thống kê và Admin dùng Pagination chung; bản chung có thêm icon mũi tên.',
+            'Sách, tài nguyên, khám phá, thống kê và Admin đều dùng shared/ui/Pagination. Các màn truyền trạng thái đang tải để khóa cả hai nút.',
         recommendation:
-            'Màn mới dùng shared/ui/Pagination. Khi gom các màn cũ, giữ khóa nút trong lúc đang tải và giữ bộ lọc trên URL.',
+            'Truyền page, totalPages, onPage, label và busy. Màn hình quản lý URL và bộ lọc; component quản lý giao diện, giới hạn đầu/cuối và trạng thái khóa.',
         source: 'pages/BooksPage.tsx, AssetsPage.tsx, ExplorePage.tsx; shared/ui/Pagination.tsx',
     },
     {
         group: 'Kích thước control',
-        status: 'Còn style cục bộ',
+        status: 'Chuẩn chung / compact editor',
         finding:
-            'Ô search đã dùng chung. Một số select trong BooksPage và nút công cụ editor vẫn có chiều cao, cỡ chữ ghi đè ở màn hình.',
+            'Search và select ở danh sách sách dùng kích thước chuẩn của component. Editor giữ token control 40px và cỡ chữ nhỏ để phù hợp không gian làm việc.',
         recommendation:
-            'Dùng size có sẵn. Giữ bộ công cụ editor nhỏ gọn theo ngữ cảnh; không sao chép style của nó sang form thông thường.',
+            'Form ngoài editor dùng mặc định; nếu cần nhỏ dùng size=sm. Giữ giới hạn compact trong editor thay vì sao chép các selector ghi đè sang màn nghiệp vụ khác.',
         source: 'pages/BooksPage.tsx; features/scene/ui/SceneEditor.tsx',
     },
     {

@@ -53,7 +53,11 @@ export function NavigationGuard({
                     asChild
                     onClick={(event) => event.preventDefault()}
                 >
-                    <Button variant="danger" disabled={saving} onClick={() => blocker.proceed()}>
+                    <Button
+                        variant="destructive"
+                        disabled={saving}
+                        onClick={() => blocker.proceed()}
+                    >
                         Rời trang
                     </Button>
                 </AlertDialogAction>

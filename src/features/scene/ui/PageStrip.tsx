@@ -300,7 +300,7 @@ export function PageStrip({
                                     Giữ lại
                                 </Button>
                                 <Button
-                                    variant="danger"
+                                    variant="destructive"
                                     disabled={locked}
                                     onClick={() =>
                                         void run(async () => {
@@ -365,7 +365,7 @@ export function PageStrip({
                                 </FieldGroup>
                             </form>
                             {dirty && <p>Lưu nội dung đang sửa trước khi thao tác với trang.</p>}
-                            <Button variant="ghost" disabled={busy} onClick={() => setMenu(null)}>
+                            <Button variant="outline" disabled={busy} onClick={() => setMenu(null)}>
                                 <X data-icon="inline-start" />
                                 Đóng
                             </Button>

@@ -198,7 +198,7 @@ export function LoadingSamples() {
                         ) : (
                             <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-5">
                                 <span role="status">Đã thêm tài nguyên minh họa.</span>
-                                <Button variant="ghost" onClick={() => setEmpty(true)}>
+                                <Button variant="outline" onClick={() => setEmpty(true)}>
                                     Xem lại trạng thái trống
                                 </Button>
                             </div>

@@ -290,7 +290,7 @@ export function PreviewPanel({
                 </Button>
                 {embed && (
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         onClick={() => {
                             setEmbed(null);
                             setFrameState('');
@@ -363,7 +363,7 @@ export function PreviewPanel({
                     </Button>
                     {pollError && jobId && (
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             onClick={() => {
                                 setError(null);
                                 setPollError(false);
@@ -384,7 +384,7 @@ export function PreviewPanel({
                                 {link}
                             </p>
                             <Button
-                                variant="ghost"
+                                variant="outline"
                                 onClick={() => {
                                     void navigator.clipboard.writeText(link).then(
                                         () => setJobState('Đã sao chép liên kết.'),

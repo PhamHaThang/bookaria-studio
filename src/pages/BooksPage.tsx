@@ -8,6 +8,7 @@ import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { FilterBar } from '@/shared/ui/FilterBar';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { LoadingState } from '@/shared/ui/LoadingState';
+import { Pagination } from '@/shared/ui/Pagination';
 import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import {
@@ -26,11 +27,6 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import {
-    PaginationContent,
-    PaginationItem,
-    Pagination as PaginationRoot,
-} from '@/shared/ui/primitives/pagination';
 import { SearchInput } from '@/shared/ui/SearchInput';
 import { useAuth } from '../features/auth';
 import {
@@ -142,7 +138,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         ]}
                     />
                     <form
-                        className="books-toolbar mb-6 flex items-center gap-3 rounded-[8px] border border-border border-solid bg-surface p-2 max-[760px]:grid max-[760px]:grid-cols-[minmax(0,_1fr)_auto] max-[700px]:flex-wrap max-[760px]:gap-3 [&_[data-slot=select-trigger]]:min-h-9 [&_[data-slot=select-trigger]]:text-[length:12px] [&_label]:m-0 [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
+                        className="books-toolbar mb-6 flex items-center gap-3 rounded-[8px] border border-border border-solid bg-surface p-2 max-[760px]:grid max-[760px]:grid-cols-[minmax(0,_1fr)_auto] max-[700px]:flex-wrap max-[760px]:gap-3 [&_label]:m-0 [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
                         key={`${query.q}-${query.sort}`}
                         onSubmit={(event) => {
                             event.preventDefault();
@@ -168,7 +164,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                             </Field>
                             <Field orientation="contents">
                                 <FieldLabel
-                                    className="sort-field max-[760px]:min-w-0 [&_[data-slot=select-trigger]]:m-0 [&_[data-slot=select-trigger]]:min-w-[190px] [&_[data-slot=select-trigger]]:text-[length:var(--text-sm)] max-[760px]:[&_[data-slot=select-trigger]]:w-full max-[760px]:[&_[data-slot=select-trigger]]:min-w-0"
+                                    className="sort-field max-[760px]:min-w-0 [&_[data-slot=select-trigger]]:m-0 [&_[data-slot=select-trigger]]:min-w-[190px] max-[760px]:[&_[data-slot=select-trigger]]:w-full max-[760px]:[&_[data-slot=select-trigger]]:min-w-0"
                                     htmlFor="book-sort"
                                 >
                                     <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
@@ -399,40 +395,13 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         </ul>
                     )}
                     {meta && meta.totalPages > 1 && (
-                        <PaginationRoot
-                            className="pagination mt-8 flex items-center justify-end gap-5 text-[length:var(--text-sm)] tabular-nums max-[760px]:justify-between max-[760px]:gap-2 max-[760px]:text-[length:var(--text-xs)] max-[760px]:[&_.button]:p-3 max-[760px]:[&_.button]:text-[length:var(--text-xs)]"
-                            aria-label="Phân trang sách"
-                        >
-                            <PaginationContent className="m-0 gap-3 p-0">
-                                <PaginationItem>
-                                    <Button
-                                        variant="secondary"
-                                        type="button"
-                                        disabled={query.page === 1 || listing.isFetching}
-                                        onClick={() => change({ page: String(query.page - 1) })}
-                                    >
-                                        Trang trước
-                                    </Button>
-                                </PaginationItem>
-                                <PaginationItem>
-                                    <span>
-                                        Trang {query.page} / {meta.totalPages}
-                                    </span>
-                                </PaginationItem>
-                                <PaginationItem>
-                                    <Button
-                                        variant="secondary"
-                                        type="button"
-                                        disabled={
-                                            query.page >= meta.totalPages || listing.isFetching
-                                        }
-                                        onClick={() => change({ page: String(query.page + 1) })}
-                                    >
-                                        Trang sau
-                                    </Button>
-                                </PaginationItem>
-                            </PaginationContent>
-                        </PaginationRoot>
+                        <Pagination
+                            page={query.page}
+                            totalPages={meta.totalPages}
+                            busy={listing.isFetching}
+                            label="Phân trang sách"
+                            onPage={(page) => change({ page: String(page) })}
+                        />
                     )}
                 </>
             )}
@@ -490,7 +459,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                             onClick={(event) => event.preventDefault()}
                         >
                             <Button
-                                variant="danger"
+                                variant="destructive"
                                 type="button"
                                 disabled={remove.isPending}
                                 onClick={() => {

@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { Disclosure } from '@/shared/ui/Disclosure';
 import { FilterBar } from '@/shared/ui/FilterBar';
 import { Pagination } from '@/shared/ui/Pagination';
+import { Checkbox } from '@/shared/ui/primitives/checkbox';
+import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
 import { GuideSection, Sample } from './GuideSection';
 
 export function NavigationSamples() {
     const [filter, setFilter] = useState('all');
     const [page, setPage] = useState(1);
+    const [busy, setBusy] = useState(false);
     return (
         <GuideSection
             id="navigation"
@@ -78,9 +81,20 @@ export function NavigationSamples() {
                 </Sample>
                 <Sample
                     title="Phân trang dùng chung"
-                    source="@/shared/ui/Pagination · page / totalPages / onPage / label"
+                    source="@/shared/ui/Pagination · page / totalPages / onPage / label / busy"
                 >
+                    <Field orientation="horizontal">
+                        <Checkbox
+                            id="guide-pagination-busy"
+                            checked={busy}
+                            onCheckedChange={(checked) => setBusy(checked === true)}
+                        />
+                        <FieldLabel htmlFor="guide-pagination-busy" className="m-0">
+                            Mô phỏng đang tải phân trang
+                        </FieldLabel>
+                    </Field>
                     <Pagination
+                        busy={busy}
                         page={page}
                         totalPages={3}
                         onPage={setPage}

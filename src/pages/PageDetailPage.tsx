@@ -182,7 +182,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                 aria-label="Phần chỉnh sửa trang"
             >
                 <Button
-                    variant={mode === 'content' ? 'primary' : 'ghost'}
+                    variant={mode === 'content' ? 'default' : 'outline'}
                     aria-pressed={mode === 'content'}
                     disabled={busy || imageBusy || sceneBusy}
                     onClick={() => setMode('content')}
@@ -190,7 +190,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                     Nội dung AR
                 </Button>
                 <Button
-                    variant={mode === 'page' ? 'primary' : 'ghost'}
+                    variant={mode === 'page' ? 'default' : 'outline'}
                     aria-pressed={mode === 'page'}
                     disabled={busy || imageBusy || sceneBusy}
                     onClick={() => setMode('page')}
@@ -345,7 +345,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                                     </p>
                                     {stage !== 'saving' && (
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             onClick={() => {
                                                 controller.current?.abort();
                                             }}
@@ -509,7 +509,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                                             Đánh giá lại
                                         </Button>
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             disabled={busy || imageBusy}
                                             onClick={() => {
                                                 void refresh();
@@ -609,7 +609,7 @@ function PageDetailContent({ bookId, pageId }: { bookId: string; pageId: string 
                 <div>
                     <Feedback error="Chưa cập nhật được dữ liệu mới nhất. Nội dung đang sửa vẫn được giữ." />
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         onClick={() => {
                             void page.refetch();
                             void book.refetch();

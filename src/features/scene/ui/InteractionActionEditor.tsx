@@ -105,7 +105,7 @@ export function InteractionActionEditor({
                             </Button>
                             {action.type === 'stopAudio' && assetId && (
                                 <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     onClick={() =>
                                         onChange({
                                             type: 'stopAudio',
@@ -127,7 +127,7 @@ export function InteractionActionEditor({
                     <div className="interaction-wide col-[1_/_-1]">
                         <Feedback error={errorMessage(detail.error)} />
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             onClick={() => {
                                 void detail.refetch();
                             }}

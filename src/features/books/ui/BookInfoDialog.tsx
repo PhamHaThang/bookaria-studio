@@ -404,7 +404,7 @@ export function BookInfoDialog({
                         <Button variant="secondary" onClick={() => setDiscard(false)}>
                             Tiếp tục sửa
                         </Button>
-                        <Button variant="danger" onClick={() => setClosing(true)}>
+                        <Button variant="destructive" onClick={() => setClosing(true)}>
                             Bỏ thay đổi
                         </Button>
                     </div>

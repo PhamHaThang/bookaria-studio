@@ -10,24 +10,32 @@ export function Pagination({
     totalPages,
     onPage,
     label,
+    busy = false,
 }: {
     page: number;
     totalPages: number;
     onPage: (page: number) => void;
     label: string;
+    busy?: boolean;
 }) {
     if (totalPages <= 1) return null;
     return (
-        <PaginationRoot aria-label={label} className="mt-8 justify-end">
-            <PaginationContent className="m-0 gap-3 p-0">
+        <PaginationRoot
+            aria-label={label}
+            aria-busy={busy || undefined}
+            className="mt-8 justify-end"
+        >
+            <PaginationContent className="m-0 max-w-full gap-3 p-0">
                 <PaginationItem>
                     <Button
                         variant="secondary"
-                        disabled={page <= 1}
+                        aria-label="Trang trước"
+                        className="max-[540px]:px-3"
+                        disabled={busy || page <= 1}
                         onClick={() => onPage(page - 1)}
                     >
                         <ChevronLeft data-icon="inline-start" />
-                        Trang trước
+                        <span className="max-[540px]:sr-only">Trang trước</span>
                     </Button>
                 </PaginationItem>
                 <PaginationItem>
@@ -38,10 +46,12 @@ export function Pagination({
                 <PaginationItem>
                     <Button
                         variant="secondary"
-                        disabled={page >= totalPages}
+                        aria-label="Trang sau"
+                        className="max-[540px]:px-3"
+                        disabled={busy || page >= totalPages}
                         onClick={() => onPage(page + 1)}
                     >
-                        Trang sau
+                        <span className="max-[540px]:sr-only">Trang sau</span>
                         <ChevronRight data-icon="inline-end" />
                     </Button>
                 </PaginationItem>

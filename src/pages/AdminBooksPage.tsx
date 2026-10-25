@@ -89,7 +89,7 @@ export function AdminModerationPage() {
                             </EmptyHeader>
                         </Empty>
                     )}
-                    <AdminPager page={query.page} meta={list.data.meta} />
+                    <AdminPager page={query.page} meta={list.data.meta} busy={list.isFetching} />
                 </>
             )}
         </>
@@ -205,7 +205,7 @@ export function AdminBooksPage() {
                             </EmptyHeader>
                         </Empty>
                     )}
-                    <AdminPager page={query.page} meta={list.data.meta} />
+                    <AdminPager page={query.page} meta={list.data.meta} busy={list.isFetching} />
                 </>
             )}
         </>

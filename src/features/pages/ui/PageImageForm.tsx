@@ -226,7 +226,7 @@ export function PageImageForm({
                     </Button>
                     {!stage && file && (
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             disabled={disabled}
                             onClick={() => {
                                 clear();

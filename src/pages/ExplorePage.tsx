@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { LoadingState } from '@/shared/ui/LoadingState';
+import { Pagination } from '@/shared/ui/Pagination';
 import {
     Empty,
     EmptyContent,
@@ -13,11 +14,6 @@ import {
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import {
-    PaginationContent,
-    PaginationItem,
-    Pagination as PaginationRoot,
-} from '@/shared/ui/primitives/pagination';
 import { SearchInput } from '@/shared/ui/SearchInput';
 import { discoveryApi } from '../features/discovery';
 import { PublicBooks } from '../features/discovery/PublicBooks';
@@ -191,50 +187,17 @@ export function ExplorePage() {
                         </Empty>
                     )}
                     {listing.data.meta.totalPages > 1 && (
-                        <PaginationRoot
-                            className="pagination mt-8 flex items-center justify-end gap-5 text-[length:var(--text-sm)] tabular-nums max-[760px]:justify-between max-[760px]:gap-2 max-[760px]:text-[length:var(--text-xs)] max-[760px]:[&_.button]:p-3 max-[760px]:[&_.button]:text-[length:var(--text-xs)]"
-                            aria-label="Phân trang thư viện"
-                        >
-                            <PaginationContent className="m-0 gap-3 p-0">
-                                <PaginationItem>
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        disabled={query.page <= 1}
-                                        onClick={() =>
-                                            setParams((current) =>
-                                                updateDiscoverySearch(current, {
-                                                    page: String(query.page - 1),
-                                                }),
-                                            )
-                                        }
-                                    >
-                                        Trang trước
-                                    </Button>
-                                </PaginationItem>
-                                <PaginationItem>
-                                    <span>
-                                        Trang {query.page} / {listing.data.meta.totalPages}
-                                    </span>
-                                </PaginationItem>
-                                <PaginationItem>
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        disabled={query.page >= listing.data.meta.totalPages}
-                                        onClick={() =>
-                                            setParams((current) =>
-                                                updateDiscoverySearch(current, {
-                                                    page: String(query.page + 1),
-                                                }),
-                                            )
-                                        }
-                                    >
-                                        Trang sau
-                                    </Button>
-                                </PaginationItem>
-                            </PaginationContent>
-                        </PaginationRoot>
+                        <Pagination
+                            page={query.page}
+                            totalPages={listing.data.meta.totalPages}
+                            busy={listing.isFetching}
+                            label="Phân trang thư viện"
+                            onPage={(page) =>
+                                setParams((current) =>
+                                    updateDiscoverySearch(current, { page: String(page) }),
+                                )
+                            }
+                        />
                     )}
                 </>
             )}

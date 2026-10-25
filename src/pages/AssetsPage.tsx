@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { FilterBar } from '@/shared/ui/FilterBar';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { LoadingState } from '@/shared/ui/LoadingState';
+import { Pagination } from '@/shared/ui/Pagination';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import {
     Empty,
@@ -16,11 +17,6 @@ import {
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import {
-    PaginationContent,
-    PaginationItem,
-    Pagination as PaginationRoot,
-} from '@/shared/ui/primitives/pagination';
 import { SearchInput } from '@/shared/ui/SearchInput';
 import {
     AssetThumbnail,
@@ -145,7 +141,7 @@ function AssetFilters({
                     <Button type="submit">Tìm tài nguyên</Button>
                     {filtered && (
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             onClick={() =>
                                 change({
                                     q: undefined,
@@ -240,7 +236,7 @@ export function AssetsPage() {
                 <div className="asset-category-error mb-6 flex flex-wrap items-start gap-3 [&_.feedback]:m-0">
                     <Feedback error="Chưa tải được danh mục. Bạn vẫn có thể tìm tài nguyên." />
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                             void categories.refetch();
@@ -365,38 +361,13 @@ export function AssetsPage() {
                         </ul>
                     )}
                     {meta && meta.totalPages > 1 && (
-                        <PaginationRoot
-                            className="pagination mt-8 flex items-center justify-end gap-5 text-[length:var(--text-sm)] tabular-nums max-[760px]:justify-between max-[760px]:gap-2 max-[760px]:text-[length:var(--text-xs)] max-[760px]:[&_.button]:p-3 max-[760px]:[&_.button]:text-[length:var(--text-xs)]"
-                            aria-label="Phân trang tài nguyên"
-                        >
-                            <PaginationContent className="m-0 gap-3 p-0">
-                                <PaginationItem>
-                                    <Button
-                                        variant="secondary"
-                                        disabled={query.page <= 1 || listing.isFetching}
-                                        onClick={() => change({ page: String(query.page - 1) })}
-                                    >
-                                        Trang trước
-                                    </Button>
-                                </PaginationItem>
-                                <PaginationItem>
-                                    <span>
-                                        Trang {query.page} / {meta.totalPages}
-                                    </span>
-                                </PaginationItem>
-                                <PaginationItem>
-                                    <Button
-                                        variant="secondary"
-                                        disabled={
-                                            query.page >= meta.totalPages || listing.isFetching
-                                        }
-                                        onClick={() => change({ page: String(query.page + 1) })}
-                                    >
-                                        Trang sau
-                                    </Button>
-                                </PaginationItem>
-                            </PaginationContent>
-                        </PaginationRoot>
+                        <Pagination
+                            page={query.page}
+                            totalPages={meta.totalPages}
+                            busy={listing.isFetching}
+                            label="Phân trang tài nguyên"
+                            onPage={(page) => change({ page: String(page) })}
+                        />
                     )}
                 </>
             )}

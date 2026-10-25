@@ -29,25 +29,27 @@ export function ButtonSamples() {
         <GuideSection
             id="buttons"
             title="Nút & liên kết"
-            description="Hai lớp Button dùng cùng primitive. Chọn theo mục đích và dùng size có sẵn; icon-only luôn có nhãn đọc được."
+            description="Button Bookaria và primitive dùng cùng tên biến thể và kích thước. Chọn theo mục đích; icon-only luôn có nhãn đọc được."
         >
             <div className="flex flex-col gap-8">
-                <Sample title="Biến thể Bookaria" source="@/shared/ui/Button">
+                <Sample title="Biến thể dùng chung" source="@/shared/ui/Button">
                     <div className="flex flex-wrap gap-4">
-                        {(['primary', 'secondary', 'ghost', 'danger'] as const).map((variant) => (
-                            <Button key={variant} variant={variant}>
-                                {variant}
-                            </Button>
-                        ))}
+                        {(['default', 'secondary', 'outline', 'ghost', 'destructive'] as const).map(
+                            (variant) => (
+                                <Button key={variant} variant={variant}>
+                                    {variant}
+                                </Button>
+                            ),
+                        )}
                     </div>
                     <p className="m-0 text-muted-foreground text-sm">
-                        primary → default · secondary → secondary · ghost → outline · danger →
-                        destructive.
+                        default: hành động chính · secondary: viền đen · outline: viền nhẹ · ghost:
+                        không viền · destructive: xóa.
                     </p>
                 </Sample>
                 <Sample
                     title="Trạng thái và kích thước"
-                    source="Button: size=md | sm; disabled; aria-busy"
+                    source="Button: size=default | sm; disabled; aria-busy"
                 >
                     <div className="flex flex-wrap items-center gap-4">
                         <Button asChild>
@@ -95,17 +97,23 @@ export function ButtonSamples() {
                     title="So sánh hover, focus và disabled"
                     source="Tab để di chuyển focus; hover để xem trạng thái thật"
                 >
-                    {(['primary', 'secondary', 'ghost', 'danger'] satisfies ButtonVariant[]).map(
-                        (variant) => (
-                            <div key={variant} className="flex flex-wrap items-center gap-4">
-                                <code className="w-24 text-xs">{variant}</code>
-                                <Button variant={variant}>Thử tương tác</Button>
-                                <Button variant={variant} disabled>
-                                    Đã khóa
-                                </Button>
-                            </div>
-                        ),
-                    )}
+                    {(
+                        [
+                            'default',
+                            'secondary',
+                            'outline',
+                            'ghost',
+                            'destructive',
+                        ] satisfies ButtonVariant[]
+                    ).map((variant) => (
+                        <div key={variant} className="flex flex-wrap items-center gap-4">
+                            <code className="w-24 text-xs">{variant}</code>
+                            <Button variant={variant}>Thử tương tác</Button>
+                            <Button variant={variant} disabled>
+                                Đã khóa
+                            </Button>
+                        </div>
+                    ))}
                 </Sample>
             </div>
         </GuideSection>
@@ -269,7 +277,7 @@ export function ControlSamples() {
                                 </Button>
                                 <Button
                                     type="reset"
-                                    variant="ghost"
+                                    variant="outline"
                                     onClick={() => {
                                         setTitle('');
                                         setError(null);

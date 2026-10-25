@@ -84,7 +84,7 @@ export function SelectionEditor({
                     Số đối tượng còn trống không đủ để nhân bản cả nhóm.
                 </p>
             )}
-            <Button variant="ghost" disabled={disabled} onClick={onClear}>
+            <Button variant="outline" disabled={disabled} onClick={onClear}>
                 Bỏ chọn
             </Button>
         </section>

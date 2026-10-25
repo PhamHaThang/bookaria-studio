@@ -253,7 +253,7 @@ export function BookCreateDialog() {
                 onClose={close}
             >
                 <Button
-                    variant="ghost"
+                    variant="outline"
                     className="creation-close absolute top-[18px] right-[18px] size-11 p-0"
                     aria-label="Đóng tạo sách"
                     disabled={busy}

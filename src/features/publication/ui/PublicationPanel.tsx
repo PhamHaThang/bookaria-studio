@@ -275,7 +275,7 @@ export function PublicationPanel({
                 >
                     Kiểm tra trước xuất bản
                 </Button>
-                <Button variant="ghost" disabled={requesting} onClick={refresh}>
+                <Button variant="outline" disabled={requesting} onClick={refresh}>
                     Tải lại trạng thái xuất bản
                 </Button>
             </div>
@@ -428,7 +428,7 @@ export function PublicationPanel({
                                         </FieldLabel>
                                     </Field>
                                     <Button
-                                        variant="ghost"
+                                        variant="outline"
                                         onClick={() => {
                                             void copy(share.data.embedHtml);
                                         }}
@@ -475,7 +475,7 @@ export function PublicationPanel({
                             </div>
                         )}
                         <Button
-                            variant="danger"
+                            variant="destructive"
                             disabled={locked}
                             onClick={() => setConfirm('unpublish')}
                         >
@@ -669,7 +669,7 @@ export function PublicationPanel({
                     <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                         <AlertDialogCancel variant="plain" asChild>
                             <Button
-                                variant={confirm === 'unpublish' ? 'danger' : 'primary'}
+                                variant={confirm === 'unpublish' ? 'destructive' : 'default'}
                                 aria-busy={requesting || job.posting}
                                 onClick={() => {
                                     if (confirm === 'publish') void publish();
@@ -697,7 +697,7 @@ export function PublicationPanel({
                             onClick={(event) => event.preventDefault()}
                         >
                             <Button
-                                variant="ghost"
+                                variant="outline"
                                 disabled={requesting || job.posting}
                                 onClick={() => setConfirm(null)}
                             >

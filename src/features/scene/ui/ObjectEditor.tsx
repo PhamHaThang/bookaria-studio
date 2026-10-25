@@ -129,7 +129,7 @@ export function ObjectEditor({
                                         <>
                                             <Feedback error={errorMessage(detail.error)} />
                                             <Button
-                                                variant="ghost"
+                                                variant="outline"
                                                 onClick={() => {
                                                     void detail.refetch();
                                                 }}
@@ -551,7 +551,7 @@ export function ObjectEditor({
                     <Copy data-icon="inline-start" />
                     Nhân bản
                 </Button>
-                <Button variant="ghost" disabled={disabled || object.locked} onClick={onDelete}>
+                <Button variant="outline" disabled={disabled || object.locked} onClick={onDelete}>
                     <Trash2 data-icon="inline-start" />
                     Xóa đối tượng
                 </Button>

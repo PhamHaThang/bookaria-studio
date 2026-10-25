@@ -153,7 +153,7 @@ export function AdminLibraryPage() {
                             </EmptyHeader>
                         </Empty>
                     )}
-                    <AdminPager page={query.page} meta={list.data.meta} />
+                    <AdminPager page={query.page} meta={list.data.meta} busy={list.isFetching} />
                 </>
             )}
         </>

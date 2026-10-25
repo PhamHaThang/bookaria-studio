@@ -435,7 +435,7 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                                 </p>
                             )}
                             <Button
-                                variant="danger"
+                                variant="destructive"
                                 onClick={() => {
                                     setDeleteError(null);
                                     setBlockedUsages([]);
@@ -485,7 +485,7 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                             onClick={(event) => event.preventDefault()}
                         >
                             <Button
-                                variant="danger"
+                                variant="destructive"
                                 aria-busy={removal.isPending}
                                 onClick={remove}
                                 disabled={removal.isPending}

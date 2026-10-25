@@ -132,6 +132,7 @@ export function StatsBooksPage() {
                         </Empty>
                     )}
                     <Pagination
+                        busy={list.isFetching}
                         page={query.page}
                         totalPages={list.data.meta.totalPages}
                         onPage={changePage}

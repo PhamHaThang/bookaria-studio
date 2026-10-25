@@ -2,37 +2,32 @@ import type { ComponentProps } from 'react';
 import { cn } from '@/shared/lib/cn';
 import { buttonVariants, Button as PrimitiveButton } from './primitives/button';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type ButtonVariant = Exclude<
+    NonNullable<ComponentProps<typeof PrimitiveButton>['variant']>,
+    'plain'
+>;
+type ButtonSize = NonNullable<ComponentProps<typeof PrimitiveButton>['size']>;
 interface ButtonStyleOptions {
     variant?: ButtonVariant;
-    size?: 'sm' | 'md';
+    size?: ButtonSize;
     fullWidth?: boolean;
     className?: string;
 }
-const variants = {
-    primary: 'default',
-    secondary: 'secondary',
-    ghost: 'outline',
-    danger: 'destructive',
-} as const;
+/** Uses the primitive's variant and size names without translating their meaning. */
 export function buttonStyles({
-    variant = 'primary',
-    size = 'md',
+    variant = 'default',
+    size = 'default',
     fullWidth = false,
     className,
 }: ButtonStyleOptions = {}) {
-    return cn(
-        buttonVariants({ variant: variants[variant], size: size === 'sm' ? 'sm' : 'default' }),
-        fullWidth && 'button-full w-full',
-        className,
-    );
+    return cn(buttonVariants({ variant, size }), fullWidth && 'button-full w-full', className);
 }
 export interface ButtonProps
     extends Omit<ComponentProps<typeof PrimitiveButton>, 'variant' | 'size'>,
         ButtonStyleOptions {}
 export function Button({
-    variant = 'primary',
-    size = 'md',
+    variant = 'default',
+    size = 'default',
     fullWidth,
     className,
     ...props
@@ -40,8 +35,8 @@ export function Button({
     return (
         <PrimitiveButton
             {...props}
-            variant={variants[variant]}
-            size={size === 'sm' ? 'sm' : 'default'}
+            variant={variant}
+            size={size}
             className={cn(fullWidth && 'button-full w-full', className)}
         />
     );
