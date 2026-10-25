@@ -1,18 +1,8 @@
-import {
-    BookOpen,
-    ChartColumn,
-    FolderOpen,
-    Home,
-    Library,
-    Palette,
-    Plus,
-    Trash2,
-} from 'lucide-react';
+import { ChartColumn, FolderOpen, Home, Library, Palette, Trash2 } from 'lucide-react';
 import { type CSSProperties, Suspense } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { StudioStorageUsage } from '@/features/profile/ui/StudioStorageUsage';
 import { Alert } from '@/shared/ui/Alert';
-import { Button } from '@/shared/ui/Button';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Separator } from '@/shared/ui/primitives/separator';
 import {
@@ -33,6 +23,8 @@ import { HeaderAccountActions } from './HeaderAccountActions';
 
 export function StudioLayout() {
     const location = useLocation();
+    const inTrash =
+        location.pathname === '/books/trash' || location.pathname.startsWith('/books/trash/');
     const editing = /^\/books\/[^/]+\/pages\/[^/]+$/.test(location.pathname);
     const { user } = useAuth();
     if (editing)
@@ -76,33 +68,22 @@ export function StudioLayout() {
                 >
                     <SidebarContent>
                         <SidebarGroup className="p-0">
-                            <Button asChild className="mb-5 w-full">
-                                <Link to="/books/new">
-                                    <Plus data-icon="inline-start" />
-                                    Tạo sách mới
-                                </Link>
-                            </Button>
                             <SidebarGroupContent>
                                 <nav aria-label="Điều hướng Studio">
                                     <SidebarMenu>
                                         {[
-                                            {
-                                                to: '/library',
-                                                label: 'Thư viện công khai',
-                                                icon: BookOpen,
-                                            },
                                             { to: '/books', label: 'Sách của tôi', icon: Library },
-                                            {
-                                                to: '/books/trash',
-                                                label: 'Thùng rác',
-                                                icon: Trash2,
-                                            },
                                             {
                                                 to: '/assets',
                                                 label: 'Tài nguyên',
                                                 icon: FolderOpen,
                                             },
                                             { to: '/stats', label: 'Thống kê', icon: ChartColumn },
+                                            {
+                                                to: '/books/trash',
+                                                label: 'Thùng rác',
+                                                icon: Trash2,
+                                            },
                                             ...(import.meta.env.DEV
                                                 ? [
                                                       {
@@ -118,11 +99,14 @@ export function StudioLayout() {
                                                     asChild
                                                     isActive={
                                                         location.pathname === to ||
-                                                        (to !== '/books' &&
-                                                            location.pathname.startsWith(`${to}/`))
+                                                        (location.pathname.startsWith(`${to}/`) &&
+                                                            (to !== '/books' || !inTrash))
                                                     }
                                                 >
-                                                    <NavLink to={to} end={to === '/books'}>
+                                                    <NavLink
+                                                        to={to}
+                                                        end={to === '/books' && inTrash}
+                                                    >
                                                         <Icon aria-hidden="true" />
                                                         <span>{label}</span>
                                                     </NavLink>
