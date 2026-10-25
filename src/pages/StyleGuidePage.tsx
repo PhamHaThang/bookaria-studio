@@ -1,23 +1,49 @@
-import { BookOpen, Check, Plus } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FormSelect } from '@/shared/ui/FormSelect';
-import { Checkbox } from '@/shared/ui/primitives/checkbox';
-import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
-import { Spinner } from '@/shared/ui/primitives/spinner';
-import { Textarea } from '@/shared/ui/primitives/textarea';
-import { Alert } from '../shared/ui/Alert';
-import { Badge } from '../shared/ui/Badge';
-import { Button, buttonStyles } from '../shared/ui/Button';
+import { auditNotes, componentFamilies } from '@/features/style-guide/catalog';
+import { ButtonSamples, ControlSamples } from '@/features/style-guide/ui/ControlSamples';
+import { FeedbackSamples } from '@/features/style-guide/ui/FeedbackSamples';
+import { GuideSection } from '@/features/style-guide/ui/GuideSection';
+import { LoadingSamples } from '@/features/style-guide/ui/LoadingSamples';
+import { NavigationSamples } from '@/features/style-guide/ui/NavigationSamples';
+import { OverlaySamples } from '@/features/style-guide/ui/OverlaySamples';
+import { cn } from '@/shared/lib/cn';
+import { Badge } from '@/shared/ui/Badge';
+import { BookariaLogo } from '@/shared/ui/BookariaLogo';
+import { Button } from '@/shared/ui/Button';
+import { Separator } from '@/shared/ui/primitives/separator';
+import {
+    Table,
+    TableBody,
+    TableCaption,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/shared/ui/primitives/table';
 
+const sections = [
+    ['colors', 'Màu sắc & khoảng cách'],
+    ['typography', 'Kiểu chữ'],
+    ['buttons', 'Nút & liên kết'],
+    ['forms', 'Ô nhập & lựa chọn'],
+    ['navigation', 'Điều hướng & bộ lọc'],
+    ['overlays', 'Modal & menu'],
+    ['feedback', 'Phản hồi & trạng thái'],
+    ['loading', 'Loading & Skeleton'],
+    ['content', 'Thẻ & nội dung trống'],
+    ['audit', 'Đối chiếu component'],
+] as const;
 const swatches = [
+    ['Màu chính', '--action-primary'],
+    ['Hover chính', '--action-primary-hover'],
     ['Nền trang', '--bg-canvas'],
     ['Bề mặt', '--bg-surface'],
-    ['Màu chính', '--action-primary'],
     ['Chữ chính', '--text-primary'],
     ['Chữ phụ', '--text-muted'],
-    ['Viền ô nhập', '--border-input'],
+    ['Viền control', '--border-input'],
+    ['Viền phân cách', '--border-default'],
     ['Thành công', '--status-success-text'],
     ['Cảnh báo', '--status-warning-text'],
     ['Lỗi', '--status-danger-text'],
@@ -25,304 +51,267 @@ const swatches = [
 ] as const;
 
 export function StyleGuidePage() {
-    const [saved, setSaved] = useState(false);
-    function previewSave(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        setSaved(true);
-    }
+    const [active, setActive] = useState(() => window.location.hash.slice(1) || 'colors');
+    const [values, setValues] = useState<Record<string, string>>({});
+    useEffect(() => {
+        const style = getComputedStyle(document.documentElement);
+        setValues(
+            Object.fromEntries(
+                swatches.map(([, token]) => [token, style.getPropertyValue(token).trim()]),
+            ),
+        );
+        const previous = document.title;
+        document.title = 'Giao diện mẫu | Bookaria';
+        const sync = () => setActive(window.location.hash.slice(1) || 'colors');
+        let frame = 0;
+        const trackSection = () => {
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => {
+                const current = sections
+                    .filter(([id]) => {
+                        const section = document.getElementById(id);
+                        return section && section.getBoundingClientRect().top <= 160;
+                    })
+                    .at(-1);
+                setActive(current?.[0] ?? 'colors');
+            });
+        };
+        window.addEventListener('hashchange', sync);
+        window.addEventListener('scroll', trackSection, { passive: true });
+        trackSection();
+        return () => {
+            document.title = previous;
+            window.removeEventListener('hashchange', sync);
+            window.removeEventListener('scroll', trackSection);
+            cancelAnimationFrame(frame);
+        };
+    }, []);
     return (
-        <div className="theme-guide mx-auto max-w-280 px-6 py-8 max-[540px]:px-5 max-[540px]:py-6">
-            <header className="theme-guide-header mb-12 flex items-center justify-between gap-6 max-[540px]:mb-8 max-[540px]:gap-3">
-                <Link
-                    className="brand inline-flex items-center gap-3 font-bold text-[length:var(--text-2xl)] text-[var(--text-brand-strong)] no-underline [&_span]:border-l-[var(--border-width)] [&_span]:border-l-border [&_span]:pl-3 [&_span]:font-normal [&_span]:text-[length:var(--text-sm)] [&_span]:text-muted-foreground [&_span]:[border-left-style:solid] [.studio-topbar_&]:min-h-[66px] [.studio-topbar_&]:min-w-[222px] [.studio-topbar_&]:gap-2 [.studio-topbar_&]:self-stretch [.studio-topbar_&]:border-r-[1px] [.studio-topbar_&]:border-r-border [.studio-topbar_&]:bg-[var(--nav-ground)] [.studio-topbar_&]:px-5 [.studio-topbar_&]:py-4 [.studio-topbar_&]:text-[length:20px] [.studio-topbar_&]:text-foreground [.studio-topbar_&]:[border-right-style:solid] max-[700px]:[.studio-topbar_&]:mr-auto max-[1000px]:[.studio-topbar_&]:min-w-[190px] max-[700px]:[.studio-topbar_&]:min-w-0 max-[700px]:[.studio-topbar_&]:flex-[0_1_auto] max-[1000px]:[.studio-topbar_&]:px-[14px] max-[700px]:[.studio-topbar_&]:px-3 max-[1000px]:[.studio-topbar_&]:text-[length:18px] max-[700px]:[.studio-topbar_&]:text-[length:17px] [.studio-topbar_&_span]:border-[var(--nav-muted)] [.studio-topbar_&_span]:pl-2 [.studio-topbar_&_span]:text-[length:10px] [.studio-topbar_&_span]:text-[var(--nav-ink)] max-[700px]:[.studio-topbar_&_span]:hidden max-[760px]:[.studio-topbar_&_span]:hidden [.studio-topbar_&_svg]:text-primary max-[540px]:[.theme-guide-header_&_span]:hidden"
-                    to="/"
-                    aria-label="Bookaria - Trang chủ"
-                >
-                    <BookOpen size={25} aria-hidden="true" />
-                    Bookaria<span>Studio</span>
+        <div className="mx-auto max-w-360 px-8 py-6">
+            <header className="flex items-center justify-between gap-6 border-border border-b pb-6">
+                <Link to="/" aria-label="Bookaria - Trang chủ">
+                    <BookariaLogo />
                 </Link>
-                <Link to="/books">Về Studio</Link>
-            </header>
-            <main id="main">
-                <div className="theme-guide-intro max-w-[68ch] [&_h1]:mt-4 [&_p]:text-muted-foreground">
-                    <h1>Nền tảng giao diện Studio</h1>
-                    <Badge tone="info">Bộ giao diện mẫu · Light</Badge>
-                    <p>
-                        Màu xanh dịu, chữ tiếng Việt rõ ràng và các thành phần dùng chung. Trang này
-                        chỉ có khi chạy chế độ phát triển; các thao tác bên dưới là bản mẫu tại chỗ.
-                    </p>
-                </div>
-                <nav
-                    className="theme-guide-nav mt-6 flex flex-wrap gap-[var(--space-2)_var(--space-6)] py-5 [border-block:1px_solid_var(--border-default)] [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center"
-                    aria-label="Mục trong bộ giao diện"
-                >
-                    <a href="#colors">Màu sắc</a>
-                    <a href="#typography">Kiểu chữ</a>
-                    <a href="#buttons">Nút & liên kết</a>
-                    <a href="#forms">Biểu mẫu</a>
-                    <a href="#feedback">Thông báo</a>
-                    <a href="#spacing">Khoảng cách</a>
-                </nav>
-
-                <section
-                    id="colors"
-                    className="theme-guide-section border-b-[1px] border-b-border py-10 [border-bottom-style:solid] [scroll-margin-top:var(--space-6)] [&_>_p]:mx-0 [&_>_p]:mt-[calc(-1_*_var(--space-2))] [&_>_p]:mb-6 [&_>_p]:text-muted-foreground"
-                    aria-labelledby="colors-title"
-                >
-                    <h2 id="colors-title">Màu sắc theo vai trò</h2>
-                    <p>Đổi token ngữ nghĩa để cập nhật đồng bộ các màn hình.</p>
-                    <ul className="theme-swatches [&_code]:wrap-anywhere m-0 grid list-none grid-cols-[repeat(auto-fit,_minmax(164px,_1fr))] gap-6 p-0 max-[540px]:grid-cols-[repeat(2,_minmax(0,_1fr))] max-[540px]:gap-[var(--space-5)_var(--space-4)] [&_code]:block [&_code]:text-[length:var(--text-xs)] [&_code]:text-muted-foreground [&_strong]:mt-2 [&_strong]:mb-1 [&_strong]:block [&_strong]:text-[length:var(--text-sm)]">
-                        {swatches.map(([label, token]) => (
-                            <li key={token}>
-                                <div
-                                    className="theme-swatch h-16 rounded-[var(--radius-md)] border border-border border-solid"
-                                    style={{ background: `var(${token})` }}
-                                />
-                                <strong>{label}</strong>
-                                <code>{token}</code>
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-
-                <section
-                    id="typography"
-                    className="theme-guide-section border-b-[1px] border-b-border py-10 [border-bottom-style:solid] [scroll-margin-top:var(--space-6)] [&_>_p]:mx-0 [&_>_p]:mt-[calc(-1_*_var(--space-2))] [&_>_p]:mb-6 [&_>_p]:text-muted-foreground"
-                    aria-labelledby="type-title"
-                >
-                    <h2 id="type-title">Bricolage Grotesque + Be Vietnam Pro</h2>
-                    <p>
-                        Bricolage Grotesque cho tiêu đề (600, 700). Be Vietnam Pro cho nội dung,
-                        nhãn và nút (400, 500, 600, 700). Cả hai font được lưu cùng ứng dụng.
-                    </p>
-                    <div className="theme-type-samples border border-border border-solid bg-surface p-6 max-[540px]:p-5 [&_p:last-child]:mb-0 [&_p]:mx-0 [&_p]:mt-0 [&_p]:mb-4">
-                        <p className="theme-heading-sample font-display font-semibold text-[length:var(--text-3xl)] leading-[var(--leading-tight)] max-[540px]:text-[length:var(--text-2xl)]">
-                            Mỗi cuốn sách mở ra một thế giới.
-                        </p>
-                        <p className="theme-subheading-sample font-display font-semibold text-[length:var(--text-xl)]">
-                            Không gian sáng tạo của bạn
-                        </p>
-                        <p>Khám phá, sáng tạo và chia sẻ những câu chuyện đầy cảm hứng.</p>
-                        <p className="theme-small-sample text-[length:var(--text-sm)] text-muted-foreground">
-                            Chữ phụ 14px · Tiếng Việt: ă â đ ê ô ơ ư · 0123456789
-                        </p>
-                        <p className="theme-caption-sample text-[length:var(--text-xs)] text-muted-foreground">
-                            Chú thích 12px · Đã lưu thay đổi cách đây vài giây.
-                        </p>
-                    </div>
-                    <div className="theme-weight-samples my-5 flex flex-wrap items-center gap-4">
-                        <span style={{ fontWeight: 400 }}>400 Thường</span>
-                        <span style={{ fontWeight: 500 }}>500 Vừa</span>
-                        <span style={{ fontWeight: 600 }}>600 Đậm vừa</span>
-                        <span style={{ fontWeight: 700 }}>700 Đậm</span>
-                    </div>
-                </section>
-
-                <section
-                    id="buttons"
-                    className="theme-guide-section border-b-[1px] border-b-border py-10 [border-bottom-style:solid] [scroll-margin-top:var(--space-6)] [&_>_p]:mx-0 [&_>_p]:mt-[calc(-1_*_var(--space-2))] [&_>_p]:mb-6 [&_>_p]:text-muted-foreground"
-                    aria-labelledby="buttons-title"
-                >
-                    <h2 id="buttons-title">Nút & liên kết</h2>
-                    <p>Dùng phím Tab để xem viền focus. Nút mặc định cao 48px, cỡ nhỏ 40px.</p>
-                    <div className="theme-demo-row my-5 flex flex-wrap items-center gap-4 [.theme-demo-form_&:last-child]:mb-0">
-                        <Button>
-                            <Plus data-icon="inline-start" aria-hidden="true" />
-                            Tạo sách
-                        </Button>
-                        <Button variant="secondary">Lưu bản nháp</Button>
-                        <Button variant="ghost">Hủy bỏ</Button>
-                        <Button variant="danger">Chuyển vào thùng rác</Button>
-                    </div>
-                    <div className="theme-demo-row my-5 flex flex-wrap items-center gap-4 [.theme-demo-form_&:last-child]:mb-0">
-                        <Button size="sm">Cỡ nhỏ</Button>
-                        <Button disabled>Chưa khả dụng</Button>
-                        <Button aria-busy={true} disabled={true}>
-                            {true && <Spinner data-icon="inline-start" aria-hidden="true" />}Đang
-                            lưu mẫu…
-                        </Button>
-                        <Link to="/books" className={buttonStyles({ variant: 'secondary' })}>
-                            Mở Studio
+                <div className="flex items-center gap-3">
+                    <Badge>Chỉ trong development</Badge>
+                    <Button variant="secondary" asChild>
+                        <Link to="/books">
+                            <ArrowLeft data-icon="inline-start" />
+                            Về Studio
                         </Link>
-                    </div>
-                    <p className="theme-caption-sample text-[length:var(--text-xs)] text-muted-foreground">
-                        Nút tải bị khóa tương tác; liên kết điều hướng vẫn là thẻ liên kết.
-                    </p>
-                </section>
-
-                <section
-                    id="forms"
-                    className="theme-guide-section border-b-[1px] border-b-border py-10 [border-bottom-style:solid] [scroll-margin-top:var(--space-6)] [&_>_p]:mx-0 [&_>_p]:mt-[calc(-1_*_var(--space-2))] [&_>_p]:mb-6 [&_>_p]:text-muted-foreground"
-                    aria-labelledby="forms-title"
+                    </Button>
+                </div>
+            </header>
+            <div className="grid grid-cols-[200px_minmax(0,1fr)] items-start gap-12 pt-10 max-[1000px]:grid-cols-1 max-[1000px]:gap-8">
+                <nav
+                    aria-label="Mục giao diện mẫu"
+                    className="sticky top-8 flex flex-col gap-1 max-[1000px]:static max-[1000px]:flex-row max-[1000px]:flex-wrap"
                 >
-                    <h2 id="forms-title">Biểu mẫu</h2>
-                    <p>Mỗi ô có nhãn rõ ràng. Chữ trợ giúp và lỗi được nối với ô nhập tương ứng.</p>
-                    <form
-                        className="theme-demo-form max-w-180 rounded-[var(--radius-lg)] border border-border border-solid bg-surface p-6 max-[540px]:p-5"
-                        onSubmit={previewSave}
-                    >
-                        <FieldGroup className="contents">
-                            {saved && (
-                                <Alert tone="success">
-                                    Đã lưu bản mẫu tại trang này. Không có dữ liệu được gửi lên máy
-                                    chủ.
-                                </Alert>
+                    {sections.map(([id, label]) => (
+                        <a
+                            key={id}
+                            href={`#${id}`}
+                            aria-current={active === id ? 'location' : undefined}
+                            className={cn(
+                                'border-transparent border-l-2 px-3 py-2 text-sm no-underline transition-colors hover:text-primary',
+                                active === id
+                                    ? 'border-primary font-semibold text-primary'
+                                    : 'text-muted-foreground',
                             )}
-                            <div className="form-grid grid grid-cols-[1fr_1fr] gap-[0_var(--space-6)] max-[760px]:grid-cols-[1fr] max-[540px]:[.theme-demo-form_&]:grid-cols-[1fr]">
-                                <Field className="theme-demo-field mb-5 block [&_label]:mb-0">
-                                    <FieldLabel htmlFor="sample-title">Tên sách</FieldLabel>
-
-                                    <Input
-                                        id="sample-title"
-                                        name="title"
-                                        placeholder="Nhập tên sách"
-                                        required
-                                        aria-describedby="sample-title-hint"
-                                    />
-                                    <span
-                                        id="sample-title-hint"
-                                        className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]"
-                                    >
-                                        Hãy đặt một tên ngắn, dễ nhớ.
-                                    </span>
-                                </Field>
-                                <Field orientation="contents">
-                                    <FieldLabel htmlFor="sample-format">
-                                        Khổ sách
-                                        <FormSelect
-                                            id="sample-format"
-                                            name="format"
-                                            options={[
-                                                { value: 'A4', label: 'A4' },
-                                                { value: 'A5', label: 'A5' },
-                                                { value: 'Hình vuông', label: 'Hình vuông' },
-                                            ]}
-                                        />
-                                    </FieldLabel>
-                                </Field>
-                            </div>
-                            <Field orientation="contents">
-                                <FieldLabel htmlFor="sample-description">
-                                    Mô tả
-                                    <Textarea
-                                        id="sample-description"
-                                        name="description"
-                                        rows={3}
-                                        placeholder="Cuốn sách này dành cho ai?"
-                                    />
-                                </FieldLabel>
-                            </Field>
-                            <div className="form-grid grid grid-cols-[1fr_1fr] gap-[0_var(--space-6)] max-[760px]:grid-cols-[1fr] max-[540px]:[.theme-demo-form_&]:grid-cols-[1fr]">
-                                <Field
-                                    data-invalid
-                                    className="theme-demo-field mb-5 block [&_label]:mb-0"
-                                >
-                                    <FieldLabel htmlFor="sample-invalid">
-                                        Tên chưa hợp lệ
-                                    </FieldLabel>
-                                    <Input
-                                        id="sample-invalid"
-                                        defaultValue=""
-                                        aria-invalid="true"
-                                        aria-describedby="sample-invalid-error"
-                                    />
-                                    <span
-                                        id="sample-invalid-error"
-                                        className="field-error mx-0 mt-2 mb-0 text-[length:var(--text-xs)] text-danger-foreground"
-                                    >
-                                        Ví dụ lỗi: vui lòng nhập tên sách.
-                                    </span>
-                                </Field>
-                                <Field orientation="contents">
-                                    <FieldLabel htmlFor="sample-readonly">
-                                        Thông tin chỉ đọc
-                                        <Input
-                                            id="sample-readonly"
-                                            value="Bookaria Studio"
-                                            readOnly
-                                        />
-                                    </FieldLabel>
-                                </Field>
-                            </div>
-                            <Field orientation="contents">
-                                <FieldLabel htmlFor="sample-disabled">
-                                    Ô tạm khóa
-                                    <Input id="sample-disabled" value="Đang chờ xử lý" disabled />
-                                </FieldLabel>
-                            </Field>
-                            <Field orientation="contents">
-                                <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                    <Checkbox name="remember" />
-                                    Ghi nhớ lựa chọn mẫu
-                                </FieldLabel>
-                            </Field>
-                            <div className="theme-demo-row my-5 flex flex-wrap items-center gap-4 [.theme-demo-form_&:last-child]:mb-0">
-                                <Button type="submit">
-                                    <Check data-icon="inline-start" aria-hidden="true" />
-                                    Lưu bản mẫu
-                                </Button>
-                            </div>
-                        </FieldGroup>
-                    </form>
-                </section>
-
-                <section
-                    id="feedback"
-                    className="theme-guide-section border-b-[1px] border-b-border py-10 [border-bottom-style:solid] [scroll-margin-top:var(--space-6)] [&_>_p]:mx-0 [&_>_p]:mt-[calc(-1_*_var(--space-2))] [&_>_p]:mb-6 [&_>_p]:text-muted-foreground"
-                    aria-labelledby="feedback-title"
-                >
-                    <h2 id="feedback-title">Thông báo & trạng thái</h2>
-                    <div className="theme-feedback-samples max-w-180">
-                        <Alert tone="info">
-                            Thông tin: bạn có thể chỉnh sửa tên sách trong phần chi tiết.
-                        </Alert>
-                        <Alert tone="success">Thành công: thông tin đã được lưu.</Alert>
-                        <Alert tone="warning">
-                            Cần chú ý: hãy xác minh email trước khi xuất bản.
-                        </Alert>
-                        <Alert tone="danger">
-                            Lỗi: chưa kết nối được máy chủ. Vui lòng thử lại.
-                        </Alert>
+                        >
+                            {label}
+                        </a>
+                    ))}
+                </nav>
+                <main id="main" className="min-w-0">
+                    <div className="mb-12 max-w-[70ch]">
+                        <h1 className="mt-0 mb-4 text-4xl tracking-tight">
+                            Giao diện mẫu Bookaria
+                        </h1>
+                        <p className="m-0 text-muted-foreground">
+                            Thư viện component đang dùng trong Studio. Các mẫu bên dưới sử dụng trực
+                            tiếp component của dự án và có thể tương tác; dữ liệu chỉ là minh họa
+                            tại chỗ.
+                        </p>
+                        <p className="mt-3 mb-0 text-muted-foreground text-sm">
+                            Màu chính đen #252525 · Be Vietnam Pro + Bricolage Grotesque · Tailwind
+                            + shadcn/Radix + Lucide + Sonner.
+                        </p>
                     </div>
-                    <div className="theme-demo-row my-5 flex flex-wrap items-center gap-4 [.theme-demo-form_&:last-child]:mb-0">
-                        <Badge>Bản nháp</Badge>
-                        <Badge tone="success">Đã xuất bản</Badge>
-                        <Badge tone="warning">Có thay đổi</Badge>
-                        <Badge tone="danger">Cần kiểm tra</Badge>
-                        <Badge tone="info">Thông tin</Badge>
-                    </div>
-                </section>
-
-                <section
-                    id="spacing"
-                    className="theme-guide-section border-b-[1px] border-b-border py-10 [border-bottom-style:solid] [scroll-margin-top:var(--space-6)] [&_>_p]:mx-0 [&_>_p]:mt-[calc(-1_*_var(--space-2))] [&_>_p]:mb-6 [&_>_p]:text-muted-foreground"
-                    aria-labelledby="spacing-title"
-                >
-                    <h2 id="spacing-title">Khoảng cách & bo góc</h2>
-                    <p>
-                        Thang khoảng cách theo bước 4px. Ưu tiên 8, 12, 16, 24 và 32px trong màn
-                        hình mới.
+                    <p className="mb-10 max-w-[70ch] text-muted-foreground text-sm">
+                        Control ưu tiên nền trắng; hover hoặc chọn dùng đen–trắng. Button bị khóa
+                        dùng nền trắng, chữ và viền dịu thay cho khối xám. Radio/checkbox chưa chọn
+                        có viền đen, nền trắng; đã chọn có nền đen. Tabs dạng line giữ gạch dưới.
                     </p>
-                    <div className="theme-space-samples mb-8 grid gap-3 [&_>_div]:flex [&_>_div]:items-center [&_>_div]:gap-4 [&_code]:w-20 [&_small]:text-[length:var(--text-xs)] [&_small]:text-muted-foreground [&_span]:h-4 [&_span]:bg-primary">
-                        {([1, 2, 3, 4, 6, 8, 12, 16] as const).map((step) => (
-                            <div key={step}>
-                                <code>space-{step}</code>
-                                <span style={{ width: `var(--space-${step})` }} />
-                                <small>{step * 4}px</small>
+                    <GuideSection
+                        id="colors"
+                        title="Màu sắc & khoảng cách"
+                        description="Các ô màu đọc trực tiếp CSS token hiện tại. Sửa token sẽ đổi đồng bộ component, không giữ một bản màu riêng ở trang mẫu."
+                    >
+                        <ul className="m-0 grid list-none grid-cols-4 gap-x-5 gap-y-6 p-0 max-[1100px]:grid-cols-3">
+                            {swatches.map(([label, token]) => (
+                                <li key={token} className="min-w-0">
+                                    <div
+                                        className="h-14 rounded-lg border border-border"
+                                        style={{ background: `var(${token})` }}
+                                    />
+                                    <p className="mt-2 mb-1 font-semibold text-sm">{label}</p>
+                                    <code className="block break-words text-muted-foreground text-xs">
+                                        {token}
+                                    </code>
+                                    <span className="mt-1 block text-muted-foreground text-xs">
+                                        {values[token] || 'Đang đọc token…'}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <Separator className="my-8" />
+                        <div className="grid grid-cols-2 gap-8">
+                            <div>
+                                <h3 className="mt-0 text-base">Thang khoảng cách</h3>
+                                <div className="flex flex-col gap-3">
+                                    {[1, 2, 3, 4, 6, 8, 12].map((step) => (
+                                        <div key={step} className="flex items-center gap-3">
+                                            <code className="w-20 shrink-0 text-xs">
+                                                space-{step}
+                                            </code>
+                                            <span
+                                                className="h-2 bg-primary"
+                                                style={{ width: `var(--space-${step})` }}
+                                            />
+                                            <span className="text-muted-foreground text-xs">
+                                                {step * 4}px
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        ))}
-                    </div>
-                    <div className="theme-radius-samples flex flex-wrap gap-4 [&_>_div]:border [&_>_div]:border-input [&_>_div]:border-solid [&_>_div]:bg-surface [&_>_div]:p-5">
-                        {(['sm', 'md', 'lg', 'xl'] as const).map((size) => (
-                            <div key={size} style={{ borderRadius: `var(--radius-${size})` }}>
-                                <code>radius-{size}</code>
+                            <div>
+                                <h3 className="mt-0 text-base">Bo góc & control</h3>
+                                <div className="flex flex-wrap gap-3">
+                                    {['sm', 'md', 'lg', 'xl'].map((size) => (
+                                        <div
+                                            key={size}
+                                            className="border border-input bg-surface p-4"
+                                            style={{ borderRadius: `var(--radius-${size})` }}
+                                        >
+                                            <code className="text-xs">{size}</code>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-muted-foreground text-sm">
+                                    Control thường 48px, nút nhỏ 40px. Editor có công cụ compact
+                                    riêng. Viền focus ô nhập nằm bên trong; nút có focus bàn phím rõ
+                                    ràng.
+                                </p>
                             </div>
-                        ))}
-                    </div>
-                </section>
-            </main>
-            <footer className="theme-guide-footer pt-8 pb-4 text-[length:var(--text-sm)] text-muted-foreground">
-                Bookaria Studio · Theme mẫu, có thể thay đổi dần theo thiết kế chính thức.
+                        </div>
+                    </GuideSection>
+                    <GuideSection
+                        id="typography"
+                        title="Kiểu chữ tiếng Việt"
+                        description="Bricolage Grotesque dành cho tiêu đề; Be Vietnam Pro dành cho nội dung và control. Cả hai font được lưu cùng ứng dụng."
+                    >
+                        <div className="flex flex-col gap-5">
+                            <p className="m-0 font-display font-semibold text-3xl">
+                                Mỗi cuốn sách mở ra một thế giới.
+                            </p>
+                            <p className="m-0 font-display font-semibold text-xl">
+                                Không gian sáng tạo của bạn
+                            </p>
+                            <p className="m-0 max-w-[70ch]">
+                                Khám phá, sáng tạo và chia sẻ những câu chuyện. Tiếng Việt: ă â đ ê
+                                ô ơ ư. Dòng chữ dài được xuống hàng để nội dung luôn dễ đọc.
+                            </p>
+                            <p className="m-0 text-muted-foreground text-sm">
+                                Nhãn / chữ phụ 14px · Chữ chú thích 12px ·{' '}
+                                <span className="tabular-nums">0123456789</span>
+                            </p>
+                            <div className="flex flex-wrap gap-6">
+                                {[400, 500, 600, 700].map((weight) => (
+                                    <span key={weight} style={{ fontWeight: weight }}>
+                                        {weight} · Bookaria
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </GuideSection>
+                    <ButtonSamples />
+                    <ControlSamples />
+                    <NavigationSamples />
+                    <OverlaySamples />
+                    <FeedbackSamples />
+                    <LoadingSamples />
+                    <GuideSection
+                        id="audit"
+                        title="Đối chiếu component hiện tại"
+                        description="Khác biệt về tên API không nhất thiết là khác thiết kế. Bảng này phân biệt những biến thể theo ngữ cảnh và những nơi còn lặp cách ghép/style cục bộ trong source."
+                    >
+                        <div className="flex flex-col gap-8">
+                            {auditNotes.map((note) => (
+                                <article
+                                    key={note.group}
+                                    className="border-border border-b pb-6 last:border-0"
+                                >
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <h3 className="m-0 text-lg">{note.group}</h3>
+                                        <Badge
+                                            tone={
+                                                note.status.startsWith('Còn')
+                                                    ? 'warning'
+                                                    : 'neutral'
+                                            }
+                                        >
+                                            {note.status}
+                                        </Badge>
+                                    </div>
+                                    <p className="mt-3 mb-2 text-sm">{note.finding}</p>
+                                    <p className="mt-0 mb-3 text-muted-foreground text-sm">
+                                        {note.recommendation}
+                                    </p>
+                                    <code className="block break-words text-muted-foreground text-xs">
+                                        {note.source}
+                                    </code>
+                                </article>
+                            ))}
+                        </div>
+                        <h3 className="mt-8 mb-4 text-lg">Bản đồ component</h3>
+                        <Table>
+                            <TableCaption>
+                                Component Bookaria bọc primitive để giữ hành vi nghiệp vụ; các ví dụ
+                                trên dùng chính nguồn này.
+                            </TableCaption>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead scope="col">Nhóm</TableHead>
+                                    <TableHead scope="col">Component</TableHead>
+                                    <TableHead scope="col">Sử dụng</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {componentFamilies.map(([group, components, use]) => (
+                                    <TableRow key={group}>
+                                        <TableCell className="whitespace-normal align-top font-medium">
+                                            {group}
+                                        </TableCell>
+                                        <TableCell className="max-w-80 whitespace-normal align-top">
+                                            <code className="break-words text-xs">
+                                                {components}
+                                            </code>
+                                        </TableCell>
+                                        <TableCell className="max-w-80 whitespace-normal align-top">
+                                            {use}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </GuideSection>
+                </main>
+            </div>
+            <footer className="flex justify-between gap-6 pt-8 pb-4 text-muted-foreground text-sm">
+                <span>Bookaria · Giao diện mẫu dùng chung</span>
+                <a href="#main">Về đầu trang</a>
             </footer>
         </div>
     );

@@ -5,7 +5,7 @@ import { cn } from '@/shared/lib/cn';
 import { Tooltip, TooltipContent, TooltipTrigger } from './tooltip';
 
 const buttonVariants = cva(
-    'button compact inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-transparent text-[length:var(--text-sm)] leading-[1.4] font-semibold no-underline transition-colors duration-150 focus-visible:outline-3 focus-visible:outline-ring focus-visible:outline-offset-3 disabled:cursor-not-allowed disabled:opacity-[var(--opacity-disabled)] aria-busy:cursor-progress [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-[18px]',
+    'button compact inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-transparent text-[length:var(--text-sm)] leading-[1.4] font-semibold no-underline transition-colors duration-150 focus-visible:outline-3 focus-visible:outline-ring focus-visible:outline-offset-3 disabled:cursor-not-allowed disabled:border-border disabled:bg-surface disabled:text-muted-foreground disabled:opacity-100 aria-busy:cursor-progress [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-[18px]',
     {
         variants: {
             variant: {
@@ -14,8 +14,8 @@ const buttonVariants = cva(
                 secondary:
                     'secondary border-primary bg-surface text-primary hover:not-disabled:bg-primary hover:not-disabled:text-primary-foreground',
                 outline:
-                    'ghost border-border bg-transparent text-primary hover:not-disabled:bg-hover',
-                ghost: 'bg-transparent text-primary hover:not-disabled:bg-hover',
+                    'ghost border-border bg-surface text-primary hover:not-disabled:bg-primary hover:not-disabled:text-primary-foreground',
+                ghost: 'bg-transparent text-primary hover:not-disabled:bg-primary hover:not-disabled:text-primary-foreground',
                 destructive:
                     'danger bg-destructive text-destructive-foreground hover:not-disabled:bg-destructive-hover',
                 link: 'bg-transparent text-primary underline-offset-4 hover:underline',
