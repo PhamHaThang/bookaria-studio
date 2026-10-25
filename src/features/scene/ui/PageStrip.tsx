@@ -314,7 +314,7 @@ export function PageStrip({
                                                 setTarget(
                                                     remaining?.[0]
                                                         ? `/books/${bookId}/pages/${remaining[0].id}`
-                                                        : `/books/${bookId}`,
+                                                        : `/books/${bookId}/edit`,
                                                 );
                                             }
                                         })

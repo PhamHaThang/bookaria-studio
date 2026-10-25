@@ -17,6 +17,7 @@ import {
     type CreateBookBody,
     CreateBookBodySchema,
 } from '../../../shared/contracts/api/books.schema';
+import type { PageFormat } from '../../../shared/contracts/enums.schema';
 import { Button } from '../../../shared/ui/Button';
 import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
@@ -49,7 +50,7 @@ export function BookCreateDialog() {
     const [mode, setMode] = useState<'blank' | 'import'>('blank');
     const [source, setSource] = useState<ImportSource | null>(null);
     const [title, setTitle] = useState('');
-    const [format, setFormat] = useState('A4');
+    const [format, setFormat] = useState<PageFormat>('A4');
     const [width, setWidth] = useState('210'),
         [height, setHeight] = useState('297');
     const [detectedPage, setDetectedPage] = useState<number | null>(null);
@@ -349,7 +350,7 @@ export function BookCreateDialog() {
                                                 id="new-book-format"
                                                 value={format}
                                                 onValueChange={(value) => {
-                                                    setFormat(value);
+                                                    setFormat(value as PageFormat);
                                                     setDetectedPage(null);
                                                 }}
                                                 options={[
@@ -361,22 +362,21 @@ export function BookCreateDialog() {
                                             />
                                         </FieldLabel>
                                     </Field>
-                                    {format === 'CUSTOM' && (
-                                        <BookSizeFields
-                                            className="col-span-full"
-                                            idPrefix="new-book"
-                                            width={width}
-                                            height={height}
-                                            onWidthChange={(value) => {
-                                                setWidth(value);
-                                                setDetectedPage(null);
-                                            }}
-                                            onHeightChange={(value) => {
-                                                setHeight(value);
-                                                setDetectedPage(null);
-                                            }}
-                                        />
-                                    )}
+                                    <BookSizeFields
+                                        format={format}
+                                        className="col-span-full"
+                                        idPrefix="new-book"
+                                        width={width}
+                                        height={height}
+                                        onWidthChange={(value) => {
+                                            setWidth(value);
+                                            setDetectedPage(null);
+                                        }}
+                                        onHeightChange={(value) => {
+                                            setHeight(value);
+                                            setDetectedPage(null);
+                                        }}
+                                    />
                                 </div>
                                 {format === 'CUSTOM' && (
                                     <p className="mt-2 mb-0 text-muted-foreground text-xs leading-relaxed">

@@ -1,13 +1,14 @@
-import { type FormEvent, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { type FormEvent, useId, useState } from 'react';
 import { Button } from '@/shared/ui/Button';
+import { Disclosure } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
-import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Field, FieldGroup, FieldLabel, FieldSet } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import type { BookDetail } from '../../../shared/contracts/dto.schema';
 import { Feedback } from '../../../shared/ui/Feedback';
+import { bookLanguageOptions } from '../model/languages';
 import { bookPageSize } from '../model/page-size';
 import { BookSizeFields } from './BookSizeFields';
 
@@ -18,6 +19,8 @@ export function BookForm({
     success,
     onSubmit,
     onDirtyChange,
+    id,
+    hideActions = false,
 }: {
     book?: BookDetail;
     busy: boolean;
@@ -25,7 +28,10 @@ export function BookForm({
     success?: string | null;
     onSubmit: (form: FormData) => void;
     onDirtyChange?: (dirty: boolean) => void;
+    id?: string;
+    hideActions?: boolean;
 }) {
+    const prefix = useId();
     const [format, setFormat] = useState(book?.pageFormat || 'A4');
     const [width, setWidth] = useState(() => String(bookPageSize(book).widthMm));
     const [height, setHeight] = useState(() => String(bookPageSize(book).heightMm));
@@ -35,129 +41,136 @@ export function BookForm({
     }
     return (
         <form
-            className="editor-form max-w-180 rounded-[var(--radius-lg)] border border-border border-solid bg-surface p-8 max-[760px]:px-5 max-[760px]:py-6 [&_.feedback]:mb-6"
+            className="[&_[data-slot=select-trigger]]:mt-0 [&_input]:mt-0 [&_textarea]:mt-0"
+            noValidate
+            id={id}
             onSubmit={submit}
             onChange={() => onDirtyChange?.(true)}
             aria-busy={busy}
         >
-            <FieldGroup className="contents">
-                <Feedback error={error} success={success} />
-                <fieldset disabled={busy}>
-                    <Field orientation="contents">
-                        <FieldLabel htmlFor="title">
-                            Tên sách
-                            <Input
-                                id="title"
-                                name="title"
-                                defaultValue={book?.title}
-                                maxLength={200}
-                                required
-                            />
+            <Feedback error={error} success={success} />
+            <FieldSet disabled={busy} className="m-0 min-w-0 gap-5 border-0 p-0">
+                <FieldGroup className="gap-5 [container-type:normal]">
+                    <Field>
+                        <FieldLabel className="mb-0" htmlFor={`${prefix}-title`}>
+                            Tên sách <span aria-hidden="true">*</span>
                         </FieldLabel>
+                        <Input
+                            id={`${prefix}-title`}
+                            name="title"
+                            defaultValue={book?.title}
+                            maxLength={200}
+                            required
+                        />
                     </Field>
-                    <Field orientation="contents">
-                        <FieldLabel htmlFor="description">
+                    <Field>
+                        <FieldLabel className="mb-0" htmlFor={`${prefix}-description`}>
                             Mô tả
-                            <Textarea
-                                id="description"
-                                name="description"
-                                defaultValue={book?.description || ''}
-                                maxLength={2000}
-                                rows={4}
-                            />
                         </FieldLabel>
+                        <Textarea
+                            id={`${prefix}-description`}
+                            name="description"
+                            defaultValue={book?.description || ''}
+                            maxLength={2000}
+                            rows={3}
+                        />
                     </Field>
-                    <div className="form-grid grid grid-cols-[1fr_1fr] gap-[0_var(--space-6)] max-[760px]:grid-cols-[1fr] max-[540px]:[.theme-demo-form_&]:grid-cols-[1fr]">
-                        <Field orientation="contents">
-                            <FieldLabel htmlFor="pageFormat">
-                                Khổ sách
-                                <FormSelect
-                                    id="pageFormat"
-                                    name="pageFormat"
-                                    value={format}
-                                    onValueChange={(value) => setFormat(value as typeof format)}
-                                    options={[
-                                        { value: 'A4', label: 'A4' },
-                                        { value: 'A5', label: 'A5' },
-                                        { value: 'SQUARE', label: 'Hình vuông' },
-                                        { value: 'CUSTOM', label: 'Tùy chỉnh' },
-                                    ]}
-                                />
-                            </FieldLabel>
-                        </Field>
-                        {format === 'CUSTOM' && (
-                            <BookSizeFields
-                                className="col-span-full"
-                                idPrefix="book-size"
-                                width={width}
-                                height={height}
-                                onWidthChange={setWidth}
-                                onHeightChange={setHeight}
-                            />
-                        )}
-                        <Field orientation="contents">
-                            <FieldLabel htmlFor="language">
-                                Ngôn ngữ
-                                <Input
-                                    id="language"
-                                    name="language"
-                                    defaultValue={book?.language || 'vi'}
-                                    maxLength={5}
-                                    required
-                                    placeholder="vi"
-                                />
-                                <span className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
-                                    Mã ngôn ngữ, ví dụ: vi, en.
-                                </span>
-                            </FieldLabel>
-                        </Field>
-                        <Field orientation="contents">
-                            <FieldLabel htmlFor="topic">
+                    <FieldGroup className="grid grid-cols-2 gap-4 [container-type:normal]">
+                        <Field className="min-w-0">
+                            <FieldLabel className="mb-0" htmlFor={`${prefix}-topic`}>
                                 Chủ đề
-                                <Input
-                                    id="topic"
-                                    name="topic"
-                                    defaultValue={book?.topic || ''}
-                                    maxLength={50}
-                                />
                             </FieldLabel>
+                            <Input
+                                id={`${prefix}-topic`}
+                                name="topic"
+                                defaultValue={book?.topic || ''}
+                                maxLength={50}
+                            />
                         </Field>
-                        <Field orientation="contents">
-                            <FieldLabel htmlFor="ageMin">
-                                Độ tuổi từ
+                        <Field className="min-w-0">
+                            <FieldLabel className="mb-0" htmlFor={`${prefix}-format`}>
+                                Khổ sách
+                            </FieldLabel>
+                            <FormSelect
+                                id={`${prefix}-format`}
+                                name="pageFormat"
+                                value={format}
+                                disabled={busy}
+                                onValueChange={(value) => {
+                                    setFormat(value as typeof format);
+                                    onDirtyChange?.(true);
+                                }}
+                                options={[
+                                    { value: 'A4', label: 'A4' },
+                                    { value: 'A5', label: 'A5' },
+                                    { value: 'SQUARE', label: 'Hình vuông' },
+                                    { value: 'CUSTOM', label: 'Tùy chỉnh' },
+                                ]}
+                            />
+                        </Field>
+                    </FieldGroup>
+                    <BookSizeFields
+                        format={format}
+                        idPrefix={`${prefix}-size`}
+                        width={width}
+                        height={height}
+                        onWidthChange={setWidth}
+                        onHeightChange={setHeight}
+                    />
+                </FieldGroup>
+                <Disclosure title="Thông tin bổ sung" className="border-border border-t">
+                    <FieldGroup className="gap-4 pt-3 [container-type:normal]">
+                        <Field>
+                            <FieldLabel className="mb-0" htmlFor={`${prefix}-language`}>
+                                Ngôn ngữ
+                            </FieldLabel>
+                            <FormSelect
+                                id={`${prefix}-language`}
+                                name="language"
+                                defaultValue={book?.language || 'vi'}
+                                options={bookLanguageOptions(book?.language || 'vi')}
+                                placeholder="Chọn ngôn ngữ"
+                                disabled={busy}
+                                onValueChange={() => onDirtyChange?.(true)}
+                            />
+                        </Field>
+                        <FieldGroup className="grid grid-cols-2 gap-4 [container-type:normal]">
+                            <Field>
+                                <FieldLabel className="mb-0" htmlFor={`${prefix}-ageMin`}>
+                                    Độ tuổi từ
+                                </FieldLabel>
                                 <Input
-                                    id="ageMin"
+                                    id={`${prefix}-ageMin`}
                                     name="ageMin"
                                     type="number"
                                     min="0"
                                     max="150"
                                     defaultValue={book?.ageMin ?? ''}
                                 />
-                            </FieldLabel>
-                        </Field>
-                        <Field orientation="contents">
-                            <FieldLabel htmlFor="ageMax">
-                                Đến độ tuổi
+                            </Field>
+                            <Field>
+                                <FieldLabel className="mb-0" htmlFor={`${prefix}-ageMax`}>
+                                    Đến độ tuổi
+                                </FieldLabel>
                                 <Input
-                                    id="ageMax"
+                                    id={`${prefix}-ageMax`}
                                     name="ageMax"
                                     type="number"
                                     min="0"
                                     max="150"
                                     defaultValue={book?.ageMax ?? ''}
                                 />
-                            </FieldLabel>
-                        </Field>
-                    </div>
-                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                        <Button type="submit" aria-busy={busy} disabled={busy}>
-                            {busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
-                            {busy ? 'Đang lưu…' : book ? 'Lưu thông tin sách' : 'Tạo sách trống'}
-                        </Button>
-                        <Link to="/books">Quay về sách của tôi</Link>
-                    </div>
-                </fieldset>
-            </FieldGroup>
+                            </Field>
+                        </FieldGroup>
+                    </FieldGroup>
+                </Disclosure>
+                {!hideActions && (
+                    <Button type="submit" aria-busy={busy} disabled={busy}>
+                        {busy && <Spinner data-icon="inline-start" />}
+                        {busy ? 'Đang lưu…' : book ? 'Lưu thông tin sách' : 'Tạo sách trống'}
+                    </Button>
+                )}
+            </FieldSet>
         </form>
     );
 }

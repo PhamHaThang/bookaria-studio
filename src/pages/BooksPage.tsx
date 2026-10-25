@@ -41,6 +41,7 @@ import {
     updateBookSearch,
 } from '../features/books';
 import { BookActionsDialog } from '../features/books/ui/BookActionsDialog';
+import { BookInfoDialog } from '../features/books/ui/BookInfoDialog';
 import { errorMessage } from '../shared/api/errors';
 import type { BookSummary } from '../shared/contracts/dto.schema';
 import { formatDate } from '../shared/lib/format';
@@ -55,6 +56,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
     const [deleting, setDeleting] = useState<BookSummary | null>(null);
     const [actions, setActions] = useState<{ book: BookSummary; opener: HTMLElement } | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
+    const [info, setInfo] = useState<{ bookId: string; opener: HTMLElement | null } | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const listing = useQuery({
         queryKey: bookKeys.list(user?.id || '', trash ? 'trash' : 'list', query),
@@ -447,10 +449,22 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                     book={actions.book}
                     opener={actions.opener}
                     onClose={() => setActions(null)}
+                    onInfo={() => {
+                        setInfo({ bookId: actions.book.id, opener: actions.opener });
+                        setActions(null);
+                    }}
                     onDelete={() => {
                         remove.reset();
                         setDeleting(actions.book);
                     }}
+                />
+            )}
+            {info && (
+                <BookInfoDialog
+                    key={info.bookId}
+                    bookId={info.bookId}
+                    opener={info.opener}
+                    onClose={() => setInfo(null)}
                 />
             )}
             {deleting && (

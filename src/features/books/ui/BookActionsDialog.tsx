@@ -28,11 +28,13 @@ export function BookActionsDialog({
     opener,
     onClose,
     onDelete,
+    onInfo,
 }: {
     book: BookSummary;
     opener: HTMLElement | null;
     onClose: () => void;
     onDelete: () => void;
+    onInfo: () => void;
 }) {
     const { user } = useAuth();
     const actor = useRef(user?.id);
@@ -49,6 +51,7 @@ export function BookActionsDialog({
         },
     });
     const active = useRef(false);
+    const handoff = useRef(false);
     useEffect(() => {
         if (renaming) input.current?.select();
     }, [renaming]);
@@ -102,6 +105,7 @@ export function BookActionsDialog({
                 }}
                 onCloseAutoFocus={(event) => {
                     event.preventDefault();
+                    if (handoff.current) return;
                     if (opener?.isConnected) opener.focus({ preventScroll: true });
                     else document.querySelector<HTMLElement>('a[href^="/books/new"]')?.focus();
                 }}
@@ -190,14 +194,15 @@ export function BookActionsDialog({
                         <ActionButton
                             variant="ghost"
                             className="min-h-14 justify-start gap-3 px-3"
-                            asChild
+                            onClick={() => {
+                                handoff.current = true;
+                                onInfo();
+                            }}
                         >
-                            <Link to={`/books/${book.id}`}>
-                                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                                    <FileText aria-hidden="true" />
-                                </span>
-                                Thông tin sách
-                            </Link>
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                                <FileText aria-hidden="true" />
+                            </span>
+                            Thông tin sách
                         </ActionButton>
                         <ActionButton
                             variant="ghost"

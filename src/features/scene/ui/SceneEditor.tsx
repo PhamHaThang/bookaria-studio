@@ -3,6 +3,7 @@ import {
     ArrowLeft,
     ArrowUp,
     Box,
+    ChevronDown,
     CircleHelp,
     Copy,
     Download,
@@ -37,7 +38,6 @@ import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/ale
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { Separator } from '@/shared/ui/primitives/separator';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
 import { errorMessage } from '../../../shared/api/errors';
@@ -53,6 +53,7 @@ import { BookariaLogo } from '../../../shared/ui/BookariaLogo';
 import { Button } from '../../../shared/ui/Button';
 import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
+import { BookInfoDialog } from '../../books/ui/BookInfoDialog';
 import { PreviewPanel } from '../../preview/ui/PreviewPanel';
 import { PublicationPanel } from '../../publication/ui/PublicationPanel';
 import {
@@ -107,17 +108,27 @@ export function SceneEditor({
     const [layerSearch, setLayerSearch] = useState('');
     const [pagesBusy, setPagesBusy] = useState(false);
     const [pagesDirty, setPagesDirty] = useState(false);
+    const [infoOpen, setInfoOpen] = useState(false),
+        [infoBusy, setInfoBusy] = useState(false),
+        [infoDirty, setInfoDirty] = useState(false);
+    const infoAnchor = useRef<HTMLButtonElement | null>(null);
     const importFile = useRef<HTMLInputElement>(null);
     const [deleting, setDeleting] = useState<SceneObject | null>(null),
         [resetting, setResetting] = useState(false);
     const [settingsDirty, setSettingsDirty] = useState(false),
         [settingsBusy, setSettingsBusy] = useState(false);
     useEffect(() => {
-        onBusyChange(editor.busy || settingsBusy || publicationBusy || pagesBusy);
+        onBusyChange(editor.busy || settingsBusy || publicationBusy || pagesBusy || infoBusy);
         return () => onBusyChange(false);
-    }, [editor.busy, settingsBusy, publicationBusy, pagesBusy, onBusyChange]);
+    }, [editor.busy, settingsBusy, publicationBusy, pagesBusy, infoBusy, onBusyChange]);
     const blocked =
-        disabled || editor.busy || settingsBusy || publicationBusy || pagesBusy || editor.uncertain;
+        disabled ||
+        editor.busy ||
+        settingsBusy ||
+        publicationBusy ||
+        pagesBusy ||
+        infoBusy ||
+        editor.uncertain;
     const selected = editor.draft.objects.find((object) => object.id === selectedId);
     const sceneAssets = useSceneAssets(editor.draft, { ...page.assets, ...assets });
     const validation = SceneSchema.safeParse(editor.draft);
@@ -217,13 +228,15 @@ export function SceneEditor({
             aria-labelledby="scene-heading"
         >
             <NavigationGuard
-                dirty={editor.dirty || settingsDirty || editor.uncertain || pagesDirty}
+                dirty={editor.dirty || settingsDirty || editor.uncertain || pagesDirty || infoDirty}
                 dirtyDescription={
-                    pagesDirty
-                        ? 'Tài liệu và tiến độ thêm trang chỉ được giữ trong tab hiện tại. Trang đã thêm vẫn ở trong sách; rời editor sẽ bỏ phần nhập còn lại.'
-                        : undefined
+                    infoDirty
+                        ? 'Thông tin và ảnh bìa bạn đang sửa chưa được lưu. Rời editor sẽ bỏ phần này.'
+                        : pagesDirty
+                          ? 'Tài liệu và tiến độ thêm trang chỉ được giữ trong tab hiện tại. Trang đã thêm vẫn ở trong sách; rời editor sẽ bỏ phần nhập còn lại.'
+                          : undefined
                 }
-                saving={editor.busy || settingsBusy || publicationBusy || pagesBusy}
+                saving={editor.busy || settingsBusy || publicationBusy || pagesBusy || infoBusy}
             />
             <header className="scene-heading editor-header flex flex-wrap items-start justify-between gap-4 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_p]:m-0 [&_p]:text-muted-foreground [.scene-editor_&]:m-0 [.scene-editor_&]:flex [.scene-editor_&]:min-h-19 [.scene-editor_&]:items-center [.scene-editor_&]:gap-[14px] [.scene-editor_&]:border-b-[1px] [.scene-editor_&]:border-b-border [.scene-editor_&]:px-5 [.scene-editor_&]:py-3 [.scene-editor_&]:[border-bottom-style:solid] max-[760px]:[.scene-editor_&]:grid max-[760px]:[.scene-editor_&]:min-h-28 max-[760px]:[.scene-editor_&]:grid-cols-[minmax(0,_1fr)_auto] max-[760px]:[.scene-editor_&]:flex-wrap max-[760px]:[.scene-editor_&]:gap-2 max-[760px]:[.scene-editor_&]:px-3 max-[760px]:[.scene-editor_&]:py-[10px]">
                 <div className="editor-project mr-auto flex min-w-0 max-w-[30%] items-center gap-[13px] max-[1100px]:max-w-[23%] max-[760px]:max-w-[60%] max-[760px]:flex-[1] [&_>_div]:min-w-0 [&_h1]:m-0 [&_h1]:truncate [&_h1]:font-medium [&_h1]:text-[length:14px] [&_h1]:tracking-0 max-[760px]:[&_h1]:max-w-full max-[760px]:[&_h1]:text-[length:12px] [&_p]:mx-0 [&_p]:mt-[3px] [&_p]:mb-0 [&_p]:text-[length:10px] [&_p]:text-muted-foreground max-[760px]:[.scene-editor_&]:col-[1] max-[760px]:[.scene-editor_&]:row-[1] max-[760px]:[.scene-editor_&]:w-full max-[760px]:[.scene-editor_&]:max-w-full max-[760px]:[.scene-editor_&]:overflow-hidden max-[760px]:[.scene-editor_.editor-header_&]:col-[1_/_-1] max-[760px]:[.scene-editor_.editor-header_&]:w-[calc(100%_-_56px)] max-[760px]:[.scene-editor_.editor-header_&]:max-w-[calc(100%_-_56px)]">
@@ -235,14 +248,31 @@ export function SceneEditor({
                         <BookariaLogo symbol />
                     </Link>
                     <Link
-                        to={`/books/${book.id}`}
+                        to="/books"
                         className="editor-back rounded-[8px] p-2 text-muted-foreground [&:hover]:bg-hover"
-                        aria-label="Về cuốn sách"
+                        aria-label="Về sách của tôi"
                     >
                         <ArrowLeft size={20} />
                     </Link>
                     <div>
-                        <h1 id="scene-heading">{book.title}</h1>
+                        <h1 id="scene-heading">
+                            <ActionButton
+                                variant="plain"
+                                ref={infoAnchor}
+                                className="inline-flex h-auto max-w-full items-center justify-start gap-2 p-0 text-left [font:inherit]"
+                                aria-label="Thông tin sách"
+                                title={
+                                    editor.dirty || settingsDirty
+                                        ? 'Lưu nội dung trước khi sửa thông tin sách'
+                                        : 'Thông tin sách'
+                                }
+                                disabled={blocked || editor.dirty || settingsDirty}
+                                onClick={() => setInfoOpen(true)}
+                            >
+                                <span className="truncate">{book.title}</span>
+                                <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
+                            </ActionButton>
+                        </h1>
                         <p>
                             Trang {page.orderIndex + 1} ·{' '}
                             {editor.dirty ? 'Chưa lưu thay đổi' : 'Đã lưu nội dung'}
@@ -477,7 +507,6 @@ export function SceneEditor({
                             {objectLabels[item.type]}
                         </Button>
                     ))}
-                    <Separator className="my-2 w-7" />
                     <Button
                         variant="ghost"
                         aria-label="Mở tương tác"
@@ -830,6 +859,16 @@ export function SceneEditor({
                 onBusyChange={setPagesBusy}
                 onDraftChange={setPagesDirty}
             />
+            {infoOpen && (
+                <BookInfoDialog
+                    bookId={book.id}
+                    opener={infoAnchor.current}
+                    guardNavigation={false}
+                    onClose={() => setInfoOpen(false)}
+                    onBusyChange={setInfoBusy}
+                    onDirtyChange={setInfoDirty}
+                />
+            )}
             {helpOpen && (
                 <ConfirmDialog
                     title="Thao tác trong editor"

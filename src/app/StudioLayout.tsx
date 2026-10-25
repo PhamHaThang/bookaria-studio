@@ -25,7 +25,7 @@ export function StudioLayout() {
     const location = useLocation();
     const inTrash =
         location.pathname === '/books/trash' || location.pathname.startsWith('/books/trash/');
-    const editing = /^\/books\/[^/]+\/pages\/[^/]+$/.test(location.pathname);
+    const editing = /^\/books\/[^/]+\/(?:pages\/[^/]+|edit)$/.test(location.pathname);
     const { user } = useAuth();
     if (editing)
         return (
