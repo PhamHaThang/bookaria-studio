@@ -123,7 +123,7 @@ export function AdminUsersPage() {
                 </FieldGroup>
             </form>
             <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />
-            {list.isPending && <LoadingState>Đang tải người dùng…</LoadingState>}
+            {list.isPending && <LoadingState layout="rows">Đang tải người dùng…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess && (
                 <>

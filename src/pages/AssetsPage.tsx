@@ -253,7 +253,7 @@ export function AssetsPage() {
                 </div>
             )}
             {listing.isPending ? (
-                <LoadingState>Đang tải tài nguyên…</LoadingState>
+                <LoadingState layout="assets">Đang tải tài nguyên…</LoadingState>
             ) : listing.isError ? (
                 <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(listing.error)} />

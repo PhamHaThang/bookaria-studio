@@ -164,7 +164,9 @@ export function AdminLibraryNewPage() {
                 }}
                 busy={mine.isFetching || categories.isFetching || detail.isFetching}
             />
-            {mine.isPending && <LoadingState>Đang tải tài nguyên cá nhân…</LoadingState>}
+            {mine.isPending && (
+                <LoadingState layout="assets">Đang tải tài nguyên cá nhân…</LoadingState>
+            )}
             {mine.isError && <Feedback error={errorMessage(mine.error)} />}
             {mine.isSuccess && (
                 <>
@@ -222,7 +224,7 @@ export function AdminLibraryNewPage() {
             <section className="admin-section mt-8">
                 {selected && !valid && <Feedback error="Mã tài nguyên chưa hợp lệ." />}
                 {valid && detail.isPending && (
-                    <LoadingState>Đang tải tài nguyên đã chọn…</LoadingState>
+                    <LoadingState layout="detail">Đang tải tài nguyên đã chọn…</LoadingState>
                 )}
                 {(detail.isError || categories.isError) && (
                     <Feedback error={errorMessage(detail.error || categories.error)} />

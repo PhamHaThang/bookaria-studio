@@ -255,7 +255,7 @@ export function AdminUserDetailPage() {
         <>
             <Link to="/admin/users">Về danh sách người dùng</Link>
             <Feedback success={success} />
-            {query.isPending && <LoadingState>Đang tải tài khoản…</LoadingState>}
+            {query.isPending && <LoadingState layout="detail">Đang tải tài khoản…</LoadingState>}
             {query.isError && (
                 <>
                     <Feedback error={errorMessage(query.error)} />

@@ -145,7 +145,7 @@ export function ExplorePage() {
                     </div>
                 </FieldGroup>
             </form>
-            {listing.isPending && <LoadingState>Đang tải sách…</LoadingState>}
+            {listing.isPending && <LoadingState layout="public-books">Đang tải sách…</LoadingState>}
             {listing.isError && (
                 <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(listing.error)} />

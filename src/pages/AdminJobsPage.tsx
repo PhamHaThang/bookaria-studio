@@ -144,7 +144,7 @@ export function AdminJobsPage() {
                     </div>
                 </section>
             )}
-            {query && list.isPending && <LoadingState>Đang tải tác vụ…</LoadingState>}
+            {query && list.isPending && <LoadingState layout="rows">Đang tải tác vụ…</LoadingState>}
             {query && list.isError && (
                 <Feedback
                     error={`${errorMessage(list.error)} Theo dõi tự động đã dừng; hãy tải lại dữ liệu.`}

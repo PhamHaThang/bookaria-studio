@@ -234,10 +234,10 @@ export function BookCreateDialog() {
                 title="Rời luồng tạo sách?"
                 dirtyDescription={
                     checkpoint.current.bookId
-                        ? `Sách và ${completed} trang đã nhập vẫn được giữ. Rời trang sẽ bỏ phần nhập còn lại; bạn chỉ có thể tiếp tục lần nhập này khi ở lại tab hiện tại.`
+                        ? `Sách và ${completed} trang đã nhập vẫn được giữ. Đóng cửa sổ sẽ bỏ phần nhập còn lại; bạn chỉ có thể tiếp tục lần nhập này khi ở lại tab hiện tại.`
                         : checkpoint.current.uncertain
                           ? 'Máy chủ có thể đã tạo sách. Hãy kiểm tra Sách của tôi trước khi tạo lại để tránh trùng. Thông tin trong hộp thoại này sẽ bị bỏ.'
-                          : 'Thông tin sách và tài liệu bạn đã chọn chưa được lưu. Rời trang sẽ bỏ phần đang nhập.'
+                          : 'Thông tin sách và tài liệu bạn đã chọn chưa được lưu. Đóng cửa sổ sẽ bỏ phần đang nhập.'
                 }
             />
             <ConfirmDialog

@@ -169,7 +169,7 @@ export function AdminLibraryDetailPage() {
                 }}
                 busy={detail.isFetching || categories.isFetching}
             />
-            {detail.isPending && <LoadingState>Đang tải tài nguyên…</LoadingState>}
+            {detail.isPending && <LoadingState layout="detail">Đang tải tài nguyên…</LoadingState>}
             {detail.isError && <h1>Chưa mở được tài nguyên</h1>}
             {(detail.isError || categories.isError) && (
                 <Feedback error={errorMessage(detail.error || categories.error)} />

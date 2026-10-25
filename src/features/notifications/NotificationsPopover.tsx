@@ -17,13 +17,13 @@ import type { MarkNotificationsReadBody } from '@/shared/contracts/api/me.schema
 import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
 import { Badge } from '@/shared/ui/Badge';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { Badge as CounterBadge } from '@/shared/ui/primitives/badge';
 import { Button } from '@/shared/ui/primitives/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/primitives/popover';
 import { ScrollArea } from '@/shared/ui/primitives/scroll-area';
 import { Separator } from '@/shared/ui/primitives/separator';
-import { Spinner } from '@/shared/ui/primitives/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
 import { notificationTarget } from './api';
 import { notificationKeys, notificationsApi, useUnreadNotifications } from './index';
@@ -198,13 +198,7 @@ export function NotificationsPopover({
                         </div>
                     )}
                     {list.isPending && (
-                        <p
-                            role="status"
-                            className="flex items-center justify-center gap-2 p-6 text-muted-foreground"
-                        >
-                            <Spinner aria-hidden="true" />
-                            Đang tải thông báo…
-                        </p>
+                        <LoadingState layout="notifications">Đang tải thông báo…</LoadingState>
                     )}
                     {list.data &&
                         (list.data.data.length ? (

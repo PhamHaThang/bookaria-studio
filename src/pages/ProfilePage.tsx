@@ -226,7 +226,7 @@ export function ProfilePage() {
                                 />
                             </>
                         ) : profile.isPending ? (
-                            <LoadingState>Đang tải hồ sơ…</LoadingState>
+                            <LoadingState layout="profile">Đang tải hồ sơ…</LoadingState>
                         ) : (
                             <div>
                                 <Feedback error={errorMessage(profile.error)} />

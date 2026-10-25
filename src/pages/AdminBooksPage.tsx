@@ -39,7 +39,7 @@ export function AdminModerationPage() {
                 </div>
                 <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />
             </div>
-            {list.isPending && <LoadingState>Đang tải báo cáo…</LoadingState>}
+            {list.isPending && <LoadingState layout="rows">Đang tải báo cáo…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess && (
                 <>
@@ -158,7 +158,7 @@ export function AdminBooksPage() {
             <p className="stats-note max-w-[75ch] text-[length:var(--text-sm)] text-muted-foreground [.admin-form_&]:mb-4">
                 Sách bị gỡ được chuyển sang riêng tư. Chọn “Riêng tư” để tra cứu và khôi phục.
             </p>
-            {list.isPending && <LoadingState>Đang tải sách…</LoadingState>}
+            {list.isPending && <LoadingState layout="rows">Đang tải sách…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess && (
                 <>

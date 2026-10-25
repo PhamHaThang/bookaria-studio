@@ -30,7 +30,7 @@ export function StudioLayout() {
     if (editing)
         return (
             <main id="main" className="studio-editor-root min-h-[100dvh] bg-surface">
-                <Suspense fallback={<LoadingState>Đang mở editor…</LoadingState>}>
+                <Suspense fallback={<LoadingState layout="editor">Đang mở editor…</LoadingState>}>
                     <Outlet />
                 </Suspense>
             </main>

@@ -121,7 +121,9 @@ export function AdminAuditPage() {
             {!parsed.success && (
                 <Feedback error="Bộ lọc không hợp lệ. Mã người thực hiện và mã đối tượng phải là UUID; hãy sửa hoặc xóa bộ lọc." />
             )}
-            {query && list.isPending && <LoadingState>Đang tải nhật ký…</LoadingState>}
+            {query && list.isPending && (
+                <LoadingState layout="rows">Đang tải nhật ký…</LoadingState>
+            )}
             {query && list.isError && <Feedback error={errorMessage(list.error)} />}
             {query && list.isSuccess && (
                 <>

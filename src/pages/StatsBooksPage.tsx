@@ -74,7 +74,7 @@ export function StatsBooksPage() {
                     <Button type="submit">Tìm sách</Button>
                 </FieldGroup>
             </form>
-            {list.isPending && <LoadingState>Đang tải sách…</LoadingState>}
+            {list.isPending && <LoadingState layout="rows">Đang tải sách…</LoadingState>}
             {list.isError && (
                 <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(list.error)} />

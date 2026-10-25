@@ -622,7 +622,7 @@ export function PublicationPanel({
             </div>
             <div className="publication-section mt-8 border-t-[1px] border-t-border pt-6 [border-top-style:solid]">
                 <h3>Lịch sử phiên bản</h3>
-                {versions.isPending && <LoadingState>Đang tải lịch sử…</LoadingState>}
+                {versions.isPending && <LoadingState layout="rows">Đang tải lịch sử…</LoadingState>}
                 {versions.isError && <Feedback error={errorMessage(versions.error)} />}
                 {versions.data?.length === 0 && <p>Chưa có phiên bản đã xuất bản.</p>}
                 {versions.data && versions.data.length > 0 && (

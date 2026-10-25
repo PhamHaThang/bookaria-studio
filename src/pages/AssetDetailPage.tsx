@@ -208,7 +208,7 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                 <Link to="/assets">Về tài nguyên</Link>
             </>
         );
-    if (detail.isPending) return <LoadingState>Đang tải tài nguyên…</LoadingState>;
+    if (detail.isPending) return <LoadingState layout="detail">Đang tải tài nguyên…</LoadingState>;
     if (detail.isError)
         return (
             <>
@@ -411,7 +411,9 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                         <section className="asset-usage-section mt-8">
                             <h2>Nơi đang sử dụng</h2>
                             {usages.isPending ? (
-                                <LoadingState>Đang kiểm tra nơi sử dụng…</LoadingState>
+                                <LoadingState layout="detail">
+                                    Đang kiểm tra nơi sử dụng…
+                                </LoadingState>
                             ) : usages.isError ? (
                                 <>
                                     <Feedback error={errorMessage(usages.error)} />

@@ -57,7 +57,8 @@ function BookDetailContent({ bookId }: { bookId: string }) {
                 <Link to="/books">Về sách của tôi</Link>
             </>
         );
-    if (detail.isPending) return <LoadingState>Đang tải thông tin sách…</LoadingState>;
+    if (detail.isPending)
+        return <LoadingState layout="detail">Đang tải thông tin sách…</LoadingState>;
     if (detail.isError && !detail.data)
         return (
             <>

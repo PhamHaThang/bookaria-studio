@@ -223,7 +223,7 @@ export function AdminBookDetailPage() {
         <>
             <Link to="/admin/moderation">Về báo cáo chờ xử lý</Link>
             <Feedback success={success} />
-            {query.isPending && <LoadingState>Đang tải sách…</LoadingState>}
+            {query.isPending && <LoadingState layout="detail">Đang tải sách…</LoadingState>}
             {query.isError && (
                 <>
                     <Feedback error={errorMessage(query.error)} />

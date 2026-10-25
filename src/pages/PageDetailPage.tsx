@@ -578,7 +578,8 @@ function PageDetailContent({ bookId, pageId }: { bookId: string; pageId: string 
                 </div>
             </>
         );
-    if (!page.data || !book.data) return <LoadingState>Đang tải trang sách…</LoadingState>;
+    if (!page.data || !book.data)
+        return <LoadingState layout="editor">Đang tải trang sách…</LoadingState>;
     return (
         <>
             {(page.isError || book.isError) && (

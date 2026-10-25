@@ -37,7 +37,9 @@ export function AdminAuditDetailPage() {
                 )}
             </div>
             {id === null && <Feedback error="Mã nhật ký phải là số nguyên dương hợp lệ." />}
-            {id !== null && detail.isPending && <LoadingState>Đang tải nhật ký…</LoadingState>}
+            {id !== null && detail.isPending && (
+                <LoadingState layout="detail">Đang tải nhật ký…</LoadingState>
+            )}
             {id !== null && detail.isError && <Feedback error={errorMessage(detail.error)} />}
             {log && (
                 <>

@@ -180,7 +180,9 @@ export function AssetPicker({
                     Chưa tải được danh mục. Bạn vẫn có thể tìm và chọn tài nguyên.
                 </p>
             )}
-            {list.isPending && <LoadingState>Đang tải tài nguyên…</LoadingState>}
+            {list.isPending && (
+                <LoadingState layout="asset-picker">Đang tải tài nguyên…</LoadingState>
+            )}
             {list.isError && (
                 <>
                     <Feedback error={errorMessage(list.error)} />

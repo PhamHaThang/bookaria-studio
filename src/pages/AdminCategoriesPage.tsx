@@ -48,7 +48,7 @@ export function AdminCategoriesPage() {
                 </Button>
             </div>
             <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />
-            {list.isPending && <LoadingState>Đang tải danh mục…</LoadingState>}
+            {list.isPending && <LoadingState layout="rows">Đang tải danh mục…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess &&
                 (list.data.length ? (
@@ -257,7 +257,7 @@ export function AdminCategoryEditPage() {
     return (
         <>
             <Link to="/admin/categories">Về danh mục tài nguyên</Link>
-            {list.isPending && <LoadingState>Đang tải danh mục…</LoadingState>}
+            {list.isPending && <LoadingState layout="rows">Đang tải danh mục…</LoadingState>}
             {list.isError && (
                 <>
                     <Feedback error={errorMessage(list.error)} />

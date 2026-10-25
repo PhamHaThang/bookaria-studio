@@ -3,6 +3,7 @@ import { ImagePlus, MoreHorizontal, Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { LoadingState } from '@/shared/ui/LoadingState';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import { DropdownMenu, DropdownMenuTrigger } from '@/shared/ui/primitives/dropdown-menu';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
@@ -164,7 +165,9 @@ export function PageStrip({
                 <span className="page-strip-label mr-2 shrink-0 text-[length:11px] text-muted-foreground">
                     Trang sách
                 </span>
-                {listing.isPending && <span role="status">Đang tải các trang…</span>}
+                {listing.isPending && (
+                    <LoadingState layout="page-strip">Đang tải các trang…</LoadingState>
+                )}
                 {listing.isError && (
                     <ActionButton
                         variant="plain"

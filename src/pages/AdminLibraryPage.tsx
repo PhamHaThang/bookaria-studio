@@ -98,7 +98,7 @@ export function AdminLibraryPage() {
                 }}
                 busy={list.isFetching || categories.isFetching}
             />
-            {list.isPending && <LoadingState>Đang tải thư viện…</LoadingState>}
+            {list.isPending && <LoadingState layout="rows">Đang tải thư viện…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess && (
                 <>

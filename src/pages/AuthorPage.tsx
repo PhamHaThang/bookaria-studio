@@ -28,7 +28,9 @@ export function AuthorPage() {
     return (
         <>
             <Link to="/explore">Về thư viện</Link>
-            {profile.isPending && <LoadingState>Đang tải hồ sơ tác giả…</LoadingState>}
+            {profile.isPending && (
+                <LoadingState layout="author">Đang tải hồ sơ tác giả…</LoadingState>
+            )}
             {profile.isError && (
                 <div className="list-state px-0 py-12">
                     <h1>Chưa mở được hồ sơ tác giả</h1>

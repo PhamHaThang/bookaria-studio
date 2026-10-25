@@ -91,7 +91,7 @@ export function BookStatsPage() {
                     Cập nhật số liệu
                 </Button>
             </div>
-            {pending && <LoadingState>Đang tải thống kê…</LoadingState>}
+            {pending && <LoadingState layout="stats">Đang tải thống kê…</LoadingState>}
             {failed && (
                 <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(detail.error || stats.error)} />

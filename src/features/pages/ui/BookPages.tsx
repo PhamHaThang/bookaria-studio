@@ -132,7 +132,9 @@ export function BookPages({
                     </Button>
                 </Alert>
             )}
-            {pages.isPending && <LoadingState>Đang tải danh sách trang…</LoadingState>}
+            {pages.isPending && (
+                <LoadingState layout="pages">Đang tải danh sách trang…</LoadingState>
+            )}
             {pages.isError && (
                 <>
                     <Feedback error={errorMessage(pages.error)} />

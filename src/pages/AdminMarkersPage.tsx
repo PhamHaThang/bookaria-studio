@@ -51,7 +51,7 @@ export function AdminMarkersPage() {
             <Feedback success={success} />
             <WriteFeedback action={action} />
             <AdminReload retry={() => void list.refetch()} busy={list.isFetching || action.busy} />
-            {list.isPending && <LoadingState>Đang tải marker…</LoadingState>}
+            {list.isPending && <LoadingState layout="rows">Đang tải marker…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
             {list.isSuccess && (
                 <>
