@@ -12,6 +12,8 @@ import type { Page } from '../../../shared/contracts/dto.schema';
 import type { Scene, SceneObject } from '../../../shared/contracts/scene.schema';
 import { createFrontGuide } from '../model/front-guide';
 import { objectLabels } from '../model/objects';
+import type { SelectionMode } from '../model/selection';
+import { selectionFrustum, transformSelection } from '../model/selection-transform';
 import { wrapText } from '../model/text';
 import { objectFromGizmo } from '../model/transforms';
 import {
@@ -29,10 +31,10 @@ type Props = {
     aspect: number;
     scene: Scene;
     assets: Record<string, AssetRef>;
-    selectedId?: string;
+    selectedIds: string[];
     disabled: boolean;
-    onSelect: (id: string) => void;
-    onChange: (object: SceneObject) => void;
+    onSelect: (ids: string[], mode?: SelectionMode) => void;
+    onChange: (objects: SceneObject[]) => void;
     onBegin: () => void;
     onEnd: () => void;
 };
@@ -46,6 +48,7 @@ type Node = {
 
 export function SceneCanvas(props: Props) {
     const host = useRef<HTMLDivElement>(null),
+        marqueeHost = useRef<HTMLDivElement>(null),
         gizmoHost = useRef<HTMLFieldSetElement>(null),
         gizmoController = useRef<ViewGizmoController | null>(null),
         latest = useRef(props);
@@ -55,6 +58,7 @@ export function SceneCanvas(props: Props) {
         mode: (mode: Mode, snap: boolean) => void;
         view: (view: string) => void;
         focus: () => void;
+        cancel: () => boolean;
     } | null>(null);
     const [mode, setMode] = useState<Mode>('translate'),
         [snap, setSnap] = useState(false);
@@ -155,7 +159,7 @@ export function SceneCanvas(props: Props) {
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.domElement.setAttribute(
             'aria-label',
-            'Canvas 3D: chọn đối tượng, kéo trục để chỉnh; kéo vùng trống để xoay góc nhìn. Nhãn FRONT đánh dấu hướng trước ở mép dưới trang.',
+            'Canvas 3D: Shift/Ctrl + nhấp để chọn nhiều, Shift + kéo để khoanh vùng, kéo trục để chỉnh; kéo vùng trống để xoay góc nhìn. Nhãn FRONT đánh dấu hướng trước ở mép dưới trang.',
         );
         renderer.domElement.tabIndex = 0;
         element.append(renderer.domElement);
@@ -209,10 +213,48 @@ export function SceneCanvas(props: Props) {
                     }));
             },
         );
-        const outline = new THREE.BoxHelper(new THREE.Object3D(), themeColor('--action-primary'));
+        const outline = new THREE.Box3Helper(new THREE.Box3(), themeColor('--action-primary'));
         outline.visible = false;
         scene.add(outline);
         const nodes = new Map<string, Node>();
+        const selectionPivot = new THREE.Group();
+        selectionPivot.name = 'bookaria-selection-pivot';
+        selectionPivot.userData.editorHelper = true;
+        scene.add(selectionPivot);
+        let transformDrag: {
+            objects: SceneObject[];
+            inverse: THREE.Matrix4;
+            group: boolean;
+        } | null = null;
+        function selectedNodes() {
+            return latest.current.selectedIds.flatMap((id) => {
+                const node = nodes.get(id);
+                return node ? [node] : [];
+            });
+        }
+        function selectionBounds() {
+            const box = new THREE.Box3();
+            for (const node of selectedNodes()) {
+                if (!node.root.visible) continue;
+                const bounds = new THREE.Box3().setFromObject(node.root);
+                if (bounds.isEmpty()) box.expandByPoint(node.root.position);
+                else box.union(bounds);
+            }
+            return box;
+        }
+        function applyTransform(node: Node, object: SceneObject) {
+            node.root.position.fromArray(object.transform.position);
+            node.root.rotation.set(
+                ...(object.transform.rotation.map(THREE.MathUtils.degToRad) as [
+                    number,
+                    number,
+                    number,
+                ]),
+            );
+            node.root.scale.fromArray(object.transform.scale);
+            node.root.updateMatrixWorld(true);
+        }
+
         const draco = new DRACOLoader().setDecoderPath('/vendor/draco-0.161.0/');
         const loader = new GLTFLoader().setDRACOLoader(draco);
         function resources(root: THREE.Object3D) {
@@ -452,7 +494,7 @@ export function SceneCanvas(props: Props) {
                 }
                 if (!node) continue;
                 node.spec = spec;
-                if (!(dragging && controls.object === node.root)) {
+                if (!(dragging && latest.current.selectedIds.includes(spec.id))) {
                     if (
                         [
                             ...spec.transform.position,
@@ -473,24 +515,68 @@ export function SceneCanvas(props: Props) {
                 }
                 node.root.visible = !spec.editorHidden;
             }
-            const selected = value.selectedId ? nodes.get(value.selectedId) : undefined;
-            if (
-                selected &&
-                !selected.spec.editorHidden &&
-                !selected.spec.locked &&
-                !value.disabled
-            ) {
-                if (controls.object !== selected.root) controls.attach(selected.root);
+            const selected = selectedNodes();
+            const bounds = selectionBounds();
+            const canTransform =
+                selected.length > 0 &&
+                selected.length === value.selectedIds.length &&
+                selected.every(
+                    (node) =>
+                        !node.spec.editorHidden &&
+                        !node.spec.locked &&
+                        [
+                            ...node.spec.transform.position,
+                            ...node.spec.transform.rotation,
+                            ...node.spec.transform.scale,
+                        ].every(Number.isFinite) &&
+                        node.spec.transform.scale.every((n) => n > 0),
+                ) &&
+                !value.disabled;
+            if (canTransform) {
+                const target = selected.length === 1 ? selected[0].root : selectionPivot;
+                if (target === selectionPivot && !dragging) {
+                    selectionPivot.position.copy(bounds.getCenter(new THREE.Vector3()));
+                    selectionPivot.rotation.set(0, 0, 0);
+                    selectionPivot.scale.setScalar(1);
+                    selectionPivot.updateMatrixWorld(true);
+                }
+                if (controls.object !== target) controls.attach(target);
                 controls.showZ = true;
             } else controls.detach();
-            if (selected?.root.visible) {
-                outline.setFromObject(selected.root);
-                outline.visible = !new THREE.Box3().setFromObject(selected.root).isEmpty();
-            } else outline.visible = false;
+            outline.box.copy(bounds);
+            outline.visible = !bounds.isEmpty();
         }
         const changed = () => {
             const root = controls.object;
             if (!root || latest.current.disabled) return;
+            if (transformDrag?.group) {
+                if (controls.mode === 'scale') {
+                    const minimum = Math.min(
+                        1,
+                        Math.max(
+                            ...transformDrag.objects.flatMap((object) =>
+                                object.transform.scale.map((value) => 0.001 / value),
+                            ),
+                        ),
+                    );
+                    selectionPivot.scale.setScalar(Math.max(minimum, selectionPivot.scale.x));
+                }
+                selectionPivot.updateMatrixWorld(true);
+                const delta = selectionPivot.matrixWorld.clone().multiply(transformDrag.inverse);
+                const next = transformSelection(
+                    transformDrag.objects,
+                    delta,
+                    controls.mode === 'translate',
+                    controls.axis,
+                );
+                if (!next) return;
+                for (const object of next) {
+                    const node = nodes.get(object.id);
+                    if (node) applyTransform(node, object);
+                }
+                latest.current.onChange(next);
+                return;
+            }
             const spec = latest.current.scene.objects.find(
                 (object) => object.id === root.userData.objectId,
             );
@@ -507,32 +593,45 @@ export function SceneCanvas(props: Props) {
                 controls.mode === 'translate',
                 controls.axis,
             );
-            if (next) latest.current.onChange(next);
+            if (next) latest.current.onChange([next]);
         };
+        function finishTransform(cancelled = false) {
+            if (!dragging) return false;
+            if (cancelled && transformDrag) {
+                for (const object of transformDrag.objects) {
+                    const node = nodes.get(object.id);
+                    if (node) applyTransform(node, object);
+                }
+                latest.current.onChange(transformDrag.objects);
+            } else changed();
+            dragging = false;
+            controls.dragging = false;
+            transformDrag = null;
+            latest.current.onEnd();
+            orbit.enabled = true;
+            return true;
+        }
         controls.addEventListener('objectChange', changed);
         controls.addEventListener('mouseDown', () => {
+            const root = controls.object;
+            if (!root || latest.current.disabled) return;
+            const group = root === selectionPivot;
+            root.updateMatrixWorld(true);
+            transformDrag = {
+                objects: structuredClone(selectedNodes().map((node) => node.spec)),
+                inverse: root.matrixWorld.clone().invert(),
+                group,
+            };
+            if (group && controls.mode === 'scale') controls.axis = 'XYZ';
             dragging = true;
             latest.current.onBegin();
             orbit.enabled = false;
         });
-        controls.addEventListener('mouseUp', () => {
-            if (!dragging) return;
-            changed();
-            dragging = false;
-            latest.current.onEnd();
-            orbit.enabled = true;
-            sync();
-        });
+        controls.addEventListener('mouseUp', () => finishTransform());
         const start = new THREE.Vector2();
-        const pointerDown = (event: PointerEvent) => start.set(event.clientX, event.clientY);
-        const pointerUp = (event: PointerEvent) => {
-            if (
-                event.button !== 0 ||
-                controls.axis ||
-                start.distanceTo(new THREE.Vector2(event.clientX, event.clientY)) > 4 ||
-                latest.current.disabled
-            )
-                return;
+        let selecting: { id: number; x: number; y: number; moved: boolean; box: boolean } | null =
+            null;
+        function hitObject(event: PointerEvent) {
             const rect = renderer.domElement.getBoundingClientRect();
             const ray = new THREE.Raycaster();
             ray.setFromCamera(
@@ -549,14 +648,129 @@ export function SceneCanvas(props: Props) {
             for (const hit of hits) {
                 let root: THREE.Object3D | null = hit.object;
                 while (root && !root.userData.objectId) root = root.parent;
-                if (root) {
-                    latest.current.onSelect(root.userData.objectId);
-                    break;
-                }
+                if (root) return root.userData.objectId as string;
             }
+            return null;
+        }
+        function marqueeRect(x: number, y: number) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const clamp = (v: number, max: number) => Math.max(0, Math.min(max, v));
+            const x1 = clamp((selecting?.x || 0) - rect.left, rect.width),
+                x2 = clamp(x - rect.left, rect.width);
+            const y1 = clamp((selecting?.y || 0) - rect.top, rect.height),
+                y2 = clamp(y - rect.top, rect.height);
+            return {
+                left: Math.min(x1, x2),
+                right: Math.max(x1, x2),
+                top: Math.min(y1, y2),
+                bottom: Math.max(y1, y2),
+            };
+        }
+        function clearMarquee() {
+            const previous = selecting;
+            selecting = null;
+            if (marqueeHost.current) marqueeHost.current.hidden = true;
+            controls.enabled = true;
+            orbit.enabled = !dragging;
+            if (previous && renderer.domElement.hasPointerCapture(previous.id))
+                renderer.domElement.releasePointerCapture(previous.id);
+            return Boolean(previous);
+        }
+        const pointerDown = (event: PointerEvent) => {
+            start.set(event.clientX, event.clientY);
+            if (
+                event.button !== 0 ||
+                latest.current.disabled ||
+                dragging ||
+                !(event.shiftKey || event.ctrlKey || event.metaKey)
+            )
+                return;
+            selecting = {
+                id: event.pointerId,
+                x: event.clientX,
+                y: event.clientY,
+                moved: false,
+                box: event.shiftKey,
+            };
+            stopOrbitMomentum();
+            orbit.enabled = false;
+            controls.enabled = false;
+            renderer.domElement.setPointerCapture(event.pointerId);
+            event.preventDefault();
+            event.stopImmediatePropagation();
         };
-        renderer.domElement.addEventListener('pointerdown', pointerDown);
-        renderer.domElement.addEventListener('pointerup', pointerUp);
+        const pointerMove = (event: PointerEvent) => {
+            if (!selecting || selecting.id !== event.pointerId) return;
+            event.stopImmediatePropagation();
+            if (
+                Math.hypot(event.clientX - selecting.x, event.clientY - selecting.y) <= 4 &&
+                !selecting.moved
+            )
+                return;
+            selecting.moved = true;
+            if (!selecting.box || !marqueeHost.current) return;
+            const box = marqueeRect(event.clientX, event.clientY);
+            const overlay = marqueeHost.current;
+            overlay.hidden = false;
+            overlay.style.left = `${box.left}px`;
+            overlay.style.top = `${box.top}px`;
+            overlay.style.width = `${box.right - box.left}px`;
+            overlay.style.height = `${box.bottom - box.top}px`;
+        };
+        const pointerUp = (event: PointerEvent) => {
+            if (selecting?.id === event.pointerId) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                if (!latest.current.disabled) {
+                    if (selecting.box && selecting.moved) {
+                        const rect = renderer.domElement.getBoundingClientRect();
+                        const frustum = selectionFrustum(
+                            camera,
+                            marqueeRect(event.clientX, event.clientY),
+                            rect,
+                        );
+                        const ids = [...nodes.values()]
+                            .filter(
+                                (node) =>
+                                    !node.spec.locked &&
+                                    node.root.visible &&
+                                    frustum?.intersectsBox(
+                                        new THREE.Box3().setFromObject(node.root),
+                                    ),
+                            )
+                            .map((node) => node.spec.id);
+                        latest.current.onSelect(ids, 'add');
+                    } else if (!selecting.moved) {
+                        const id = hitObject(event);
+                        if (id) latest.current.onSelect([id], 'toggle');
+                    }
+                }
+                clearMarquee();
+                return;
+            }
+            if (
+                event.button !== 0 ||
+                controls.axis ||
+                dragging ||
+                start.distanceTo(new THREE.Vector2(event.clientX, event.clientY)) > 4 ||
+                latest.current.disabled
+            )
+                return;
+            const id = hitObject(event);
+            latest.current.onSelect(id ? [id] : [], 'replace');
+        };
+        const pointerCancel = () => {
+            clearMarquee();
+            finishTransform(true);
+        };
+        const lostCapture = () => {
+            if (selecting) clearMarquee();
+        };
+        renderer.domElement.addEventListener('pointerdown', pointerDown, true);
+        renderer.domElement.addEventListener('pointermove', pointerMove, true);
+        renderer.domElement.addEventListener('pointerup', pointerUp, true);
+        renderer.domElement.addEventListener('pointercancel', pointerCancel);
+        renderer.domElement.addEventListener('lostpointercapture', lostCapture);
         const resize = new ResizeObserver(() => {
             const rect = element.getBoundingClientRect();
             if (!rect.width || !rect.height) return;
@@ -572,10 +786,7 @@ export function SceneCanvas(props: Props) {
             const delta = Math.min(clock.getDelta(), 0.05);
             for (const node of nodes.values()) node.mixer?.update(delta);
             orbit.update();
-            const selected = latest.current.selectedId
-                ? nodes.get(latest.current.selectedId)
-                : undefined;
-            if (selected && outline.visible) outline.setFromObject(selected.root);
+            if (outline.visible) outline.box.copy(selectionBounds());
             renderer.render(scene, camera);
             viewGizmo?.update();
         }
@@ -603,12 +814,11 @@ export function SceneCanvas(props: Props) {
                     );
                 orbit.update();
             },
+            cancel() {
+                return clearMarquee() || finishTransform(true);
+            },
             focus() {
-                const selected = latest.current.selectedId
-                    ? nodes.get(latest.current.selectedId)
-                    : undefined;
-                if (!selected) return;
-                const box = new THREE.Box3().setFromObject(selected.root);
+                const box = selectionBounds();
                 if (box.isEmpty()) return;
                 const center = box.getCenter(new THREE.Vector3());
                 const distance = Math.max(0.25, box.getSize(new THREE.Vector3()).length() * 1.5);
@@ -622,11 +832,17 @@ export function SceneCanvas(props: Props) {
         tick();
         return () => {
             disposed = true;
+            if (marqueeHost.current) marqueeHost.current.hidden = true;
             cancelAnimationFrame(frame);
             api.current = null;
             gizmoController.current = null;
             viewGizmo?.dispose();
             resize.disconnect();
+            renderer.domElement.removeEventListener('pointerdown', pointerDown, true);
+            renderer.domElement.removeEventListener('pointermove', pointerMove, true);
+            renderer.domElement.removeEventListener('pointerup', pointerUp, true);
+            renderer.domElement.removeEventListener('pointercancel', pointerCancel);
+            renderer.domElement.removeEventListener('lostpointercapture', lostCapture);
             controls.detach();
             controls.dispose();
             orbit.dispose();
@@ -669,6 +885,10 @@ export function SceneCanvas(props: Props) {
             )
                 return;
             const value = event.key.toLowerCase();
+            if (value === 'escape' && api.current?.cancel()) {
+                event.preventDefault();
+                return;
+            }
             if (value === 'w') setMode('translate');
             if (value === 'e') setMode('rotate');
             if (value === 'r') setMode('scale');
@@ -748,6 +968,13 @@ export function SceneCanvas(props: Props) {
                     className="scene-three-host absolute top-0 right-0 bottom-0 left-0 [touch-action:none] [&_canvas]:block [&_canvas]:size-full"
                     ref={host}
                 />
+                <div
+                    ref={marqueeHost}
+                    hidden
+                    aria-hidden="true"
+                    data-selection-marquee
+                    className="pointer-events-none absolute border border-primary bg-primary/10"
+                />
                 {!failure && (
                     <SceneViewGizmo
                         key={`${props.page.id}:${props.page.image.url}:${props.aspect}`}
@@ -795,9 +1022,15 @@ export function SceneCanvas(props: Props) {
                 {props.footer}
             </div>
             <div className="canvas-status flex flex-wrap justify-center gap-3 bg-[var(--editor-ground)] px-[10px] py-2 text-[length:10px] text-muted-foreground [&_span:last-child]:hidden">
-                <span>Kéo vùng trống: xoay · Cuộn: thu/phóng · Chuột phải: dịch góc nhìn</span>
+                <span>
+                    Shift + kéo: chọn nhiều · Kéo vùng trống: xoay · Cuộn: thu/phóng · Chuột phải:
+                    dịch góc nhìn{props.selectedIds.length > 1 ? ' · Scale nhóm đồng đều' : ''}
+                </span>
                 <span>1 đơn vị = chiều rộng trang</span>
             </div>
+            <p className="sr-only" role="status" aria-live="polite">
+                Đã chọn {props.selectedIds.length} đối tượng.
+            </p>
             {Object.entries(issues)
                 .filter(
                     ([id]) =>

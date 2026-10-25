@@ -63,10 +63,16 @@ import {
     newObject,
     objectAssetTypes,
     objectLabels,
-    removeObject,
     replaceObjectAsset,
     usesAsset,
 } from '../model/objects';
+import {
+    duplicateSelection,
+    removeSelection,
+    type SelectionMode,
+    setSelectionFlag,
+    updateSelection,
+} from '../model/selection';
 import { useSceneAssets } from '../model/use-scene-assets';
 import { useSceneDraft } from '../model/use-scene-draft';
 import { AssetPicker } from './AssetPicker';
@@ -76,6 +82,7 @@ import { ObjectEditor } from './ObjectEditor';
 import { PageSettingsEditor } from './PageSettingsEditor';
 import { PageStrip } from './PageStrip';
 import { SceneCanvas } from './SceneCanvas';
+import { SelectionEditor } from './SelectionEditor';
 
 export function SceneEditor({
     page,
@@ -91,7 +98,13 @@ export function SceneEditor({
     onRecognition: () => void;
 }) {
     const editor = useSceneDraft(page);
-    const [selectedId, setSelectedId] = useState(page.scene.objects[0]?.id || '');
+    const [selectedIds, setSelectedIds] = useState<string[]>(
+        page.scene.objects[0] ? [page.scene.objects[0].id] : [],
+    );
+    const [transforming, setTransforming] = useState(false);
+    function setSelectedId(id: string) {
+        setSelectedIds(id ? [id] : []);
+    }
     const [picker, setPicker] = useState<{
         type: keyof typeof objectAssetTypes;
         replace?: string;
@@ -113,15 +126,25 @@ export function SceneEditor({
         [infoDirty, setInfoDirty] = useState(false);
     const infoAnchor = useRef<HTMLButtonElement | null>(null);
     const importFile = useRef<HTMLInputElement>(null);
-    const [deleting, setDeleting] = useState<SceneObject | null>(null),
+    const [deleting, setDeleting] = useState<SceneObject[] | null>(null),
         [resetting, setResetting] = useState(false);
     const [settingsDirty, setSettingsDirty] = useState(false),
         [settingsBusy, setSettingsBusy] = useState(false);
     useEffect(() => {
-        onBusyChange(editor.busy || settingsBusy || publicationBusy || pagesBusy || infoBusy);
+        onBusyChange(
+            editor.busy || settingsBusy || publicationBusy || pagesBusy || infoBusy || transforming,
+        );
         return () => onBusyChange(false);
-    }, [editor.busy, settingsBusy, publicationBusy, pagesBusy, infoBusy, onBusyChange]);
-    const blocked =
+    }, [
+        editor.busy,
+        settingsBusy,
+        publicationBusy,
+        pagesBusy,
+        infoBusy,
+        transforming,
+        onBusyChange,
+    ]);
+    const sceneBlocked =
         disabled ||
         editor.busy ||
         settingsBusy ||
@@ -129,16 +152,63 @@ export function SceneEditor({
         pagesBusy ||
         infoBusy ||
         editor.uncertain;
-    const selected = editor.draft.objects.find((object) => object.id === selectedId);
+    const blocked = sceneBlocked || transforming;
+    const selection = selectedIds.flatMap((id) => {
+        const object = editor.draft.objects.find((item) => item.id === id);
+        return object ? [object] : [];
+    });
+    const activeIds = selection.map((object) => object.id);
+    const selected = selection.at(-1);
+    function selectMany(ids: string[], mode: SelectionMode = 'replace') {
+        setSelectedIds((current) =>
+            updateSelection(
+                current.filter((id) => editor.draft.objects.some((item) => item.id === id)),
+                ids,
+                mode,
+            ),
+        );
+    }
+    function chooseAll() {
+        selectMany(
+            editor.draft.objects
+                .filter((object) => !object.locked && !object.editorHidden)
+                .map((object) => object.id),
+        );
+    }
     const sceneAssets = useSceneAssets(editor.draft, { ...page.assets, ...assets });
     const validation = SceneSchema.safeParse(editor.draft);
     const warnings = getSceneWarnings(editor.draft, { pageAspect: book.pageAspect });
-    function change(object: SceneObject) {
+    function changeMany(objects: SceneObject[]) {
+        const replacements = new Map(objects.map((object) => [object.id, object]));
         editor.setDraft((current) => ({
             ...current,
-            objects: current.objects.map((item) => (item.id === object.id ? object : item)),
+            objects: current.objects.map((item) => replacements.get(item.id) || item),
         }));
         setError(null);
+    }
+    function change(object: SceneObject) {
+        changeMany([object]);
+    }
+    function duplicateChosen(ids: string[]) {
+        const state = commands.current;
+        if (state.blocked) return;
+        try {
+            const copy = duplicateSelection(state.editor.draft, ids, () => crypto.randomUUID());
+            state.editor.setDraft(copy.scene);
+            setSelectedIds(copy.ids);
+            setError(null);
+        } catch (cause) {
+            setError(errorMessage(cause));
+        }
+    }
+    function flagChosen(flag: 'locked' | 'editorHidden', value: boolean) {
+        if (blocked) return;
+        try {
+            editor.setDraft((current) => setSelectionFlag(current, activeIds, flag, value));
+            setError(null);
+        } catch (cause) {
+            setError(errorMessage(cause));
+        }
     }
     function insert(type: SceneObjectType, asset?: Asset) {
         try {
@@ -151,8 +221,8 @@ export function SceneEditor({
             setError(errorMessage(cause));
         }
     }
-    const commands = useRef({ editor, blocked, selected });
-    commands.current = { editor, blocked, selected };
+    const commands = useRef({ editor, blocked, selection, duplicateChosen });
+    commands.current = { editor, blocked, selection, duplicateChosen };
     useEffect(() => {
         function keyboard(event: KeyboardEvent) {
             if (
@@ -183,28 +253,23 @@ export function SceneEditor({
                 event.preventDefault();
                 state.editor.redo();
             }
-            if (
-                modifier &&
-                event.key.toLowerCase() === 'd' &&
-                state.selected &&
-                !state.selected.locked
-            ) {
+            if (modifier && event.key.toLowerCase() === 'a') {
                 event.preventDefault();
-                if (state.editor.draft.objects.length >= SCENE_LIMITS.hardMaxObjects) return;
-                const id = crypto.randomUUID(),
-                    sourceId = state.selected.id;
-                state.editor.setDraft((current) => duplicateObject(current, sourceId, id));
-                setSelectedId(id);
+                setSelectedIds(
+                    state.editor.draft.objects
+                        .filter((object) => !object.locked && !object.editorHidden)
+                        .map((object) => object.id),
+                );
             }
-            if (
-                (event.key === 'Delete' || event.key === 'Backspace') &&
-                state.selected &&
-                !state.selected.locked
-            ) {
+            if (modifier && event.key.toLowerCase() === 'd' && state.selection.length) {
                 event.preventDefault();
-                setDeleting(state.selected);
+                state.duplicateChosen(state.selection.map((object) => object.id));
             }
-            if (event.key === 'Escape') setSelectedId('');
+            if ((event.key === 'Delete' || event.key === 'Backspace') && state.selection.length) {
+                event.preventDefault();
+                if (!state.selection.some((object) => object.locked)) setDeleting(state.selection);
+            }
+            if (event.key === 'Escape') setSelectedIds([]);
         }
         window.addEventListener('keydown', keyboard);
         return () => window.removeEventListener('keydown', keyboard);
@@ -576,6 +641,21 @@ export function SceneEditor({
                                 />
                             </FieldLabel>
                         </Field>
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                            <Button variant="ghost" disabled={blocked} onClick={chooseAll}>
+                                Chọn tất cả
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                disabled={blocked || !activeIds.length}
+                                onClick={() => setSelectedId('')}
+                            >
+                                Bỏ chọn
+                            </Button>
+                            <span className="text-muted-foreground text-xs" role="status">
+                                Đã chọn {activeIds.length}
+                            </span>
+                        </div>
                         {editor.draft.objects.length === 0 && (
                             <p>Chưa có đối tượng. Thêm văn bản hoặc chọn tài nguyên để bắt đầu.</p>
                         )}
@@ -589,15 +669,23 @@ export function SceneEditor({
                                             .includes(layerSearch.toLocaleLowerCase())
                                     }
                                     key={object.id}
-                                    className={selected?.id === object.id ? 'is-selected' : ''}
+                                    className={activeIds.includes(object.id) ? 'is-selected' : ''}
                                 >
                                     <ActionButton
                                         variant="plain"
                                         type="button"
                                         className="scene-layer-select [&_span]:wrap-anywhere flex min-h-10 w-full flex-wrap items-center gap-[5px] border-0 border-[transparent] border-solid bg-[transparent] p-[6px] text-left text-[length:12px] text-foreground [&_small]:text-[length:10px] [&_small]:text-muted-foreground [&_span]:w-full [&_span]:font-semibold"
-                                        aria-pressed={selected?.id === object.id}
+                                        aria-pressed={activeIds.includes(object.id)}
                                         disabled={blocked}
-                                        onClick={() => setSelectedId(object.id)}
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            selectMany(
+                                                [object.id],
+                                                event.shiftKey || event.ctrlKey || event.metaKey
+                                                    ? 'toggle'
+                                                    : 'replace',
+                                            );
+                                        }}
                                     >
                                         <span>{object.name || objectLabels[object.type]}</span>
                                         <small>
@@ -666,7 +754,7 @@ export function SceneEditor({
                                             variant="ghost"
                                             disabled={blocked || object.locked}
                                             aria-label={`Xóa đối tượng ${index + 1}`}
-                                            onClick={() => setDeleting(object)}
+                                            onClick={() => setDeleting([object])}
                                         >
                                             <Trash2 data-icon="inline-start" aria-hidden="true" />
                                         </Button>
@@ -680,12 +768,18 @@ export function SceneEditor({
                         aspect={book.pageAspect}
                         scene={editor.draft}
                         assets={sceneAssets}
-                        selectedId={selected?.id}
-                        disabled={blocked}
-                        onSelect={setSelectedId}
-                        onChange={change}
-                        onBegin={editor.begin}
-                        onEnd={editor.end}
+                        selectedIds={activeIds}
+                        disabled={sceneBlocked}
+                        onSelect={selectMany}
+                        onChange={changeMany}
+                        onBegin={() => {
+                            editor.begin();
+                            setTransforming(true);
+                        }}
+                        onEnd={() => {
+                            editor.end();
+                            setTransforming(false);
+                        }}
                         footer={
                             <div className="editor-footer-actions absolute right-90 bottom-[118px] z-3 flex justify-center gap-2 bg-[transparent] p-0 max-[1100px]:right-80 max-[760px]:justify-center max-[760px]:bg-[var(--editor-ground)] max-[760px]:p-[10px] max-[760px]:[position:static] [.canvas-footer_&]:bg-[transparent] [.canvas-footer_&]:p-0 [.canvas-footer_&]:[position:static] max-[760px]:[.canvas-footer_&]:max-w-full max-[760px]:[.canvas-footer_&]:flex-wrap max-[760px]:[.canvas-footer_&]:justify-center max-[760px]:[.canvas-footer_&_.button]:min-w-0 max-[760px]:[.canvas-footer_&_.button]:px-[9px] max-[760px]:[.canvas-footer_&_.button]:py-[7px] max-[760px]:[.canvas-footer_&_.button]:text-[length:10px] [.scene-editor[data-panel=preview]_&]:hidden [.scene-editor_&_.button]:min-h-9 [.scene-editor_&_.button]:border [.scene-editor_&_.button]:border-border [.scene-editor_&_.button]:border-solid [.scene-editor_&_.button]:bg-surface [.scene-editor_&_.button]:text-[length:11px]">
                                 <Button
@@ -740,7 +834,20 @@ export function SceneEditor({
                                 id="panel-properties"
                                 aria-labelledby="panel-tab-properties"
                             >
-                                {selected ? (
+                                {selection.length > 1 ? (
+                                    <SelectionEditor
+                                        objects={selection}
+                                        disabled={blocked}
+                                        canDuplicate={
+                                            editor.draft.objects.length + selection.length <=
+                                            SCENE_LIMITS.hardMaxObjects
+                                        }
+                                        onDuplicate={() => duplicateChosen(activeIds)}
+                                        onDelete={() => setDeleting(selection)}
+                                        onFlag={flagChosen}
+                                        onClear={() => setSelectedId('')}
+                                    />
+                                ) : selected ? (
                                     <ObjectEditor
                                         key={selected.id}
                                         object={selected}
@@ -766,7 +873,7 @@ export function SceneEditor({
                                             );
                                             setSelectedId(id);
                                         }}
-                                        onDelete={() => setDeleting(selected)}
+                                        onDelete={() => setDeleting([selected])}
                                         onChooseAsset={() => {
                                             if (usesAsset(selected.type))
                                                 setPicker({
@@ -877,7 +984,11 @@ export function SceneEditor({
                 >
                     <dl className="editor-shortcuts grid grid-cols-[1fr_1fr] gap-3 text-[length:13px] max-[760px]:grid-cols-[1fr] max-[760px]:gap-1 [&_dd]:m-0 [&_dd]:text-muted-foreground max-[760px]:[&_dd]:mb-[10px]">
                         <dt>Chọn đối tượng</dt>
-                        <dd>Nhấp trên canvas hoặc mở Đối tượng</dd>
+                        <dd>Nhấp trên canvas hoặc mở Đối tượng; Shift/Ctrl + nhấp để chọn nhiều</dd>
+                        <dt>Kéo khung chọn</dt>
+                        <dd>
+                            Shift + kéo trên canvas; Ctrl A chọn tất cả đối tượng có thể chỉnh sửa
+                        </dd>
                         <dt>Di chuyển / xoay / kích thước</dt>
                         <dd>W / E / R</dd>
                         <dt>Đưa đối tượng vào giữa</dt>
@@ -885,7 +996,7 @@ export function SceneEditor({
                         <dt>Hoàn tác / làm lại</dt>
                         <dd>Ctrl Z / Ctrl Shift Z</dd>
                         <dt>Nhân bản</dt>
-                        <dd>Ctrl D</dd>
+                        <dd>Ctrl D (toàn bộ nhóm đang chọn)</dd>
                         <dt>Xóa đối tượng</dt>
                         <dd>Delete</dd>
                         <dt>Lưu nội dung</dt>
@@ -935,12 +1046,18 @@ export function SceneEditor({
                 <ConfirmationDialog
                     description={
                         <>
-                            Đối tượng “{deleting.name || objectLabels[deleting.type]}” sẽ bị bỏ khỏi
-                            bản đang sửa. Tệp tài nguyên vẫn được giữ. Quy tắc tương tác liên quan
-                            sẽ được giữ và đánh dấu để bạn sửa.
+                            {deleting.length > 1
+                                ? `${deleting.length} đối tượng đã chọn`
+                                : `Đối tượng “${deleting[0].name || objectLabels[deleting[0].type]}”`}{' '}
+                            sẽ bị bỏ khỏi bản đang sửa. Tệp tài nguyên vẫn được giữ. Quy tắc tương
+                            tác liên quan sẽ được giữ và đánh dấu để bạn sửa.
                         </>
                     }
-                    title="Xóa đối tượng khỏi trang?"
+                    title={
+                        deleting.length > 1
+                            ? `Xóa ${deleting.length} đối tượng khỏi trang?`
+                            : 'Xóa đối tượng khỏi trang?'
+                    }
                     busy={false}
                     onClose={() => setDeleting(null)}
                 >
@@ -958,10 +1075,20 @@ export function SceneEditor({
                             <Button
                                 variant="danger"
                                 onClick={() => {
-                                    editor.setDraft((current) =>
-                                        removeObject(current, deleting.id),
-                                    );
-                                    setDeleting(null);
+                                    if (blocked) return;
+                                    try {
+                                        editor.setDraft((current) =>
+                                            removeSelection(
+                                                current,
+                                                deleting.map((object) => object.id),
+                                            ),
+                                        );
+                                        setDeleting(null);
+                                        setError(null);
+                                    } catch (cause) {
+                                        setDeleting(null);
+                                        setError(errorMessage(cause));
+                                    }
                                 }}
                             >
                                 Xóa đối tượng
