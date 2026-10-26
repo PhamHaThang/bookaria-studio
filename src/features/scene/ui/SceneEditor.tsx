@@ -542,7 +542,7 @@ export function SceneEditor({
             )}
             <div className="workbench-body grid grid-cols-[72px_minmax(0,_1fr)] max-[760px]:grid-cols-[56px_minmax(0,_1fr)]">
                 <div
-                    className="scene-add m-0 flex h-[calc(100dvh_-_176px)] min-h-125 flex-col flex-wrap items-center gap-[6px] overflow-y-auto border-t-[0] border-t-[transparent] border-r-[1px] border-r-border border-b-[0] border-b-[transparent] border-l-[0] border-l-[transparent] border-solid px-[6px] py-5 max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:gap-[3px] max-[760px]:px-[3px] max-[760px]:py-3 max-[600px]:[&_>_.button]:w-full [&_label]:grid [&_label]:min-w-45 [&_label]:gap-2 max-[600px]:[&_label]:w-full [.scene-editor_&_.button:hover]:border-[transparent] [.scene-editor_&_.button:hover]:bg-selected [.scene-editor_&_.button:hover]:text-primary [.scene-editor_&_.button]:flex [.scene-editor_&_.button]:min-h-[54px] [.scene-editor_&_.button]:w-[58px] [.scene-editor_&_.button]:flex-col [.scene-editor_&_.button]:gap-[5px] [.scene-editor_&_.button]:rounded-[11px] [.scene-editor_&_.button]:border-[transparent] [.scene-editor_&_.button]:px-1 [.scene-editor_&_.button]:py-2 [.scene-editor_&_.button]:font-medium [.scene-editor_&_.button]:text-[length:9px] [.scene-editor_&_.button]:text-muted-foreground max-[760px]:[.scene-editor_&_.button]:min-h-12 max-[760px]:[.scene-editor_&_.button]:w-12 max-[760px]:[.scene-editor_&_.button]:text-[length:8px] [.scene-editor_&_.button_svg]:size-[22px]"
+                    className="scene-add m-0 flex h-[calc(100dvh_-_76px)] min-h-125 flex-col flex-wrap items-center gap-[6px] overflow-y-auto border-t-[0] border-t-[transparent] border-r-[1px] border-r-border border-b-[0] border-b-[transparent] border-l-[0] border-l-[transparent] border-solid px-[6px] py-5 max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:gap-[3px] max-[760px]:px-[3px] max-[760px]:py-3 max-[600px]:[&_>_.button]:w-full [&_label]:grid [&_label]:min-w-45 [&_label]:gap-2 max-[600px]:[&_label]:w-full [.scene-editor_&_.button:hover]:border-[transparent] [.scene-editor_&_.button:hover]:bg-selected [.scene-editor_&_.button:hover]:text-primary [.scene-editor_&_.button]:flex [.scene-editor_&_.button]:min-h-[54px] [.scene-editor_&_.button]:w-[58px] [.scene-editor_&_.button]:flex-col [.scene-editor_&_.button]:gap-[5px] [.scene-editor_&_.button]:rounded-[11px] [.scene-editor_&_.button]:border-[transparent] [.scene-editor_&_.button]:px-1 [.scene-editor_&_.button]:py-2 [.scene-editor_&_.button]:font-medium [.scene-editor_&_.button]:text-[length:9px] [.scene-editor_&_.button]:text-muted-foreground max-[760px]:[.scene-editor_&_.button]:min-h-12 max-[760px]:[.scene-editor_&_.button]:w-12 max-[760px]:[.scene-editor_&_.button]:text-[length:8px] [.scene-editor_&_.button_svg]:size-[22px]"
                     role="toolbar"
                     aria-label="Thêm đối tượng"
                 >
@@ -611,9 +611,9 @@ export function SceneEditor({
                         <span>Trợ giúp</span>
                     </Button>
                 </div>
-                <div className="scene-workspace relative m-0 grid h-[calc(100dvh_-_176px)] min-h-125 grid-cols-[minmax(0,_1fr)_340px] items-stretch gap-0 max-[760px]:h-auto max-[760px]:min-h-0 max-[1100px]:grid-cols-[minmax(0,_1fr)_300px] max-[1200px]:grid-cols-[minmax(180px,_0.8fr)_minmax(240px,_1fr)] max-[600px]:grid-cols-[1fr] max-[760px]:grid-cols-[minmax(0,_1fr)] min-[1600px]:grid-cols-[minmax(0,_1fr)_380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[minmax(0,_1fr)_minmax(480px,_45%)] [.scene-editor[data-panel=preview]_&]:grid-cols-[minmax(0,_1fr)]">
+                <div className="scene-workspace relative m-0 grid h-[calc(100dvh_-_76px)] min-h-125 grid-cols-[minmax(0,_1fr)_340px] items-stretch gap-0 max-[760px]:h-auto max-[760px]:min-h-0 max-[1100px]:grid-cols-[minmax(0,_1fr)_300px] max-[1200px]:grid-cols-[minmax(180px,_0.8fr)_minmax(240px,_1fr)] max-[600px]:grid-cols-[1fr] max-[760px]:grid-cols-[minmax(0,_1fr)] min-[1600px]:grid-cols-[minmax(0,_1fr)_380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[minmax(0,_1fr)_minmax(480px,_45%)] [.scene-editor[data-panel=preview]_&]:grid-cols-[minmax(0,_1fr)]">
                     <section
-                        className="scene-layers absolute bottom-14 left-[18px] z-4 max-h-[70%] w-70 min-w-0 overflow-auto rounded-[14px] border border-border border-solid bg-surface px-3 py-[18px] shadow-[0_12px_30px_#00000020] max-[760px]:top-15 max-[760px]:bottom-auto max-[760px]:left-2 max-[760px]:w-[calc(100%_-_16px)] max-[760px]:max-w-70 [&[hidden]]:hidden [&_h3]:mt-0 [&_h3]:mr-[22px] [&_h3]:mb-[14px] [&_h3]:ml-1 [&_h3]:flex [&_h3]:gap-3 [&_h3]:text-[length:14px] [&_h3_span]:text-muted-foreground [&_h3_span]:tabular-nums [&_li.is-selected]:border-0 [&_li.is-selected]:border-[transparent] [&_li.is-selected]:border-solid [&_li.is-selected]:bg-selected [&_li:hover]:bg-hover [&_li[hidden]]:hidden [&_li]:rounded-[8px] [&_li]:border-0 [&_li]:border-[transparent] [&_li]:border-solid [&_li]:bg-[transparent] [&_li]:p-[3px] [&_ol]:m-0 [&_ol]:list-none [&_ol]:gap-[5px] [&_ol]:p-0"
+                        className="scene-layers absolute bottom-[152px] left-[18px] z-4 max-h-[70%] w-70 min-w-0 overflow-auto rounded-[14px] border border-border border-solid bg-surface px-3 py-[18px] shadow-[0_12px_30px_#00000020] max-[760px]:top-15 max-[760px]:bottom-auto max-[760px]:left-2 max-[760px]:w-[calc(100%_-_16px)] max-[760px]:max-w-70 [&[hidden]]:hidden [&_h3]:mt-0 [&_h3]:mr-[22px] [&_h3]:mb-[14px] [&_h3]:ml-1 [&_h3]:flex [&_h3]:gap-3 [&_h3]:text-[length:14px] [&_h3_span]:text-muted-foreground [&_h3_span]:tabular-nums [&_li.is-selected]:border-0 [&_li.is-selected]:border-[transparent] [&_li.is-selected]:border-solid [&_li.is-selected]:bg-selected [&_li:hover]:bg-hover [&_li[hidden]]:hidden [&_li]:rounded-[8px] [&_li]:border-0 [&_li]:border-[transparent] [&_li]:border-solid [&_li]:bg-[transparent] [&_li]:p-[3px] [&_ol]:m-0 [&_ol]:list-none [&_ol]:gap-[5px] [&_ol]:p-0"
                         aria-labelledby="layers-heading"
                         hidden={!layersOpen}
                     >
@@ -971,16 +971,23 @@ export function SceneEditor({
                             </TabsContent>
                         </aside>
                     </Tabs>
+                    <div
+                        className="pointer-events-none absolute inset-x-0 bottom-12 z-5 grid [grid-template-columns:inherit] [.scene-editor[data-panel=preview]_&]:bottom-4"
+                        data-page-dock
+                    >
+                        <div className="col-start-1 flex min-w-0 justify-center px-4">
+                            <PageStrip
+                                book={book}
+                                pageId={page.id}
+                                dirty={editor.dirty || settingsDirty}
+                                disabled={blocked}
+                                onBusyChange={setPagesBusy}
+                                onDraftChange={setPagesDirty}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
-            <PageStrip
-                book={book}
-                pageId={page.id}
-                dirty={editor.dirty || settingsDirty}
-                disabled={blocked}
-                onBusyChange={setPagesBusy}
-                onDraftChange={setPagesDirty}
-            />
             {infoOpen && (
                 <BookInfoDialog
                     bookId={book.id}

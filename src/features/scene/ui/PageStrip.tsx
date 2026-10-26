@@ -1,12 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MoreHorizontal, Plus, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type DragEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LoadingState } from '@/shared/ui/LoadingState';
+import { cn } from '@/shared/lib/cn';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import { DropdownMenu, DropdownMenuTrigger } from '@/shared/ui/primitives/dropdown-menu';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
+import { Separator } from '@/shared/ui/primitives/separator';
+import { Skeleton } from '@/shared/ui/primitives/skeleton';
 import { errorMessage } from '../../../shared/api/errors';
 import type { BookDetail, Page, PageSummary } from '../../../shared/contracts/dto.schema';
 import { Button } from '../../../shared/ui/Button';
@@ -18,7 +20,9 @@ import { bookKeys } from '../../books';
 import { pageKeys, pagesApi } from '../../pages';
 import { movedPageIds, uncertainWrite } from '../../pages/model/operations';
 import { AddPagesDialog } from '../../pages/ui/AddPagesDialog';
+import { droppedPageIds, type PageDropTarget } from '../model/page-reorder';
 import { PageActionsMenu } from './PageActionsMenu';
+import { usePageReorderMotion } from './use-page-reorder-motion';
 
 export function PageStrip({
     book,
@@ -50,6 +54,14 @@ export function PageStrip({
     const [deleting, setDeleting] = useState(false),
         [adding, setAdding] = useState(false);
     const [target, setTarget] = useState<string | null>(null);
+    const currentPageLink = useRef<HTMLAnchorElement>(null);
+    const pageScroll = useRef<HTMLFieldSetElement>(null);
+    const dragSession = useRef<{ id: string; ids: string[] } | null>(null);
+    const dragX = useRef<number | null>(null);
+    const suppressClickUntil = useRef(0);
+    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [dropTarget, setDropTarget] = useState<PageDropTarget | null>(null);
+    const [pendingOrder, setPendingOrder] = useState<string[] | null>(null);
     const active = useRef(false),
         alive = useRef(true);
     const actor = useRef(user?.id);
@@ -59,7 +71,69 @@ export function PageStrip({
         queryFn: ({ signal }) => pagesApi.list(bookId, signal),
         refetchOnWindowFocus: false,
     });
+    const previewOrder =
+        draggingId && dropTarget
+            ? droppedPageIds(listing.data || [], draggingId, dropTarget)
+            : pendingOrder;
+    usePageReorderMotion(pageScroll, listing.data, previewOrder);
     const locked = disabled || dirty || busy || uncertain;
+    const dragLocked = locked || listing.isPending || listing.isError || listing.isFetching;
+    const clearDrag = useCallback(() => {
+        dragSession.current = null;
+        dragX.current = null;
+        setDraggingId(null);
+        setDropTarget(null);
+    }, []);
+    const locateDrop = useCallback((x: number) => {
+        const cards = Array.from(
+            pageScroll.current?.querySelectorAll<HTMLElement>('[data-page-id]') || [],
+        );
+        const card = cards.find((item) => {
+            const rect = item.getBoundingClientRect();
+            return x < rect.left + rect.width / 2;
+        });
+        const last = cards.at(-1);
+        const id = (card || last)?.dataset.pageId;
+        const next = id ? { id, after: !card } : null;
+        setDropTarget((previous) =>
+            previous?.id === next?.id && previous?.after === next?.after ? previous : next,
+        );
+        return next;
+    }, []);
+    useEffect(() => {
+        if (dragLocked) clearDrag();
+    }, [dragLocked, clearDrag]);
+    useEffect(() => {
+        if (!draggingId) return;
+        let frame = 0;
+        let previousTime = performance.now();
+        const scroll = (time: number) => {
+            const elapsed = Math.min(32, time - previousTime) / 1000;
+            previousTime = time;
+            const viewport = pageScroll.current;
+            const x = dragX.current;
+            if (viewport && x !== null) {
+                const rect = viewport.getBoundingClientRect();
+                const left = Math.max(0, Math.min(1, (rect.left + 32 - x) / 32));
+                const right = Math.max(0, Math.min(1, (x - rect.right + 32) / 32));
+                const delta = (right - left) * 480 * elapsed;
+                const before = viewport.scrollLeft;
+                viewport.scrollLeft += delta;
+                if (viewport.scrollLeft !== before) locateDrop(x);
+            }
+            frame = requestAnimationFrame(scroll);
+        };
+        frame = requestAnimationFrame(scroll);
+        window.addEventListener('blur', clearDrag);
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener('blur', clearDrag);
+        };
+    }, [draggingId, clearDrag, locateDrop]);
+    useEffect(() => {
+        if (listing.data?.some((page) => page.id === pageId))
+            currentPageLink.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }, [pageId, listing.data]);
     useEffect(() => {
         alive.current = true;
         return () => {
@@ -108,116 +182,256 @@ export function PageStrip({
             }
         }
     }
-    async function move(page: PageSummary, direction: -1 | 1) {
-        await run(async () => {
-            const ids = movedPageIds(listing.data || [], page.id, direction);
-            if (!ids) return;
-            const result = await pagesApi.reorder(bookId, ids);
-            if (!currentSession()) return;
-            for (const item of result.pages)
-                cache.setQueryData<Page>(
-                    pageKeys.detail(actor.current || '', item.id),
-                    (current) => (current ? { ...current, orderIndex: item.orderIndex } : current),
+    async function reorder(ids: string[]) {
+        try {
+            await run(async () => {
+                setStage('Đang lưu thứ tự trang…');
+                const result = await pagesApi.reorder(bookId, ids);
+                if (!currentSession()) return;
+                const order = new Map(result.pages.map((page) => [page.id, page.orderIndex]));
+                cache.setQueryData<PageSummary[]>(
+                    pageKeys.list(actor.current || '', bookId),
+                    (current) =>
+                        current
+                            ?.map((page) => ({
+                                ...page,
+                                orderIndex: order.get(page.id) ?? page.orderIndex,
+                            }))
+                            .sort((a, b) => a.orderIndex - b.orderIndex),
                 );
-        });
+                for (const item of result.pages)
+                    cache.setQueryData<Page>(
+                        pageKeys.detail(actor.current || '', item.id),
+                        (current) =>
+                            current ? { ...current, orderIndex: item.orderIndex } : current,
+                    );
+            });
+        } finally {
+            if (currentSession()) setPendingOrder(null);
+        }
+    }
+    async function move(page: PageSummary, direction: -1 | 1) {
+        const ids = movedPageIds(listing.data || [], page.id, direction);
+        if (ids) await reorder(ids);
+    }
+    function dragOver(event: DragEvent<HTMLFieldSetElement>) {
+        if (!dragSession.current || dragLocked) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        dragX.current = event.clientX;
+        locateDrop(event.clientX);
+    }
+    function drop(event: DragEvent<HTMLFieldSetElement>) {
+        const session = dragSession.current;
+        if (!session) return;
+        event.preventDefault();
+        const target = locateDrop(event.clientX);
+        clearDrag();
+        suppressClickUntil.current = Date.now() + 250;
+        if (dragLocked || !target) return;
+        const pages = listing.data || [];
+        if (
+            session.ids.length !== pages.length ||
+            session.ids.some((id, index) => id !== pages[index].id)
+        ) {
+            setError('Danh sách trang đã thay đổi. Vui lòng kéo lại.');
+            return;
+        }
+        const ids = droppedPageIds(pages, session.id, target);
+        if (ids) {
+            setPendingOrder(ids);
+            void reorder(ids);
+        }
     }
     const menuIndex = listing.data?.findIndex((page) => page.id === menu?.id) ?? -1;
     return (
-        <div className="page-strip-region sticky bottom-0 z-6 bg-surface">
+        <div className="page-strip-region pointer-events-auto relative w-max max-w-[min(100%,40rem)] rounded-2xl border border-border bg-surface p-2.5">
             <nav
-                className="editor-page-strip scene-page-strip flex min-h-25 items-center justify-center gap-3 overflow-x-auto border-t-[1px] border-t-border bg-surface px-5 py-3 [border-top-style:solid] max-[760px]:justify-start [&_a[aria-current=page]]:bg-selected [&_a[aria-current=page]]:outline-offset-[1px] [&_a[aria-current=page]]:[outline:2px_solid_var(--action-primary)] [&_img]:size-full [&_img]:object-contain [.editor-page-strip&]:justify-start"
+                data-page-dragging={Boolean(draggingId)}
+                className="editor-page-dock flex min-w-0 max-w-full items-center gap-2"
                 aria-label="Các trang trong sách"
             >
-                <span className="page-strip-label mr-2 shrink-0 text-[length:11px] text-muted-foreground">
-                    Trang sách
-                </span>
-                {listing.isPending && (
-                    <LoadingState layout="page-strip">Đang tải các trang…</LoadingState>
-                )}
-                {listing.isError && (
-                    <ActionButton
-                        variant="plain"
-                        type="button"
-                        onClick={() => void listing.refetch()}
-                    >
-                        Thử tải danh sách trang
-                    </ActionButton>
-                )}
-                {listing.data?.map((page) => (
-                    <div
-                        className="page-thumbnail relative flex-[0_0_64px] pt-1 [.scene-page-strip_&_a]:h-18 [.scene-page-strip_&_a]:w-[58px]"
-                        key={page.id}
-                    >
-                        <Link
-                            to={`/books/${bookId}/pages/${page.id}`}
-                            aria-current={pageId === page.id ? 'page' : undefined}
-                            aria-disabled={disabled || busy}
-                            onClick={(event) => {
-                                if (disabled || busy) event.preventDefault();
-                            }}
-                            title={page.title || `Trang ${page.orderIndex + 1}`}
+                <fieldset
+                    className="m-0 flex min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain border-0 p-1 [scrollbar-width:thin]"
+                    data-page-scroll
+                    aria-label="Sắp xếp các trang"
+                    ref={pageScroll}
+                    onDragEnter={dragOver}
+                    onDragOver={dragOver}
+                    onDrop={drop}
+                    onDragLeave={(event) => {
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        // Scrolling changes the child under the pointer; only clear when leaving the viewport.
+                        if (
+                            event.clientX < rect.left ||
+                            event.clientX > rect.right ||
+                            event.clientY < rect.top ||
+                            event.clientY > rect.bottom
+                        ) {
+                            dragX.current = null;
+                            setDropTarget(null);
+                        }
+                    }}
+                >
+                    {listing.isPending && (
+                        <div className="flex items-center gap-2" role="status" aria-busy="true">
+                            <span className="sr-only">Đang tải các trang…</span>
+                            {[0, 1, 2].map((index) => (
+                                <Skeleton key={index} className="size-14 shrink-0 rounded-xl" />
+                            ))}
+                        </div>
+                    )}
+                    {listing.isError && (
+                        <ActionButton
+                            variant="outline"
+                            size="sm"
+                            type="button"
+                            onClick={() => void listing.refetch()}
                         >
-                            <img src={page.thumbnailUrl} alt="" />
-                            <span>{page.orderIndex + 1}</span>
-                            <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
-                                {page.title || `Trang ${page.orderIndex + 1}`}
-                            </span>
-                        </Link>
-                        <DropdownMenu
-                            open={menu?.id === page.id && !renaming && !deleting}
-                            onOpenChange={(open) => {
-                                if (open) {
-                                    setRenaming(false);
-                                    setDeleting(false);
-                                    setError(null);
-                                    setMenu(page);
-                                } else setMenu(null);
-                            }}
+                            Thử tải danh sách trang
+                        </ActionButton>
+                    )}
+                    {listing.data?.map((page) => (
+                        <div
+                            className="page-thumbnail group relative shrink-0 p-1 transition-opacity duration-150 data-[dragging=true]:opacity-40 motion-reduce:transition-none"
+                            key={page.id}
+                            data-page-id={page.id}
+                            data-dragging={draggingId === page.id}
                         >
-                            <DropdownMenuTrigger asChild>
-                                <ActionButton
-                                    variant="plain"
-                                    className="page-thumbnail-menu absolute top-[-5px] right-0 grid size-7 rounded-[var(--radius-sm)] border border-border border-solid bg-surface p-0 text-muted-foreground [place-items:center] max-[760px]:size-10 [&:hover]:bg-selected [&:hover]:text-primary"
-                                    type="button"
-                                    disabled={disabled || busy}
-                                    aria-label={`Tùy chọn trang ${page.orderIndex + 1}`}
-                                    ref={(node) => {
-                                        if (node && menu?.id === page.id) menuAnchor.current = node;
-                                    }}
-                                >
-                                    <MoreHorizontal size={14} />
-                                </ActionButton>
-                            </DropdownMenuTrigger>
-                            {menu?.id === page.id && !renaming && !deleting && (
-                                <PageActionsMenu
-                                    title={menu.title || `Trang ${menu.orderIndex + 1}`}
-                                    locked={locked}
-                                    first={menuIndex <= 0}
-                                    last={menuIndex >= (listing.data?.length || 0) - 1}
-                                    error={error}
-                                    onRename={() => setRenaming(true)}
-                                    onMove={(direction) => void move(menu, direction)}
-                                    onDelete={() => setDeleting(true)}
-                                    onDuplicate={() =>
-                                        void run(async () => {
-                                            const result = await pagesApi.duplicate(menu.id);
-                                            if (currentSession())
-                                                setTarget(
-                                                    `/books/${bookId}/pages/${result.page.id}`,
-                                                );
-                                        }, true)
-                                    }
+                            {dropTarget?.id === page.id && draggingId !== page.id && (
+                                <span
+                                    aria-hidden="true"
+                                    data-page-drop-marker
+                                    className={cn(
+                                        'pointer-events-none absolute inset-y-1 w-0.5 rounded-full bg-primary',
+                                        dropTarget.after ? 'right-0' : 'left-0',
+                                    )}
                                 />
                             )}
-                        </DropdownMenu>
-                    </div>
-                ))}
+                            <div className="relative" data-page-visual>
+                                <Link
+                                    className="relative grid size-14 place-items-center rounded-xl border border-border bg-surface p-1 no-underline transition-[transform,border-color,box-shadow] duration-200 ease-out hover:border-input focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-[current=page]:border-primary aria-[current=page]:ring-1 aria-[current=page]:ring-primary data-[reorderable=true]:cursor-grab data-[reorderable=true]:active:cursor-grabbing group-data-[dragging=true]:scale-95 motion-reduce:transform-none motion-reduce:transition-none"
+                                    draggable={!dragLocked}
+                                    data-reorderable={!dragLocked}
+                                    onDragStart={(event) => {
+                                        if (dragLocked || menu) {
+                                            event.preventDefault();
+                                            return;
+                                        }
+                                        setError(null);
+                                        dragSession.current = {
+                                            id: page.id,
+                                            ids: (listing.data || []).map((item) => item.id),
+                                        };
+                                        event.dataTransfer.effectAllowed = 'move';
+                                        event.dataTransfer.setData(
+                                            'application/x-bookaria-page',
+                                            page.id,
+                                        );
+                                        event.dataTransfer.setDragImage(
+                                            event.currentTarget,
+                                            28,
+                                            28,
+                                        );
+                                        setDraggingId(page.id);
+                                    }}
+                                    onDragEnd={() => {
+                                        suppressClickUntil.current = Date.now() + 250;
+                                        clearDrag();
+                                    }}
+                                    ref={pageId === page.id ? currentPageLink : undefined}
+                                    aria-label={`Trang ${page.orderIndex + 1}: ${page.title || 'Chưa đặt tên'}`}
+                                    to={`/books/${bookId}/pages/${page.id}`}
+                                    aria-current={pageId === page.id ? 'page' : undefined}
+                                    aria-disabled={disabled || busy}
+                                    onClick={(event) => {
+                                        if (
+                                            disabled ||
+                                            busy ||
+                                            (event.detail > 0 &&
+                                                Date.now() < suppressClickUntil.current)
+                                        )
+                                            event.preventDefault();
+                                    }}
+                                    title={`${page.title || `Trang ${page.orderIndex + 1}`}${!dragLocked ? ' · Kéo để đổi thứ tự' : ''}`}
+                                >
+                                    <img
+                                        className="size-full rounded-lg object-contain"
+                                        src={page.thumbnailUrl}
+                                        alt=""
+                                        loading="lazy"
+                                        decoding="async"
+                                        draggable={false}
+                                    />
+                                    <span
+                                        className="absolute right-0.5 bottom-0.5 rounded-sm bg-surface px-1 text-[10px] text-foreground tabular-nums leading-4"
+                                        aria-hidden="true"
+                                    >
+                                        {page.orderIndex + 1}
+                                    </span>
+                                </Link>
+                                <DropdownMenu
+                                    open={menu?.id === page.id && !renaming && !deleting}
+                                    onOpenChange={(open) => {
+                                        if (open) {
+                                            setRenaming(false);
+                                            setDeleting(false);
+                                            setError(null);
+                                            setMenu(page);
+                                        } else setMenu(null);
+                                    }}
+                                >
+                                    <DropdownMenuTrigger asChild>
+                                        <ActionButton
+                                            variant="plain"
+                                            className="page-thumbnail-menu absolute top-0 right-0 grid size-6 place-items-center rounded-md border border-border bg-surface text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [[data-page-dragging=true]_&]:invisible"
+                                            type="button"
+                                            disabled={disabled || busy || Boolean(draggingId)}
+                                            aria-label={`Tùy chọn trang ${page.orderIndex + 1}`}
+                                            ref={(node) => {
+                                                if (node && menu?.id === page.id)
+                                                    menuAnchor.current = node;
+                                            }}
+                                        >
+                                            <MoreHorizontal size={14} />
+                                        </ActionButton>
+                                    </DropdownMenuTrigger>
+                                    {menu?.id === page.id && !renaming && !deleting && (
+                                        <PageActionsMenu
+                                            title={menu.title || `Trang ${menu.orderIndex + 1}`}
+                                            locked={locked}
+                                            first={menuIndex <= 0}
+                                            last={menuIndex >= (listing.data?.length || 0) - 1}
+                                            error={error}
+                                            onRename={() => setRenaming(true)}
+                                            onMove={(direction) => void move(menu, direction)}
+                                            onDelete={() => setDeleting(true)}
+                                            onDuplicate={() =>
+                                                void run(async () => {
+                                                    const result = await pagesApi.duplicate(
+                                                        menu.id,
+                                                    );
+                                                    if (currentSession())
+                                                        setTarget(
+                                                            `/books/${bookId}/pages/${result.page.id}`,
+                                                        );
+                                                }, true)
+                                            }
+                                        />
+                                    )}
+                                </DropdownMenu>
+                            </div>
+                        </div>
+                    ))}
+                </fieldset>
+                <Separator orientation="vertical" className="h-10 shrink-0" />
                 <ActionButton
                     variant="plain"
-                    className="strip-add-page [.editor-page-strip_&]:flex [.editor-page-strip_&]:flex-[0_0_100px] [.editor-page-strip_&]:flex-col [.editor-page-strip_&]:items-center [.editor-page-strip_&]:justify-center [.editor-page-strip_&]:gap-[5px] [.editor-page-strip_&]:text-[length:10px] [.editor-page-strip_&]:no-underline [.editor-page-strip_&_>_span]:[position:static] [.editor-page-strip_a:not(&)]:relative [.editor-page-strip_a:not(&)]:flex [.editor-page-strip_a:not(&)]:h-[70px] [.editor-page-strip_a:not(&)]:flex-[0_0_54px] [.editor-page-strip_a:not(&)]:rounded-[8px] [.editor-page-strip_a:not(&)]:border [.editor-page-strip_a:not(&)]:border-border [.editor-page-strip_a:not(&)]:border-solid [.editor-page-strip_a:not(&)]:bg-muted [.editor-page-strip_a:not(&)]:p-[3px] [.editor-page-strip_a:not(&)]:no-underline [.scene-page-strip_button&]:min-h-18 [.scene-page-strip_button&]:w-19 [.scene-page-strip_button&]:flex-[0_0_76px] [.scene-page-strip_button&]:rounded-[var(--radius-md)] [.scene-page-strip_button&]:border [.scene-page-strip_button&]:border-input [.scene-page-strip_button&]:border-dashed [.scene-page-strip_button&]:bg-muted [.scene-page-strip_button&]:text-primary"
+                    className="strip-add-page grid size-14 shrink-0 place-items-center rounded-xl border border-border bg-surface text-primary transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
                     type="button"
                     disabled={locked || listing.isPending || listing.isError}
                     title={dirty ? 'Lưu nội dung trước khi thêm trang' : 'Thêm trang'}
+                    aria-label="Thêm trang"
                     ref={addAnchor}
                     onClick={() => {
                         setAdding(true);
@@ -225,25 +439,25 @@ export function PageStrip({
                     }}
                 >
                     <Plus size={20} aria-hidden="true" />
-                    <span>Thêm trang</span>
+                    <span className="sr-only">Thêm trang</span>
                 </ActionButton>
             </nav>
             {busy && (
                 <p
-                    className="page-strip-feedback m-0 px-5 py-2 text-[length:12px] text-muted-foreground"
+                    className="page-strip-feedback pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 m-0 -translate-x-1/2 whitespace-nowrap rounded-lg bg-surface px-3 py-2 text-muted-foreground text-xs shadow-sm"
                     role="status"
                 >
                     {stage || 'Đang cập nhật trang…'}
                 </p>
             )}
             {dirty && (
-                <p className="page-strip-feedback m-0 px-5 py-2 text-[length:12px] text-muted-foreground">
+                <p className="page-strip-feedback m-0 px-2 py-2 text-[length:12px] text-muted-foreground">
                     Lưu nội dung hiện tại trước khi thêm hoặc quản lý trang.
                 </p>
             )}
             {!menu && <Feedback error={error} />}
             {uncertain && (
-                <div className="page-strip-feedback m-0 px-5 py-2 text-[length:12px] text-muted-foreground">
+                <div className="page-strip-feedback m-0 px-2 py-2 text-[length:12px] text-muted-foreground">
                     <p>
                         Yêu cầu có thể đã được nhận. Tải lại danh sách và kiểm tra trang vừa thao
                         tác trước khi tạo tiếp.

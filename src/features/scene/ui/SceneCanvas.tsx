@@ -1164,74 +1164,6 @@ export function SceneCanvas(props: Props) {
     const toolName = mode === 'translate' ? 'Di chuyển' : mode === 'rotate' ? 'Xoay' : 'Kích thước';
     return (
         <div className="scene-stage-column relative flex min-h-0 min-w-0 flex-col bg-[var(--editor-ground)] max-[760px]:min-h-120 [.scene-editor[data-panel=preview]_&]:hidden">
-            <div
-                className="canvas-toolbar absolute top-[18px] left-[18px] z-2 flex items-center gap-1 rounded-xl bg-surface p-1 shadow-[0_4px_14px_#00000014] [&_button.primary:disabled]:bg-primary [&_button.primary:disabled]:text-primary-foreground [&_button:disabled]:border-transparent"
-                role="toolbar"
-                aria-label="Công cụ canvas"
-            >
-                <fieldset
-                    className="m-0 flex min-w-0 items-center gap-1 border-0 p-0"
-                    aria-label="Góc nhìn"
-                >
-                    <ActionButton
-                        variant="ghost"
-                        size="sm"
-                        title="Mặt trang · Đưa toàn bộ trang vào khung nhìn"
-                        disabled={transforming}
-                        onClick={() => api.current?.view('front')}
-                    >
-                        Mặt trang
-                    </ActionButton>
-                    <ActionButton
-                        variant="ghost"
-                        size="sm"
-                        disabled={transforming}
-                        onClick={() => api.current?.view('iso')}
-                    >
-                        Phối cảnh
-                    </ActionButton>
-                </fieldset>
-                <Separator orientation="vertical" className="h-6" />
-                <div className="canvas-tool-group flex items-center gap-1">
-                    <ActionButton
-                        variant="ghost"
-                        size="sm"
-                        type="button"
-                        title={
-                            props.selectedIds.length > 1
-                                ? 'Nhóm dùng trục thế giới'
-                                : mode === 'scale'
-                                  ? 'Kích thước theo trục đối tượng'
-                                  : 'Đổi trục thế giới / cục bộ (L)'
-                        }
-                        aria-label={localAxes ? 'Trục cục bộ (L)' : 'Trục thế giới (L)'}
-                        aria-pressed={localAxes}
-                        disabled={
-                            props.disabled ||
-                            transforming ||
-                            props.selectedIds.length > 1 ||
-                            mode === 'scale'
-                        }
-                        onClick={() =>
-                            setSpace((current) => (current === 'world' ? 'local' : 'world'))
-                        }
-                    >
-                        {localAxes ? (
-                            <Box data-icon="inline-start" />
-                        ) : (
-                            <Globe2 data-icon="inline-start" />
-                        )}
-                        <span>{localAxes ? 'Cục bộ' : 'Thế giới'}</span>
-                    </ActionButton>
-                    <SceneSnapSettings
-                        steps={snapSteps}
-                        enabled={snap}
-                        disabled={props.disabled || transforming}
-                        onChange={setSnapSteps}
-                        onEnabledChange={setSnap}
-                    />
-                </div>
-            </div>
             <div className="canvas-viewport relative min-h-90 flex-[1] overflow-hidden">
                 <div
                     className="scene-three-host absolute top-0 right-0 bottom-0 left-0 [touch-action:none] [&_canvas]:block [&_canvas]:size-full"
@@ -1244,6 +1176,74 @@ export function SceneCanvas(props: Props) {
                     data-selection-marquee
                     className="pointer-events-none absolute border border-primary bg-primary/10"
                 />
+                <div
+                    className="canvas-toolbar absolute top-[18px] left-[18px] z-2 flex items-center gap-1 rounded-xl bg-surface p-1 shadow-[0_4px_14px_#00000014] [&_button.primary:disabled]:bg-primary [&_button.primary:disabled]:text-primary-foreground [&_button:disabled]:border-transparent"
+                    role="toolbar"
+                    aria-label="Công cụ canvas"
+                >
+                    <fieldset
+                        className="m-0 flex min-w-0 items-center gap-1 border-0 p-0"
+                        aria-label="Góc nhìn"
+                    >
+                        <ActionButton
+                            variant="ghost"
+                            size="sm"
+                            title="Mặt trang · Đưa toàn bộ trang vào khung nhìn"
+                            disabled={transforming}
+                            onClick={() => api.current?.view('front')}
+                        >
+                            Mặt trang
+                        </ActionButton>
+                        <ActionButton
+                            variant="ghost"
+                            size="sm"
+                            disabled={transforming}
+                            onClick={() => api.current?.view('iso')}
+                        >
+                            Phối cảnh
+                        </ActionButton>
+                    </fieldset>
+                    <Separator orientation="vertical" className="h-6" />
+                    <div className="canvas-tool-group flex items-center gap-1">
+                        <ActionButton
+                            variant="ghost"
+                            size="sm"
+                            type="button"
+                            title={
+                                props.selectedIds.length > 1
+                                    ? 'Nhóm dùng trục thế giới'
+                                    : mode === 'scale'
+                                      ? 'Kích thước theo trục đối tượng'
+                                      : 'Đổi trục thế giới / cục bộ (L)'
+                            }
+                            aria-label={localAxes ? 'Trục cục bộ (L)' : 'Trục thế giới (L)'}
+                            aria-pressed={localAxes}
+                            disabled={
+                                props.disabled ||
+                                transforming ||
+                                props.selectedIds.length > 1 ||
+                                mode === 'scale'
+                            }
+                            onClick={() =>
+                                setSpace((current) => (current === 'world' ? 'local' : 'world'))
+                            }
+                        >
+                            {localAxes ? (
+                                <Box data-icon="inline-start" />
+                            ) : (
+                                <Globe2 data-icon="inline-start" />
+                            )}
+                            <span>{localAxes ? 'Cục bộ' : 'Thế giới'}</span>
+                        </ActionButton>
+                        <SceneSnapSettings
+                            steps={snapSteps}
+                            enabled={snap}
+                            disabled={props.disabled || transforming}
+                            onChange={setSnapSteps}
+                            onEnabledChange={setSnap}
+                        />
+                    </div>
+                </div>
                 {!failure && (
                     <SceneViewGizmo
                         key={`${props.page.id}:${props.page.image.url}:${props.aspect}`}
@@ -1270,7 +1270,7 @@ export function SceneCanvas(props: Props) {
                 {transforming && selectedObject && (
                     <output
                         aria-live="off"
-                        className="pointer-events-none absolute bottom-4 left-1/2 max-w-[80%] -translate-x-1/2 rounded-lg bg-surface px-3 py-2 text-center text-xs tabular-nums"
+                        className="pointer-events-none absolute bottom-[132px] left-1/2 max-w-[80%] -translate-x-1/2 rounded-lg bg-surface px-3 py-2 text-center text-xs tabular-nums"
                     >
                         {toolName}
                         {props.selectedIds.length > 1
@@ -1305,7 +1305,7 @@ export function SceneCanvas(props: Props) {
                     </p>
                 )}
             </div>
-            <div className="canvas-footer absolute right-[18px] bottom-[42px] z-3 max-[760px]:right-[10px] max-[760px]:bottom-[58px] max-[760px]:left-[10px] max-[760px]:max-w-[calc(100%_-_20px)]">
+            <div className="canvas-footer absolute right-[18px] bottom-[168px] z-3 max-[760px]:right-[10px] max-[760px]:bottom-[58px] max-[760px]:left-[10px] max-[760px]:max-w-[calc(100%_-_20px)]">
                 {props.footer}
             </div>
             <div className="canvas-status flex flex-wrap justify-center gap-3 bg-[var(--editor-ground)] px-[10px] py-2 text-[length:10px] text-muted-foreground [&_span:last-child]:hidden">
