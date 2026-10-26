@@ -45,6 +45,9 @@ export const VIEW_AXES = [
     },
 ] as const;
 
+// Keep a small tilt at the poles so the screen-up direction remains defined.
+export const VIEW_POLE_EPSILON = 0.0001;
+
 export type ViewAxis = (typeof VIEW_AXES)[number]['id'];
 export type ViewGizmoController = {
     begin: () => boolean;
@@ -59,8 +62,12 @@ export function setAxisView(camera: PerspectiveCamera, target: Vector3, axis: Vi
     if (!direction) return;
     const distance = camera.position.distanceTo(target);
     const offset = new Vector3(...direction.vector);
-    // OrbitControls uses Y-up and cannot look exactly along its polar axis.
-    if (Math.abs(offset.y) === 1) offset.z = 0.000001;
+    const up = camera.up.clone().normalize();
+    if (Math.abs(offset.dot(up)) > 1 - 1e-10) {
+        const tangent = Math.abs(up.y) < 0.99 ? new Vector3(0, -1, 0) : new Vector3(0, 0, 1);
+        tangent.addScaledVector(up, -tangent.dot(up)).normalize();
+        offset.addScaledVector(tangent, VIEW_POLE_EPSILON);
+    }
     camera.position.copy(target).addScaledVector(offset.normalize(), distance);
     camera.lookAt(target);
     camera.updateMatrixWorld();
@@ -73,14 +80,25 @@ export function rotateSceneView(
     dy: number,
     minPolarAngle = 0,
     maxPolarAngle = Math.PI,
+    radiansPerPixel = 0.012,
 ) {
-    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
-    const offset = camera.position.clone().sub(target);
+    if (![dx, dy, radiansPerPixel].every(Number.isFinite) || radiansPerPixel <= 0) return;
+    // Match OrbitControls: perform spherical rotation in a Y-up basis, then return to world space.
+    const toYUp = new Quaternion().setFromUnitVectors(
+        camera.up.clone().normalize(),
+        new Vector3(0, 1, 0),
+    );
+    const offset = camera.position.clone().sub(target).applyQuaternion(toYUp);
     const spherical = new Spherical().setFromVector3(offset);
-    spherical.theta -= dx * 0.012;
-    spherical.phi = Math.max(minPolarAngle, Math.min(maxPolarAngle, spherical.phi - dy * 0.012));
+    spherical.theta -= dx * radiansPerPixel;
+    spherical.phi = Math.max(
+        Math.max(VIEW_POLE_EPSILON, minPolarAngle),
+        Math.min(Math.PI - VIEW_POLE_EPSILON, maxPolarAngle, spherical.phi - dy * radiansPerPixel),
+    );
     spherical.makeSafe();
-    camera.position.copy(target).add(offset.setFromSpherical(spherical));
+    camera.position
+        .copy(target)
+        .add(offset.setFromSpherical(spherical).applyQuaternion(toYUp.invert()));
     camera.lookAt(target);
     camera.updateMatrixWorld();
 }

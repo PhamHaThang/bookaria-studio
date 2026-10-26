@@ -1,4 +1,4 @@
-import { Focus, Magnet, Maximize2, Move, RotateCw, Scaling } from 'lucide-react';
+import { Box, Globe2 } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -6,25 +6,33 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
-import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
+import { Separator } from '@/shared/ui/primitives/separator';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import type { Page } from '../../../shared/contracts/dto.schema';
 import type { Scene, SceneObject } from '../../../shared/contracts/scene.schema';
+import { beginDolly, type DollyStart, dragDolly } from '../model/dolly';
 import { createFrontGuide } from '../model/front-guide';
 import { objectLabels } from '../model/objects';
+import { fitPreviewCamera } from '../model/preview-fit';
 import type { SelectionMode } from '../model/selection';
+import { layoutSelectionTools, projectSelectionBounds } from '../model/selection-tools';
 import { selectionFrustum, transformSelection } from '../model/selection-transform';
+import { DEFAULT_SNAP_STEPS, type SnapSteps, transformSnapSteps } from '../model/snap';
 import { wrapText } from '../model/text';
 import { objectFromGizmo } from '../model/transforms';
 import {
     createViewGizmoProjection,
     rotateSceneView,
     setAxisView,
+    VIEW_POLE_EPSILON,
     type ViewGizmoController,
 } from '../model/view-gizmo';
+import { SceneSelectionTools, type SelectionActions } from './SceneSelectionTools';
+import { SceneSnapSettings } from './SceneSnapSettings';
 import { SceneViewGizmo } from './SceneViewGizmo';
 
 type Mode = 'translate' | 'rotate' | 'scale';
+type Space = 'world' | 'local';
 type Props = {
     footer?: ReactNode;
     page: Page;
@@ -37,6 +45,7 @@ type Props = {
     onChange: (objects: SceneObject[]) => void;
     onBegin: () => void;
     onEnd: () => void;
+    selectionActions: SelectionActions;
 };
 type Node = {
     root: THREE.Group;
@@ -49,19 +58,28 @@ type Node = {
 export function SceneCanvas(props: Props) {
     const host = useRef<HTMLDivElement>(null),
         marqueeHost = useRef<HTMLDivElement>(null),
+        leftTools = useRef<HTMLDivElement>(null),
+        rightTools = useRef<HTMLDivElement>(null),
         gizmoHost = useRef<HTMLFieldSetElement>(null),
         gizmoController = useRef<ViewGizmoController | null>(null),
         latest = useRef(props);
     latest.current = props;
     const api = useRef<{
         sync: () => void;
-        mode: (mode: Mode, snap: boolean) => void;
+        mode: (mode: Mode, snap: boolean, space: Space, steps: SnapSteps) => void;
+        temporarySnap: (active: boolean) => void;
+        pan: (active: boolean) => void;
+        isDragging: () => boolean;
+        getMode: () => Mode;
         view: (view: string) => void;
         focus: () => void;
         cancel: () => boolean;
     } | null>(null);
     const [mode, setMode] = useState<Mode>('translate'),
-        [snap, setSnap] = useState(false);
+        [snap, setSnap] = useState(false),
+        [snapSteps, setSnapSteps] = useState<SnapSteps>(DEFAULT_SNAP_STEPS),
+        [space, setSpace] = useState<Space>('world'),
+        [transforming, setTransforming] = useState(false);
     const [failure, setFailure] = useState(''),
         [loading, setLoading] = useState(0),
         [issues, setIssues] = useState<Record<string, string>>({});
@@ -80,6 +98,12 @@ export function SceneCanvas(props: Props) {
             );
             return;
         }
+        let spaceHeld = false,
+            shiftSnap = false;
+        let cameraPointer: number | null = null;
+        let cameraClick = false;
+        let zoomDrag: { id: number; y: number; start: DollyStart } | null = null;
+        const settings = { mode, snap, space, steps: snapSteps };
         let disposed = false,
             dragging = false,
             frame = 0;
@@ -88,6 +112,8 @@ export function SceneCanvas(props: Props) {
         const themeColor = (token: string) => new THREE.Color(theme.getPropertyValue(token).trim());
         scene.background = themeColor('--editor-ground');
         const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100);
+        // Paper is XY; height and the navigation up direction are +Z.
+        camera.up.set(0, 0, 1);
         // Frame the whole page and its front guide without changing scene coordinates.
         const stageDistance = () => {
             const tangent = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
@@ -101,6 +127,13 @@ export function SceneCanvas(props: Props) {
         const orbit = new OrbitControls(camera, renderer.domElement);
         orbit.target.set(0, -0.18, 0);
         orbit.enableDamping = true;
+        orbit.dampingFactor = 0.18;
+        orbit.minPolarAngle = VIEW_POLE_EPSILON;
+        orbit.maxPolarAngle = Math.PI - VIEW_POLE_EPSILON;
+        orbit.rotateSpeed = 0.65;
+        orbit.panSpeed = 0.8;
+        orbit.zoomSpeed = 0.8;
+        orbit.zoomToCursor = true;
         orbit.minDistance = 0.15;
         orbit.maxDistance = 15;
         orbit.mouseButtons = {
@@ -139,6 +172,8 @@ export function SceneCanvas(props: Props) {
                     dy,
                     orbit.minPolarAngle,
                     orbit.maxPolarAngle,
+                    (2 * Math.PI * orbit.rotateSpeed) /
+                        Math.max(1, renderer.domElement.clientHeight),
                 );
                 orbit.update();
             },
@@ -153,13 +188,31 @@ export function SceneCanvas(props: Props) {
             },
         };
         const controls = new TransformControls(camera, renderer.domElement);
-        controls.setSize(0.8);
+        controls.setSize(1);
+        // Keep drag guides legible over the light page and editor grid.
+        controls.traverse((node) => {
+            if (!('tag' in node) || node.tag !== 'helper') return;
+            if (!(node instanceof THREE.Line || node instanceof THREE.Mesh)) return;
+            const materials = Array.isArray(node.material) ? node.material : [node.material];
+            for (const material of materials) {
+                if (!(material instanceof THREE.LineBasicMaterial)) continue;
+                material.color.copy(themeColor('--editor-transform-guide'));
+                material.opacity = 0.6;
+            }
+        });
+        function applySnapping() {
+            const enabled = settings.snap || shiftSnap;
+            const steps = transformSnapSteps(settings.steps);
+            controls.setTranslationSnap(enabled ? steps.translation : null);
+            controls.setRotationSnap(enabled ? steps.rotation : null);
+            controls.setScaleSnap(enabled ? steps.scale : null);
+        }
         scene.add(controls);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.domElement.setAttribute(
             'aria-label',
-            'Canvas 3D: Shift/Ctrl + nhấp để chọn nhiều, Shift + kéo để khoanh vùng, kéo trục để chỉnh; kéo vùng trống để xoay góc nhìn. Nhãn FRONT đánh dấu hướng trước ở mép dưới trang.',
+            'Canvas 3D: nhấp để chọn; kéo gizmo để biến đổi; Shift/Ctrl + nhấp để chọn nhiều, Shift + kéo để khoanh vùng; kéo chuột trái ngoài gizmo để xoay camera; Space + kéo hoặc chuột phải để dịch camera; giữ chuột giữa và kéo lên/xuống để zoom liên tục; cuộn để zoom theo con trỏ. Nhãn FRONT đánh dấu hướng trước ở mép dưới trang.',
         );
         renderer.domElement.tabIndex = 0;
         element.append(renderer.domElement);
@@ -540,6 +593,7 @@ export function SceneCanvas(props: Props) {
                     selectionPivot.scale.setScalar(1);
                     selectionPivot.updateMatrixWorld(true);
                 }
+                controls.setSpace(selected.length > 1 ? 'world' : settings.space);
                 if (controls.object !== target) controls.attach(target);
                 controls.showZ = true;
             } else controls.detach();
@@ -592,6 +646,7 @@ export function SceneCanvas(props: Props) {
                 },
                 controls.mode === 'translate',
                 controls.axis,
+                controls.space,
             );
             if (next) latest.current.onChange([next]);
         };
@@ -605,6 +660,7 @@ export function SceneCanvas(props: Props) {
                 latest.current.onChange(transformDrag.objects);
             } else changed();
             dragging = false;
+            setTransforming(false);
             controls.dragging = false;
             transformDrag = null;
             latest.current.onEnd();
@@ -623,7 +679,9 @@ export function SceneCanvas(props: Props) {
                 group,
             };
             if (group && controls.mode === 'scale') controls.axis = 'XYZ';
+            stopOrbitMomentum();
             dragging = true;
+            setTransforming(true);
             latest.current.onBegin();
             orbit.enabled = false;
         });
@@ -676,15 +734,80 @@ export function SceneCanvas(props: Props) {
                 renderer.domElement.releasePointerCapture(previous.id);
             return Boolean(previous);
         }
+        function restoreNavigation() {
+            cameraPointer = null;
+            cameraClick = false;
+            zoomDrag = null;
+            controls.enabled = true;
+            orbit.enabled = !dragging;
+            orbit.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+            renderer.domElement.style.cursor = spaceHeld ? 'all-scroll' : '';
+        }
+        function beginCameraNavigation(event: PointerEvent, pan: boolean, selectOnClick = false) {
+            stopOrbitMomentum();
+            cameraPointer = event.pointerId;
+            cameraClick = selectOnClick;
+            controls.enabled = false;
+            orbit.enabled = true;
+            const inverted = event.shiftKey || event.ctrlKey || event.metaKey;
+            orbit.mouseButtons.LEFT = pan !== inverted ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+            renderer.domElement.style.cursor = pan ? 'all-scroll' : 'move';
+        }
         const pointerDown = (event: PointerEvent) => {
             start.set(event.clientX, event.clientY);
-            if (
-                event.button !== 0 ||
-                latest.current.disabled ||
-                dragging ||
-                !(event.shiftKey || event.ctrlKey || event.metaKey)
-            )
+            renderer.domElement.focus({ preventScroll: true });
+            if (dragging || zoomDrag) return;
+            if (event.button === 1) {
+                stopOrbitMomentum();
+                const rect = renderer.domElement.getBoundingClientRect();
+                zoomDrag = {
+                    id: event.pointerId,
+                    y: event.clientY,
+                    start: beginDolly(
+                        camera,
+                        orbit.target,
+                        new THREE.Vector2(
+                            ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                            -((event.clientY - rect.top) / rect.height) * 2 + 1,
+                        ),
+                    ),
+                };
+                controls.enabled = false;
+                orbit.enabled = false;
+                renderer.domElement.style.cursor = 'ns-resize';
+                renderer.domElement.setPointerCapture(event.pointerId);
+                // Prevent browser auto-scroll and let only this zoom handler own the gesture.
+                event.preventDefault();
+                event.stopImmediatePropagation();
                 return;
+            }
+            if (event.button === 2) {
+                const rotate = event.ctrlKey || event.shiftKey || event.metaKey;
+                // Keep native right-button mapping; report its modifier-switched action correctly.
+                beginCameraNavigation(event, !rotate);
+                return;
+            }
+            if (event.button !== 0) return;
+            if (spaceHeld) {
+                beginCameraNavigation(event, true);
+                return;
+            }
+            if (latest.current.disabled) {
+                beginCameraNavigation(event, false);
+                return;
+            }
+            // A visible gizmo takes priority over Shift marquee selection.
+            if (controls.axis && controls.object && !event.ctrlKey && !event.metaKey) {
+                shiftSnap = event.shiftKey;
+                applySnapping();
+                stopOrbitMomentum();
+                orbit.enabled = false;
+                return;
+            }
+            if (!(event.shiftKey || event.ctrlKey || event.metaKey)) {
+                beginCameraNavigation(event, false, true);
+                return;
+            }
             selecting = {
                 id: event.pointerId,
                 x: event.clientX,
@@ -700,6 +823,21 @@ export function SceneCanvas(props: Props) {
             event.stopImmediatePropagation();
         };
         const pointerMove = (event: PointerEvent) => {
+            if (zoomDrag?.id === event.pointerId) {
+                dragDolly(
+                    camera,
+                    orbit.target,
+                    zoomDrag.start,
+                    event.clientY - zoomDrag.y,
+                    renderer.domElement.clientHeight,
+                    orbit.minDistance,
+                    orbit.maxDistance,
+                );
+                orbit.update();
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
             if (!selecting || selecting.id !== event.pointerId) return;
             event.stopImmediatePropagation();
             if (
@@ -718,6 +856,27 @@ export function SceneCanvas(props: Props) {
             overlay.style.height = `${box.bottom - box.top}px`;
         };
         const pointerUp = (event: PointerEvent) => {
+            if (zoomDrag?.id === event.pointerId) {
+                restoreNavigation();
+                if (renderer.domElement.hasPointerCapture(event.pointerId))
+                    renderer.domElement.releasePointerCapture(event.pointerId);
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
+            if (cameraPointer === event.pointerId) {
+                const select =
+                    cameraClick &&
+                    event.button === 0 &&
+                    !latest.current.disabled &&
+                    start.distanceTo(new THREE.Vector2(event.clientX, event.clientY)) <= 4;
+                restoreNavigation();
+                if (select) {
+                    const id = hitObject(event);
+                    latest.current.onSelect(id ? [id] : [], 'replace');
+                }
+                return;
+            }
             if (selecting?.id === event.pointerId) {
                 event.preventDefault();
                 event.stopImmediatePropagation();
@@ -762,10 +921,26 @@ export function SceneCanvas(props: Props) {
         const pointerCancel = () => {
             clearMarquee();
             finishTransform(true);
+            restoreNavigation();
         };
-        const lostCapture = () => {
+        const lostCapture = (event: PointerEvent) => {
             if (selecting) clearMarquee();
+            // TransformControls releases capture just before its normal mouseUp handler.
+            // Wait for that handler; unexpected capture loss cancels the gesture instead.
+            queueMicrotask(() => {
+                if (disposed || renderer.domElement.hasPointerCapture(event.pointerId)) return;
+                if (dragging) finishTransform(true);
+                if (cameraPointer === event.pointerId || zoomDrag?.id === event.pointerId)
+                    restoreNavigation();
+            });
         };
+        const blur = () => {
+            spaceHeld = false;
+            shiftSnap = false;
+            applySnapping();
+            pointerCancel();
+        };
+        window.addEventListener('blur', blur);
         renderer.domElement.addEventListener('pointerdown', pointerDown, true);
         renderer.domElement.addEventListener('pointermove', pointerMove, true);
         renderer.domElement.addEventListener('pointerup', pointerUp, true);
@@ -779,6 +954,38 @@ export function SceneCanvas(props: Props) {
             camera.updateProjectionMatrix();
         });
         resize.observe(element);
+        function positionSelectionTools() {
+            const left = leftTools.current,
+                right = rightTools.current;
+            if (!left || !right) return;
+            const viewport = {
+                width: renderer.domElement.clientWidth,
+                height: renderer.domElement.clientHeight,
+            };
+            const bounds =
+                !dragging && outline.visible
+                    ? projectSelectionBounds(outline.box, camera, viewport)
+                    : null;
+            if (!bounds) {
+                left.style.visibility = 'hidden';
+                right.style.visibility = 'hidden';
+                return;
+            }
+            const positions = layoutSelectionTools(
+                bounds,
+                viewport,
+                { width: left.offsetWidth, height: left.offsetHeight },
+                { width: right.offsetWidth, height: right.offsetHeight },
+            );
+            for (const [rail, position] of [
+                [left, positions.left],
+                [right, positions.right],
+            ] as const) {
+                const transform = `translate3d(${Math.round(position.x)}px, ${Math.round(position.y)}px, 0)`;
+                if (rail.style.transform !== transform) rail.style.transform = transform;
+                rail.style.visibility = 'visible';
+            }
+        }
         const clock = new THREE.Clock();
         function tick() {
             if (disposed) return;
@@ -789,23 +996,46 @@ export function SceneCanvas(props: Props) {
             if (outline.visible) outline.box.copy(selectionBounds());
             renderer.render(scene, camera);
             viewGizmo?.update();
+            positionSelectionTools();
         }
         api.current = {
             sync,
-            mode(value, snapped) {
+            mode(value, snapped, nextSpace, steps) {
+                if (dragging) return;
+                settings.mode = value;
+                settings.snap = snapped;
+                settings.space = nextSpace;
+                settings.steps = steps;
                 controls.setMode(value);
-                controls.setTranslationSnap(snapped ? 0.025 : null);
-                controls.setRotationSnap(snapped ? Math.PI / 12 : null);
-                controls.setScaleSnap(snapped ? 0.05 : null);
+                applySnapping();
                 sync();
             },
+            temporarySnap(active) {
+                shiftSnap = active;
+                applySnapping();
+            },
+            pan(active) {
+                spaceHeld = active;
+                if (cameraPointer === null && !zoomDrag)
+                    renderer.domElement.style.cursor = active ? 'all-scroll' : '';
+            },
+            isDragging: () => dragging,
+            getMode: () => controls.mode,
             view(view) {
+                if (dragging) return;
                 // Clear the last orbit/pan gesture before applying an exact preset.
                 stopOrbitMomentum();
                 const distance = stageDistance();
+                orbit.minDistance = 0.15;
+                orbit.maxDistance = Math.max(15, distance * 3);
+                camera.near = 0.01;
+                camera.far = Math.max(100, distance * 4);
+                camera.updateProjectionMatrix();
                 orbit.target.set(0, -0.18, 0);
-                if (view === 'front') camera.position.set(0, orbit.target.y, distance);
-                else if (view === 'side') camera.position.set(distance, orbit.target.y, 0.01);
+                if (view === 'front') {
+                    camera.position.copy(orbit.target).add(new THREE.Vector3(0, 0, distance));
+                    setAxisView(camera, orbit.target, '+z');
+                } else if (view === 'side') camera.position.set(distance, orbit.target.y, 0.01);
                 else
                     camera.position.set(
                         distance * 0.65,
@@ -820,14 +1050,20 @@ export function SceneCanvas(props: Props) {
             focus() {
                 const box = selectionBounds();
                 if (box.isEmpty()) return;
-                const center = box.getCenter(new THREE.Vector3());
-                const distance = Math.max(0.25, box.getSize(new THREE.Vector3()).length() * 1.5);
+                if (dragging) return;
+                stopOrbitMomentum();
                 const direction = camera.position.clone().sub(orbit.target).normalize();
-                orbit.target.copy(center);
-                camera.position.copy(center).addScaledVector(direction, distance);
+                const fitted = fitPreviewCamera(box, camera, direction, 1.35);
+                orbit.target.copy(fitted.target);
+                orbit.minDistance = Math.min(0.15, Math.max(0.005, fitted.radius * 0.5));
+                orbit.maxDistance = Math.max(15, fitted.distance * 3);
+                camera.near = Math.min(0.01, camera.near);
+                camera.far = Math.max(100, camera.far);
+                camera.updateProjectionMatrix();
                 orbit.update();
             },
         };
+        api.current.mode(mode, snap, space, snapSteps);
         sync();
         tick();
         return () => {
@@ -843,6 +1079,7 @@ export function SceneCanvas(props: Props) {
             renderer.domElement.removeEventListener('pointerup', pointerUp, true);
             renderer.domElement.removeEventListener('pointercancel', pointerCancel);
             renderer.domElement.removeEventListener('lostpointercapture', lostCapture);
+            window.removeEventListener('blur', blur);
             controls.detach();
             controls.dispose();
             orbit.dispose();
@@ -864,8 +1101,8 @@ export function SceneCanvas(props: Props) {
         api.current?.sync();
     });
     useEffect(() => {
-        api.current?.mode(mode, snap);
-    }, [mode, snap]);
+        api.current?.mode(mode, snap, space, snapSteps);
+    }, [mode, snap, space, snapSteps]);
     useEffect(() => {
         const key = (event: KeyboardEvent) => {
             if (
@@ -884,83 +1121,115 @@ export function SceneCanvas(props: Props) {
                 event.altKey
             )
                 return;
+            if (document.getElementById('scene-heading')?.closest('[hidden]')) return;
             const value = event.key.toLowerCase();
+            if (value === 'shift') api.current?.temporarySnap(true);
+            if (event.code === 'Space' && event.target === host.current?.querySelector('canvas')) {
+                event.preventDefault();
+                api.current?.pan(true);
+                return;
+            }
             if (value === 'escape' && api.current?.cancel()) {
                 event.preventDefault();
                 return;
             }
+            if (latest.current.disabled || api.current?.isDragging()) return;
+            if (
+                value === 'l' &&
+                latest.current.selectedIds.length <= 1 &&
+                api.current?.getMode() !== 'scale'
+            )
+                setSpace((current) => (current === 'world' ? 'local' : 'world'));
+            if (value === 'n') setSnap((current) => !current);
             if (value === 'w') setMode('translate');
             if (value === 'e') setMode('rotate');
             if (value === 'r') setMode('scale');
             if (value === 'f') api.current?.focus();
         };
+        const release = (event: KeyboardEvent) => {
+            if (event.key === 'Shift') api.current?.temporarySnap(false);
+            if (event.code === 'Space') api.current?.pan(false);
+        };
         window.addEventListener('keydown', key);
-        return () => window.removeEventListener('keydown', key);
+        window.addEventListener('keyup', release);
+        return () => {
+            window.removeEventListener('keydown', key);
+            window.removeEventListener('keyup', release);
+        };
     }, []);
+    const localAxes = props.selectedIds.length <= 1 && (space === 'local' || mode === 'scale');
+    const selectedObject = props.scene.objects.find(
+        (object) => object.id === props.selectedIds.at(-1),
+    );
+    const toolName = mode === 'translate' ? 'Di chuyển' : mode === 'rotate' ? 'Xoay' : 'Kích thước';
     return (
         <div className="scene-stage-column relative flex min-h-0 min-w-0 flex-col bg-[var(--editor-ground)] max-[760px]:min-h-120 [.scene-editor[data-panel=preview]_&]:hidden">
             <div
-                className="canvas-toolbar absolute bottom-[58px] left-[18px] z-2 flex flex-col gap-[6px] rounded-[12px] bg-surface p-[5px] shadow-[0_4px_14px_#00000014] [&_button:hover]:bg-hover [&_button:hover]:text-foreground [&_button[aria-pressed=true]]:bg-selected [&_button[aria-pressed=true]]:text-primary [&_button[data-state=on]]:bg-selected [&_button[data-state=on]]:text-primary [&_button]:flex [&_button]:items-center [&_button]:gap-[5px] [&_button]:rounded-[8px] [&_button]:border-0 [&_button]:border-[transparent] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:p-[10px] [&_button]:text-[length:11px] [&_button]:text-muted-foreground [&_button_span]:hidden"
+                className="canvas-toolbar absolute top-[18px] left-[18px] z-2 flex items-center gap-1 rounded-xl bg-surface p-1 shadow-[0_4px_14px_#00000014] [&_button.primary:disabled]:bg-primary [&_button.primary:disabled]:text-primary-foreground [&_button:disabled]:border-transparent"
                 role="toolbar"
                 aria-label="Công cụ canvas"
             >
-                <ToggleGroup
-                    type="single"
-                    orientation="vertical"
-                    value={mode}
-                    onValueChange={(value) => {
-                        if (value) setMode(value as Mode);
-                    }}
-                    disabled={props.disabled}
-                    aria-label="Chế độ biến đổi"
-                    className="canvas-tool-group flex-col gap-[3px]"
+                <fieldset
+                    className="m-0 flex min-w-0 items-center gap-1 border-0 p-0"
+                    aria-label="Góc nhìn"
                 >
-                    {(
-                        [
-                            { value: 'translate', label: 'Di chuyển (W)', icon: Move },
-                            { value: 'rotate', label: 'Xoay (E)', icon: RotateCw },
-                            { value: 'scale', label: 'Kích thước (R)', icon: Scaling },
-                        ] as const
-                    ).map((tool) => (
-                        <ToggleGroupItem
-                            key={tool.value}
-                            value={tool.value}
-                            title={tool.label}
-                            aria-label={tool.label}
-                            disabled={props.disabled}
-                        >
-                            <tool.icon size={18} />
-                            <span>{tool.label.split(' (')[0]}</span>
-                        </ToggleGroupItem>
-                    ))}
-                </ToggleGroup>
-                <div className="canvas-tool-group flex flex-col gap-[3px]">
                     <ActionButton
-                        variant="plain"
-                        type="button"
-                        title="Bắt bước: 0,025 đơn vị / 15°"
-                        aria-label="Bật bắt bước"
-                        aria-pressed={snap}
-                        onClick={() => setSnap(!snap)}
-                    >
-                        <Magnet size={18} />
-                    </ActionButton>
-                    <ActionButton
-                        variant="plain"
-                        type="button"
-                        aria-label="Đưa đối tượng vào giữa (F)"
-                        onClick={() => api.current?.focus()}
-                    >
-                        <Focus size={18} />
-                    </ActionButton>
-                    <ActionButton
-                        variant="plain"
-                        type="button"
-                        aria-label="Vừa trang"
+                        variant="ghost"
+                        size="sm"
+                        title="Mặt trang · Đưa toàn bộ trang vào khung nhìn"
+                        disabled={transforming}
                         onClick={() => api.current?.view('front')}
                     >
-                        <Maximize2 size={18} />
+                        Mặt trang
                     </ActionButton>
+                    <ActionButton
+                        variant="ghost"
+                        size="sm"
+                        disabled={transforming}
+                        onClick={() => api.current?.view('iso')}
+                    >
+                        Phối cảnh
+                    </ActionButton>
+                </fieldset>
+                <Separator orientation="vertical" className="h-6" />
+                <div className="canvas-tool-group flex items-center gap-1">
+                    <ActionButton
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        title={
+                            props.selectedIds.length > 1
+                                ? 'Nhóm dùng trục thế giới'
+                                : mode === 'scale'
+                                  ? 'Kích thước theo trục đối tượng'
+                                  : 'Đổi trục thế giới / cục bộ (L)'
+                        }
+                        aria-label={localAxes ? 'Trục cục bộ (L)' : 'Trục thế giới (L)'}
+                        aria-pressed={localAxes}
+                        disabled={
+                            props.disabled ||
+                            transforming ||
+                            props.selectedIds.length > 1 ||
+                            mode === 'scale'
+                        }
+                        onClick={() =>
+                            setSpace((current) => (current === 'world' ? 'local' : 'world'))
+                        }
+                    >
+                        {localAxes ? (
+                            <Box data-icon="inline-start" />
+                        ) : (
+                            <Globe2 data-icon="inline-start" />
+                        )}
+                        <span>{localAxes ? 'Cục bộ' : 'Thế giới'}</span>
+                    </ActionButton>
+                    <SceneSnapSettings
+                        steps={snapSteps}
+                        enabled={snap}
+                        disabled={props.disabled || transforming}
+                        onChange={setSnapSteps}
+                        onEnabledChange={setSnap}
+                    />
                 </div>
             </div>
             <div className="canvas-viewport relative min-h-90 flex-[1] overflow-hidden">
@@ -982,6 +1251,43 @@ export function SceneCanvas(props: Props) {
                         controller={gizmoController}
                     />
                 )}
+                {!failure && (
+                    <SceneSelectionTools
+                        objects={props.scene.objects.filter((object) =>
+                            props.selectedIds.includes(object.id),
+                        )}
+                        mode={mode}
+                        snap={snap}
+                        onSnapChange={setSnap}
+                        disabled={props.disabled}
+                        transforming={transforming}
+                        actions={props.selectionActions}
+                        leftRef={leftTools}
+                        rightRef={rightTools}
+                        onModeChange={setMode}
+                    />
+                )}
+                {transforming && selectedObject && (
+                    <output
+                        aria-live="off"
+                        className="pointer-events-none absolute bottom-4 left-1/2 max-w-[80%] -translate-x-1/2 rounded-lg bg-surface px-3 py-2 text-center text-xs tabular-nums"
+                    >
+                        {toolName}
+                        {props.selectedIds.length > 1
+                            ? ` ${props.selectedIds.length} đối tượng`
+                            : ` · ${(['X', 'Y', 'Z'] as const)
+                                  .map((axis, index) => {
+                                      const value =
+                                          mode === 'rotate'
+                                              ? selectedObject.transform.rotation[index]
+                                              : mode === 'scale'
+                                                ? selectedObject.transform.scale[index] * 100
+                                                : selectedObject.transform.position[index];
+                                      return `${axis} ${Number(value.toFixed(mode === 'translate' ? 3 : 1))}${mode === 'rotate' ? '°' : mode === 'scale' ? '%' : ''}`;
+                                  })
+                                  .join(' · ')}`}
+                    </output>
+                )}
                 {failure && (
                     <p
                         className="canvas-failure absolute top-[35%] right-[10%] bottom-auto left-[10%] bg-surface p-5 text-[length:13px]"
@@ -990,25 +1296,6 @@ export function SceneCanvas(props: Props) {
                         {failure}
                     </p>
                 )}
-                <fieldset
-                    className="canvas-view-switch absolute top-[18px] left-[18px] flex rounded-[10px] bg-surface p-[3px] shadow-[0_2px_6px_#0000000a] [&_button:hover]:bg-hover [&_button:hover]:text-foreground [&_button]:flex [&_button]:items-center [&_button]:gap-[5px] [&_button]:rounded-[8px] [&_button]:border-0 [&_button]:border-[transparent] [&_button]:border-solid [&_button]:bg-[transparent] [&_button]:p-[10px] [&_button]:text-[length:11px] [&_button]:text-muted-foreground"
-                    aria-label="Góc nhìn"
-                >
-                    {[
-                        ['front', 'Mặt trang'],
-                        ['iso', 'Phối cảnh'],
-                        ['side', 'Bên cạnh'],
-                    ].map(([value, label]) => (
-                        <ActionButton
-                            variant="plain"
-                            key={value}
-                            type="button"
-                            onClick={() => api.current?.view(value)}
-                        >
-                            {label}
-                        </ActionButton>
-                    ))}
-                </fieldset>
                 {loading > 0 && (
                     <p
                         className="canvas-loading absolute bottom-2 left-[74px] rounded-[5px] bg-surface px-[10px] py-[5px] text-[length:12px]"
@@ -1023,8 +1310,10 @@ export function SceneCanvas(props: Props) {
             </div>
             <div className="canvas-status flex flex-wrap justify-center gap-3 bg-[var(--editor-ground)] px-[10px] py-2 text-[length:10px] text-muted-foreground [&_span:last-child]:hidden">
                 <span>
-                    Shift + kéo: chọn nhiều · Kéo vùng trống: xoay · Cuộn: thu/phóng · Chuột phải:
-                    dịch góc nhìn{props.selectedIds.length > 1 ? ' · Scale nhóm đồng đều' : ''}
+                    W/E/R: di chuyển/xoay/kích thước · L: đổi trục · N: bắt bước · Giữ Shift khi
+                    kéo: bắt bước · Kéo trái: xoay · Phải/Space + kéo: dịch · Giữa + kéo dọc: zoom ·
+                    Cuộn: zoom theo con trỏ
+                    {props.selectedIds.length > 1 ? ' · Scale nhóm đồng đều' : ''}
                 </span>
                 <span>1 đơn vị = chiều rộng trang</span>
             </div>

@@ -769,6 +769,22 @@ export function SceneEditor({
                         assets={sceneAssets}
                         selectedIds={activeIds}
                         disabled={sceneBlocked}
+                        selectionActions={{
+                            canDuplicate:
+                                editor.draft.objects.length + selection.length <=
+                                SCENE_LIMITS.hardMaxObjects,
+                            onDuplicate: () => duplicateChosen(activeIds),
+                            onDelete: () => {
+                                if (
+                                    !blocked &&
+                                    selection.length &&
+                                    !selection.some((object) => object.locked)
+                                )
+                                    setDeleting(selection);
+                            },
+                            onLock: () =>
+                                flagChosen('locked', !selection.some((object) => object.locked)),
+                        }}
                         onSelect={selectMany}
                         onChange={changeMany}
                         onBegin={() => {
@@ -990,6 +1006,15 @@ export function SceneEditor({
                         </dd>
                         <dt>Di chuyển / xoay / kích thước</dt>
                         <dd>W / E / R</dd>
+                        <dt>Trục thế giới / cục bộ</dt>
+                        <dd>L · Nhóm biến đổi quanh tâm chung theo trục thế giới</dd>
+                        <dt>Bật / tắt bắt bước</dt>
+                        <dd>
+                            N · Giữ Shift khi kéo gizmo để bắt bước tạm thời. Chỉnh bước di chuyển,
+                            xoay và kích thước trong Cài đặt snap ở góc trên trái.
+                        </dd>
+                        <dt>Hủy thao tác đang kéo</dt>
+                        <dd>Esc · Khôi phục trạng thái trước khi kéo</dd>
                         <dt>Đưa đối tượng vào giữa</dt>
                         <dd>F</dd>
                         <dt>Hoàn tác / làm lại</dt>
@@ -1004,8 +1029,10 @@ export function SceneEditor({
                         <dd>Esc</dd>
                     </dl>
                     <p>
-                        Kéo vùng trống để xoay góc nhìn; cuộn chuột để thu/phóng; kéo chuột phải để
-                        dịch góc nhìn. Trên macOS, dùng ⌘ thay cho Ctrl.
+                        Nhấp đối tượng để chọn rồi kéo trục/vòng gizmo để chỉnh. Kéo chuột trái
+                        ngoài gizmo để xoay camera; chuột phải hoặc Space + kéo để dịch góc nhìn.
+                        Giữ chuột giữa và kéo lên để phóng to, kéo xuống để thu nhỏ liên tục. Cuộn
+                        thu/phóng về phía con trỏ. Trên macOS, dùng ⌘ thay cho Ctrl.
                     </p>
                     <Button onClick={() => setHelpOpen(false)}>Đã hiểu</Button>
                 </ConfirmDialog>

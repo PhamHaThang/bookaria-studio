@@ -49,12 +49,13 @@ export function objectFromGizmo(
     value: SceneObject['transform'],
     moving: boolean,
     axis: string | null,
+    space: 'world' | 'local' = 'world',
 ): SceneObject | null {
     const offPaper = (z: number) => Math.abs(Math.round(z * 100000)) > 0;
     const movingIn3D =
         moving &&
         (offPaper(object.transform.position[2]) ||
-            (Boolean(axis?.includes('Z')) && offPaper(value.position[2])));
+            ((Boolean(axis?.includes('Z')) || space === 'local') && offPaper(value.position[2])));
     const snapToPaper = object.snapToPaper && !movingIn3D;
     const transform = safeTransform(value, snapToPaper, moving);
     return transform ? { ...object, snapToPaper, transform } : null;
