@@ -55,7 +55,7 @@ export function AssetPicker({
 }: {
     type: AssetType;
     usedAssetIds?: string[];
-    onChoose: (asset: Asset) => void;
+    onChoose: (asset: Asset, signal: AbortSignal) => void | Promise<void>;
     onClose: () => void;
 }) {
     const { user } = useAuth();
@@ -150,7 +150,7 @@ export function AssetPicker({
                 throw new Error(
                     'Tài nguyên chưa sẵn sàng. Hãy kiểm tra lại trạng thái hoặc chọn tệp khác.',
                 );
-            onChoose(fresh);
+            await onChoose(fresh, active.signal);
         } catch (cause) {
             if (!active.signal.aborted) setError(errorMessage(cause));
         } finally {

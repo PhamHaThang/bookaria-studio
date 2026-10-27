@@ -185,3 +185,26 @@ test('marquee frustum selects intersecting objects and excludes objects behind/o
         null,
     );
 });
+
+test('moving and rotating a group preserves each precise scale without decomposition drift', () => {
+    const a = text('precise-a', [-0.2, 0, 0]),
+        b = text('precise-b', [0.2, 0, 0]);
+    a.transform.scale = [0.00123456789, 0.00234567891, 0.00345678912];
+    b.transform.scale = [0.000004321, 0.000012345, 0.000006789];
+    const moved = transformSelection(
+        [a, b],
+        new Matrix4().makeTranslation(2, -3, 0.1),
+        true,
+        'XYZ',
+        false,
+    );
+    assert.deepEqual(
+        moved.map((o) => o.transform.scale),
+        [a.transform.scale, b.transform.scale],
+    );
+    const rotated = transformSelection(moved, new Matrix4().makeRotationZ(0.71), false, 'Z', false);
+    assert.deepEqual(
+        rotated.map((o) => o.transform.scale),
+        [a.transform.scale, b.transform.scale],
+    );
+});

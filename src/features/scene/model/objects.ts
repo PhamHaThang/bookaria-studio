@@ -41,7 +41,7 @@ export function newObject(type: SceneObjectType, id: string, asset?: Asset): Sce
         transform: {
             position: [0, 0, 0],
             rotation: type === 'model' ? [90, 0, 0] : [0, 0, 0],
-            scale: usesAsset(type) && type !== 'audio' ? [0.3, 0.3, 0.3] : [1, 1, 1],
+            scale: [1, 1, 1],
         },
         ...(usesAsset(type) ? { assetId: asset?.id } : {}),
         ...(type === 'text' || type === 'label'

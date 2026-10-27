@@ -50,6 +50,7 @@ export function objectFromGizmo(
     moving: boolean,
     axis: string | null,
     space: 'world' | 'local' = 'world',
+    scaling = !moving,
 ): SceneObject | null {
     const offPaper = (z: number) => Math.abs(Math.round(z * 100000)) > 0;
     const movingIn3D =
@@ -58,5 +59,10 @@ export function objectFromGizmo(
             ((Boolean(axis?.includes('Z')) || space === 'local') && offPaper(value.position[2])));
     const snapToPaper = object.snapToPaper && !movingIn3D;
     const transform = safeTransform(value, snapToPaper, moving);
-    return transform ? { ...object, snapToPaper, transform } : null;
+    if (!transform) return null;
+    // Commit only the fields this gesture changes; never re-clamp or round an authored scale
+    // while translating/rotating, including when the object crosses the page boundary.
+    if (!scaling) transform.scale = [...object.transform.scale];
+    if (moving) transform.rotation = [...object.transform.rotation];
+    return { ...object, snapToPaper, transform };
 }

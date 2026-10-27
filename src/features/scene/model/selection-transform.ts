@@ -20,6 +20,7 @@ export function transformSelection(
     delta: Matrix4,
     moving: boolean,
     axis: string | null,
+    scaling = !moving,
 ): SceneObject[] | null {
     if (
         !delta.elements.every(Number.isFinite) ||
@@ -47,6 +48,8 @@ export function transformSelection(
             },
             moving,
             axis,
+            'world',
+            scaling,
         );
         if (!next) return null;
         if (Math.abs(next.transform.position[2]) > 0.00001) next.snapToPaper = false;

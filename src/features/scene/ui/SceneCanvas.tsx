@@ -1,5 +1,13 @@
 import { Box, Globe2, MousePointerClick, X } from 'lucide-react';
-import { type ReactNode, type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import {
+    type ReactNode,
+    type Ref,
+    useEffect,
+    useImperativeHandle,
+    useRef,
+    useState,
+    useSyncExternalStore,
+} from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
@@ -22,12 +30,14 @@ import {
     beginAnnotationLabelDrag,
 } from '../model/annotation-label-drag';
 import type { AnnotationObject, AnnotationPlacement } from '../model/annotation-placement';
+import { createAssetPlaceholder, waitForVideo } from '../model/asset-placeholder';
 import { beginDolly, type DollyStart, dragDolly } from '../model/dolly';
 import { createFrontGuide } from '../model/front-guide';
 import { beginLocalDepthDrag, type LocalDepthDrag, localDepthPosition } from '../model/local-depth';
 import { objectLabels } from '../model/objects';
 import { fitPreviewCamera } from '../model/preview-fit';
 import { scaleConstraint, scaleFromGesture } from '../model/scale-gesture';
+import type { SceneLoadStore } from '../model/scene-load-store';
 import type { SelectionMode } from '../model/selection';
 import {
     isPlanarObject,
@@ -45,6 +55,7 @@ import {
     VIEW_POLE_EPSILON,
     type ViewGizmoController,
 } from '../model/view-gizmo';
+import { SceneAssetLoading } from './SceneAssetLoading';
 import { SceneDepthGizmo } from './SceneDepthGizmo';
 import { SceneSelectionTools, type SelectionActions } from './SceneSelectionTools';
 import { SceneSnapSettings } from './SceneSnapSettings';
@@ -56,6 +67,8 @@ export type SceneCanvasHandle = {
     getDisplayedRotation: (id: string) => SceneObject['transform']['rotation'] | undefined;
 };
 type Props = {
+    loadStore: SceneLoadStore;
+    onRemoveObject: (id: string) => void;
     ref?: Ref<SceneCanvasHandle>;
     footer?: ReactNode;
     suspended?: boolean;
@@ -81,12 +94,16 @@ type Node = {
     spec: SceneObject;
     mixer?: THREE.AnimationMixer;
     textVisual?: Awaited<ReturnType<typeof createTextVisual>>;
+    status: 'loading' | 'ready' | 'failed';
+    placeholder?: ReturnType<typeof createAssetPlaceholder>;
+    abort: AbortController;
     dispose: () => void;
 };
 
 export function SceneCanvas(props: Props) {
     const host = useRef<HTMLDivElement>(null),
         marqueeHost = useRef<HTMLDivElement>(null),
+        loadingHost = useRef<HTMLDivElement>(null),
         leftTools = useRef<HTMLDivElement>(null),
         rightTools = useRef<HTMLDivElement>(null),
         depthHandle = useRef<HTMLButtonElement>(null),
@@ -94,8 +111,10 @@ export function SceneCanvas(props: Props) {
         gizmoController = useRef<ViewGizmoController | null>(null),
         latest = useRef(props);
     latest.current = props;
+    const loadStates = useSyncExternalStore(props.loadStore.subscribe, props.loadStore.getSnapshot);
     const api = useRef<{
         sync: () => void;
+        retry: (id: string) => void;
         getDisplayedRotation: SceneCanvasHandle['getDisplayedRotation'];
         mode: (mode: Mode, snap: boolean, space: Space, steps: SnapSteps) => void;
         shift: (active: boolean) => void;
@@ -141,6 +160,7 @@ export function SceneCanvas(props: Props) {
         let cameraClick = false;
         let zoomDrag: { id: number; y: number; start: DollyStart } | null = null;
         const settings = { mode, snap, space, steps: snapSteps };
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         let disposed = false,
             dragging = false,
             frame = 0;
@@ -478,7 +498,12 @@ export function SceneCanvas(props: Props) {
                 billboard: createBillboard(root),
                 key,
                 spec,
+                status: 'loading',
+                abort: new AbortController(),
                 dispose() {
+                    node.abort.abort();
+                    node.placeholder?.dispose();
+                    node.placeholder = undefined;
                     scene.remove(root);
                     node.mixer?.stopAllAction();
                     if (node.mixer) node.mixer.uncacheRoot(node.mixer.getRoot());
@@ -492,8 +517,32 @@ export function SceneCanvas(props: Props) {
                 },
             };
             nodes.set(spec.id, node);
+            latest.current.loadStore.set(spec.id, { status: 'loading' });
+            setIssues((current) => {
+                if (!(spec.id in current)) return current;
+                const next = { ...current };
+                delete next[spec.id];
+                return next;
+            });
+            const initialAsset =
+                'assetId' in spec ? latest.current.assets[spec.assetId] : undefined;
             setLoading((count) => count + 1);
             try {
+                node.placeholder = createAssetPlaceholder(
+                    spec,
+                    initialAsset,
+                    latest.current.aspect,
+                    themeColor('--text-muted'),
+                );
+                if (node.placeholder) node.billboard.content.add(node.placeholder.group);
+                if (
+                    [
+                        ...spec.transform.position,
+                        ...spec.transform.rotation,
+                        ...spec.transform.scale,
+                    ].every(Number.isFinite)
+                )
+                    applyTransform(node, spec);
                 const asset = 'assetId' in spec ? latest.current.assets[spec.assetId] : undefined;
                 if ('assetId' in spec && !asset)
                     throw new Error('Thiếu tài nguyên. Chọn lại tài nguyên trong bảng thuộc tính.');
@@ -573,13 +622,32 @@ export function SceneCanvas(props: Props) {
                     });
                     const texture = new THREE.VideoTexture(video);
                     texture.colorSpace = THREE.SRGBColorSpace;
-                    node.billboard.content.add(
-                        plane(
-                            1,
-                            (asset.meta.height || 1) / (asset.meta.width || 1),
-                            basic(texture),
-                        ),
+                    const surface = plane(
+                        1,
+                        (asset.meta.height || 1) / (asset.meta.width || 1),
+                        basic(texture),
                     );
+                    if (!asset.meta.width || !asset.meta.height)
+                        video.addEventListener(
+                            'loadedmetadata',
+                            () => {
+                                if (
+                                    disposed ||
+                                    nodes.get(spec.id) !== node ||
+                                    !video.videoWidth ||
+                                    !video.videoHeight
+                                )
+                                    return;
+                                surface.geometry.dispose();
+                                surface.geometry = new THREE.PlaneGeometry(
+                                    1,
+                                    video.videoHeight / video.videoWidth,
+                                );
+                            },
+                            { once: true },
+                        );
+                    node.billboard.content.add(surface);
+                    await waitForVideo(video, node.abort.signal);
                 } else if (spec.type === 'hotspot')
                     node.billboard.content.add(
                         plane(
@@ -607,6 +675,10 @@ export function SceneCanvas(props: Props) {
                     node.dispose();
                     return;
                 }
+                node.placeholder?.dispose();
+                node.placeholder = undefined;
+                node.status = 'ready';
+                latest.current.loadStore.set(spec.id);
                 setIssues((current) => {
                     const copy = { ...current };
                     delete copy[spec.id];
@@ -614,11 +686,13 @@ export function SceneCanvas(props: Props) {
                 });
                 sync();
             } catch (cause) {
-                if (!disposed && nodes.get(spec.id) === node)
-                    setIssues((current) => ({
-                        ...current,
-                        [spec.id]: `${spec.name || objectLabels[spec.type]}: ${cause instanceof Error ? cause.message : 'Không tải được đối tượng.'}`,
-                    }));
+                if (!disposed && nodes.get(spec.id) === node) {
+                    node.status = 'failed';
+                    const message = `${spec.name || objectLabels[spec.type]}: ${cause instanceof Error ? cause.message : 'Không tải được đối tượng.'}`;
+                    latest.current.loadStore.set(spec.id, { status: 'failed', message });
+                    setIssues((current) => ({ ...current, [spec.id]: message }));
+                    sync();
+                }
             } finally {
                 if (!disposed) setLoading((count) => Math.max(0, count - 1));
             }
@@ -637,6 +711,7 @@ export function SceneCanvas(props: Props) {
                     if (controls.object === node.root) controls.detach();
                     node.dispose();
                     nodes.delete(id);
+                    latest.current.loadStore.set(id);
                 }
             for (const spec of value.scene.objects) {
                 const {
@@ -738,6 +813,7 @@ export function SceneCanvas(props: Props) {
                 selected.length === value.selectedIds.length &&
                 selected.every(
                     (node) =>
+                        node.status === 'ready' &&
                         !node.spec.editorHidden &&
                         !node.spec.locked &&
                         [
@@ -821,6 +897,7 @@ export function SceneCanvas(props: Props) {
                     delta,
                     controls.mode === 'translate',
                     controls.axis,
+                    controls.mode === 'scale',
                 );
                 if (!next) return;
                 for (const object of next) {
@@ -849,6 +926,7 @@ export function SceneCanvas(props: Props) {
                 controls.mode === 'translate',
                 controls.axis,
                 controls.space,
+                controls.mode === 'scale',
             );
             if (next) {
                 if (root === billboardPivot) {
@@ -944,6 +1022,7 @@ export function SceneCanvas(props: Props) {
                 controls.mode === 'translate' &&
                 controls.space === 'local' &&
                 selected.length === 1 &&
+                selected[0].status === 'ready' &&
                 selected[0].spec.billboard &&
                 !selected[0].spec.locked &&
                 !selected[0].spec.editorHidden &&
@@ -1086,6 +1165,7 @@ export function SceneCanvas(props: Props) {
             const surfaces = [...nodes.values()]
                 .filter(
                     (node) =>
+                        node.status === 'ready' &&
                         node.root.visible &&
                         node.spec.type !== 'label' &&
                         !(
@@ -1659,13 +1739,55 @@ export function SceneCanvas(props: Props) {
             }
             depthButton.style.visibility = 'visible';
         }
+        const loadingBounds = new THREE.Box3();
+        function positionLoadingCards() {
+            const host = loadingHost.current;
+            if (!host?.childElementCount) return;
+            const width = renderer.domElement.clientWidth,
+                height = renderer.domElement.clientHeight;
+            for (const child of host.children) {
+                if (!(child instanceof HTMLElement)) continue;
+                const node = nodes.get(child.dataset.assetLoading || '');
+                const bounds =
+                    node?.placeholder && node.root.visible
+                        ? projectSelectionBounds(
+                              loadingBounds.setFromObject(node.placeholder.group),
+                              camera,
+                              { width, height },
+                          )
+                        : null;
+                if (!bounds) {
+                    child.style.visibility = 'hidden';
+                    continue;
+                }
+                const x = THREE.MathUtils.clamp(
+                    (bounds.left + bounds.right - child.offsetWidth) / 2,
+                    12,
+                    Math.max(12, width - child.offsetWidth - 12),
+                );
+                const y = THREE.MathUtils.clamp(
+                    (bounds.top + bounds.bottom - child.offsetHeight) / 2,
+                    70,
+                    Math.max(70, height - child.offsetHeight - 70),
+                );
+                const transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
+                if (child.style.transform !== transform) child.style.transform = transform;
+                child.style.visibility = 'visible';
+            }
+        }
         const clock = new THREE.Clock();
         function tick() {
             if (disposed) return;
             frame = requestAnimationFrame(tick);
             const delta = Math.min(clock.getDelta(), 0.05);
             if (latest.current.suspended || document.hidden) return;
-            for (const node of nodes.values()) node.mixer?.update(delta);
+            for (const node of nodes.values()) {
+                node.mixer?.update(delta);
+                node.placeholder?.pulse(
+                    clock.elapsedTime,
+                    reducedMotion || node.status === 'failed',
+                );
+            }
             orbit.update();
             for (const node of nodes.values()) {
                 const spec = node.spec;
@@ -1707,9 +1829,18 @@ export function SceneCanvas(props: Props) {
             viewGizmo?.update();
             positionSelectionTools();
             positionDepthHandle();
+            positionLoadingCards();
         }
         api.current = {
             sync,
+            retry(id) {
+                const node = nodes.get(id);
+                if (node?.status !== 'failed' || latest.current.disabled) return;
+                if (controls.object === node.root) controls.detach();
+                node.dispose();
+                nodes.delete(id);
+                sync();
+            },
             getDisplayedRotation(id) {
                 const node = nodes.get(id);
                 return node?.billboard.getDisplayedRotation();
@@ -1796,6 +1927,7 @@ export function SceneCanvas(props: Props) {
         return () => {
             finishAnnotationDrag(true);
             disposed = true;
+            latest.current.loadStore.clear();
             if (marqueeHost.current) marqueeHost.current.hidden = true;
             cancelAnimationFrame(frame);
             api.current = null;
@@ -1920,6 +2052,14 @@ export function SceneCanvas(props: Props) {
                 <div
                     className="scene-three-host absolute top-0 right-0 bottom-0 left-0 [touch-action:none] [&_canvas]:block [&_canvas]:size-full"
                     ref={host}
+                />
+                <SceneAssetLoading
+                    objects={props.scene.objects}
+                    states={loadStates}
+                    hostRef={loadingHost}
+                    disabled={props.disabled}
+                    onRetry={(id) => api.current?.retry(id)}
+                    onRemove={props.onRemoveObject}
                 />
                 <SceneDepthGizmo buttonRef={depthHandle} disabled={props.disabled} />
                 <div
@@ -2048,7 +2188,9 @@ export function SceneCanvas(props: Props) {
                         snap={snap}
                         onSnapChange={setSnap}
                         disabled={props.disabled}
-                        transforming={transforming}
+                        transforming={
+                            transforming || props.selectedIds.some((id) => loadStates.has(id))
+                        }
                         actions={props.selectionActions}
                         leftRef={leftTools}
                         rightRef={rightTools}
@@ -2112,7 +2254,12 @@ export function SceneCanvas(props: Props) {
             {Object.entries(issues)
                 .filter(
                     ([id]) =>
-                        id === 'page' || props.scene.objects.some((object) => object.id === id),
+                        id === 'page' ||
+                        props.scene.objects.some(
+                            (object) =>
+                                object.id === id &&
+                                !['model', 'image', 'video'].includes(object.type),
+                        ),
                 )
                 .map(([id, issue]) => (
                     <p

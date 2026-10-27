@@ -58,6 +58,7 @@ import { BookInfoDialog } from '../../books/ui/BookInfoDialog';
 import { PreviewPanel } from '../../preview/ui/PreviewPanel';
 import { PublicationPanel } from '../../publication/ui/PublicationPanel';
 import { type AnnotationObject, placeAnnotation } from '../model/annotation-placement';
+import { createFittedAssetObject } from '../model/asset-insertion';
 import {
     addObject,
     duplicateObject,
@@ -68,6 +69,7 @@ import {
     replaceObjectAsset,
     usesAsset,
 } from '../model/objects';
+import { SceneLoadStore } from '../model/scene-load-store';
 import {
     duplicateSelection,
     removeSelection,
@@ -238,13 +240,15 @@ export function SceneEditor({
             setError(errorMessage(cause));
         }
     }
+    function insertObject(object: SceneObject) {
+        editor.setDraft((current) => addObject(current, object));
+        setSelectedId(object.id);
+        setPanel('properties');
+        setError(null);
+    }
     function insert(type: SceneObjectType, asset?: Asset) {
         try {
-            const object = newObject(type, crypto.randomUUID(), asset);
-            editor.setDraft((current) => addObject(current, object));
-            setSelectedId(object.id);
-            setPanel('properties');
-            setError(null);
+            insertObject(newObject(type, crypto.randomUUID(), asset));
         } catch (cause) {
             setError(errorMessage(cause));
         }
@@ -255,6 +259,7 @@ export function SceneEditor({
         selection,
         duplicateChosen,
         canvas: null as SceneCanvasHandle | null,
+        loads: new SceneLoadStore(),
     });
     commands.current = {
         editor,
@@ -262,6 +267,7 @@ export function SceneEditor({
         selection,
         duplicateChosen,
         canvas: commands.current.canvas,
+        loads: commands.current.loads,
     };
     useEffect(() => {
         function keyboard(event: KeyboardEvent) {
@@ -815,6 +821,14 @@ export function SceneEditor({
                         </ol>
                     </section>
                     <SceneCanvas
+                        loadStore={commands.current.loads}
+                        onRemoveObject={(id) => {
+                            const object = commands.current.editor.draft.objects.find(
+                                (item) => item.id === id,
+                            );
+                            if (object && !object.locked && !commands.current.blocked)
+                                setDeleting([object]);
+                        }}
                         ref={(handle) => {
                             commands.current.canvas = handle;
                         }}
@@ -967,6 +981,7 @@ export function SceneEditor({
                                         }}
                                         key={selected.id}
                                         object={selected}
+                                        loadStore={commands.current.loads}
                                         assetRef={
                                             'assetId' in selected
                                                 ? assets[selected.assetId] ||
@@ -1215,14 +1230,34 @@ export function SceneEditor({
                         'assetId' in object ? [object.assetId] : [],
                     )}
                     onClose={() => setPicker(null)}
-                    onChoose={(asset) => {
+                    onChoose={async (asset, signal) => {
+                        const fitted = picker.replace
+                            ? null
+                            : await createFittedAssetObject(
+                                  picker.type,
+                                  crypto.randomUUID(),
+                                  asset,
+                                  book.pageAspect,
+                                  signal,
+                              );
+                        signal.throwIfAborted();
+                        if (commands.current.blocked)
+                            throw new Error('Trang đang bận. Vui lòng thử lại.');
+                        if (
+                            commands.current.editor.draft.objects.length >=
+                                SCENE_LIMITS.hardMaxObjects &&
+                            fitted
+                        )
+                            throw new Error(
+                                `Mỗi trang tối đa ${SCENE_LIMITS.hardMaxObjects} đối tượng.`,
+                            );
                         setAssets((current) => ({ ...current, [asset.id]: asset }));
                         if (picker.replace) {
-                            const object = editor.draft.objects.find(
+                            const object = commands.current.editor.draft.objects.find(
                                 (item) => item.id === picker.replace,
                             );
                             if (object) change(replaceObjectAsset(object, asset));
-                        } else insert(picker.type, asset);
+                        } else if (fitted) insertObject(fitted);
                         setPicker(null);
                     }}
                 />

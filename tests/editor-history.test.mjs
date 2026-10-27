@@ -166,3 +166,53 @@ test('new objects move freely in 3D and stay unpinned when returning to zero hei
     assert.deepEqual(undoHistory(history).present.objects[0], original);
     assert.deepEqual(redoHistory(undoHistory(history)).present.objects[0], moved);
 });
+
+test('translation outside the page and rotation preserve precise and legacy small asset scales', () => {
+    for (const scale of [
+        [0.00123456789, 0.00234567891, 0.00345678912],
+        [0.000004321, 0.000012345, 0.000006789],
+    ]) {
+        const original = newObject('model', 'precise-model', {
+            id: '11111111-1111-4111-8111-111111111111',
+            type: 'MODEL',
+            status: 'READY',
+            name: 'Model',
+        });
+        original.transform.scale = scale;
+        original.transform.rotation = [12.123456789, 24.234567891, 36.345678912];
+        const moved = objectFromGizmo(
+            original,
+            {
+                position: [2, -3, 0.2],
+                rotation: [12.12345, 24.23456, 36.34567],
+                scale: scale.map((n) => n + 1e-12),
+            },
+            true,
+            'XYZ',
+            'world',
+            false,
+        );
+        assert.deepEqual(moved.transform.scale, scale);
+        assert.deepEqual(moved.transform.rotation, original.transform.rotation);
+        assert.deepEqual(moved.transform.position, [2, -3, 0.2]);
+        const rotated = objectFromGizmo(
+            moved,
+            { ...moved.transform, rotation: [90, 45, 0], scale: scale.map((n) => n + 1e-12) },
+            false,
+            'Z',
+            'world',
+            false,
+        );
+        assert.deepEqual(rotated.transform.scale, scale);
+        assert.deepEqual(rotated.transform.rotation, [90, 45, 0]);
+        const scaled = objectFromGizmo(
+            rotated,
+            { ...rotated.transform, scale: [0.00001, 0.00002, 0.00003] },
+            false,
+            'XYZ',
+            'local',
+            true,
+        );
+        assert.deepEqual(scaled.transform.scale, [0.001, 0.001, 0.001]);
+    }
+});

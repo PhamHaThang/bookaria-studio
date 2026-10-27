@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Copy, Eye, Info, Move, Play, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import { Disclosure, DisclosureGroup } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
@@ -16,12 +17,14 @@ import { Feedback } from '../../../shared/ui/Feedback';
 import { assetKeys, assetsApi } from '../../assets';
 import { useAuth } from '../../auth';
 import { objectLabels } from '../model/objects';
+import type { SceneLoadStore } from '../model/scene-load-store';
 import { isPlanarObject } from '../model/selection-frame';
 import { withObjectPosition, withPaperSnap } from '../model/transforms';
 import { NumericField, VectorFields } from './NumericField';
 
 export function ObjectEditor({
     object,
+    loadStore,
     assetRef,
     disabled,
     onChange,
@@ -32,6 +35,7 @@ export function ObjectEditor({
     onDelete,
 }: {
     object: SceneObject;
+    loadStore: SceneLoadStore;
     assetRef?: AssetRef;
     disabled: boolean;
     onChange: (object: SceneObject) => void;
@@ -41,6 +45,9 @@ export function ObjectEditor({
     onDuplicate: () => void;
     onDelete: () => void;
 }) {
+    const unavailable = useSyncExternalStore(loadStore.subscribe, loadStore.getSnapshot).has(
+        object.id,
+    );
     const { user } = useAuth();
     const assetId = 'assetId' in object ? object.assetId : null;
     const detail = useQuery({
@@ -314,6 +321,7 @@ export function ObjectEditor({
                                     <span className="flex items-center gap-2 font-normal">
                                         <Checkbox
                                             checked={object.snapToPaper}
+                                            disabled={unavailable}
                                             onCheckedChange={(checked) =>
                                                 onChange(withPaperSnap(object, checked === true))
                                             }
@@ -338,7 +346,9 @@ export function ObjectEditor({
                                         }[key]
                                     }
                                     values={object.transform[key]}
-                                    disabled={key === 'rotation' && object.billboard}
+                                    disabled={
+                                        unavailable || (key === 'rotation' && object.billboard)
+                                    }
                                     disabledAxes={
                                         key === 'scale' && isPlanarObject(object) ? [2] : []
                                     }
