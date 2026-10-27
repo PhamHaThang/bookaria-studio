@@ -70,8 +70,9 @@ export function layoutSelectionTools(
     const bottom = viewport.height - (viewport.height < 400 ? 48 : 64);
     const minX = 84;
     const gap = 16;
+    const minCenterGap = 180;
     let rx = clamp(
-        Math.max(bounds.right + gap, centerX + 52),
+        Math.max(bounds.right + gap, centerX + minCenterGap),
         minX + left.width + gap,
         viewport.width - right.width - 12,
     );
@@ -87,7 +88,7 @@ export function layoutSelectionTools(
     return {
         left: {
             x: clamp(
-                Math.min(bounds.left - left.width - gap, centerX - 52 - left.width),
+                Math.min(bounds.left - left.width - gap, centerX - minCenterGap - left.width),
                 minX,
                 rx - left.width - gap,
             ),

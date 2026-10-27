@@ -53,15 +53,15 @@ test('boxes intersecting the near plane give finite bounded coordinates', () => 
     }
 });
 
-test('small selections leave room for gizmos between tool rails', () => {
+test('small selections keep each tool rail 180px from the selection centre', () => {
     const positions = layoutSelectionTools(
         { left: 490, right: 510, top: 280, bottom: 320 },
         viewport,
         { width: 48, height: 136 },
         { width: 48, height: 238 },
     );
-    assert.ok(positions.left.x + 48 <= 448);
-    assert.ok(positions.right.x >= 552);
+    assert.equal(500 - (positions.left.x + 48), 180);
+    assert.equal(positions.right.x - 500, 180);
 });
 
 test('large and edge selections keep tool rails in the desktop canvas and clear of chrome', () => {
