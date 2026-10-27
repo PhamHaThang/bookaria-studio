@@ -34,6 +34,7 @@ import { createAssetPlaceholder, waitForVideo } from '../model/asset-placeholder
 import { beginDolly, type DollyStart, dragDolly } from '../model/dolly';
 import { createFrontGuide } from '../model/front-guide';
 import { beginLocalDepthDrag, type LocalDepthDrag, localDepthPosition } from '../model/local-depth';
+import { createModelSelectionBounds } from '../model/model-selection-bounds';
 import { objectLabels } from '../model/objects';
 import { fitPreviewCamera } from '../model/preview-fit';
 import { scaleConstraint, scaleFromGesture } from '../model/scale-gesture';
@@ -93,6 +94,7 @@ type Node = {
     key: string;
     spec: SceneObject;
     mixer?: THREE.AnimationMixer;
+    modelBounds?: ReturnType<typeof createModelSelectionBounds>;
     textVisual?: Awaited<ReturnType<typeof createTextVisual>>;
     status: 'loading' | 'ready' | 'failed';
     placeholder?: ReturnType<typeof createAssetPlaceholder>;
@@ -439,11 +441,14 @@ export function SceneCanvas(props: Props) {
                   }
                 : undefined;
         }
+        function nodeBounds(node: Node) {
+            return node.modelBounds?.() ?? new THREE.Box3().setFromObject(node.root);
+        }
         function selectionBounds() {
             const box = new THREE.Box3();
             for (const node of selectedNodes()) {
                 if (!node.root.visible) continue;
-                const bounds = new THREE.Box3().setFromObject(node.root);
+                const bounds = nodeBounds(node);
                 if (bounds.isEmpty()) box.expandByPoint(node.root.position);
                 else box.union(bounds);
             }
@@ -553,6 +558,7 @@ export function SceneCanvas(props: Props) {
                         return;
                     }
                     node.billboard.content.add(model.scene);
+                    node.modelBounds = createModelSelectionBounds(model.scene);
                     node.mixer = new THREE.AnimationMixer(model.scene);
                     if (spec.animation?.autoplay) {
                         const clip = model.animations.find(
@@ -1571,9 +1577,7 @@ export function SceneCanvas(props: Props) {
                                 (node) =>
                                     !node.spec.locked &&
                                     node.root.visible &&
-                                    frustum?.intersectsBox(
-                                        new THREE.Box3().setFromObject(node.root),
-                                    ),
+                                    frustum?.intersectsBox(nodeBounds(node)),
                             )
                             .map((node) => node.spec.id);
                         latest.current.onSelect(ids, 'add');
@@ -1809,14 +1813,18 @@ export function SceneCanvas(props: Props) {
                     outlineSpace.matrix.copy(frame.matrix);
                 } else {
                     outlineSpace.matrix.identity();
+                    const selected = selectedNodes();
+                    const bounds = selectionBounds();
                     outline.box.copy(
-                        paddedSelectionBounds(
-                            selectionBounds(),
-                            worldFrameMatrix,
-                            camera,
-                            renderer.domElement.clientHeight,
-                            false,
-                        ),
+                        selected.length > 0 && selected.every((node) => node.spec.type === 'model')
+                            ? bounds
+                            : paddedSelectionBounds(
+                                  bounds,
+                                  worldFrameMatrix,
+                                  camera,
+                                  renderer.domElement.clientHeight,
+                                  false,
+                              ),
                     );
                 }
                 outlineSpace.matrixWorldNeedsUpdate = true;

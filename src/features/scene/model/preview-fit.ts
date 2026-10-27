@@ -1,7 +1,9 @@
 import {
     Box3,
+    type BufferGeometry,
     Group,
     InstancedMesh,
+    type Material,
     MathUtils,
     Matrix4,
     Mesh,
@@ -21,17 +23,37 @@ export function visibleModelBounds(root: Object3D) {
     root.traverseVisible((node) => {
         if (!(node instanceof Mesh)) return;
         const materials = Array.isArray(node.material) ? node.material : [node.material];
-        if (materials.every((material) => !material.visible)) return;
+        const visible = (material: Material | undefined) =>
+            material?.visible && !(material.transparent && material.opacity <= 0);
+        if (!materials.some(visible)) return;
         if (node instanceof SkinnedMesh) {
             for (const bone of node.skeleton.bones) bone.updateWorldMatrix(true, false);
             node.skeleton.update();
         }
-        const positions = node.geometry.getAttribute('position');
+        const geometry: BufferGeometry = node.geometry;
+        const positions = geometry.getAttribute('position');
         if (!positions) return;
+        const index = geometry.index;
+        const elementCount = index?.count ?? positions.count;
+        const range = geometry.drawRange;
+        const groups = Array.isArray(node.material)
+            ? geometry.groups.filter((group) => visible(materials[group.materialIndex ?? 0]))
+            : [{ start: 0, count: elementCount }];
+        const used = new Set<number>();
+        for (const group of groups) {
+            const start = Math.max(0, range.start, group.start);
+            const end = Math.min(
+                elementCount,
+                range.start + range.count,
+                group.start + group.count,
+            );
+            for (let element = start; element < end; element++)
+                used.add(index ? index.getX(element) : element);
+        }
         const count = node instanceof InstancedMesh ? node.count : 1;
         for (let i = 0; i < count; i++) {
             if (node instanceof InstancedMesh) node.getMatrixAt(i, instance);
-            for (let v = 0; v < positions.count; v++) {
+            for (const v of used) {
                 node.getVertexPosition(v, vertex);
                 if (node instanceof InstancedMesh) vertex.applyMatrix4(instance);
                 vertex.applyMatrix4(node.matrixWorld);
