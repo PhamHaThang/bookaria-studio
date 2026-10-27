@@ -57,6 +57,7 @@ import { Feedback } from '../../../shared/ui/Feedback';
 import { BookInfoDialog } from '../../books/ui/BookInfoDialog';
 import { PreviewPanel } from '../../preview/ui/PreviewPanel';
 import { PublicationPanel } from '../../publication/ui/PublicationPanel';
+import { type AnnotationObject, placeAnnotation } from '../model/annotation-placement';
 import {
     addObject,
     duplicateObject,
@@ -82,8 +83,9 @@ import { NavigationGuard } from './NavigationGuard';
 import { ObjectEditor } from './ObjectEditor';
 import { PageSettingsEditor } from './PageSettingsEditor';
 import { PageStrip } from './PageStrip';
-import { SceneCanvas } from './SceneCanvas';
+import { SceneCanvas, type SceneCanvasHandle } from './SceneCanvas';
 import { SelectionEditor } from './SelectionEditor';
+import { TextComposer, type TextMode, type TextualObject } from './TextComposer';
 
 export function SceneEditor({
     page,
@@ -106,6 +108,12 @@ export function SceneEditor({
     function setSelectedId(id: string) {
         setSelectedIds(id ? [id] : []);
     }
+    const [textDialog, setTextDialog] = useState<{
+        start: TextMode;
+        initial?: TextualObject;
+        placement?: AnnotationObject;
+    } | null>(null);
+    const annotationPlacement = textDialog?.placement;
     const [picker, setPicker] = useState<{
         type: keyof typeof objectAssetTypes;
         replace?: string;
@@ -153,7 +161,7 @@ export function SceneEditor({
         pagesBusy ||
         infoBusy ||
         editor.uncertain;
-    const blocked = sceneBlocked || transforming;
+    const blocked = sceneBlocked || transforming || Boolean(annotationPlacement);
     const selection = selectedIds.flatMap((id) => {
         const object = editor.draft.objects.find((item) => item.id === id);
         return object ? [object] : [];
@@ -190,6 +198,25 @@ export function SceneEditor({
     function change(object: SceneObject) {
         changeMany([object]);
     }
+    function billboardChosen(enabled: boolean) {
+        if (blocked || selection.some((object) => object.locked)) return;
+        changeMany(
+            selection.map((object) => {
+                const rotation =
+                    !enabled && object.billboard
+                        ? commands.current.canvas?.getDisplayedRotation(object.id)
+                        : undefined;
+                return {
+                    ...object,
+                    billboard: enabled,
+                    transform: {
+                        ...object.transform,
+                        rotation: rotation ?? object.transform.rotation,
+                    },
+                };
+            }),
+        );
+    }
     function duplicateChosen(ids: string[]) {
         const state = commands.current;
         if (state.blocked) return;
@@ -222,8 +249,20 @@ export function SceneEditor({
             setError(errorMessage(cause));
         }
     }
-    const commands = useRef({ editor, blocked, selection, duplicateChosen });
-    commands.current = { editor, blocked, selection, duplicateChosen };
+    const commands = useRef({
+        editor,
+        blocked,
+        selection,
+        duplicateChosen,
+        canvas: null as SceneCanvasHandle | null,
+    });
+    commands.current = {
+        editor,
+        blocked,
+        selection,
+        duplicateChosen,
+        canvas: commands.current.canvas,
+    };
     useEffect(() => {
         function keyboard(event: KeyboardEvent) {
             if (
@@ -294,7 +333,14 @@ export function SceneEditor({
             aria-labelledby="scene-heading"
         >
             <NavigationGuard
-                dirty={editor.dirty || settingsDirty || editor.uncertain || pagesDirty || infoDirty}
+                dirty={
+                    editor.dirty ||
+                    settingsDirty ||
+                    editor.uncertain ||
+                    pagesDirty ||
+                    infoDirty ||
+                    Boolean(annotationPlacement)
+                }
                 dirtyDescription={
                     infoDirty
                         ? 'Thông tin và ảnh bìa bạn đang sửa chưa được lưu. Rời editor sẽ bỏ phần này.'
@@ -360,6 +406,7 @@ export function SceneEditor({
                     <Button
                         variant="outline"
                         aria-pressed={panel === 'preview'}
+                        disabled={Boolean(annotationPlacement)}
                         onClick={() => setPanel('preview')}
                     >
                         <Eye data-icon="inline-start" />
@@ -433,6 +480,7 @@ export function SceneEditor({
                         disabled={
                             disabled ||
                             settingsBusy ||
+                            Boolean(annotationPlacement) ||
                             !editor.dirty ||
                             !validation.success ||
                             editor.conflict ||
@@ -566,6 +614,10 @@ export function SceneEditor({
                             }
                             onClick={() => {
                                 if (usesAsset(item.type)) setPicker({ type: item.type });
+                                else if (item.type === 'text' || item.type === 'label')
+                                    setTextDialog({
+                                        start: item.type === 'label' ? 'annotation' : 'text',
+                                    });
                                 else insert(item.type);
                             }}
                         >
@@ -763,11 +815,30 @@ export function SceneEditor({
                         </ol>
                     </section>
                     <SceneCanvas
+                        ref={(handle) => {
+                            commands.current.canvas = handle;
+                        }}
+                        suspended={Boolean(textDialog && !annotationPlacement)}
+                        annotationToPlace={annotationPlacement}
+                        onCancelAnnotationPlacement={() => setTextDialog(null)}
+                        onPlaceAnnotation={(placement) => {
+                            if (sceneBlocked || !annotationPlacement) return;
+                            try {
+                                const object = placeAnnotation(annotationPlacement, placement);
+                                editor.setDraft((current) => addObject(current, object));
+                                setSelectedId(object.id);
+                                setTextDialog(null);
+                                setPanel('properties');
+                                setError(null);
+                            } catch (cause) {
+                                setError(errorMessage(cause));
+                            }
+                        }}
                         page={page}
                         aspect={book.pageAspect}
                         scene={editor.draft}
                         assets={sceneAssets}
-                        selectedIds={activeIds}
+                        selectedIds={annotationPlacement ? [] : activeIds}
                         disabled={sceneBlocked}
                         selectionActions={{
                             canDuplicate:
@@ -784,6 +855,23 @@ export function SceneEditor({
                             },
                             onLock: () =>
                                 flagChosen('locked', !selection.some((object) => object.locked)),
+                            onBillboardChange: billboardChosen,
+                            onResetAnnotationOffset: () => {
+                                if (blocked || selection.length !== 1 || selection[0].locked)
+                                    return;
+                                const object = selection[0];
+                                if (
+                                    (object.type === 'text' || object.type === 'label') &&
+                                    object.presentation?.kind === 'annotation'
+                                )
+                                    change({
+                                        ...object,
+                                        presentation: {
+                                            ...object.presentation,
+                                            labelOffset: undefined,
+                                        },
+                                    });
+                            },
                         }}
                         onSelect={selectMany}
                         onChange={changeMany}
@@ -864,6 +952,19 @@ export function SceneEditor({
                                     />
                                 ) : selected ? (
                                     <ObjectEditor
+                                        onEditText={() => {
+                                            if (
+                                                selected?.type === 'text' ||
+                                                selected?.type === 'label'
+                                            )
+                                                setTextDialog({
+                                                    start:
+                                                        selected.type === 'label'
+                                                            ? 'annotation'
+                                                            : 'text',
+                                                    initial: selected,
+                                                });
+                                        }}
                                         key={selected.id}
                                         object={selected}
                                         assetRef={
@@ -874,6 +975,7 @@ export function SceneEditor({
                                         }
                                         disabled={blocked}
                                         onChange={change}
+                                        onBillboardChange={billboardChosen}
                                         onDuplicate={() => {
                                             if (
                                                 editor.draft.objects.length >=
@@ -1058,6 +1160,53 @@ export function SceneEditor({
                         onBusyChange={setPublicationBusy}
                     />
                 </ConfirmDialog>
+            )}
+            {textDialog && !annotationPlacement && (
+                <TextComposer
+                    initial={textDialog.initial}
+                    start={textDialog.start}
+                    assets={sceneAssets}
+                    disabled={blocked}
+                    onClose={() => setTextDialog(null)}
+                    onCommit={(object, chosen) => {
+                        if (blocked) return;
+                        const original = textDialog.initial;
+                        setAssets((current) => ({ ...current, ...chosen }));
+                        if (original) {
+                            change({
+                                ...object,
+                                id: original.id,
+                                name: original.name,
+                                transform: {
+                                    ...original.transform,
+                                    rotation: object.transform.rotation,
+                                },
+                                visible: original.visible,
+                                locked: original.locked,
+                                editorHidden: original.editorHidden,
+                                groupId: original.groupId,
+                                snapToPaper: original.snapToPaper,
+                            });
+                            setSelectedId(original.id);
+                        } else {
+                            if (editor.draft.objects.length >= SCENE_LIMITS.hardMaxObjects) return;
+                            if (
+                                object.type === 'label' &&
+                                object.presentation?.kind === 'annotation'
+                            ) {
+                                setTextDialog({ start: 'annotation', placement: object });
+                                setPanel('properties');
+                                setError(null);
+                                return;
+                            }
+                            editor.setDraft((current) => addObject(current, object));
+                            setSelectedId(object.id);
+                        }
+                        setPanel('properties');
+                        setTextDialog(null);
+                        setError(null);
+                    }}
+                />
             )}
             {picker && (
                 <AssetPicker

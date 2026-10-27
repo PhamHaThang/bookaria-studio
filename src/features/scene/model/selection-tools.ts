@@ -8,6 +8,7 @@ export function projectSelectionBounds(
     box: Box3,
     camera: Camera,
     viewport: Size,
+    worldMatrix?: Matrix4,
 ): ScreenBounds | null {
     if (box.isEmpty() || viewport.width <= 0 || viewport.height <= 0) return null;
     camera.updateMatrixWorld();
@@ -15,6 +16,7 @@ export function projectSelectionBounds(
         camera.projectionMatrix,
         camera.matrixWorldInverse,
     );
+    if (worldMatrix) matrix.multiply(worldMatrix);
     if (!new Frustum().setFromProjectionMatrix(matrix).intersectsBox(box)) return null;
     const corners: Vector4[] = [];
     for (let i = 0; i < 8; i++) {

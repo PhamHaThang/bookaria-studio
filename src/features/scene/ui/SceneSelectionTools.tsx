@@ -1,8 +1,10 @@
 import {
+    Camera,
     Copy,
     LockKeyhole,
     Magnet,
     Move,
+    RotateCcw,
     RotateCw,
     Scaling,
     Trash2,
@@ -21,6 +23,8 @@ export type SelectionActions = {
     onDuplicate: () => void;
     onDelete: () => void;
     onLock: () => void;
+    onBillboardChange: (enabled: boolean) => void;
+    onResetAnnotationOffset: () => void;
 };
 
 export function SceneSelectionTools({
@@ -47,7 +51,17 @@ export function SceneSelectionTools({
     onModeChange: (mode: TransformMode) => void;
 }) {
     const locked = objects.some((object) => object.locked);
+    const rotationDisabled = objects.some((object) => object.billboard);
     const group = objects.length > 1;
+    const annotation =
+        !group &&
+        objects[0] &&
+        (objects[0].type === 'text' || objects[0].type === 'label') &&
+        objects[0].presentation?.kind === 'annotation'
+            ? objects[0].presentation
+            : undefined;
+    const billboardEnabled = objects.length > 0 && objects.every((object) => object.billboard);
+    const billboardMixed = !billboardEnabled && objects.some((object) => object.billboard);
     return (
         <fieldset
             className="pointer-events-none absolute inset-0 z-1 m-0 min-w-0 border-0 p-0"
@@ -83,6 +97,35 @@ export function SceneSelectionTools({
                 >
                     <Magnet />
                 </Button>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button
+                            variant={billboardEnabled ? 'default' : 'ghost'}
+                            size="icon"
+                            aria-label="Luôn hướng về camera"
+                            aria-pressed={billboardMixed ? 'mixed' : billboardEnabled}
+                            disabled={disabled || locked}
+                            onClick={() => actions.onBillboardChange(!billboardEnabled)}
+                        >
+                            <Camera />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" sideOffset={10}>
+                        {billboardEnabled ? 'Tắt luôn hướng về camera' : 'Bật luôn hướng về camera'}
+                    </TooltipContent>
+                </Tooltip>
+                {annotation && (annotation.shape === 'line' || annotation.description) && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Đặt lại vị trí nhãn chú thích"
+                        aria-label="Đặt lại vị trí nhãn chú thích"
+                        disabled={disabled || locked || !annotation.labelOffset?.some(Boolean)}
+                        onClick={actions.onResetAnnotationOffset}
+                    >
+                        <RotateCcw />
+                    </Button>
+                )}
                 <Button
                     variant={locked ? 'default' : 'ghost'}
                     size="icon"
@@ -110,7 +153,8 @@ export function SceneSelectionTools({
                     value={mode}
                     disabled={disabled || locked}
                     onValueChange={(value) => {
-                        if (value) onModeChange(value as TransformMode);
+                        if (value && !(value === 'rotate' && rotationDisabled))
+                            onModeChange(value as TransformMode);
                     }}
                     aria-label="Chế độ biến đổi"
                     className="flex-col gap-1"
@@ -127,6 +171,7 @@ export function SceneSelectionTools({
                                 <span className="flex">
                                     <ToggleGroupItem
                                         value={tool.value}
+                                        disabled={tool.value === 'rotate' && rotationDisabled}
                                         aria-label={tool.label}
                                         className="size-10 p-2"
                                     >
@@ -135,7 +180,11 @@ export function SceneSelectionTools({
                                 </span>
                             </TooltipTrigger>
                             <TooltipContent side="right" sideOffset={10}>
-                                {tool.label}
+                                {tool.value === 'rotate' && rotationDisabled
+                                    ? 'Tắt “Luôn hướng về camera” để xoay.'
+                                    : tool.value === 'scale'
+                                      ? 'Kích thước (R) · Giữ Shift để giữ tỉ lệ'
+                                      : tool.label}
                             </TooltipContent>
                         </Tooltip>
                     ))}

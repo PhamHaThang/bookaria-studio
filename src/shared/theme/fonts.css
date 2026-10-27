@@ -1,4 +1,6 @@
 /* Self-hosted, with unicode ranges so browsers load only the required subsets. */
+@import "@fontsource/noto-serif/400.css";
+@import "@fontsource/noto-serif/700.css";
 @import "@fontsource/be-vietnam-pro/400.css";
 @import "@fontsource/be-vietnam-pro/500.css";
 @import "@fontsource/be-vietnam-pro/600.css";

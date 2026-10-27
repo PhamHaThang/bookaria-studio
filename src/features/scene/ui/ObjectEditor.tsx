@@ -16,6 +16,7 @@ import { Feedback } from '../../../shared/ui/Feedback';
 import { assetKeys, assetsApi } from '../../assets';
 import { useAuth } from '../../auth';
 import { objectLabels } from '../model/objects';
+import { isPlanarObject } from '../model/selection-frame';
 import { withObjectPosition, withPaperSnap } from '../model/transforms';
 import { NumericField, VectorFields } from './NumericField';
 
@@ -24,7 +25,9 @@ export function ObjectEditor({
     assetRef,
     disabled,
     onChange,
+    onBillboardChange,
     onChooseAsset,
+    onEditText,
     onDuplicate,
     onDelete,
 }: {
@@ -32,7 +35,9 @@ export function ObjectEditor({
     assetRef?: AssetRef;
     disabled: boolean;
     onChange: (object: SceneObject) => void;
+    onBillboardChange: (enabled: boolean) => void;
     onChooseAsset: () => void;
+    onEditText: () => void;
     onDuplicate: () => void;
     onDelete: () => void;
 }) {
@@ -275,7 +280,9 @@ export function ObjectEditor({
                                             <Checkbox
                                                 checked={object[key]}
                                                 onCheckedChange={(checked) =>
-                                                    patch({ [key]: checked === true })
+                                                    key === 'billboard'
+                                                        ? onBillboardChange(checked === true)
+                                                        : patch({ [key]: checked === true })
                                                 }
                                             />
                                             {label}
@@ -331,6 +338,10 @@ export function ObjectEditor({
                                         }[key]
                                     }
                                     values={object.transform[key]}
+                                    disabled={key === 'rotation' && object.billboard}
+                                    disabledAxes={
+                                        key === 'scale' && isPlanarObject(object) ? [2] : []
+                                    }
                                     onChange={(values) => {
                                         if (key === 'position')
                                             onChange(withObjectPosition(object, values));
@@ -341,6 +352,11 @@ export function ObjectEditor({
                                     }}
                                 />
                             ))}
+                            {object.billboard && (
+                                <p className="m-0 text-muted-foreground text-xs">
+                                    Tắt “Luôn hướng về camera” để chỉnh góc xoay.
+                                </p>
+                            )}
                         </div>
                     </Disclosure>
                     {object.type !== 'model' && (
@@ -359,6 +375,13 @@ export function ObjectEditor({
                                 {' '}
                                 {(object.type === 'text' || object.type === 'label') && (
                                     <>
+                                        <Button
+                                            variant="outline"
+                                            disabled={disabled || object.locked}
+                                            onClick={onEditText}
+                                        >
+                                            Chỉnh nội dung & kiểu chữ
+                                        </Button>
                                         <Field orientation="contents">
                                             <FieldLabel htmlFor={`${id}-text`}>
                                                 Nội dung chữ
@@ -404,6 +427,9 @@ export function ObjectEditor({
                                                 Kiểu chữ
                                                 <FormSelect
                                                     id={`${id}-font`}
+                                                    disabled={
+                                                        object.presentation?.kind === 'extruded'
+                                                    }
                                                     value={object.style.font}
                                                     onValueChange={(value) =>
                                                         patch({
@@ -439,14 +465,18 @@ export function ObjectEditor({
                                         </Field>
                                     </>
                                 )}
-                                {object.type === 'label' && (
-                                    <VectorFields
-                                        id={`${id}-target`}
-                                        label="Đầu mũi chỉ"
-                                        values={object.target}
-                                        onChange={(target) => patch({ target })}
-                                    />
-                                )}
+                                {object.type === 'label' &&
+                                    !(
+                                        object.presentation?.kind === 'annotation' &&
+                                        object.presentation.shape === 'circle'
+                                    ) && (
+                                        <VectorFields
+                                            id={`${id}-target`}
+                                            label="Đầu mũi chỉ"
+                                            values={object.target}
+                                            onChange={(target) => patch({ target })}
+                                        />
+                                    )}
                                 {object.type === 'image' && (
                                     <NumericField
                                         id={`${id}-opacity`}
