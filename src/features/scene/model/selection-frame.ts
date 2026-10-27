@@ -4,7 +4,6 @@ import type { SceneObject } from '@/shared/contracts/scene.schema';
 export function isPlanarObject(spec: SceneObject) {
     return (
         spec.type !== 'model' &&
-        spec.type !== 'audio' &&
         !((spec.type === 'text' || spec.type === 'label') && spec.presentation?.kind === 'extruded')
     );
 }

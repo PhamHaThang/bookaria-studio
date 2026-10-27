@@ -69,6 +69,7 @@ import {
     replaceObjectAsset,
     usesAsset,
 } from '../model/objects';
+import { SceneAudioStore } from '../model/scene-audio-store';
 import { SceneLoadStore } from '../model/scene-load-store';
 import {
     duplicateSelection,
@@ -210,7 +211,7 @@ export function SceneEditor({
                         : undefined;
                 return {
                     ...object,
-                    billboard: enabled,
+                    billboard: object.type === 'audio' || enabled,
                     transform: {
                         ...object.transform,
                         rotation: rotation ?? object.transform.rotation,
@@ -260,6 +261,7 @@ export function SceneEditor({
         duplicateChosen,
         canvas: null as SceneCanvasHandle | null,
         loads: new SceneLoadStore(),
+        audio: new SceneAudioStore(),
     });
     commands.current = {
         editor,
@@ -268,6 +270,7 @@ export function SceneEditor({
         duplicateChosen,
         canvas: commands.current.canvas,
         loads: commands.current.loads,
+        audio: commands.current.audio,
     };
     useEffect(() => {
         function keyboard(event: KeyboardEvent) {
@@ -821,6 +824,7 @@ export function SceneEditor({
                         </ol>
                     </section>
                     <SceneCanvas
+                        audioStore={commands.current.audio}
                         loadStore={commands.current.loads}
                         onRemoveObject={(id) => {
                             const object = commands.current.editor.draft.objects.find(
@@ -832,7 +836,9 @@ export function SceneEditor({
                         ref={(handle) => {
                             commands.current.canvas = handle;
                         }}
-                        suspended={Boolean(textDialog && !annotationPlacement)}
+                        suspended={
+                            panel === 'preview' || Boolean(textDialog && !annotationPlacement)
+                        }
                         annotationToPlace={annotationPlacement}
                         onCancelAnnotationPlacement={() => setTextDialog(null)}
                         onPlaceAnnotation={(placement) => {
@@ -982,6 +988,7 @@ export function SceneEditor({
                                         key={selected.id}
                                         object={selected}
                                         loadStore={commands.current.loads}
+                                        audioStore={commands.current.audio}
                                         assetRef={
                                             'assetId' in selected
                                                 ? assets[selected.assetId] ||

@@ -17,6 +17,8 @@ import {
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { annotationConnectorSide } from '@/shared/scene/annotation-connector';
+import { createAudioCard } from '@/shared/scene/audio-card';
+import { facesCamera } from '@/shared/scene/audio-kind';
 import { createBillboard } from '@/shared/scene/billboard';
 import { createTextVisual, disposeTextVisual } from '@/shared/scene/text-renderer';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
@@ -38,6 +40,7 @@ import { createModelSelectionBounds } from '../model/model-selection-bounds';
 import { objectLabels } from '../model/objects';
 import { fitPreviewCamera } from '../model/preview-fit';
 import { scaleConstraint, scaleFromGesture } from '../model/scale-gesture';
+import type { SceneAudioStore } from '../model/scene-audio-store';
 import type { SceneLoadStore } from '../model/scene-load-store';
 import type { SelectionMode } from '../model/selection';
 import {
@@ -68,6 +71,7 @@ export type SceneCanvasHandle = {
     getDisplayedRotation: (id: string) => SceneObject['transform']['rotation'] | undefined;
 };
 type Props = {
+    audioStore: SceneAudioStore;
     loadStore: SceneLoadStore;
     onRemoveObject: (id: string) => void;
     ref?: Ref<SceneCanvasHandle>;
@@ -94,6 +98,9 @@ type Node = {
     key: string;
     spec: SceneObject;
     mixer?: THREE.AnimationMixer;
+    audio?: HTMLAudioElement;
+    audioCard?: ReturnType<typeof createAudioCard>;
+    releaseAudio?: () => void;
     modelBounds?: ReturnType<typeof createModelSelectionBounds>;
     textVisual?: Awaited<ReturnType<typeof createTextVisual>>;
     status: 'loading' | 'ready' | 'failed';
@@ -507,6 +514,8 @@ export function SceneCanvas(props: Props) {
                 abort: new AbortController(),
                 dispose() {
                     node.abort.abort();
+                    node.releaseAudio?.();
+                    node.audioCard?.dispose();
                     node.placeholder?.dispose();
                     node.placeholder = undefined;
                     scene.remove(root);
@@ -668,13 +677,40 @@ export function SceneCanvas(props: Props) {
                             }),
                         ),
                     );
-                else if (spec.type === 'audio') {
-                    // Editor-only position handle; audio playback belongs to the real Viewer preview.
-                    node.billboard.content.add(
-                        new THREE.Mesh(
-                            new THREE.SphereGeometry(0.04, 16, 12),
-                            new THREE.MeshBasicMaterial({ color: 0xc58826, wireframe: true }),
-                        ),
+                else if (spec.type === 'audio' && asset) {
+                    const element = new Audio();
+                    media = element;
+                    node.audio = element;
+                    element.crossOrigin = 'anonymous';
+                    element.preload = 'metadata';
+                    element.loop = spec.loop;
+                    element.volume = spec.volume;
+                    element.src = asset.url;
+                    const card = createAudioCard(spec, asset.meta.durationSec);
+                    node.audioCard = card;
+                    node.billboard.content.add(card.group);
+                    node.releaseAudio = latest.current.audioStore.register(
+                        spec.id,
+                        element,
+                        (state) => {
+                            card.setPlayback(state);
+                            if (
+                                state.playing &&
+                                !state.error &&
+                                !disposed &&
+                                nodes.get(spec.id) === node
+                            )
+                                setIssues((current) => {
+                                    if (!current[spec.id]) return current;
+                                    const next = { ...current };
+                                    delete next[spec.id];
+                                    return next;
+                                });
+                        },
+                        (message) => {
+                            if (!disposed && nodes.get(spec.id) === node)
+                                setIssues((current) => ({ ...current, [spec.id]: message }));
+                        },
                     );
                 }
                 if (disposed || nodes.get(spec.id) !== node) {
@@ -737,16 +773,24 @@ export function SceneCanvas(props: Props) {
                         ? spec.presentation.imageAssetId
                         : undefined;
                 const key = JSON.stringify([
-                    'presentation' in content && content.presentation?.kind === 'annotation'
+                    content.type === 'audio'
                         ? {
                               ...content,
-                              presentation: {
-                                  ...content.presentation,
-                                  labelOffset: undefined,
-                                  connectorSide: undefined,
-                              },
+                              audioKind: undefined,
+                              volume: undefined,
+                              loop: undefined,
+                              autoplay: undefined,
                           }
-                        : content,
+                        : 'presentation' in content && content.presentation?.kind === 'annotation'
+                          ? {
+                                ...content,
+                                presentation: {
+                                    ...content.presentation,
+                                    labelOffset: undefined,
+                                    connectorSide: undefined,
+                                },
+                            }
+                          : content,
                     asset?.url,
                     asset?.meta,
                     imageId ? value.assets[imageId]?.url : undefined,
@@ -780,6 +824,13 @@ export function SceneCanvas(props: Props) {
                         ),
                     );
                 node.textVisual?.setExpanded?.(value.selectedIds.includes(spec.id));
+                if (spec.type === 'audio' && node.audio) {
+                    node.audio.loop = spec.loop;
+                    node.audio.volume = spec.volume;
+                    node.audioCard?.setTitle(spec.name || 'Âm thanh');
+                    node.audioCard?.setKind(spec.audioKind);
+                    if (value.suspended && !node.audio.paused) value.audioStore.pause(spec.id);
+                }
                 if (!(dragging && latest.current.selectedIds.includes(spec.id))) {
                     if (
                         [
@@ -802,13 +853,13 @@ export function SceneCanvas(props: Props) {
                 node.root.visible = !spec.editorHidden;
                 node.billboard.update(
                     camera,
-                    spec.billboard,
+                    facesCamera(spec),
                     (spec.type === 'text' || spec.type === 'label') &&
                         spec.presentation?.kind !== 'extruded',
                 );
             }
             const selected = selectedNodes();
-            if (controls.mode === 'rotate' && selected.some((node) => node.spec.billboard)) {
+            if (controls.mode === 'rotate' && selected.some((node) => facesCamera(node.spec))) {
                 settings.mode = 'translate';
                 controls.setMode('translate');
                 setMode('translate');
@@ -835,7 +886,7 @@ export function SceneCanvas(props: Props) {
             if (canTransform) {
                 const single = selected.length === 1 ? selected[0] : undefined;
                 const target = single
-                    ? single.spec.billboard
+                    ? facesCamera(single.spec)
                         ? billboardPivot
                         : single.root
                     : selectionPivot;
@@ -1029,7 +1080,7 @@ export function SceneCanvas(props: Props) {
                 controls.space === 'local' &&
                 selected.length === 1 &&
                 selected[0].status === 'ready' &&
-                selected[0].spec.billboard &&
+                facesCamera(selected[0].spec) &&
                 !selected[0].spec.locked &&
                 !selected[0].spec.editorHidden &&
                 !latest.current.disabled
@@ -1198,6 +1249,23 @@ export function SceneCanvas(props: Props) {
                 ],
             });
             hidePlacementMarker();
+        }
+        let audioPress: { id: string; pointerId: number; x: number; y: number } | null = null;
+        function audioButton(event: PointerEvent) {
+            const detail = hitDetail(event);
+            if (!detail?.hit.uv) return;
+            return nodes.get(detail.id)?.audioCard?.isPlayHit(detail.hit.uv)
+                ? detail.id
+                : undefined;
+        }
+        function finishAudioPress() {
+            const previous = audioPress;
+            audioPress = null;
+            if (!previous) return;
+            controls.enabled = true;
+            orbit.enabled = !dragging;
+            if (renderer.domElement.hasPointerCapture(previous.pointerId))
+                renderer.domElement.releasePointerCapture(previous.pointerId);
         }
         const start = new THREE.Vector2();
         let selecting: { id: number; x: number; y: number; moved: boolean; box: boolean } | null =
@@ -1394,6 +1462,22 @@ export function SceneCanvas(props: Props) {
                 return;
             }
             if (!(event.shiftKey || event.ctrlKey || event.metaKey || event.altKey)) {
+                const audio = audioButton(event);
+                if (audio) {
+                    stopOrbitMomentum();
+                    audioPress = {
+                        id: audio,
+                        pointerId: event.pointerId,
+                        x: event.clientX,
+                        y: event.clientY,
+                    };
+                    controls.enabled = false;
+                    orbit.enabled = false;
+                    renderer.domElement.setPointerCapture(event.pointerId);
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    return;
+                }
                 const hit = draggableAnnotation(event);
                 if (hit) {
                     stopOrbitMomentum();
@@ -1438,6 +1522,10 @@ export function SceneCanvas(props: Props) {
             event.stopImmediatePropagation();
         };
         const pointerMove = (event: PointerEvent) => {
+            if (audioPress?.pointerId === event.pointerId) {
+                event.stopImmediatePropagation();
+                return;
+            }
             if (transformDrag?.scale) {
                 setShift(event.shiftKey);
                 transformDrag.scale.currentPointer.set(event.clientX, event.clientY);
@@ -1488,7 +1576,11 @@ export function SceneCanvas(props: Props) {
                 !latest.current.annotationToPlace
             )
                 renderer.domElement.style.cursor =
-                    !controls.axis && draggableAnnotation(event) ? 'grab' : '';
+                    !controls.axis && audioButton(event)
+                        ? 'pointer'
+                        : !controls.axis && draggableAnnotation(event)
+                          ? 'grab'
+                          : '';
             if (zoomDrag?.id === event.pointerId) {
                 dragDolly(
                     camera,
@@ -1530,6 +1622,20 @@ export function SceneCanvas(props: Props) {
             overlay.style.height = `${box.bottom - box.top}px`;
         };
         const pointerUp = (event: PointerEvent) => {
+            if (audioPress?.pointerId === event.pointerId) {
+                const pressed = audioPress;
+                finishAudioPress();
+                if (
+                    Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) <= 4 &&
+                    audioButton(event) === pressed.id
+                ) {
+                    latest.current.onSelect([pressed.id]);
+                    void latest.current.audioStore.toggle(pressed.id);
+                }
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
             if (annotationDrag?.pointerId === event.pointerId) {
                 finishAnnotationDrag();
                 event.preventDefault();
@@ -1601,6 +1707,7 @@ export function SceneCanvas(props: Props) {
             latest.current.onSelect(id ? [id] : [], 'replace');
         };
         const pointerCancel = () => {
+            finishAudioPress();
             finishAnnotationDrag(true);
             hidePlacementMarker();
             clearMarquee();
@@ -1613,6 +1720,7 @@ export function SceneCanvas(props: Props) {
             // Wait for that handler; unexpected capture loss cancels the gesture instead.
             queueMicrotask(() => {
                 if (disposed || renderer.domElement.hasPointerCapture(event.pointerId)) return;
+                if (audioPress?.pointerId === event.pointerId) finishAudioPress();
                 if (annotationDrag?.pointerId === event.pointerId) finishAnnotationDrag(true);
                 else if (dragging) finishTransform(true);
                 if (cameraPointer === event.pointerId || zoomDrag?.id === event.pointerId)
@@ -1797,14 +1905,14 @@ export function SceneCanvas(props: Props) {
                 const spec = node.spec;
                 node.billboard.update(
                     camera,
-                    spec.billboard,
+                    facesCamera(spec),
                     (spec.type === 'text' || spec.type === 'label') &&
                         spec.presentation?.kind !== 'extruded',
                 );
             }
             if (controls.object === billboardPivot && !dragging) {
                 const node = nodes.get(billboardPivot.userData.objectId);
-                if (node?.spec.billboard) updateBillboardPivot(node);
+                if (node && facesCamera(node.spec)) updateBillboardPivot(node);
             }
             if (outline.visible) {
                 const frame = selectionFrame();
@@ -1856,7 +1964,7 @@ export function SceneCanvas(props: Props) {
             mode(value, snapped, nextSpace, steps) {
                 if (dragging) return;
                 const effective =
-                    value === 'rotate' && selectedNodes().some((node) => node.spec.billboard)
+                    value === 'rotate' && selectedNodes().some((node) => facesCamera(node.spec))
                         ? 'translate'
                         : value;
                 if (effective !== value) setMode(effective);
@@ -1933,6 +2041,7 @@ export function SceneCanvas(props: Props) {
         sync();
         tick();
         return () => {
+            finishAudioPress();
             finishAnnotationDrag(true);
             disposed = true;
             latest.current.loadStore.clear();
@@ -2031,7 +2140,8 @@ export function SceneCanvas(props: Props) {
             if (
                 value === 'e' &&
                 !latest.current.scene.objects.some(
-                    (object) => object.billboard && latest.current.selectedIds.includes(object.id),
+                    (object) =>
+                        facesCamera(object) && latest.current.selectedIds.includes(object.id),
                 )
             )
                 setMode('rotate');

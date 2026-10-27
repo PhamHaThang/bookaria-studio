@@ -1,7 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, FileUp, RefreshCw, Upload } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { AUDIO_TAG_OPTIONS } from '@/shared/scene/audio-kind';
 import { Feedback } from '@/shared/ui/Feedback';
+import { FormSelect } from '@/shared/ui/FormSelect';
 import { Button } from '@/shared/ui/primitives/button';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -237,24 +239,43 @@ export function AssetUploadView({
                             className="data-[collapsed=true]:hidden"
                         >
                             <FieldLabel htmlFor="scene-import-tags">
-                                Nhãn{' '}
-                                <span className="font-normal text-muted-foreground">
-                                    (không bắt buộc)
-                                </span>
+                                {type === 'AUDIO' ? 'Loại âm thanh' : 'Nhãn'}{' '}
+                                {type !== 'AUDIO' && (
+                                    <span className="font-normal text-muted-foreground">
+                                        (không bắt buộc)
+                                    </span>
+                                )}
                             </FieldLabel>
-                            <Input
-                                id="scene-import-tags"
-                                name="tags"
-                                disabled={
-                                    !file ||
-                                    busy ||
-                                    Boolean(assetId) ||
-                                    Boolean(checkpoint?.uploaded)
-                                }
-                                placeholder="động vật, tự nhiên"
-                            />
+                            {type === 'AUDIO' ? (
+                                <FormSelect
+                                    id="scene-import-tags"
+                                    name="tags"
+                                    defaultValue={'bgm'}
+                                    options={AUDIO_TAG_OPTIONS}
+                                    disabled={
+                                        !file ||
+                                        busy ||
+                                        Boolean(assetId) ||
+                                        Boolean(checkpoint?.uploaded)
+                                    }
+                                />
+                            ) : (
+                                <Input
+                                    id="scene-import-tags"
+                                    name="tags"
+                                    disabled={
+                                        !file ||
+                                        busy ||
+                                        Boolean(assetId) ||
+                                        Boolean(checkpoint?.uploaded)
+                                    }
+                                    placeholder="động vật, tự nhiên"
+                                />
+                            )}
                             <FieldDescription className="text-xs [@media(max-height:700px)]:hidden">
-                                Phân cách bằng dấu phẩy. Tối đa 20 nhãn.
+                                {type === 'AUDIO'
+                                    ? 'Chọn BGM, SFX hoặc Voice.'
+                                    : 'Phân cách bằng dấu phẩy. Tối đa 20 nhãn.'}
                             </FieldDescription>
                         </Field>
                         <Field>

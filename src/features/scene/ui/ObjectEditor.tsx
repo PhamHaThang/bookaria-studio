@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Copy, Eye, Info, Move, Play, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
+import { AUDIO_KIND_OPTIONS, facesCamera } from '@/shared/scene/audio-kind';
 import { Disclosure, DisclosureGroup } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
@@ -17,14 +18,17 @@ import { Feedback } from '../../../shared/ui/Feedback';
 import { assetKeys, assetsApi } from '../../assets';
 import { useAuth } from '../../auth';
 import { objectLabels } from '../model/objects';
+import type { SceneAudioStore } from '../model/scene-audio-store';
 import type { SceneLoadStore } from '../model/scene-load-store';
 import { isPlanarObject } from '../model/selection-frame';
 import { withObjectPosition, withPaperSnap } from '../model/transforms';
 import { NumericField, VectorFields } from './NumericField';
+import { SceneAudioControls } from './SceneAudioControls';
 
 export function ObjectEditor({
     object,
     loadStore,
+    audioStore,
     assetRef,
     disabled,
     onChange,
@@ -36,6 +40,7 @@ export function ObjectEditor({
 }: {
     object: SceneObject;
     loadStore: SceneLoadStore;
+    audioStore: SceneAudioStore;
     assetRef?: AssetRef;
     disabled: boolean;
     onChange: (object: SceneObject) => void;
@@ -157,16 +162,6 @@ export function ObjectEditor({
                                             alt="Tài nguyên của đối tượng"
                                         />
                                     )}
-                                    {asset?.type === 'AUDIO' && (
-                                        <audio
-                                            key={asset.url}
-                                            controls
-                                            preload="none"
-                                            src={asset.url}
-                                        >
-                                            <track kind="captions" />
-                                        </audio>
-                                    )}
                                     {asset?.type === 'VIDEO' && (
                                         <video
                                             key={asset.url}
@@ -285,7 +280,14 @@ export function ObjectEditor({
                                     <Field orientation="contents" key={key}>
                                         <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
                                             <Checkbox
-                                                checked={object[key]}
+                                                checked={
+                                                    key === 'billboard'
+                                                        ? facesCamera(object)
+                                                        : object[key]
+                                                }
+                                                disabled={
+                                                    key === 'billboard' && object.type === 'audio'
+                                                }
                                                 onCheckedChange={(checked) =>
                                                     key === 'billboard'
                                                         ? onBillboardChange(checked === true)
@@ -347,7 +349,7 @@ export function ObjectEditor({
                                     }
                                     values={object.transform[key]}
                                     disabled={
-                                        unavailable || (key === 'rotation' && object.billboard)
+                                        unavailable || (key === 'rotation' && facesCamera(object))
                                     }
                                     disabledAxes={
                                         key === 'scale' && isPlanarObject(object) ? [2] : []
@@ -362,9 +364,11 @@ export function ObjectEditor({
                                     }}
                                 />
                             ))}
-                            {object.billboard && (
+                            {facesCamera(object) && (
                                 <p className="m-0 text-muted-foreground text-xs">
-                                    Tắt “Luôn hướng về camera” để chỉnh góc xoay.
+                                    {object.type === 'audio'
+                                        ? 'Thẻ âm thanh luôn hướng về camera; góc xoay được khóa.'
+                                        : 'Tắt “Luôn hướng về camera” để chỉnh góc xoay.'}
                                 </p>
                             )}
                         </div>
@@ -381,7 +385,11 @@ export function ObjectEditor({
                             variant="panel"
                             className="property-section"
                         >
-                            <div>
+                            <div
+                                className={
+                                    object.type === 'audio' ? 'flex flex-col gap-4' : undefined
+                                }
+                            >
                                 {' '}
                                 {(object.type === 'text' || object.type === 'label') && (
                                     <>
@@ -494,6 +502,30 @@ export function ObjectEditor({
                                         value={object.opacity}
                                         onChange={(opacity) => patch({ opacity })}
                                     />
+                                )}
+                                {object.type === 'audio' && (
+                                    <>
+                                        <Field>
+                                            <FieldLabel htmlFor={`${id}-audio-kind`}>
+                                                Loại âm thanh
+                                            </FieldLabel>
+                                            <FormSelect
+                                                id={`${id}-audio-kind`}
+                                                value={object.audioKind || 'BGM'}
+                                                options={AUDIO_KIND_OPTIONS}
+                                                onValueChange={(value) =>
+                                                    patch({
+                                                        audioKind: value as 'BGM' | 'SFX' | 'VOICE',
+                                                    })
+                                                }
+                                            />
+                                        </Field>
+                                        <SceneAudioControls
+                                            id={object.id}
+                                            store={audioStore}
+                                            disabled={disabled || unavailable}
+                                        />
+                                    </>
                                 )}
                                 {(object.type === 'audio' || object.type === 'video') && (
                                     <>

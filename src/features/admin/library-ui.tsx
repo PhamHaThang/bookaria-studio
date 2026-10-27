@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { AUDIO_TAG_OPTIONS, audioKindFromTags } from '@/shared/scene/audio-kind';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { FormSelect } from '@/shared/ui/FormSelect';
@@ -216,8 +217,17 @@ export function LibraryMetadata({
             </Field>
             <Field orientation="contents">
                 <FieldLabel htmlFor="library-tags">
-                    Nhãn, ngăn cách bằng dấu phẩy
-                    <Input id="library-tags" name="tags" defaultValue={asset.tags.join(', ')} />
+                    {asset.type === 'AUDIO' ? 'Loại âm thanh' : 'Nhãn, ngăn cách bằng dấu phẩy'}
+                    {asset.type === 'AUDIO' ? (
+                        <FormSelect
+                            id="library-tags"
+                            name="tags"
+                            defaultValue={audioKindFromTags(asset.tags).toLowerCase()}
+                            options={AUDIO_TAG_OPTIONS}
+                        />
+                    ) : (
+                        <Input id="library-tags" name="tags" defaultValue={asset.tags.join(', ')} />
+                    )}
                 </FieldLabel>
             </Field>
             <p className="stats-note max-w-[75ch] text-[length:var(--text-sm)] text-muted-foreground [.admin-form_&]:mb-4">

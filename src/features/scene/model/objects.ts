@@ -1,3 +1,4 @@
+import { audioKindFromTags } from '@/shared/scene/audio-kind';
 import type { Asset } from '../../../shared/contracts/dto.schema';
 import {
     type PageSettings,
@@ -44,6 +45,9 @@ export function newObject(type: SceneObjectType, id: string, asset?: Asset): Sce
             scale: [1, 1, 1],
         },
         ...(usesAsset(type) ? { assetId: asset?.id } : {}),
+        ...(type === 'audio'
+            ? { billboard: true, autoplay: false, audioKind: audioKindFromTags(asset?.tags) }
+            : {}),
         ...(type === 'text' || type === 'label'
             ? { text: type === 'text' ? 'Văn bản mới' : 'Chú thích mới' }
             : {}),
@@ -93,6 +97,7 @@ export function replaceObjectAsset(object: SceneObject, asset: Asset): SceneObje
         ...object,
         assetId: asset.id,
         ...(object.type === 'model' ? { animation: undefined } : {}),
+        ...(object.type === 'audio' ? { audioKind: audioKindFromTags(asset.tags) } : {}),
     };
 }
 export function sceneFingerprint(scene: Scene) {

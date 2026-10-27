@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AUDIO_TAG_OPTIONS, audioKindFromTags } from '@/shared/scene/audio-kind';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { FormSelect } from '@/shared/ui/FormSelect';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
@@ -99,20 +101,31 @@ function AssetMetadataForm({ asset, onSaved }: { asset: Asset; onSaved: () => Pr
                     </Field>
                     <Field orientation="contents">
                         <FieldLabel htmlFor="asset-tags">
-                            Nhãn
-                            <Input
-                                id="asset-tags"
-                                name="tags"
-                                defaultValue={asset.tags.join(', ')}
-                                aria-describedby="asset-tags-hint"
-                            />
+                            {asset.type === 'AUDIO' ? 'Loại âm thanh' : 'Nhãn'}
+                            {asset.type === 'AUDIO' ? (
+                                <FormSelect
+                                    id="asset-tags"
+                                    name="tags"
+                                    defaultValue={audioKindFromTags(asset.tags).toLowerCase()}
+                                    options={AUDIO_TAG_OPTIONS}
+                                />
+                            ) : (
+                                <Input
+                                    id="asset-tags"
+                                    name="tags"
+                                    defaultValue={asset.tags.join(', ')}
+                                    aria-describedby="asset-tags-hint"
+                                />
+                            )}
                         </FieldLabel>
                     </Field>
                     <p
                         id="asset-tags-hint"
                         className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]"
                     >
-                        Phân cách bằng dấu phẩy, tối đa 20 nhãn; mỗi nhãn tối đa 30 ký tự.
+                        {asset.type === 'AUDIO'
+                            ? 'Chọn BGM, SFX hoặc Voice.'
+                            : 'Phân cách bằng dấu phẩy, tối đa 20 nhãn; mỗi nhãn tối đa 30 ký tự.'}
                     </p>
                     <Field orientation="contents">
                         <FieldLabel htmlFor="asset-author">

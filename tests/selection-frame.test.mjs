@@ -51,6 +51,7 @@ test('flat text, cards, bubbles, images, videos, hotspots and legacy labels use 
         spec('text', { kind: 'bubble' }),
         spec('image'),
         spec('video'),
+        spec('audio'),
         spec('hotspot'),
         spec('label'),
     ]) {
@@ -67,11 +68,10 @@ test('flat text, cards, bubbles, images, videos, hotspots and legacy labels use 
     }
 });
 
-test('model, extruded text, audio and hidden objects keep the generic selection path', () => {
+test('model, extruded text and hidden objects keep the generic selection path', () => {
     for (const object of [
         spec('model'),
         spec('text', { kind: 'extruded' }),
-        spec('audio'),
         { ...spec('image'), visible: false },
         { ...spec('image'), editorHidden: true },
     ]) {

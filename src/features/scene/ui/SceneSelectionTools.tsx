@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { RefObject } from 'react';
 import type { SceneObject } from '@/shared/contracts/scene.schema';
+import { facesCamera } from '@/shared/scene/audio-kind';
 import { Button } from '@/shared/ui/Button';
 import { Separator } from '@/shared/ui/primitives/separator';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
@@ -51,7 +52,9 @@ export function SceneSelectionTools({
     onModeChange: (mode: TransformMode) => void;
 }) {
     const locked = objects.some((object) => object.locked);
-    const rotationDisabled = objects.some((object) => object.billboard);
+    const rotationDisabled = objects.some(facesCamera);
+    const toolsDisabled = disabled || locked;
+    const billboardDisabled = toolsDisabled || objects.some((object) => object.type === 'audio');
     const group = objects.length > 1;
     const annotation =
         !group &&
@@ -60,8 +63,8 @@ export function SceneSelectionTools({
         objects[0].presentation?.kind === 'annotation'
             ? objects[0].presentation
             : undefined;
-    const billboardEnabled = objects.length > 0 && objects.every((object) => object.billboard);
-    const billboardMixed = !billboardEnabled && objects.some((object) => object.billboard);
+    const billboardEnabled = objects.length > 0 && objects.every(facesCamera);
+    const billboardMixed = !billboardEnabled && objects.some(facesCamera);
     return (
         <fieldset
             className="pointer-events-none absolute inset-0 z-1 m-0 min-w-0 border-0 p-0"
@@ -87,7 +90,7 @@ export function SceneSelectionTools({
                     <Copy />
                 </Button>
                 <Button
-                    variant={snap ? 'default' : 'ghost'}
+                    variant={snap && !toolsDisabled ? 'default' : 'ghost'}
                     size="icon"
                     title={snap ? 'Tắt snap (N)' : 'Bật snap (N)'}
                     aria-label="Bắt bước (N)"
@@ -100,11 +103,11 @@ export function SceneSelectionTools({
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button
-                            variant={billboardEnabled ? 'default' : 'ghost'}
+                            variant={billboardEnabled && !billboardDisabled ? 'default' : 'ghost'}
                             size="icon"
                             aria-label="Luôn hướng về camera"
                             aria-pressed={billboardMixed ? 'mixed' : billboardEnabled}
-                            disabled={disabled || locked}
+                            disabled={billboardDisabled}
                             onClick={() => actions.onBillboardChange(!billboardEnabled)}
                         >
                             <Camera />
@@ -127,7 +130,7 @@ export function SceneSelectionTools({
                     </Button>
                 )}
                 <Button
-                    variant={locked ? 'default' : 'ghost'}
+                    variant={locked && !disabled ? 'default' : 'ghost'}
                     size="icon"
                     title={locked ? 'Mở khóa đối tượng' : 'Khóa đối tượng'}
                     aria-label={locked ? 'Mở khóa đối tượng' : 'Khóa đối tượng'}

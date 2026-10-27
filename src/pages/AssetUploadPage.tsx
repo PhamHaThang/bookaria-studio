@@ -2,6 +2,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Upload } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { AUDIO_TAG_OPTIONS } from '@/shared/scene/audio-kind';
+import { FormSelect } from '@/shared/ui/FormSelect';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { Progress } from '@/shared/ui/primitives/progress';
@@ -97,6 +99,9 @@ export function AssetUploadPage() {
         pendingMetadata.current = null;
         setNotice('Đã dừng tải tệp. Bạn có thể chọn tệp khác hoặc thử lại.');
     }
+    const audioUpload = Boolean(
+        file && (file.type.startsWith('audio/') || /\.(mp3|wav)$/i.test(file.name)),
+    );
     return (
         <>
             <div className="page-heading [&_h1]:wrap-anywhere mx-0 mt-0 mb-7 flex items-center justify-between gap-6 max-[760px]:mb-6 max-[700px]:flex-wrap max-[700px]:items-start max-[760px]:items-start max-[700px]:gap-3 max-[760px]:gap-4 max-[700px]:[&_>_.button]:max-w-full max-[700px]:[&_>_.button]:flex-[0_0_auto] [&_>_div]:min-w-0 max-[700px]:[&_>_div]:flex-[1_1_180px] [&_h1]:font-semibold [&_h1]:text-[length:28px] [&_h1]:tracking-[-0.025em] max-[700px]:[&_h1]:text-[length:25px] max-[760px]:[&_h1]:text-[length:var(--text-2xl)] [&_p]:mx-0 [&_p]:mt-2 [&_p]:mb-0 [&_p]:max-w-[64ch] [&_p]:text-[length:13px] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-sm)] [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-2 [.studio-editing_&_h1]:ml-4 [.studio-editing_&_h1]:inline [.studio-editing_&_h1]:text-[length:21px] max-[700px]:[.studio-editing_&_h1]:mx-0 max-[700px]:[.studio-editing_&_h1]:mt-[6px] max-[700px]:[.studio-editing_&_h1]:mb-0 max-[700px]:[.studio-editing_&_h1]:block [.studio-editing_&_p]:ml-[14px] [.studio-editing_&_p]:inline [.studio-editing_&_p]:text-[length:11px] max-[700px]:[.studio-editing_&_p]:mx-0 max-[700px]:[.studio-editing_&_p]:my-1 max-[700px]:[.studio-editing_&_p]:block [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375">
@@ -169,20 +174,31 @@ export function AssetUploadPage() {
                         </Field>
                         <Field orientation="contents">
                             <FieldLabel htmlFor="upload-tags">
-                                Nhãn
-                                <Input
-                                    id="upload-tags"
-                                    name="tags"
-                                    aria-describedby="upload-tags-hint"
-                                    placeholder="động vật, tự nhiên"
-                                />
+                                {audioUpload ? 'Loại âm thanh' : 'Nhãn'}
+                                {audioUpload ? (
+                                    <FormSelect
+                                        id="upload-tags"
+                                        name="tags"
+                                        defaultValue={'bgm'}
+                                        options={AUDIO_TAG_OPTIONS}
+                                    />
+                                ) : (
+                                    <Input
+                                        id="upload-tags"
+                                        name="tags"
+                                        aria-describedby="upload-tags-hint"
+                                        placeholder="động vật, tự nhiên"
+                                    />
+                                )}
                             </FieldLabel>
                         </Field>
                         <p
                             id="upload-tags-hint"
                             className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]"
                         >
-                            Phân cách bằng dấu phẩy, tối đa 20 nhãn; mỗi nhãn tối đa 30 ký tự.
+                            {audioUpload
+                                ? 'Chọn BGM, SFX hoặc Voice.'
+                                : 'Phân cách bằng dấu phẩy, tối đa 20 nhãn; mỗi nhãn tối đa 30 ký tự.'}
                         </p>
                     </fieldset>
                     {stage && (
