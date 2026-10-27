@@ -1,17 +1,15 @@
 import {
-    ArrowDown,
-    ArrowLeft,
-    ArrowUp,
     Box,
+    Check,
     ChevronDown,
-    CircleHelp,
-    Copy,
+    Circle,
     Download,
     Eye,
-    EyeOff,
+    FileText,
     Image,
+    Keyboard,
     Layers,
-    LockKeyhole,
+    MoreHorizontal,
     MousePointer2,
     Pencil,
     QrCode,
@@ -20,14 +18,11 @@ import {
     Save,
     Send,
     Settings2,
-    Tag,
-    Trash2,
     Type,
     Undo2,
     Upload,
     Video,
     Volume2,
-    X,
     Zap,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -36,11 +31,20 @@ import { Alert } from '@/shared/ui/Alert';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
-import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@/shared/ui/primitives/dropdown-menu';
 import { Input } from '@/shared/ui/primitives/input';
+import { Separator } from '@/shared/ui/primitives/separator';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
-import { SearchInput } from '@/shared/ui/SearchInput';
+import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/primitives/tooltip';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset, BookDetail, Page } from '../../../shared/contracts/dto.schema';
 import {
@@ -87,6 +91,8 @@ import { ObjectEditor } from './ObjectEditor';
 import { PageSettingsEditor } from './PageSettingsEditor';
 import { PageStrip } from './PageStrip';
 import { SceneCanvas, type SceneCanvasHandle } from './SceneCanvas';
+import { SceneObjectsPanel } from './SceneObjectsPanel';
+import { SceneShortcutsDialog } from './SceneShortcutsDialog';
 import { SelectionEditor } from './SelectionEditor';
 import { TextComposer, type TextMode, type TextualObject } from './TextComposer';
 
@@ -180,13 +186,6 @@ export function SceneEditor({
             ),
         );
     }
-    function chooseAll() {
-        selectMany(
-            editor.draft.objects
-                .filter((object) => !object.locked && !object.editorHidden)
-                .map((object) => object.id),
-        );
-    }
     const sceneAssets = useSceneAssets(editor.draft, { ...page.assets, ...assets });
     const validation = SceneSchema.safeParse(editor.draft);
     const warnings = getSceneWarnings(editor.draft, { pageAspect: book.pageAspect });
@@ -260,6 +259,8 @@ export function SceneEditor({
         selection,
         duplicateChosen,
         canvas: null as SceneCanvasHandle | null,
+        layersButton: null as HTMLButtonElement | null,
+        shortcutsButton: null as HTMLButtonElement | null,
         loads: new SceneLoadStore(),
         audio: new SceneAudioStore(),
     });
@@ -269,6 +270,8 @@ export function SceneEditor({
         selection,
         duplicateChosen,
         canvas: commands.current.canvas,
+        layersButton: commands.current.layersButton,
+        shortcutsButton: commands.current.shortcutsButton,
         loads: commands.current.loads,
         audio: commands.current.audio,
     };
@@ -359,105 +362,203 @@ export function SceneEditor({
                 }
                 saving={editor.busy || settingsBusy || publicationBusy || pagesBusy || infoBusy}
             />
-            <header className="scene-heading editor-header flex flex-wrap items-start justify-between gap-4 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_p]:m-0 [&_p]:text-muted-foreground [.scene-editor_&]:m-0 [.scene-editor_&]:flex [.scene-editor_&]:min-h-19 [.scene-editor_&]:items-center [.scene-editor_&]:gap-[14px] [.scene-editor_&]:border-b-[1px] [.scene-editor_&]:border-b-border [.scene-editor_&]:px-5 [.scene-editor_&]:py-3 [.scene-editor_&]:[border-bottom-style:solid] max-[760px]:[.scene-editor_&]:grid max-[760px]:[.scene-editor_&]:min-h-28 max-[760px]:[.scene-editor_&]:grid-cols-[minmax(0,_1fr)_auto] max-[760px]:[.scene-editor_&]:flex-wrap max-[760px]:[.scene-editor_&]:gap-2 max-[760px]:[.scene-editor_&]:px-3 max-[760px]:[.scene-editor_&]:py-[10px]">
-                <div className="editor-project mr-auto flex min-w-0 max-w-[30%] items-center gap-[13px] max-[1100px]:max-w-[23%] max-[760px]:max-w-[60%] max-[760px]:flex-[1] [&_>_div]:min-w-0 [&_h1]:m-0 [&_h1]:truncate [&_h1]:font-medium [&_h1]:text-[length:14px] [&_h1]:tracking-0 max-[760px]:[&_h1]:max-w-full max-[760px]:[&_h1]:text-[length:12px] [&_p]:mx-0 [&_p]:mt-[3px] [&_p]:mb-0 [&_p]:text-[length:10px] [&_p]:text-muted-foreground max-[760px]:[.scene-editor_&]:col-[1] max-[760px]:[.scene-editor_&]:row-[1] max-[760px]:[.scene-editor_&]:w-full max-[760px]:[.scene-editor_&]:max-w-full max-[760px]:[.scene-editor_&]:overflow-hidden max-[760px]:[.scene-editor_.editor-header_&]:col-[1_/_-1] max-[760px]:[.scene-editor_.editor-header_&]:w-[calc(100%_-_56px)] max-[760px]:[.scene-editor_.editor-header_&]:max-w-[calc(100%_-_56px)]">
+            <header className="scene-heading editor-header grid min-h-19 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-border border-b bg-surface px-5 py-3">
+                <div className="editor-project flex min-w-0 items-center gap-4">
                     <Link
-                        to="/"
-                        className="editor-brand inline-flex min-h-11 shrink-0 items-center justify-center rounded-[var(--radius-sm)] p-2 [&:hover]:bg-hover"
-                        aria-label="Bookaria - Trang chủ"
+                        to="/books"
+                        aria-label="Bookaria - Về Studio"
+                        className="editor-brand inline-flex size-12 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-primary focus-visible:bg-primary focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 [&_img]:transition-[filter] hover:[&_img]:brightness-0 hover:[&_img]:invert focus-visible:[&_img]:brightness-0 focus-visible:[&_img]:invert"
                     >
                         <BookariaLogo symbol />
                     </Link>
-                    <Link
-                        to="/books"
-                        className="editor-back rounded-[8px] p-2 text-muted-foreground [&:hover]:bg-hover"
-                        aria-label="Về sách của tôi"
-                    >
-                        <ArrowLeft size={20} />
-                    </Link>
-                    <div>
-                        <h1 id="scene-heading">
+                    <div className="flex min-w-0 flex-col items-start gap-1">
+                        <h1
+                            id="scene-heading"
+                            className="m-0 min-w-0 max-w-full font-medium text-sm leading-5"
+                        >
                             <ActionButton
                                 variant="plain"
                                 ref={infoAnchor}
-                                className="inline-flex h-auto max-w-full items-center justify-start gap-2 p-0 text-left [font:inherit]"
+                                className="inline-flex max-w-full items-center gap-2 rounded-sm p-0 text-left [font:inherit] aria-disabled:cursor-not-allowed aria-disabled:text-muted-foreground"
                                 aria-label="Thông tin sách"
                                 title={
                                     editor.dirty || settingsDirty
-                                        ? 'Lưu nội dung trước khi sửa thông tin sách'
-                                        : 'Thông tin sách'
+                                        ? 'Lưu thay đổi để sửa thông tin sách'
+                                        : undefined
                                 }
-                                disabled={blocked || editor.dirty || settingsDirty}
-                                onClick={() => setInfoOpen(true)}
+                                aria-disabled={blocked || editor.dirty || settingsDirty}
+                                onClick={() => {
+                                    if (!blocked && !editor.dirty && !settingsDirty)
+                                        setInfoOpen(true);
+                                }}
                             >
+                                <FileText className="size-4 shrink-0" aria-hidden="true" />
                                 <span className="truncate">{book.title}</span>
-                                <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
+                                <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
                             </ActionButton>
                         </h1>
-                        <p>
-                            Trang {page.orderIndex + 1} ·{' '}
-                            {editor.dirty ? 'Chưa lưu thay đổi' : 'Đã lưu nội dung'}
+                        <p className="m-0 max-w-full truncate text-muted-foreground text-xs leading-4">
+                            Trang {page.orderIndex + 1}
+                            {page.title && page.title.trim() !== `Trang ${page.orderIndex + 1}`
+                                ? ` · ${page.title}`
+                                : ''}
                         </p>
                     </div>
+                    <Separator orientation="vertical" className="h-7 w-px self-center" />
+                    <fieldset className="m-0 flex shrink-0 items-center gap-1 border-0 p-0">
+                        <legend className="sr-only">Công cụ trang</legend>
+                        <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Hoàn tác (Ctrl Z)"
+                            title="Hoàn tác (Ctrl Z)"
+                            disabled={blocked || !editor.canUndo}
+                            onClick={editor.undo}
+                        >
+                            <Undo2 />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Làm lại (Ctrl Shift Z)"
+                            title="Làm lại (Ctrl Shift Z)"
+                            disabled={blocked || !editor.canRedo}
+                            onClick={editor.redo}
+                        >
+                            <Redo2 />
+                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon-sm" aria-label="Tác vụ trang">
+                                    <MoreHorizontal />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="start"
+                                sideOffset={10}
+                                className="w-64"
+                                onCloseAutoFocus={(event) => {
+                                    if (document.querySelector('[role=dialog],[role=alertdialog]'))
+                                        event.preventDefault();
+                                }}
+                            >
+                                <DropdownMenuLabel>
+                                    Nội dung trang {page.orderIndex + 1}
+                                </DropdownMenuLabel>
+                                <DropdownMenuGroup>
+                                    <DropdownMenuItem onSelect={exportScene}>
+                                        <Download /> Xuất bản sao scene JSON
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        disabled={blocked}
+                                        onSelect={() => importFile.current?.click()}
+                                    >
+                                        <Upload /> Nhập scene JSON
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        disabled={blocked}
+                                        onSelect={() => setResetting(true)}
+                                    >
+                                        <RefreshCw /> Tải nội dung mới nhất
+                                    </DropdownMenuItem>
+                                </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </fieldset>
                 </div>
-                <fieldset
-                    className="editor-mode-switch flex gap-1 rounded-[13px] bg-muted p-1 max-[760px]:m-auto max-[760px]:[order:4] max-[760px]:[.scene-editor_&]:col-[2] max-[760px]:[.scene-editor_&]:row-[2] max-[760px]:[.scene-editor_&]:m-0 max-[760px]:[.scene-editor_&]:p-[2px] [.scene-editor_&_.button[aria-pressed=true]]:bg-surface [.scene-editor_&_.button[aria-pressed=true]]:text-foreground [.scene-editor_&_.button[aria-pressed=true]]:shadow-[0_2px_5px_#00000008] [.scene-editor_&_.button]:min-h-9 [.scene-editor_&_.button]:text-muted-foreground max-[760px]:[.scene-editor_&_.button]:min-h-8 max-[760px]:[.scene-editor_&_.button]:gap-1 max-[760px]:[.scene-editor_&_.button]:p-[6px] max-[1100px]:[.scene-editor_&_.button]:px-2 max-[760px]:[.scene-editor_&_.button]:text-[length:10px] max-[760px]:[.scene-editor_&_svg]:w-[14px]"
+                <ToggleGroup
+                    type="single"
+                    value={panel === 'preview' ? 'preview' : 'edit'}
+                    onValueChange={(value) => {
+                        if (value === 'edit') setPanel('properties');
+                        if (value === 'preview' && !annotationPlacement) setPanel('preview');
+                    }}
+                    size="lg"
+                    spacing={1}
+                    className="editor-mode-switch shrink-0 rounded-xl border border-border bg-surface p-1"
                     aria-label="Chế độ editor"
                 >
-                    <Button
-                        variant="outline"
-                        aria-pressed={panel !== 'preview'}
-                        onClick={() => setPanel('properties')}
-                    >
-                        <Pencil data-icon="inline-start" />
-                        Chỉnh sửa
-                    </Button>
-                    <Button
-                        variant="outline"
-                        aria-pressed={panel === 'preview'}
+                    <ToggleGroupItem value="edit" className="gap-2 px-3">
+                        <Pencil /> Chỉnh sửa
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                        value="preview"
                         disabled={Boolean(annotationPlacement)}
-                        onClick={() => setPanel('preview')}
+                        className="gap-2 px-3"
                     >
-                        <Eye data-icon="inline-start" />
-                        Xem trước
-                    </Button>
-                </fieldset>
-                <div className="form-actions editor-save-actions mt-3 ml-auto flex flex-wrap flex-nowrap items-center gap-5 gap-[3px] max-[760px]:ml-0 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 [&_>_.button.primary:hover]:bg-hover [&_>_.button.primary]:gap-[7px] [&_>_.button.primary]:border [&_>_.button.primary]:border-border [&_>_.button.primary]:border-solid [&_>_.button.primary]:bg-surface [&_>_.button.primary]:px-[14px] [&_>_.button.primary]:text-[length:12px] [&_>_.button.primary]:text-foreground max-[1100px]:[&_>_.button:nth-child(3)]:hidden max-[1100px]:[&_>_.button:nth-child(4)]:hidden [&_>_.button]:min-w-9 [&_>_.button]:gap-0 [&_>_.button]:p-2 [&_>_.button]:text-[length:0] max-[760px]:[&_>_a]:text-center [&_>_input[hidden]]:hidden [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-editor_&]:w-auto [.scene-editor_&]:flex-row [.scene-editor_&]:flex-nowrap [.scene-editor_&]:items-center max-[760px]:[.scene-editor_&]:col-[1] max-[760px]:[.scene-editor_&]:row-[2] max-[760px]:[.scene-editor_&]:m-0 max-[760px]:[.scene-editor_&]:justify-start max-[760px]:[.scene-editor_&]:gap-[1px] max-[760px]:[.scene-editor_&_>_.button.primary]:gap-0 max-[760px]:[.scene-editor_&_>_.button.primary]:p-[6px] max-[760px]:[.scene-editor_&_>_.button.primary]:text-[length:0] max-[760px]:[.scene-editor_&_>_.button:last-child]:hidden max-[760px]:[.scene-editor_&_>_.button]:min-h-[34px] max-[760px]:[.scene-editor_&_>_.button]:min-w-[30px] max-[760px]:[.scene-editor_&_>_.button]:p-[6px] [.scene-object-asset_&]:gap-2">
-                    <Button
-                        variant="outline"
-                        aria-label="Hoàn tác (Ctrl Z)"
-                        title="Hoàn tác (Ctrl Z)"
-                        disabled={blocked || !editor.canUndo}
-                        onClick={editor.undo}
+                        <Eye /> Xem trước
+                    </ToggleGroupItem>
+                </ToggleGroup>
+                <div className="editor-save-actions flex min-w-0 items-center justify-end gap-3">
+                    <span
+                        role="status"
+                        className="flex w-32 shrink-0 items-center justify-end gap-1.5 text-muted-foreground text-xs"
                     >
-                        <Undo2 data-icon="inline-start" />
-                    </Button>
-                    <Button
-                        variant="outline"
-                        aria-label="Làm lại (Ctrl Shift Z)"
-                        title="Làm lại (Ctrl Shift Z)"
-                        disabled={blocked || !editor.canRedo}
-                        onClick={editor.redo}
-                    >
-                        <Redo2 data-icon="inline-start" />
-                    </Button>
-                    <Button
-                        variant="outline"
-                        aria-label="Xuất bản sao scene JSON"
-                        title="Xuất bản sao scene JSON"
-                        onClick={exportScene}
-                    >
-                        <Download data-icon="inline-start" />
-                    </Button>
-                    <Button
-                        variant="outline"
-                        aria-label="Nhập scene JSON"
-                        title="Nhập scene JSON"
-                        disabled={blocked}
-                        onClick={() => importFile.current?.click()}
-                    >
-                        <Upload data-icon="inline-start" />
-                    </Button>
+                        {editor.busy || settingsBusy ? (
+                            <Spinner className="size-3.5" aria-hidden="true" />
+                        ) : editor.dirty || settingsDirty ? (
+                            <Circle className="size-2 fill-current" aria-hidden="true" />
+                        ) : (
+                            <Check className="size-3.5" aria-hidden="true" />
+                        )}
+                        {editor.busy || settingsBusy
+                            ? 'Đang lưu…'
+                            : editor.dirty || settingsDirty
+                              ? 'Chưa lưu thay đổi'
+                              : 'Đã lưu nội dung'}
+                    </span>
+                    <Tooltip delayDuration={250}>
+                        <TooltipTrigger asChild>
+                            <span className="inline-flex shrink-0">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-10 min-w-26"
+                                    aria-label="Lưu nội dung"
+                                    aria-busy={editor.busy}
+                                    disabled={
+                                        disabled ||
+                                        settingsBusy ||
+                                        Boolean(annotationPlacement) ||
+                                        !editor.dirty ||
+                                        !validation.success ||
+                                        editor.conflict ||
+                                        editor.uncertain ||
+                                        editor.busy
+                                    }
+                                    onClick={() => void editor.save()}
+                                >
+                                    <Save data-icon="inline-start" /> Lưu
+                                </Button>
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" sideOffset={8}>
+                            Lưu nội dung · Ctrl S
+                        </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip delayDuration={250}>
+                        <TooltipTrigger asChild>
+                            <span
+                                className="inline-flex shrink-0"
+                                tabIndex={editor.dirty || settingsDirty ? 0 : undefined}
+                            >
+                                <Button
+                                    size="sm"
+                                    className="editor-publish h-10 min-w-26 disabled:pointer-events-none"
+                                    disabled={blocked || editor.dirty || settingsDirty}
+                                    onClick={() => setPublishOpen(true)}
+                                >
+                                    <Send data-icon="inline-start" /> Xuất bản
+                                </Button>
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" sideOffset={8}>
+                            {editor.dirty || settingsDirty
+                                ? 'Lưu thay đổi trước khi xuất bản'
+                                : 'Kiểm tra và xuất bản sách'}
+                        </TooltipContent>
+                    </Tooltip>
                     <Input
                         ref={importFile}
                         type="file"
@@ -483,49 +584,7 @@ export function SceneEditor({
                             }
                         }}
                     />
-                    <Button
-                        aria-label="Lưu nội dung"
-                        aria-busy={editor.busy}
-                        disabled={
-                            disabled ||
-                            settingsBusy ||
-                            Boolean(annotationPlacement) ||
-                            !editor.dirty ||
-                            !validation.success ||
-                            editor.conflict ||
-                            editor.uncertain ||
-                            editor.busy
-                        }
-                        onClick={() => {
-                            void editor.save();
-                        }}
-                    >
-                        {editor.busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
-                        <Save data-icon="inline-start" /> Lưu
-                    </Button>
-                    <Button
-                        variant="outline"
-                        aria-label="Tải nội dung mới nhất"
-                        title="Tải nội dung mới nhất"
-                        disabled={blocked}
-                        onClick={() => setResetting(true)}
-                    >
-                        <RefreshCw data-icon="inline-start" />
-                    </Button>
                 </div>
-                <Button
-                    className="editor-publish shrink-0 max-[760px]:[.scene-editor_&]:col-[2] max-[760px]:[.scene-editor_&]:row-[1] max-[760px]:[.scene-editor_&]:w-10 max-[760px]:[.scene-editor_&]:min-w-10 max-[760px]:[.scene-editor_&]:max-w-10 max-[760px]:[.scene-editor_&]:gap-0 max-[760px]:[.scene-editor_&]:p-[9px] max-[760px]:[.scene-editor_&]:text-[length:0] max-[760px]:[.scene-editor_&]:[justify-self:end]"
-                    disabled={blocked || editor.dirty || settingsDirty}
-                    title={
-                        editor.dirty || settingsDirty
-                            ? 'Lưu thay đổi trước khi xuất bản'
-                            : 'Kiểm tra và xuất bản sách'
-                    }
-                    onClick={() => setPublishOpen(true)}
-                >
-                    <Send data-icon="inline-start" />
-                    Xuất bản
-                </Button>
             </header>
             <Feedback
                 error={error || editor.error}
@@ -611,7 +670,6 @@ export function SceneEditor({
                             { type: 'video', icon: Video },
                             { type: 'audio', icon: Volume2 },
                             { type: 'hotspot', icon: MousePointer2 },
-                            { type: 'label', icon: Tag },
                         ] as const
                     ).map((item) => (
                         <Button
@@ -623,9 +681,9 @@ export function SceneEditor({
                             }
                             onClick={() => {
                                 if (usesAsset(item.type)) setPicker({ type: item.type });
-                                else if (item.type === 'text' || item.type === 'label')
+                                else if (item.type === 'text')
                                     setTextDialog({
-                                        start: item.type === 'label' ? 'annotation' : 'text',
+                                        start: 'text',
                                     });
                                 else insert(item.type);
                             }}
@@ -664,165 +722,50 @@ export function SceneEditor({
                     </Button>
                     <Button
                         variant="outline"
-                        aria-label="Hướng dẫn editor"
-                        title="Hướng dẫn editor"
+                        aria-label="Phím tắt"
+                        ref={(element) => {
+                            commands.current.shortcutsButton = element;
+                        }}
                         onClick={() => setHelpOpen(true)}
                     >
-                        <CircleHelp data-icon="inline-start" />
-                        <span>Trợ giúp</span>
+                        <Keyboard data-icon="inline-start" />
+                        <span>Phím tắt</span>
                     </Button>
                 </div>
                 <div className="scene-workspace relative m-0 grid h-[calc(100dvh_-_76px)] min-h-125 grid-cols-[minmax(0,_1fr)_340px] items-stretch gap-0 max-[760px]:h-auto max-[760px]:min-h-0 max-[1100px]:grid-cols-[minmax(0,_1fr)_300px] max-[1200px]:grid-cols-[minmax(180px,_0.8fr)_minmax(240px,_1fr)] max-[600px]:grid-cols-[1fr] max-[760px]:grid-cols-[minmax(0,_1fr)] min-[1600px]:grid-cols-[minmax(0,_1fr)_380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[minmax(0,_1fr)_minmax(480px,_45%)] [.scene-editor[data-panel=preview]_&]:grid-cols-[minmax(0,_1fr)]">
-                    <section
-                        className="scene-layers absolute bottom-[152px] left-[18px] z-4 max-h-[70%] w-70 min-w-0 overflow-auto rounded-[14px] border border-border border-solid bg-surface px-3 py-[18px] shadow-[0_12px_30px_#00000020] max-[760px]:top-15 max-[760px]:bottom-auto max-[760px]:left-2 max-[760px]:w-[calc(100%_-_16px)] max-[760px]:max-w-70 [&[hidden]]:hidden [&_h3]:mt-0 [&_h3]:mr-[22px] [&_h3]:mb-[14px] [&_h3]:ml-1 [&_h3]:flex [&_h3]:gap-3 [&_h3]:text-[length:14px] [&_h3_span]:text-muted-foreground [&_h3_span]:tabular-nums [&_li.is-selected]:border-0 [&_li.is-selected]:border-[transparent] [&_li.is-selected]:border-solid [&_li.is-selected]:bg-selected [&_li:hover]:bg-hover [&_li[hidden]]:hidden [&_li]:rounded-[8px] [&_li]:border-0 [&_li]:border-[transparent] [&_li]:border-solid [&_li]:bg-[transparent] [&_li]:p-[3px] [&_ol]:m-0 [&_ol]:list-none [&_ol]:gap-[5px] [&_ol]:p-0"
-                        aria-labelledby="layers-heading"
-                        hidden={!layersOpen}
-                    >
-                        <ActionButton
-                            variant="plain"
-                            className="layers-close absolute top-4 right-3 border-0 border-[transparent] border-solid bg-[transparent] p-1 text-muted-foreground"
-                            type="button"
-                            aria-label="Đóng danh sách đối tượng"
-                            onClick={() => setLayersOpen(false)}
-                        >
-                            <X size={16} />
-                        </ActionButton>
-                        <h3 id="layers-heading">
-                            Đối tượng <span>{editor.draft.objects.length}</span>
-                        </h3>
-                        <Field className="mx-1 mb-3 block w-auto">
-                            <FieldLabel htmlFor="scene-object-search" className="sr-only">
-                                Tìm đối tượng
-                            </FieldLabel>
-                            <SearchInput
-                                id="scene-object-search"
-                                placeholder="Tìm đối tượng…"
-                                value={layerSearch}
-                                onValueChange={setLayerSearch}
-                            />
-                        </Field>
-                        <div className="mb-3 flex flex-wrap items-center gap-2">
-                            <Button variant="outline" disabled={blocked} onClick={chooseAll}>
-                                Chọn tất cả
-                            </Button>
-                            <Button
-                                variant="outline"
-                                disabled={blocked || !activeIds.length}
-                                onClick={() => setSelectedId('')}
-                            >
-                                Bỏ chọn
-                            </Button>
-                            <span className="text-muted-foreground text-xs" role="status">
-                                Đã chọn {activeIds.length}
-                            </span>
-                        </div>
-                        {editor.draft.objects.length === 0 && (
-                            <p>Chưa có đối tượng. Thêm văn bản hoặc chọn tài nguyên để bắt đầu.</p>
-                        )}
-                        <ol>
-                            {editor.draft.objects.map((object, index) => (
-                                <li
-                                    hidden={
-                                        Boolean(layerSearch) &&
-                                        !(object.name || objectLabels[object.type])
-                                            .toLocaleLowerCase()
-                                            .includes(layerSearch.toLocaleLowerCase())
-                                    }
-                                    key={object.id}
-                                    className={activeIds.includes(object.id) ? 'is-selected' : ''}
-                                >
-                                    <ActionButton
-                                        variant="plain"
-                                        type="button"
-                                        className="scene-layer-select [&_span]:wrap-anywhere flex min-h-10 w-full flex-wrap items-center gap-[5px] border-0 border-[transparent] border-solid bg-[transparent] p-[6px] text-left text-[length:12px] text-foreground [&_small]:text-[length:10px] [&_small]:text-muted-foreground [&_span]:w-full [&_span]:font-semibold"
-                                        aria-pressed={activeIds.includes(object.id)}
-                                        disabled={blocked}
-                                        onClick={(event) => {
-                                            event.preventDefault();
-                                            selectMany(
-                                                [object.id],
-                                                event.shiftKey || event.ctrlKey || event.metaKey
-                                                    ? 'toggle'
-                                                    : 'replace',
-                                            );
-                                        }}
-                                    >
-                                        <span>{object.name || objectLabels[object.type]}</span>
-                                        <small>
-                                            {objectLabels[object.type]}
-                                            {!object.visible ? ' · Ẩn khi mở trang' : ''}
-                                        </small>
-                                        {object.locked && (
-                                            <LockKeyhole size={16} aria-label="Đã khóa" />
-                                        )}
-                                        {object.editorHidden && (
-                                            <EyeOff size={16} aria-label="Ẩn khỏi sơ đồ" />
-                                        )}
-                                    </ActionButton>
-                                    <div className="scene-layer-actions flex flex-wrap gap-0 px-1 py-1 max-[600px]:justify-end [.scene-editor_&_.button]:min-h-7 [.scene-editor_&_.button]:min-w-11 [.scene-editor_&_.button]:px-[7px] [.scene-editor_&_.button]:py-[3px]">
-                                        <Button
-                                            variant="outline"
-                                            disabled={blocked || object.locked || index === 0}
-                                            aria-label={`Đưa đối tượng ${index + 1} lên`}
-                                            onClick={() =>
-                                                editor.setDraft((current) =>
-                                                    moveObject(current, object.id, -1),
-                                                )
-                                            }
-                                        >
-                                            <ArrowUp data-icon="inline-start" aria-hidden="true" />
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            disabled={
-                                                blocked ||
-                                                object.locked ||
-                                                index === editor.draft.objects.length - 1
-                                            }
-                                            aria-label={`Đưa đối tượng ${index + 1} xuống`}
-                                            onClick={() =>
-                                                editor.setDraft((current) =>
-                                                    moveObject(current, object.id, 1),
-                                                )
-                                            }
-                                        >
-                                            <ArrowDown
-                                                data-icon="inline-start"
-                                                aria-hidden="true"
-                                            />
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            disabled={
-                                                blocked ||
-                                                object.locked ||
-                                                editor.draft.objects.length >=
-                                                    SCENE_LIMITS.hardMaxObjects
-                                            }
-                                            aria-label={`Nhân bản đối tượng ${index + 1}`}
-                                            onClick={() => {
-                                                const id = crypto.randomUUID();
-                                                editor.setDraft((current) =>
-                                                    duplicateObject(current, object.id, id),
-                                                );
-                                                setSelectedId(id);
-                                            }}
-                                        >
-                                            <Copy data-icon="inline-start" aria-hidden="true" />
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            disabled={blocked || object.locked}
-                                            aria-label={`Xóa đối tượng ${index + 1}`}
-                                            onClick={() => setDeleting([object])}
-                                        >
-                                            <Trash2 data-icon="inline-start" aria-hidden="true" />
-                                        </Button>
-                                    </div>
-                                </li>
-                            ))}
-                        </ol>
-                    </section>
+                    <SceneObjectsPanel
+                        objects={editor.draft.objects}
+                        selectedIds={activeIds}
+                        query={layerSearch}
+                        onQueryChange={setLayerSearch}
+                        hidden={!layersOpen || panel === 'preview'}
+                        disabled={blocked}
+                        canDuplicate={editor.draft.objects.length < SCENE_LIMITS.hardMaxObjects}
+                        onClose={() => {
+                            setLayersOpen(false);
+                            commands.current.layersButton?.focus();
+                        }}
+                        onSelect={selectMany}
+                        onFlag={(id, flag, value) => {
+                            if (blocked) return;
+                            try {
+                                editor.setDraft((current) =>
+                                    setSelectionFlag(current, [id], flag, value),
+                                );
+                                setError(null);
+                            } catch (cause) {
+                                setError(errorMessage(cause));
+                            }
+                        }}
+                        onMove={(id, direction) => {
+                            if (!blocked)
+                                editor.setDraft((current) => moveObject(current, id, direction));
+                        }}
+                        onDuplicate={(id) => duplicateChosen([id])}
+                        onDelete={(object) => {
+                            if (!blocked && !object.locked) setDeleting([object]);
+                        }}
+                    />
                     <SceneCanvas
                         audioStore={commands.current.audio}
                         loadStore={commands.current.loads}
@@ -904,19 +847,28 @@ export function SceneEditor({
                             setTransforming(false);
                         }}
                         footer={
-                            <div className="editor-footer-actions absolute right-90 bottom-[118px] z-3 flex justify-center gap-2 bg-[transparent] p-0 max-[1100px]:right-80 max-[760px]:justify-center max-[760px]:bg-[var(--editor-ground)] max-[760px]:p-[10px] max-[760px]:[position:static] [.canvas-footer_&]:bg-[transparent] [.canvas-footer_&]:p-0 [.canvas-footer_&]:[position:static] max-[760px]:[.canvas-footer_&]:max-w-full max-[760px]:[.canvas-footer_&]:flex-wrap max-[760px]:[.canvas-footer_&]:justify-center max-[760px]:[.canvas-footer_&_.button]:min-w-0 max-[760px]:[.canvas-footer_&_.button]:px-[9px] max-[760px]:[.canvas-footer_&_.button]:py-[7px] max-[760px]:[.canvas-footer_&_.button]:text-[length:10px] [.scene-editor[data-panel=preview]_&]:hidden [.scene-editor_&_.button]:min-h-9 [.scene-editor_&_.button]:border [.scene-editor_&_.button]:border-border [.scene-editor_&_.button]:border-solid [.scene-editor_&_.button]:bg-surface [.scene-editor_&_.button]:text-[length:11px]">
-                                <Button
-                                    variant="outline"
-                                    aria-pressed={layersOpen}
-                                    onClick={() => setLayersOpen(!layersOpen)}
-                                >
-                                    <Layers data-icon="inline-start" />
-                                    Đối tượng ({editor.draft.objects.length})
-                                </Button>
-                                <Button variant="outline" onClick={() => setHelpOpen(true)}>
-                                    Phím tắt
-                                </Button>
-                            </div>
+                            <Button
+                                ref={(element) => {
+                                    commands.current.layersButton = element;
+                                }}
+                                variant={layersOpen ? 'default' : 'outline'}
+                                size="sm"
+                                aria-expanded={layersOpen}
+                                aria-controls="scene-object-layers"
+                                onKeyDown={(event) => {
+                                    if (event.key !== 'Escape' || !layersOpen) return;
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setLayersOpen(false);
+                                }}
+                                onClick={() => setLayersOpen(!layersOpen)}
+                            >
+                                <Layers data-icon="inline-start" aria-hidden="true" />
+                                Đối tượng
+                                <span className="tabular-nums">
+                                    ({editor.draft.objects.length})
+                                </span>
+                            </Button>
                         }
                     />
                     <Tabs
@@ -1123,50 +1075,10 @@ export function SceneEditor({
                 />
             )}
             {helpOpen && (
-                <ConfirmDialog
-                    title="Thao tác trong editor"
-                    busy={false}
+                <SceneShortcutsDialog
                     onClose={() => setHelpOpen(false)}
-                >
-                    <dl className="editor-shortcuts grid grid-cols-[1fr_1fr] gap-3 text-[length:13px] max-[760px]:grid-cols-[1fr] max-[760px]:gap-1 [&_dd]:m-0 [&_dd]:text-muted-foreground max-[760px]:[&_dd]:mb-[10px]">
-                        <dt>Chọn đối tượng</dt>
-                        <dd>Nhấp trên canvas hoặc mở Đối tượng; Shift/Ctrl + nhấp để chọn nhiều</dd>
-                        <dt>Kéo khung chọn</dt>
-                        <dd>
-                            Shift + kéo trên canvas; Ctrl A chọn tất cả đối tượng có thể chỉnh sửa
-                        </dd>
-                        <dt>Di chuyển / xoay / kích thước</dt>
-                        <dd>W / E / R</dd>
-                        <dt>Trục thế giới / cục bộ</dt>
-                        <dd>L · Nhóm biến đổi quanh tâm chung theo trục thế giới</dd>
-                        <dt>Bật / tắt bắt bước</dt>
-                        <dd>
-                            N · Giữ Shift khi kéo gizmo để bắt bước tạm thời. Chỉnh bước di chuyển,
-                            xoay và kích thước trong Cài đặt snap ở góc trên trái.
-                        </dd>
-                        <dt>Hủy thao tác đang kéo</dt>
-                        <dd>Esc · Khôi phục trạng thái trước khi kéo</dd>
-                        <dt>Đưa đối tượng vào giữa</dt>
-                        <dd>F</dd>
-                        <dt>Hoàn tác / làm lại</dt>
-                        <dd>Ctrl Z / Ctrl Shift Z</dd>
-                        <dt>Nhân bản</dt>
-                        <dd>Ctrl D (toàn bộ nhóm đang chọn)</dd>
-                        <dt>Xóa đối tượng</dt>
-                        <dd>Delete</dd>
-                        <dt>Lưu nội dung</dt>
-                        <dd>Ctrl S</dd>
-                        <dt>Bỏ chọn</dt>
-                        <dd>Esc</dd>
-                    </dl>
-                    <p>
-                        Nhấp đối tượng để chọn rồi kéo trục/vòng gizmo để chỉnh. Kéo chuột trái
-                        ngoài gizmo để xoay camera; chuột phải hoặc Space + kéo để dịch góc nhìn.
-                        Giữ chuột giữa và kéo lên để phóng to, kéo xuống để thu nhỏ liên tục. Cuộn
-                        thu/phóng về phía con trỏ. Trên macOS, dùng ⌘ thay cho Ctrl.
-                    </p>
-                    <Button onClick={() => setHelpOpen(false)}>Đã hiểu</Button>
-                </ConfirmDialog>
+                    returnFocus={commands.current.shortcutsButton}
+                />
             )}
             {publishOpen && (
                 <ConfirmDialog

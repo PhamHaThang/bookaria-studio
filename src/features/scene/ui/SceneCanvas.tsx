@@ -60,6 +60,7 @@ import {
     type ViewGizmoController,
 } from '../model/view-gizmo';
 import { SceneAssetLoading } from './SceneAssetLoading';
+import { SceneCanvasHints } from './SceneCanvasHints';
 import { SceneDepthGizmo } from './SceneDepthGizmo';
 import { SceneSelectionTools, type SelectionActions } from './SceneSelectionTools';
 import { SceneSnapSettings } from './SceneSnapSettings';
@@ -1761,9 +1762,23 @@ export function SceneCanvas(props: Props) {
                 element.getBoundingClientRect().bottom - pageDock.getBoundingClientRect().top + 12,
             );
             viewport.style.setProperty('--transform-feedback-bottom', `${bottom}px`);
+            const workspace = element.closest<HTMLElement>('.scene-workspace');
+            const dock = pageDock.querySelector<HTMLElement>('.page-strip-region');
+            if (workspace && dock) {
+                const area = element.getBoundingClientRect(),
+                    pages = dock.getBoundingClientRect();
+                const space = area.right - 18 - pages.right - 12;
+                const panelBottom =
+                    space >= 320
+                        ? 100
+                        : Math.max(100, workspace.getBoundingClientRect().bottom - pages.top + 12);
+                workspace.style.setProperty('--scene-layers-bottom', `${panelBottom}px`);
+            }
         });
         feedbackLayout.observe(element);
         if (pageDock) feedbackLayout.observe(pageDock);
+        const dockSurface = pageDock?.querySelector<HTMLElement>('.page-strip-region');
+        if (dockSurface) feedbackLayout.observe(dockSurface);
         function positionSelectionTools() {
             const left = leftTools.current,
                 right = rightTools.current;
@@ -2354,18 +2369,17 @@ export function SceneCanvas(props: Props) {
                     </p>
                 )}
             </div>
-            <div className="canvas-footer absolute right-[18px] bottom-[168px] z-3 max-[760px]:right-[10px] max-[760px]:bottom-[58px] max-[760px]:left-[10px] max-[760px]:max-w-[calc(100%_-_20px)]">
-                {props.footer}
-            </div>
-            <div className="canvas-status flex flex-wrap justify-center gap-3 bg-[var(--editor-ground)] px-[10px] py-2 text-[length:10px] text-muted-foreground [&_span:last-child]:hidden">
-                <span>
-                    W/E/R: di chuyển/xoay/kích thước · L: đổi trục · N: bắt bước · Shift:
-                    {mode === 'scale' ? ' giữ tỉ lệ khi scale' : ' bắt bước khi kéo'} · Kéo trái:
-                    xoay · Phải/Space + kéo: dịch · Giữa + kéo dọc: zoom · Cuộn: zoom theo con trỏ
-                    {props.selectedIds.length > 1 ? ' · Scale nhóm đồng đều' : ''}
-                </span>
-                <span>1 đơn vị = chiều rộng trang</span>
-            </div>
+            {props.footer && (
+                <div className="canvas-footer absolute right-[18px] bottom-12 z-3">
+                    {props.footer}
+                </div>
+            )}
+            <SceneCanvasHints
+                mode={mode}
+                objects={props.scene.objects.filter((object) =>
+                    props.selectedIds.includes(object.id),
+                )}
+            />
             <p className="sr-only" role="status" aria-live="polite">
                 Đã chọn {props.selectedIds.length} đối tượng.
             </p>

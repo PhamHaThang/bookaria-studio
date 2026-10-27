@@ -28,7 +28,7 @@ export function SceneViewGizmo({
             aria-label="Gizmo góc nhìn 3D"
             aria-describedby={hint}
             data-ready="false"
-            className="absolute top-3 right-3 size-32 touch-none select-none rounded-full outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring data-[ready=false]:invisible"
+            className="absolute top-3 right-3 isolate size-32 touch-none select-none rounded-full outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring data-[ready=false]:invisible"
             style={
                 {
                     '--view-axis-x': '#b33b45',

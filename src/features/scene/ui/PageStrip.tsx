@@ -7,8 +7,8 @@ import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import { DropdownMenu, DropdownMenuTrigger } from '@/shared/ui/primitives/dropdown-menu';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { Separator } from '@/shared/ui/primitives/separator';
 import { Skeleton } from '@/shared/ui/primitives/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/primitives/tooltip';
 import { errorMessage } from '../../../shared/api/errors';
 import type { BookDetail, Page, PageSummary } from '../../../shared/contracts/dto.schema';
 import { Button } from '../../../shared/ui/Button';
@@ -248,7 +248,7 @@ export function PageStrip({
         <div className="page-strip-region pointer-events-auto relative w-max max-w-[min(100%,40rem)] rounded-2xl border border-border bg-surface p-2.5">
             <nav
                 data-page-dragging={Boolean(draggingId)}
-                className="editor-page-dock flex min-w-0 max-w-full items-center gap-2"
+                className="editor-page-dock flex min-w-0 max-w-full items-center gap-1"
                 aria-label="Các trang trong sách"
             >
                 <fieldset
@@ -381,21 +381,32 @@ export function PageStrip({
                                         } else setMenu(null);
                                     }}
                                 >
-                                    <DropdownMenuTrigger asChild>
-                                        <ActionButton
-                                            variant="plain"
-                                            className="page-thumbnail-menu absolute top-0 right-0 grid size-6 place-items-center rounded-md border border-border bg-surface text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [[data-page-dragging=true]_&]:invisible"
-                                            type="button"
-                                            disabled={disabled || busy || Boolean(draggingId)}
-                                            aria-label={`Tùy chọn trang ${page.orderIndex + 1}`}
-                                            ref={(node) => {
-                                                if (node && menu?.id === page.id)
-                                                    menuAnchor.current = node;
-                                            }}
-                                        >
-                                            <MoreHorizontal size={14} />
-                                        </ActionButton>
-                                    </DropdownMenuTrigger>
+                                    <Tooltip delayDuration={250}>
+                                        <TooltipTrigger asChild>
+                                            <DropdownMenuTrigger asChild>
+                                                <ActionButton
+                                                    variant="plain"
+                                                    className="page-thumbnail-menu absolute top-0 right-0 grid size-6 place-items-center rounded-md border border-border bg-surface text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [[data-page-dragging=true]_&]:invisible"
+                                                    type="button"
+                                                    disabled={
+                                                        disabled || busy || Boolean(draggingId)
+                                                    }
+                                                    aria-label={`Tùy chọn trang ${page.orderIndex + 1}`}
+                                                    ref={(node) => {
+                                                        if (node && menu?.id === page.id)
+                                                            menuAnchor.current = node;
+                                                    }}
+                                                >
+                                                    <MoreHorizontal size={14} />
+                                                </ActionButton>
+                                            </DropdownMenuTrigger>
+                                        </TooltipTrigger>
+                                        {dirty && (
+                                            <TooltipContent side="top" sideOffset={8}>
+                                                Lưu thay đổi để quản lý trang
+                                            </TooltipContent>
+                                        )}
+                                    </Tooltip>
                                     {menu?.id === page.id && !renaming && !deleting && (
                                         <PageActionsMenu
                                             title={menu.title || `Trang ${menu.orderIndex + 1}`}
@@ -424,23 +435,33 @@ export function PageStrip({
                         </div>
                     ))}
                 </fieldset>
-                <Separator orientation="vertical" className="h-10 shrink-0" />
-                <ActionButton
-                    variant="plain"
-                    className="strip-add-page grid size-14 shrink-0 place-items-center rounded-xl border border-border bg-surface text-primary transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
-                    type="button"
-                    disabled={locked || listing.isPending || listing.isError}
-                    title={dirty ? 'Lưu nội dung trước khi thêm trang' : 'Thêm trang'}
-                    aria-label="Thêm trang"
-                    ref={addAnchor}
-                    onClick={() => {
-                        setAdding(true);
-                        setError(null);
-                    }}
-                >
-                    <Plus size={20} aria-hidden="true" />
-                    <span className="sr-only">Thêm trang</span>
-                </ActionButton>
+                <Tooltip delayDuration={250}>
+                    <TooltipTrigger asChild>
+                        <span
+                            className="inline-flex shrink-0 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+                            tabIndex={dirty ? 0 : undefined}
+                        >
+                            <ActionButton
+                                variant="plain"
+                                className="strip-add-page grid size-14 shrink-0 place-items-center rounded-xl border border-border bg-surface text-primary transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:pointer-events-none"
+                                type="button"
+                                disabled={locked || listing.isPending || listing.isError}
+                                aria-label="Thêm trang"
+                                ref={addAnchor}
+                                onClick={() => {
+                                    setAdding(true);
+                                    setError(null);
+                                }}
+                            >
+                                <Plus size={20} aria-hidden="true" />
+                                <span className="sr-only">Thêm trang</span>
+                            </ActionButton>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={8}>
+                        {dirty ? 'Lưu thay đổi để tiếp tục' : 'Thêm trang'}
+                    </TooltipContent>
+                </Tooltip>
             </nav>
             {busy && (
                 <p
@@ -448,11 +469,6 @@ export function PageStrip({
                     role="status"
                 >
                     {stage || 'Đang cập nhật trang…'}
-                </p>
-            )}
-            {dirty && (
-                <p className="page-strip-feedback m-0 px-2 py-2 text-[length:12px] text-muted-foreground">
-                    Lưu nội dung hiện tại trước khi thêm hoặc quản lý trang.
                 </p>
             )}
             {!menu && <Feedback error={error} />}
