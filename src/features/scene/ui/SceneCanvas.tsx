@@ -8,6 +8,7 @@ import {
     useState,
     useSyncExternalStore,
 } from 'react';
+import { createPortal } from 'react-dom';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
@@ -148,6 +149,14 @@ export function SceneCanvas(props: Props) {
     const [failure, setFailure] = useState(''),
         [loading, setLoading] = useState(0),
         [issues, setIssues] = useState<Record<string, string>>({});
+    const [hintsHost, setHintsHost] = useState<HTMLElement | null>(null);
+    useEffect(() => {
+        setHintsHost(
+            host.current
+                ?.closest('.workbench-body')
+                ?.querySelector<HTMLElement>('[data-canvas-hints-host]') ?? null,
+        );
+    }, []);
     // biome-ignore lint/correctness/useExhaustiveDependencies: Recreate GPU resources when the page image or geometry changes; other props are read through latest.
     useEffect(() => {
         setIssues({});
@@ -1753,16 +1762,23 @@ export function SceneCanvas(props: Props) {
         const pageDock = element
             .closest('.scene-editor')
             ?.querySelector<HTMLElement>('[data-page-dock]');
+        const workspace = element.closest<HTMLElement>('.scene-workspace');
+        const workbench = workspace?.closest<HTMLElement>('.workbench-body');
+        const hints = workbench?.querySelector<HTMLElement>('[data-canvas-hints-host]');
         // The page dock grows when unsaved changes or feedback appear.
         // Measure it on resize instead of guessing a fixed bottom offset.
         const feedbackLayout = new ResizeObserver(() => {
+            if (workspace && hints && hints.getBoundingClientRect().height > 0) {
+                const reserved =
+                    workspace.getBoundingClientRect().bottom - hints.getBoundingClientRect().top;
+                workbench?.style.setProperty('--canvas-hints-height', `${Math.ceil(reserved)}px`);
+            }
             if (!viewport || !pageDock) return;
             const bottom = Math.max(
                 16,
                 element.getBoundingClientRect().bottom - pageDock.getBoundingClientRect().top + 12,
             );
             viewport.style.setProperty('--transform-feedback-bottom', `${bottom}px`);
-            const workspace = element.closest<HTMLElement>('.scene-workspace');
             const dock = pageDock.querySelector<HTMLElement>('.page-strip-region');
             if (workspace && dock) {
                 const area = element.getBoundingClientRect(),
@@ -1776,6 +1792,7 @@ export function SceneCanvas(props: Props) {
             }
         });
         feedbackLayout.observe(element);
+        if (hints) feedbackLayout.observe(hints);
         if (pageDock) feedbackLayout.observe(pageDock);
         const dockSurface = pageDock?.querySelector<HTMLElement>('.page-strip-region');
         if (dockSurface) feedbackLayout.observe(dockSurface);
@@ -1799,9 +1816,19 @@ export function SceneCanvas(props: Props) {
                 right.style.visibility = 'hidden';
                 return;
             }
+            const inspector = renderer.domElement
+                .closest('.scene-workspace')
+                ?.querySelector('aside[aria-label="Bảng chỉnh sửa"]');
+            const covered = inspector
+                ? Math.max(
+                      0,
+                      renderer.domElement.getBoundingClientRect().right -
+                          inspector.getBoundingClientRect().left,
+                  )
+                : 0;
             const positions = layoutSelectionTools(
                 bounds,
-                viewport,
+                { ...viewport, width: Math.max(1, viewport.width - covered) },
                 { width: left.offsetWidth, height: left.offsetHeight },
                 { width: right.offsetWidth, height: right.offsetHeight },
             );
@@ -2067,6 +2094,7 @@ export function SceneCanvas(props: Props) {
             viewGizmo?.dispose();
             resize.disconnect();
             feedbackLayout.disconnect();
+            workbench?.style.removeProperty('--canvas-hints-height');
             viewport?.style.removeProperty('--transform-feedback-bottom');
             renderer.domElement.removeEventListener('pointerdown', pointerDown, true);
             renderer.domElement.removeEventListener('pointermove', pointerMove, true);
@@ -2180,7 +2208,7 @@ export function SceneCanvas(props: Props) {
     );
     const toolName = mode === 'translate' ? 'Di chuyển' : mode === 'rotate' ? 'Xoay' : 'Kích thước';
     return (
-        <div className="scene-stage-column relative flex min-h-0 min-w-0 flex-col bg-[var(--editor-ground)] max-[760px]:min-h-120 [.scene-editor[data-panel=preview]_&]:hidden">
+        <div className="scene-stage-column relative flex min-h-0 min-w-0 flex-col bg-[var(--editor-ground)] pb-[var(--canvas-hints-height,2.5rem)] max-[760px]:min-h-120 [.scene-editor[data-panel=preview]_&]:hidden">
             <div className="canvas-viewport relative min-h-90 flex-[1] overflow-hidden">
                 <div
                     className="scene-three-host absolute top-0 right-0 bottom-0 left-0 [touch-action:none] [&_canvas]:block [&_canvas]:size-full"
@@ -2238,7 +2266,7 @@ export function SceneCanvas(props: Props) {
                     className="pointer-events-none absolute border border-primary bg-primary/10"
                 />
                 <div
-                    className="canvas-toolbar absolute top-[18px] left-[18px] z-2 flex items-center gap-1 rounded-xl bg-surface p-1 shadow-[0_4px_14px_#00000014] [&_button.primary:disabled]:bg-primary [&_button.primary:disabled]:text-primary-foreground [&_button:disabled]:border-transparent"
+                    className="canvas-toolbar absolute top-[18px] left-[18px] z-2 flex translate-x-[var(--sidebar-toolbar-offset,0px)] items-center gap-1 rounded-xl bg-surface p-1 shadow-[0_4px_14px_#00000014] transition-[translate] duration-200 ease-out motion-reduce:transition-none [&_button.primary:disabled]:bg-primary [&_button.primary:disabled]:text-primary-foreground [&_button:disabled]:border-transparent [.workbench-body[data-sidebar-expanded=false]_&]:duration-150"
                     role="toolbar"
                     aria-label="Công cụ canvas"
                 >
@@ -2370,16 +2398,20 @@ export function SceneCanvas(props: Props) {
                 )}
             </div>
             {props.footer && (
-                <div className="canvas-footer absolute right-[18px] bottom-12 z-3">
+                <div className="canvas-footer absolute right-[18px] bottom-12 z-3 -translate-x-[var(--inspector-offset,0px)] transition-[translate] duration-200 ease-out motion-reduce:transition-none">
                     {props.footer}
                 </div>
             )}
-            <SceneCanvasHints
-                mode={mode}
-                objects={props.scene.objects.filter((object) =>
-                    props.selectedIds.includes(object.id),
+            {hintsHost &&
+                createPortal(
+                    <SceneCanvasHints
+                        mode={mode}
+                        objects={props.scene.objects.filter((object) =>
+                            props.selectedIds.includes(object.id),
+                        )}
+                    />,
+                    hintsHost,
                 )}
-            />
             <p className="sr-only" role="status" aria-live="polite">
                 Đã chọn {props.selectedIds.length} đối tượng.
             </p>

@@ -4,7 +4,6 @@ import {
     type ReactNode,
     useContext,
     useEffect,
-    useRef,
     useState,
 } from 'react';
 import { SidebarProvider } from '@/shared/ui/primitives/sidebar';
@@ -25,61 +24,38 @@ export function useSceneSidebarHover() {
 export function SceneWorkbench({ children }: { children: ReactNode }) {
     const [hovered, setHovered] = useState(false);
     const [focused, setFocused] = useState(false);
-    const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    function clearTimers() {
-        if (openTimer.current !== null) clearTimeout(openTimer.current);
-        if (closeTimer.current !== null) clearTimeout(closeTimer.current);
-        openTimer.current = null;
-        closeTimer.current = null;
-    }
-
     useEffect(() => {
         function resetHover() {
-            if (openTimer.current !== null) clearTimeout(openTimer.current);
-            if (closeTimer.current !== null) clearTimeout(closeTimer.current);
             setHovered(false);
             setFocused(false);
         }
         window.addEventListener('blur', resetHover);
-        return () => {
-            window.removeEventListener('blur', resetHover);
-            if (openTimer.current !== null) clearTimeout(openTimer.current);
-            if (closeTimer.current !== null) clearTimeout(closeTimer.current);
-        };
+        return () => window.removeEventListener('blur', resetHover);
     }, []);
 
     return (
         <HoverContext.Provider
             value={{
-                enter: () => {
-                    clearTimers();
-                    openTimer.current = setTimeout(() => setHovered(true), 100);
-                },
-                leave: () => {
-                    clearTimers();
-                    closeTimer.current = setTimeout(() => setHovered(false), 180);
-                },
-                focus: () => {
-                    clearTimers();
-                    setFocused(true);
-                },
+                enter: () => setHovered(true),
+                leave: () => setHovered(false),
+                focus: () => setFocused(true),
                 blur: () => setFocused(false),
             }}
         >
             <SidebarProvider
                 open={hovered || focused}
-                onOpenChange={(value) => {
-                    clearTimers();
-                    setHovered(value);
-                }}
-                className="workbench-body relative min-h-0 items-stretch [&>[data-slot=sidebar]]:relative [&>[data-slot=sidebar]]:w-14 [&>[data-slot=sidebar]]:shrink-0 [&_[data-slot=sidebar-gap]]:w-14 [&_[data-slot=sidebar-gap]]:transition-none"
+                data-sidebar-expanded={hovered || focused}
+                onOpenChange={setHovered}
+                className="workbench-body relative min-h-0 items-stretch [--canvas-hints-height:2.5rem] [--sidebar-toolbar-offset:0px] data-[sidebar-expanded=true]:[--sidebar-toolbar-offset:calc(var(--sidebar-width)_-_var(--sidebar-width-icon))] [&>[data-slot=sidebar]]:relative [&>[data-slot=sidebar]]:w-(--sidebar-width-icon) [&>[data-slot=sidebar]]:shrink-0 [&_[data-slot=sidebar-gap]]:w-(--sidebar-width-icon) [&_[data-slot=sidebar-gap]]:transition-none"
                 style={
-                    { '--sidebar-width': '184px', '--sidebar-width-icon': '56px' } as CSSProperties
+                    { '--sidebar-width': '208px', '--sidebar-width-icon': '72px' } as CSSProperties
                 }
             >
                 {children}
+                <div
+                    data-canvas-hints-host
+                    className="absolute inset-x-0 bottom-0 z-20 min-h-10 bg-surface [.scene-editor[data-panel=preview]_&]:hidden"
+                />
             </SidebarProvider>
         </HoverContext.Provider>
     );

@@ -110,7 +110,7 @@ export function SceneObjectsPanel({
             id="scene-object-layers"
             aria-labelledby="layers-heading"
             hidden={hidden}
-            className="scene-layers absolute right-[18px] bottom-[var(--scene-layers-bottom,100px)] z-4 col-start-1 col-end-2 flex max-h-[min(520px,calc(100%_-_var(--scene-layers-bottom,100px)_-_24px))] w-80 min-w-0 flex-col overflow-hidden rounded-xl bg-surface shadow-[0_8px_24px_#0000001a] [&[hidden]]:hidden"
+            className="scene-layers absolute right-[18px] bottom-[var(--scene-layers-bottom,100px)] z-4 col-start-1 col-end-2 flex max-h-[min(520px,calc(100%_-_var(--scene-layers-bottom,100px)_-_24px))] w-80 min-w-0 -translate-x-[var(--inspector-offset,0px)] flex-col overflow-hidden rounded-xl bg-surface shadow-[0_8px_24px_#0000001a] transition-[translate] duration-200 ease-out motion-reduce:transition-none [&[hidden]]:hidden"
             onKeyDown={(event) => {
                 if (event.defaultPrevented || event.key !== 'Escape') return;
                 event.preventDefault();

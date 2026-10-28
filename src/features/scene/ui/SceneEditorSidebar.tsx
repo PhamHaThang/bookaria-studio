@@ -38,10 +38,11 @@ const tools = [
 ] as const;
 
 const itemClass =
-    'h-10 gap-3 rounded-lg px-1.5 text-[14px] group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:justify-center [&_svg]:size-7';
+    'h-10 gap-3 rounded-lg px-1.5 text-[14px] group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:p-1.5! transition-colors [&_svg]:size-7';
 const menuClass = 'gap-4';
 const iconStrokeWidth = 1.5;
-const labelClass = 'group-data-[collapsible=icon]:sr-only';
+const labelClass =
+    'min-w-0 whitespace-nowrap transition-opacity duration-150 group-data-[collapsible=icon]:opacity-0 motion-reduce:transition-none';
 
 function SidebarSectionLabel({
     children,
@@ -63,7 +64,7 @@ function SidebarSectionLabel({
             {divider && (
                 <SidebarSeparator
                     aria-hidden="true"
-                    className="absolute inset-x-0 top-1/2 mx-0 hidden h-px group-data-[collapsible=icon]:block"
+                    className="absolute top-1/2 left-0 mx-0 h-px w-10 transition-opacity duration-150 group-data-[state=expanded]:opacity-0 motion-reduce:transition-none"
                 />
             )}
         </SidebarGroupLabel>
@@ -102,7 +103,7 @@ export function SceneEditorSidebar({
             collapsible="icon"
             role="complementary"
             aria-label="Công cụ editor"
-            className="scene-add absolute inset-y-0 left-0 h-[calc(100dvh_-_76px)] min-h-125 overflow-hidden border-border border-r group-data-[state=expanded]:border-transparent group-data-[state=expanded]:shadow-[4px_0_16px_#00000014] motion-reduce:transition-none"
+            className="scene-add absolute top-0 left-0 h-[calc(100dvh_-_76px_-_var(--canvas-hints-height,2.5rem))] min-h-0 w-(--sidebar-width)! overflow-hidden border-0! transition-[clip-path] duration-200 ease-out [clip-path:inset(0_-24px_0_0)] before:pointer-events-none before:absolute before:inset-y-0 before:left-[calc(var(--sidebar-width-icon)_-_1px)] before:z-1 before:w-px before:bg-border before:transition-opacity before:duration-150 group-data-[collapsible=icon]:w-(--sidebar-width)! group-data-[state=expanded]:shadow-[4px_0_16px_#00000014] group-data-[collapsible=icon]:duration-150 group-data-[state=expanded]:before:opacity-0 motion-reduce:transition-none motion-reduce:before:transition-none group-data-[collapsible=icon]:[clip-path:inset(0_calc(var(--sidebar-width)_-_var(--sidebar-width-icon))_0_0)] [.scene-editor[data-panel=preview]_&]:h-[calc(100dvh_-_76px)]"
             onPointerEnter={(event) => {
                 if (event.pointerType !== 'touch') enter();
             }}
@@ -119,7 +120,7 @@ export function SceneEditorSidebar({
                 id="scene-sidebar-content"
                 className="justify-center-safe gap-3 py-0 group-data-[collapsible=icon]:overflow-y-auto"
             >
-                <SidebarGroup className="shrink-0 py-0">
+                <SidebarGroup className="shrink-0 px-[calc((var(--sidebar-width-icon)_-_2.5rem)/2)] py-0">
                     <SidebarSectionLabel>Thêm đối tượng</SidebarSectionLabel>
                     <SidebarGroupContent>
                         <SidebarMenu className={menuClass}>
@@ -143,7 +144,7 @@ export function SceneEditorSidebar({
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
-                <SidebarGroup className="shrink-0 py-0">
+                <SidebarGroup className="shrink-0 px-[calc((var(--sidebar-width-icon)_-_2.5rem)/2)] py-0">
                     <SidebarSectionLabel divider>Tương tác và AR</SidebarSectionLabel>
                     <SidebarGroupContent>
                         <SidebarMenu className={menuClass}>
@@ -176,7 +177,7 @@ export function SceneEditorSidebar({
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>
-            <SidebarFooter className="shrink-0 border-border border-t p-2">
+            <SidebarFooter className="shrink-0 border-border border-t px-[calc((var(--sidebar-width-icon)_-_2.5rem)/2)] py-2">
                 <SidebarMenu className={menuClass}>
                     <SidebarMenuItem>
                         <SidebarMenuButton
