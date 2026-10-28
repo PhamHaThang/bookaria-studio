@@ -248,7 +248,7 @@ export function PageStrip({
         <div className="page-strip-region pointer-events-auto relative w-max max-w-[min(100%,40rem)] rounded-2xl border border-border bg-surface p-2.5">
             <nav
                 data-page-dragging={Boolean(draggingId)}
-                className="editor-page-dock flex min-w-0 max-w-full items-center gap-1"
+                className="editor-page-dock flex min-w-0 max-w-full items-start gap-1"
                 aria-label="Các trang trong sách"
             >
                 <fieldset
@@ -274,7 +274,7 @@ export function PageStrip({
                     }}
                 >
                     {listing.isPending && (
-                        <div className="flex items-center gap-2" role="status" aria-busy="true">
+                        <div className="flex items-center gap-2 p-1" role="status" aria-busy="true">
                             <span className="sr-only">Đang tải các trang…</span>
                             {[0, 1, 2].map((index) => (
                                 <Skeleton key={index} className="size-14 shrink-0 rounded-xl" />
@@ -438,7 +438,7 @@ export function PageStrip({
                 <Tooltip delayDuration={250}>
                     <TooltipTrigger asChild>
                         <span
-                            className="inline-flex shrink-0 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+                            className="mt-2 inline-flex shrink-0 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
                             tabIndex={dirty ? 0 : undefined}
                         >
                             <ActionButton
