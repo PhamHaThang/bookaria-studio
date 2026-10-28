@@ -21,6 +21,7 @@ import { annotationConnectorSide } from '@/shared/scene/annotation-connector';
 import { createAudioCard } from '@/shared/scene/audio-card';
 import { facesCamera } from '@/shared/scene/audio-kind';
 import { createBillboard } from '@/shared/scene/billboard';
+import { createPageLighting } from '@/shared/scene/page-lighting';
 import { createTextVisual, disposeTextVisual } from '@/shared/scene/text-renderer';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import { Separator } from '@/shared/ui/primitives/separator';
@@ -83,6 +84,8 @@ type Props = {
     onPlaceAnnotation: (placement: AnnotationPlacement) => void;
     onCancelAnnotationPlacement: () => void;
     page: Page;
+    lighting?: Page['settings']['lighting'];
+    imageUrl?: string;
     aspect: number;
     scene: Scene;
     assets: Record<string, AssetRef>;
@@ -157,7 +160,7 @@ export function SceneCanvas(props: Props) {
                 ?.querySelector<HTMLElement>('[data-canvas-hints-host]') ?? null,
         );
     }, []);
-    // biome-ignore lint/correctness/useExhaustiveDependencies: Recreate GPU resources when the page image or geometry changes; other props are read through latest.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: Recreate GPU resources only for page identity or geometry; textures and other props sync through latest.
     useEffect(() => {
         setIssues({});
         setLoading(0);
@@ -321,11 +324,10 @@ export function SceneCanvas(props: Props) {
         );
         renderer.domElement.tabIndex = 0;
         element.append(renderer.domElement);
-        const ambient = new THREE.HemisphereLight(0xffffff, 0x57665c, 2.2);
-        scene.add(ambient);
-        const light = new THREE.DirectionalLight(0xffffff, 2.5);
-        light.position.set(2, 3, 4);
-        scene.add(light);
+        const lighting = createPageLighting(
+            latest.current.lighting ?? latest.current.page.settings.lighting,
+        );
+        scene.add(lighting.group);
         const grid = new THREE.GridHelper(
             4,
             40,
@@ -351,26 +353,39 @@ export function SceneCanvas(props: Props) {
         scene.add(paper);
         const paperTexture = new THREE.TextureLoader();
         paperTexture.setCrossOrigin('anonymous');
-        paperTexture.load(
-            latest.current.page.image.url,
-            (texture) => {
-                if (disposed) {
-                    texture.dispose();
-                    return;
-                }
-                texture.colorSpace = THREE.SRGBColorSpace;
-                paper.material.map = texture;
-                paper.material.needsUpdate = true;
-            },
-            undefined,
-            () => {
-                if (!disposed)
-                    setIssues((current) => ({
-                        ...current,
-                        page: 'Không tải được ảnh trang. Kiểm tra kết nối và tải lại trang.',
-                    }));
-            },
-        );
+        let paperSource = '';
+        function updatePaperImage(source: string) {
+            if (source === paperSource) return;
+            paperSource = source;
+            paperTexture.load(
+                source,
+                (texture) => {
+                    if (disposed || source !== paperSource) {
+                        texture.dispose();
+                        return;
+                    }
+                    texture.colorSpace = THREE.SRGBColorSpace;
+                    const previous = paper.material.map;
+                    paper.material.map = texture;
+                    paper.material.needsUpdate = true;
+                    previous?.dispose();
+                    setIssues((current) => {
+                        if (!current.page) return current;
+                        const next = { ...current };
+                        delete next.page;
+                        return next;
+                    });
+                },
+                undefined,
+                () => {
+                    if (!disposed && source === paperSource)
+                        setIssues((current) => ({
+                            ...current,
+                            page: 'Không tải được ảnh trang. Kiểm tra kết nối và chọn lại ảnh.',
+                        }));
+                },
+            );
+        }
         const outline = new THREE.Box3Helper(new THREE.Box3(), themeColor('--action-primary'));
         outline.visible = false;
         const outlineSpace = new THREE.Group();
@@ -752,6 +767,8 @@ export function SceneCanvas(props: Props) {
         function sync() {
             if (disposed) return;
             const value = latest.current;
+            updatePaperImage(value.imageUrl ?? value.page.image.url);
+            lighting.setPreset(value.lighting ?? value.page.settings.lighting);
             if (placingAnnotation !== Boolean(value.annotationToPlace)) {
                 placingAnnotation = Boolean(value.annotationToPlace);
                 renderer.domElement.style.cursor = placingAnnotation ? 'crosshair' : '';
@@ -2129,7 +2146,7 @@ export function SceneCanvas(props: Props) {
             renderer.dispose();
             renderer.domElement.remove();
         };
-    }, [props.page.id, props.page.image.url, props.aspect]);
+    }, [props.page.id, props.aspect]);
     useEffect(() => {
         api.current?.sync();
     });

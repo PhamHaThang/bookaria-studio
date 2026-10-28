@@ -18,7 +18,7 @@ import { profileKey } from '../features/profile';
 import { SceneEditor } from '../features/scene';
 import { errorMessage } from '../shared/api/errors';
 import { IdSchema } from '../shared/contracts/common.schema';
-import type { BookDetail, Page } from '../shared/contracts/dto.schema';
+import type { Asset, BookDetail, Page } from '../shared/contracts/dto.schema';
 import { defaultMarkerTransform, markerToMm } from '../shared/contracts/marker.schema';
 import { Button } from '../shared/ui/Button';
 import { Feedback } from '../shared/ui/Feedback';
@@ -116,6 +116,40 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
             onProgress: context.onProgress,
         });
     }
+    async function replaceBackground(asset: Asset, context: ImageAttachmentContext) {
+        const markerMindPublicId =
+            page.markerMode === 'CUSTOM_MARKER' ? await mind(asset.url, context) : undefined;
+        context.signal.throwIfAborted();
+        context.onStage('saving');
+        const result = await pagesApi.replaceImage(page.id, {
+            imageAssetId: asset.id,
+            markerMindPublicId,
+        });
+        context.signal.throwIfAborted();
+        if (auth.store.getState().user?.id !== user?.id) return;
+        checkpoint.current = null;
+        cache.setQueryData<Page>(pageKeys.detail(user?.id || '', page.id), (current) =>
+            current
+                ? {
+                      ...current,
+                      ...result.page,
+                      image: {
+                          url: asset.url,
+                          width:
+                              typeof asset.meta.width === 'number' && asset.meta.width > 0
+                                  ? asset.meta.width
+                                  : current.image.width,
+                          height:
+                              typeof asset.meta.height === 'number' && asset.meta.height > 0
+                                  ? asset.meta.height
+                                  : current.image.height,
+                      },
+                  }
+                : current,
+        );
+        if (result.jobId) setJobId(result.jobId);
+        await refresh();
+    }
     async function run(action: (signal: AbortSignal) => Promise<void>, message: string) {
         if (locked || controller.current) return;
         const active = new AbortController();
@@ -205,6 +239,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                     disabled={busy || imageBusy || scoring}
                     onBusyChange={setSceneBusy}
                     onRecognition={() => setMode('page')}
+                    onReplacePageImage={replaceBackground}
                 />
             </div>
             <div hidden={mode !== 'page'}>
@@ -537,20 +572,9 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                                         queryKey: profileKey(user?.id || ''),
                                     });
                                 }}
-                                onAttach={async (asset, _form, context) => {
-                                    const markerMindPublicId =
-                                        page.markerMode === 'CUSTOM_MARKER'
-                                            ? await mind(asset.url, context)
-                                            : undefined;
-                                    context.signal.throwIfAborted();
-                                    context.onStage('saving');
-                                    const result = await pagesApi.replaceImage(page.id, {
-                                        imageAssetId: asset.id,
-                                        markerMindPublicId,
-                                    });
-                                    if (result.jobId) setJobId(result.jobId);
-                                    await refresh();
-                                }}
+                                onAttach={(asset, _form, context) =>
+                                    replaceBackground(asset, context)
+                                }
                             />
                         </section>
                     </div>

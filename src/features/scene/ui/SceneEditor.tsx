@@ -51,6 +51,7 @@ import { Button } from '../../../shared/ui/Button';
 import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { BookInfoDialog } from '../../books/ui/BookInfoDialog';
+import type { ImageAttachmentContext } from '../../pages/ui/PageImageForm';
 import { PreviewPanel } from '../../preview/ui/PreviewPanel';
 import { PublicationPanel } from '../../publication/ui/PublicationPanel';
 import { type AnnotationObject, placeAnnotation } from '../model/annotation-placement';
@@ -80,7 +81,11 @@ import { AssetPicker } from './AssetPicker';
 import { InteractionEditor } from './InteractionEditor';
 import { NavigationGuard } from './NavigationGuard';
 import { ObjectEditor } from './ObjectEditor';
-import { PageSettingsEditor, type PageSettingsEditorHandle } from './PageSettingsEditor';
+import {
+    type PageSettingsDraftView,
+    PageSettingsEditor,
+    type PageSettingsEditorHandle,
+} from './PageSettingsEditor';
 import { PageStrip } from './PageStrip';
 import { SceneCanvas, type SceneCanvasHandle } from './SceneCanvas';
 import { SceneEditorSidebar } from './SceneEditorSidebar';
@@ -100,12 +105,14 @@ export function SceneEditor({
     disabled,
     onBusyChange,
     onRecognition,
+    onReplacePageImage,
 }: {
     page: Page;
     book: BookDetail;
     disabled: boolean;
     onBusyChange: (busy: boolean) => void;
     onRecognition: () => void;
+    onReplacePageImage: (asset: Asset, context: ImageAttachmentContext) => Promise<void>;
 }) {
     const editor = useSceneDraft(page);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -143,6 +150,8 @@ export function SceneEditor({
     const [deleting, setDeleting] = useState<SceneObject[] | null>(null),
         [resetting, setResetting] = useState(false);
     const settingsEditor = useRef<PageSettingsEditorHandle>(null);
+    const [settingsDraft, setSettingsDraft] = useState<PageSettingsDraftView | null>(null);
+    const displayTitle = settingsDraft?.title ?? page.title;
     const [settingsDirty, setSettingsDirty] = useState(false),
         [settingsBusy, setSettingsBusy] = useState(false);
     useEffect(() => {
@@ -208,15 +217,26 @@ export function SceneEditor({
         });
         return () => cancelAnimationFrame(frame);
     }, [inspectorVisible]);
+    function runOutsideSettings(action: () => void) {
+        if (panel === 'settings' && settingsDirty) settingsEditor.current?.confirmLeave(action);
+        else action();
+    }
+    function changePanel(next: typeof panel) {
+        if (next !== panel) runOutsideSettings(() => setPanel(next));
+    }
     function selectMany(ids: string[], mode: SelectionMode = 'replace') {
-        if (ids.length > 0 && panel !== 'preview') setPanel('properties');
-        setSelectedIds((current) =>
-            updateSelection(
-                current.filter((id) => editor.draft.objects.some((item) => item.id === id)),
-                ids,
-                mode,
-            ),
-        );
+        const select = () => {
+            if (ids.length > 0 && panel !== 'preview') setPanel('properties');
+            setSelectedIds((current) =>
+                updateSelection(
+                    current.filter((id) => editor.draft.objects.some((item) => item.id === id)),
+                    ids,
+                    mode,
+                ),
+            );
+        };
+        if (ids.length > 0) runOutsideSettings(select);
+        else select();
     }
     const sceneAssets = useSceneAssets(editor.draft, { ...page.assets, ...assets });
     const validation = SceneSchema.safeParse(editor.draft);
@@ -306,11 +326,26 @@ export function SceneEditor({
             setError(errorMessage(cause));
         }
     }
+    async function savePage() {
+        if (
+            blocked ||
+            !SceneSchema.safeParse(editor.draft).success ||
+            editor.conflict ||
+            editor.uncertain
+        )
+            return false;
+        if (settingsDirty && (!settingsEditor.current || !(await settingsEditor.current.save()))) {
+            setPanel('settings');
+            return false;
+        }
+        return commands.current.editor.dirty ? commands.current.editor.save() : true;
+    }
     const commands = useRef({
         editor,
         blocked,
         selection,
         duplicateChosen,
+        savePage,
         canvas: null as SceneCanvasHandle | null,
         layersButton: null as HTMLButtonElement | null,
         shortcutsButton: null as HTMLButtonElement | null,
@@ -322,6 +357,7 @@ export function SceneEditor({
         blocked,
         selection,
         duplicateChosen,
+        savePage,
         canvas: commands.current.canvas,
         layersButton: commands.current.layersButton,
         shortcutsButton: commands.current.shortcutsButton,
@@ -346,7 +382,7 @@ export function SceneEditor({
             if (modifier && event.key.toLowerCase() === 's') {
                 event.preventDefault();
                 if (!state.blocked && SceneSchema.safeParse(state.editor.draft).success)
-                    void state.editor.save();
+                    void state.savePage();
                 return;
             }
             if (typing || state.blocked) return;
@@ -454,8 +490,8 @@ export function SceneEditor({
                         </h1>
                         <p className="m-0 max-w-full truncate text-muted-foreground text-xs leading-4">
                             Trang {page.orderIndex + 1}
-                            {page.title && page.title.trim() !== `Trang ${page.orderIndex + 1}`
-                                ? ` · ${page.title}`
+                            {displayTitle && displayTitle.trim() !== `Trang ${page.orderIndex + 1}`
+                                ? ` · ${displayTitle}`
                                 : ''}
                         </p>
                     </div>
@@ -567,18 +603,18 @@ export function SceneEditor({
                                     size="sm"
                                     className="h-10 min-w-26"
                                     aria-label="Lưu nội dung"
-                                    aria-busy={editor.busy}
+                                    aria-busy={editor.busy || settingsBusy}
                                     disabled={
                                         disabled ||
                                         settingsBusy ||
                                         Boolean(annotationPlacement) ||
-                                        !editor.dirty ||
+                                        (!editor.dirty && !settingsDirty) ||
                                         !validation.success ||
                                         editor.conflict ||
                                         editor.uncertain ||
                                         editor.busy
                                     }
-                                    onClick={() => void editor.save()}
+                                    onClick={() => void savePage()}
                                 >
                                     <Save data-icon="inline-start" /> Lưu
                                 </Button>
@@ -595,7 +631,7 @@ export function SceneEditor({
                         className="editor-preview h-10 min-w-32 shrink-0"
                         disabled={Boolean(annotationPlacement)}
                         aria-controls={panel === 'preview' ? 'panel-properties' : 'panel-preview'}
-                        onClick={() => setPanel(panel === 'preview' ? 'properties' : 'preview')}
+                        onClick={() => changePanel(panel === 'preview' ? 'properties' : 'preview')}
                     >
                         {panel === 'preview' ? (
                             <>
@@ -730,14 +766,16 @@ export function SceneEditor({
                     disabled={Boolean(blocked)}
                     objectLimitReached={editor.draft.objects.length >= SCENE_LIMITS.hardMaxObjects}
                     helpOpen={helpOpen}
-                    onAdd={(type) => {
-                        if (usesAsset(type)) setPicker({ type });
-                        else if (type === 'text') setTextDialog({ start: 'text' });
-                        else insert(type);
-                    }}
-                    onInteractions={() => setPanel('interactions')}
-                    onRecognition={onRecognition}
-                    onSettings={() => setPanel('settings')}
+                    onAdd={(type) =>
+                        runOutsideSettings(() => {
+                            if (usesAsset(type)) setPicker({ type });
+                            else if (type === 'text') setTextDialog({ start: 'text' });
+                            else insert(type);
+                        })
+                    }
+                    onInteractions={() => changePanel('interactions')}
+                    onRecognition={() => runOutsideSettings(onRecognition)}
+                    onSettings={() => changePanel('settings')}
                     onShortcuts={() => setHelpOpen(true)}
                     shortcutsRef={(element) => {
                         commands.current.shortcutsButton = element;
@@ -782,6 +820,8 @@ export function SceneEditor({
                         }}
                     />
                     <SceneCanvas
+                        lighting={settingsDraft?.lighting ?? page.settings.lighting}
+                        imageUrl={settingsDraft?.imageUrl ?? page.image.url}
                         audioStore={commands.current.audio}
                         loadStore={commands.current.loads}
                         onRemoveObject={(id) => {
@@ -890,7 +930,7 @@ export function SceneEditor({
                         <Tabs
                             className="gap-0"
                             value={panel}
-                            onValueChange={(value) => setPanel(value as typeof panel)}
+                            onValueChange={(value) => changePanel(value as typeof panel)}
                             asChild
                         >
                             <aside
@@ -906,24 +946,28 @@ export function SceneEditor({
                                         count={selection.length}
                                         pageNumber={page.orderIndex + 1}
                                         disabled={Boolean(blocked)}
-                                        onBack={() => {
-                                            setPanel('properties');
-                                            const focusTarget = selection.length
-                                                ? document.getElementById('inspector-heading')
-                                                : document.querySelector<HTMLCanvasElement>(
-                                                      '.scene-three-host canvas',
-                                                  );
-                                            focusTarget?.focus({ preventScroll: true });
-                                        }}
-                                        onClear={() => {
-                                            setSelectedId('');
-                                            setPanel('properties');
-                                            document
-                                                .querySelector<HTMLCanvasElement>(
-                                                    '.scene-three-host canvas',
-                                                )
-                                                ?.focus({ preventScroll: true });
-                                        }}
+                                        onBack={() =>
+                                            runOutsideSettings(() => {
+                                                setPanel('properties');
+                                                const focusTarget = selection.length
+                                                    ? document.getElementById('inspector-heading')
+                                                    : document.querySelector<HTMLCanvasElement>(
+                                                          '.scene-three-host canvas',
+                                                      );
+                                                focusTarget?.focus({ preventScroll: true });
+                                            })
+                                        }
+                                        onClear={() =>
+                                            runOutsideSettings(() => {
+                                                setSelectedId('');
+                                                setPanel('properties');
+                                                document
+                                                    .querySelector<HTMLCanvasElement>(
+                                                        '.scene-three-host canvas',
+                                                    )
+                                                    ?.focus({ preventScroll: true });
+                                            })
+                                        }
                                     />
                                     <TabsContent value="properties" forceMount asChild>
                                         <section
@@ -1066,24 +1110,6 @@ export function SceneEditor({
                                             />
                                         </section>
                                     </TabsContent>
-                                    <TabsContent value="settings" forceMount asChild>
-                                        <section
-                                            id="panel-settings"
-                                            hidden={panel !== 'settings'}
-                                            aria-labelledby="inspector-heading"
-                                            className="inspector-panel min-h-0 flex-1 overflow-y-auto p-4"
-                                        >
-                                            <PageSettingsEditor
-                                                ref={settingsEditor}
-                                                page={page}
-                                                disabled={
-                                                    disabled || editor.busy || editor.uncertain
-                                                }
-                                                onDirtyChange={setSettingsDirty}
-                                                onBusyChange={setSettingsBusy}
-                                            />
-                                        </section>
-                                    </TabsContent>
                                     <TabsContent value="preview" forceMount asChild>
                                         <section
                                             id="panel-preview"
@@ -1101,6 +1127,33 @@ export function SceneEditor({
                                         </section>
                                     </TabsContent>
                                 </SceneInspectorContent>
+                                <TabsContent value="settings" forceMount asChild>
+                                    <section
+                                        id="panel-settings"
+                                        hidden={panel !== 'settings'}
+                                        aria-labelledby="inspector-heading"
+                                        className="inspector-panel flex min-h-0 flex-1 flex-col overflow-hidden"
+                                    >
+                                        <PageSettingsEditor
+                                            ref={settingsEditor}
+                                            page={page}
+                                            active={panel === 'settings'}
+                                            onReplaceImage={onReplacePageImage}
+                                            onDraftChange={setSettingsDraft}
+                                            disabled={
+                                                disabled ||
+                                                editor.busy ||
+                                                editor.uncertain ||
+                                                publicationBusy ||
+                                                pagesBusy ||
+                                                infoBusy ||
+                                                transforming
+                                            }
+                                            onDirtyChange={setSettingsDirty}
+                                            onBusyChange={setSettingsBusy}
+                                        />
+                                    </section>
+                                </TabsContent>
                             </aside>
                         </Tabs>
                     </div>

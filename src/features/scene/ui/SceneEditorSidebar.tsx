@@ -184,7 +184,8 @@ export function SceneEditorSidebar({
                                     type="button"
                                     className={itemClass}
                                     aria-label="Thiết lập trang"
-                                    aria-pressed={activePanel === 'settings'}
+                                    aria-controls="panel-settings"
+                                    aria-expanded={activePanel === 'settings'}
                                     isActive={activePanel === 'settings'}
                                     onClick={onSettings}
                                 >

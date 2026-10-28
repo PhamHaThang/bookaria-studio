@@ -51,10 +51,10 @@ export function SceneInspectorHeader({
         ? count > 1
             ? 'Thuộc tính nhóm'
             : meta?.title || 'Thuộc tính đối tượng'
-        : panel === 'interactions'
-          ? 'Tương tác của trang'
-          : panel === 'settings'
-            ? 'Thiết lập trang'
+        : panel === 'settings'
+          ? 'Thiết lập trang'
+          : panel === 'interactions'
+            ? 'Tương tác của trang'
             : 'Xem trước';
     const subtitle = properties
         ? count > 1
@@ -67,15 +67,15 @@ export function SceneInspectorHeader({
             : selected
               ? icons[selected.type]
               : MousePointer2
-        : panel === 'interactions'
-          ? Zap
-          : panel === 'settings'
-            ? Settings2
+        : panel === 'settings'
+          ? Settings2
+          : panel === 'interactions'
+            ? Zap
             : Eye;
 
     return (
         <header className="inspector-heading flex min-h-20 shrink-0 items-center gap-3 border-border border-b bg-surface px-4 py-4">
-            {!properties && (
+            {!properties && panel !== 'settings' && (
                 <Button
                     variant="ghost"
                     size="icon-sm"
@@ -107,11 +107,11 @@ export function SceneInspectorHeader({
                     aria-label="Đối tượng đã khóa"
                 />
             )}
-            {properties && count > 0 && (
+            {((properties && count > 0) || panel === 'settings') && (
                 <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Bỏ chọn đối tượng"
+                    aria-label={panel === 'settings' ? 'Đóng thiết lập trang' : 'Bỏ chọn đối tượng'}
                     disabled={disabled}
                     onClick={onClear}
                 >
