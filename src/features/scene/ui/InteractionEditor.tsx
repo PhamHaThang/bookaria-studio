@@ -1,38 +1,65 @@
-import { ArrowDown, ArrowUp } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { Alert } from '@/shared/ui/Alert';
-import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
-import { Disclosure } from '@/shared/ui/Disclosure';
-import { FormSelect } from '@/shared/ui/FormSelect';
-import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
-import { Button as ActionButton } from '@/shared/ui/primitives/button';
-import { Checkbox } from '@/shared/ui/primitives/checkbox';
-import { Field, FieldLabel } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
-import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import {
-    type Action,
+    ArrowDown,
+    ArrowUp,
+    Copy,
+    MoreHorizontal,
+    MousePointer2,
+    Plus,
+    Trash2,
+    Zap,
+} from 'lucide-react';
+import { useState } from 'react';
+import type { AssetRef } from '@/shared/contracts/asset.schema';
+import {
     findSceneReferenceIssues,
     type InteractionRule,
     InteractionRuleSchema,
     SCENE_LIMITS,
     type Scene,
+    type SceneObject,
     type Trigger,
-} from '../../../shared/contracts/scene.schema';
-import { Button } from '../../../shared/ui/Button';
+} from '@/shared/contracts/scene.schema';
+import { Alert } from '@/shared/ui/Alert';
+import { Button } from '@/shared/ui/Button';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { Disclosure } from '@/shared/ui/Disclosure';
+import { FormSelect } from '@/shared/ui/FormSelect';
+import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
+import { Badge } from '@/shared/ui/primitives/badge';
+import { Button as ActionButton } from '@/shared/ui/primitives/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/shared/ui/primitives/dropdown-menu';
+import {
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from '@/shared/ui/primitives/empty';
+import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import { Input } from '@/shared/ui/primitives/input';
+import { Switch } from '@/shared/ui/primitives/switch';
+import {
+    type InteractionScope,
+    moveScopedRule,
+    rulesInScope,
+    ruleTriggerLabel,
+    scopedRule,
+} from '../model/interaction-scope';
 import {
     actionLabels,
-    appendAction,
     appendRule,
     copyRule,
-    moveItem,
-    newAction,
-    newRule,
-    removeAction,
     targetObjects,
     triggerLabels,
 } from '../model/interactions';
-import { InteractionActionEditor } from './InteractionActionEditor';
+import { InteractionActionStack } from './InteractionActionStack';
+import { InteractionScopeFilter } from './InteractionScopeFilter';
 import { InteractionTarget } from './InteractionTarget';
 
 export function InteractionEditor({
@@ -40,27 +67,35 @@ export function InteractionEditor({
     assets,
     disabled,
     onChange,
+    object,
+    onShowPageRules,
 }: {
     scene: Scene;
     assets: Record<string, AssetRef>;
     disabled: boolean;
     onChange: (scene: Scene) => void;
+    object?: SceneObject;
+    onShowPageRules: () => void;
 }) {
-    const actionKeys = useRef(new WeakMap<Action, string>());
-    function actionKey(action: Action) {
-        let key = actionKeys.current.get(action);
-        if (!key) {
-            key = crypto.randomUUID();
-            actionKeys.current.set(action, key);
-        }
-        return key;
-    }
-    const [selectedId, setSelectedId] = useState(scene.interactions[0]?.id || '');
+    const [filter, setFilter] = useState<InteractionScope>({ type: 'all' });
+    const [selectedId, setSelectedId] = useState('');
     const [deleting, setDeleting] = useState<InteractionRule | null>(null);
-    const selected =
-        scene.interactions.find((rule) => rule.id === selectedId) || scene.interactions[0];
-    const issues = findSceneReferenceIssues(scene);
+    const scope: InteractionScope = object ? { type: 'object', objectId: object.id } : filter;
+    const rules = rulesInScope(scene.interactions, scope);
+    const selected = rules.find((rule) => rule.id === selectedId) || rules[0];
+    const selectedIndex = selected ? rules.indexOf(selected) : -1;
+    const issues = findSceneReferenceIssues(scene).filter((issue) =>
+        rules.some((rule) => rule.id === issue.interactionId),
+    );
     const validation = selected ? InteractionRuleSchema.safeParse(selected) : null;
+    const trigger = selected?.trigger;
+    const source =
+        trigger?.type === 'onTap'
+            ? scene.objects.find((item) => item.id === trigger.objectId)
+            : undefined;
+    const canAdd =
+        scope.type !== 'object' ||
+        targetObjects(scene.objects, 'onTap').some((item) => item.id === scope.objectId);
     const changeRules = (interactions: InteractionRule[]) => {
         if (!disabled) onChange({ ...scene, interactions });
     };
@@ -72,62 +107,91 @@ export function InteractionEditor({
                 ),
             );
     };
+    function addRule() {
+        if (disabled || !canAdd || scene.interactions.length >= SCENE_LIMITS.maxRules) return;
+        const rule = scopedRule(crypto.randomUUID(), scope, scene.objects);
+        changeRules(appendRule(scene.interactions, rule));
+        setSelectedId(rule.id);
+    }
+    const fixedSource = scope.type === 'object';
     return (
         <section
-            className="scene-interactions mt-6 border-t-[1px] border-t-border pt-5 [border-top-style:solid] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [.workbench-panel_&]:m-0 [.workbench-panel_&]:border-0 [.workbench-panel_&]:border-[transparent] [.workbench-panel_&]:border-solid [.workbench-panel_&]:p-0"
-            aria-labelledby="interaction-heading"
+            className="scene-interactions flex min-w-0 flex-col gap-5"
+            aria-label={object ? 'Tương tác của đối tượng' : 'Quy tắc tương tác của trang'}
+            data-scope={scope.type}
         >
-            <div className="scene-heading flex flex-wrap items-start justify-between gap-4 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_p]:m-0 [&_p]:text-muted-foreground">
-                <div>
-                    <h3 id="interaction-heading">Quy tắc tương tác</h3>
-                    <p>
-                        {scene.interactions.length} / {SCENE_LIMITS.maxRules} quy tắc. Lưu cùng nội
-                        dung AR ở đầu trang.
-                    </p>
-                </div>
-                <Button
-                    variant="secondary"
-                    disabled={disabled || scene.interactions.length >= SCENE_LIMITS.maxRules}
-                    onClick={() => {
-                        const rule = newRule(crypto.randomUUID());
-                        changeRules(appendRule(scene.interactions, rule));
-                        setSelectedId(rule.id);
+            {!object && (
+                <InteractionScopeFilter
+                    scope={filter}
+                    objects={scene.objects}
+                    rules={scene.interactions}
+                    onChange={(next) => {
+                        setFilter(next);
+                        setSelectedId('');
                     }}
+                />
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="m-0 text-muted-foreground text-xs" role="status">
+                    {rules.length} quy tắc{object ? ' của đối tượng' : ''} ·{' '}
+                    {scene.interactions.length}/{SCENE_LIMITS.maxRules} trên trang
+                </p>
+                <Button
+                    size="sm"
+                    disabled={
+                        disabled || !canAdd || scene.interactions.length >= SCENE_LIMITS.maxRules
+                    }
+                    onClick={addRule}
                 >
-                    Thêm quy tắc
+                    <Plus data-icon="inline-start" />
+                    {object ? 'Thêm tương tác' : 'Thêm quy tắc'}
                 </Button>
             </div>
-            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
-                Chọn sự kiện bắt đầu, rồi xếp các hành động theo thứ tự. Mở Xem trước để thử tương
-                tác. Dùng “Chờ” để tạo khoảng nghỉ giữa các hành động.
-            </p>
-            {!scene.interactions.length && (
-                <p>
-                    Chưa có quy tắc. Thêm quy tắc đầu tiên, ví dụ khi chạm vùng chạm thì phát âm
-                    thanh.
-                </p>
+            {object?.type === 'audio' && (
+                <Alert tone="info">
+                    <p>
+                        Thẻ âm thanh dùng để phát nhạc. Hãy tạo quy tắc từ trang hoặc một đối tượng
+                        khác để điều khiển âm thanh này.
+                    </p>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                            setFilter({ type: 'all' });
+                            onShowPageRules();
+                        }}
+                    >
+                        Xem quy tắc toàn trang
+                    </Button>
+                </Alert>
+            )}
+            {!rules.length && object?.type !== 'audio' && (
+                <Empty className="min-h-40 px-2 py-6">
+                    <EmptyHeader>
+                        <EmptyMedia>
+                            <Zap className="size-7" aria-hidden="true" />
+                        </EmptyMedia>
+                        <EmptyTitle>Chưa có tương tác</EmptyTitle>
+                        <EmptyDescription>
+                            {scope.type === 'object' && !scope.objectId
+                                ? 'Chọn đối tượng bắt đầu để xem và thêm quy tắc.'
+                                : object
+                                  ? 'Thêm tương tác để chọn điều gì xảy ra khi người đọc chạm vào đối tượng này.'
+                                  : 'Thêm quy tắc, chọn sự kiện rồi xếp các hành động theo thứ tự.'}
+                        </EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
             )}
             {issues.length > 0 && (
-                <Alert tone="danger" className="my-4">
-                    <p>
-                        Có đích không còn phù hợp. Có thể lưu bản nháp; cần sửa trước khi xuất bản,
-                        kể cả quy tắc đang tắt.
-                    </p>
+                <Alert tone="danger">
+                    <p>Có đích cần sửa trước khi xuất bản, kể cả quy tắc đang tắt.</p>
                     <ul>
                         {issues.map((issue) => (
                             <li key={`${issue.interactionId}-${issue.actionIndex ?? 'trigger'}`}>
                                 <ActionButton
                                     variant="plain"
-                                    type="button"
-                                    className="interaction-issue-link cursor-pointer border-0 border-[transparent] border-solid bg-[transparent] px-0 py-2 text-left text-[inherit] underline"
-                                    onClick={() => {
-                                        setSelectedId(issue.interactionId);
-                                        requestAnimationFrame(() =>
-                                            document
-                                                .getElementById(`rule-${issue.interactionId}`)
-                                                ?.focus(),
-                                        );
-                                    }}
+                                    className="h-auto whitespace-normal text-left underline underline-offset-2"
+                                    onClick={() => setSelectedId(issue.interactionId)}
                                 >
                                     {scene.interactions.find(
                                         (rule) => rule.id === issue.interactionId,
@@ -144,50 +208,224 @@ export function InteractionEditor({
                 </Alert>
             )}
             {selected && (
-                <div className="interaction-workspace mt-5 grid grid-cols-[minmax(180px,_0.7fr)_minmax(0,_2fr)] items-start gap-6 max-[900px]:grid-cols-[1fr] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[140px_minmax(0,_1fr)] [.workbench-panel_&]:grid-cols-[minmax(0,_1fr)] [.workbench-panel_&]:gap-3">
+                <div className="grid min-w-0 items-start gap-5 min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[160px_minmax(0,1fr)]">
                     <nav
-                        className="interaction-list [&_button]:wrap-anywhere grid gap-2 [&_button:hover]:border-primary [&_button:hover]:bg-selected [&_button[aria-current=true]]:border-primary [&_button[aria-current=true]]:bg-selected [&_button]:cursor-pointer [&_button]:rounded-[var(--radius-sm)] [&_button]:border [&_button]:border-border [&_button]:border-solid [&_button]:bg-surface [&_button]:p-3 [&_button]:text-left [&_button]:text-foreground [&_span]:mt-1 [&_span]:block [&_span]:text-[length:var(--text-sm)] [&_strong]:block"
                         aria-label="Danh sách quy tắc"
+                        className="grid max-h-60 gap-2 overflow-y-auto"
                     >
-                        {scene.interactions.map((rule, index) => (
+                        {rules.map((rule, index) => (
                             <ActionButton
-                                variant="plain"
-                                type="button"
                                 key={rule.id}
+                                variant="plain"
                                 aria-current={selected.id === rule.id ? 'true' : undefined}
+                                aria-label={`Chọn quy tắc ${rule.name || 'Chưa đặt tên'}`}
                                 onClick={() => setSelectedId(rule.id)}
+                                className="flex h-auto min-w-0 flex-col items-stretch gap-1 rounded-lg border border-border bg-surface px-3 py-3 text-left text-foreground hover:border-primary aria-[current=true]:border-primary"
                             >
-                                <strong>
-                                    {index + 1}. {rule.name || 'Quy tắc chưa đặt tên'}
-                                </strong>
-                                <span>
-                                    {triggerLabels[rule.trigger.type]} · {rule.actions.length} hành
-                                    động · {rule.enabled ? 'Bật' : 'Tắt'}
-                                    {issues.some((issue) => issue.interactionId === rule.id)
-                                        ? ' · Cần sửa đích'
-                                        : ''}
-                                    {!InteractionRuleSchema.safeParse(rule).success
-                                        ? ' · Chưa hợp lệ'
-                                        : ''}
+                                <span className="flex min-w-0 items-center justify-between gap-2">
+                                    <span className="truncate font-semibold text-xs">
+                                        {index + 1}. {rule.name || 'Quy tắc chưa đặt tên'}
+                                    </span>
+                                    <Badge variant="outline">{rule.enabled ? 'Bật' : 'Tắt'}</Badge>
+                                </span>
+                                <span className="whitespace-normal text-xs leading-relaxed">
+                                    {ruleTriggerLabel(rule, scene.objects)}
+                                </span>
+                                <span className="truncate text-muted-foreground text-xs">
+                                    {rule.actions
+                                        .map((action) => actionLabels[action.type])
+                                        .join(' → ')}
                                 </span>
                             </ActionButton>
                         ))}
                     </nav>
                     <section
-                        className="interaction-detail wrap-anywhere min-w-0 [&_h4]:mx-0 [&_h4]:mt-0 [&_h4]:mb-4 [&_h4]:text-[length:var(--text-md)] [&_h5]:mx-0 [&_h5]:mt-6 [&_h5]:mb-4 [&_h5]:text-[length:var(--text-md)]"
                         key={selected.id}
-                        aria-labelledby={`rule-${selected.id}`}
+                        aria-label="Chỉnh quy tắc"
+                        className="flex min-w-0 flex-col gap-5 border-border border-t pt-5"
                     >
-                        <h4 id={`rule-${selected.id}`} tabIndex={-1}>
-                            Chỉnh quy tắc: {selected.name || 'Chưa đặt tên'}
-                        </h4>
                         <fieldset
                             disabled={disabled}
-                            className="interaction-rule-fields m-0 grid min-w-0 grid-cols-[repeat(2,_minmax(0,_1fr))] gap-4 border-0 border-[transparent] border-solid p-0 max-[600px]:grid-cols-[1fr] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[repeat(2,_minmax(0,_1fr))] [.workbench-panel_&]:grid-cols-[minmax(0,_1fr)] [.workbench-panel_&]:gap-3"
+                            className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0"
                         >
-                            <Field orientation="contents">
-                                <FieldLabel htmlFor={`rule-${selected.id}-name`}>
-                                    Tên quy tắc
+                            <div className="flex items-center justify-between gap-3">
+                                <Field
+                                    orientation="horizontal"
+                                    className="w-auto items-center gap-3"
+                                >
+                                    <Switch
+                                        id={`rule-${selected.id}-enabled`}
+                                        checked={selected.enabled}
+                                        disabled={disabled}
+                                        onCheckedChange={(enabled) => patch({ enabled })}
+                                    />
+                                    <FieldLabel
+                                        htmlFor={`rule-${selected.id}-enabled`}
+                                        className="m-0 font-normal"
+                                    >
+                                        Bật quy tắc
+                                    </FieldLabel>
+                                </Field>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label="Tác vụ quy tắc"
+                                            disabled={disabled}
+                                        >
+                                            <MoreHorizontal />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuGroup>
+                                            <DropdownMenuItem
+                                                disabled={selectedIndex === 0}
+                                                onSelect={() =>
+                                                    changeRules(
+                                                        moveScopedRule(
+                                                            scene.interactions,
+                                                            scope,
+                                                            selected.id,
+                                                            -1,
+                                                        ),
+                                                    )
+                                                }
+                                            >
+                                                <ArrowUp />
+                                                Đưa quy tắc lên
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                disabled={selectedIndex === rules.length - 1}
+                                                onSelect={() =>
+                                                    changeRules(
+                                                        moveScopedRule(
+                                                            scene.interactions,
+                                                            scope,
+                                                            selected.id,
+                                                            1,
+                                                        ),
+                                                    )
+                                                }
+                                            >
+                                                <ArrowDown />
+                                                Đưa quy tắc xuống
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                disabled={
+                                                    scene.interactions.length >=
+                                                    SCENE_LIMITS.maxRules
+                                                }
+                                                onSelect={() => {
+                                                    const id = crypto.randomUUID();
+                                                    changeRules(
+                                                        copyRule(
+                                                            scene.interactions,
+                                                            selected.id,
+                                                            id,
+                                                        ),
+                                                    );
+                                                    setSelectedId(id);
+                                                }}
+                                            >
+                                                <Copy />
+                                                Nhân bản quy tắc
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                variant="destructive"
+                                                onSelect={() => setDeleting(selected)}
+                                            >
+                                                <Trash2 />
+                                                Xóa quy tắc
+                                            </DropdownMenuItem>
+                                        </DropdownMenuGroup>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                            {fixedSource ? (
+                                <div className="flex items-start gap-3 rounded-lg border border-border p-3">
+                                    <MousePointer2
+                                        className="mt-0.5 size-4 shrink-0"
+                                        aria-hidden="true"
+                                    />
+                                    <div className="min-w-0">
+                                        <p className="m-0 font-medium text-sm">
+                                            {ruleTriggerLabel(selected, scene.objects)}
+                                        </p>
+                                        <p className="m-0 mt-1 text-muted-foreground text-xs">
+                                            Đối tượng bắt đầu đã được chọn sẵn.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <Field>
+                                        <FieldLabel htmlFor={`rule-${selected.id}-trigger`}>
+                                            Khi xảy ra
+                                        </FieldLabel>
+                                        <FormSelect
+                                            id={`rule-${selected.id}-trigger`}
+                                            value={selected.trigger.type}
+                                            onValueChange={(value) => {
+                                                const type = value as Trigger['type'];
+                                                patch({
+                                                    trigger:
+                                                        type === 'onTap'
+                                                            ? { type, objectId: '' }
+                                                            : { type },
+                                                });
+                                            }}
+                                            options={Object.entries(triggerLabels)
+                                                .filter(
+                                                    ([type]) =>
+                                                        scope.type !== 'page' || type !== 'onTap',
+                                                )
+                                                .map(([value, label]) => ({ value, label }))}
+                                        />
+                                    </Field>
+                                    {selected.trigger.type === 'onTap' && (
+                                        <InteractionTarget
+                                            id={`rule-${selected.id}-target`}
+                                            value={selected.trigger.objectId}
+                                            objects={targetObjects(scene.objects, 'onTap')}
+                                            onChange={(objectId) =>
+                                                patch({ trigger: { type: 'onTap', objectId } })
+                                            }
+                                        />
+                                    )}
+                                </>
+                            )}
+                        </fieldset>
+                        {validation && !validation.success && (
+                            <Alert tone="warning">
+                                <p role="alert">
+                                    {validation.error.issues
+                                        .map(
+                                            (issue) =>
+                                                `${issue.path[0] === 'actions' && typeof issue.path[1] === 'number' ? `Hành động ${issue.path[1] + 1}` : 'Quy tắc'}: ${issue.message}`,
+                                        )
+                                        .join('; ')}
+                                </p>
+                            </Alert>
+                        )}
+                        <InteractionActionStack
+                            ruleId={selected.id}
+                            actions={selected.actions}
+                            objects={scene.objects}
+                            assets={assets}
+                            disabled={disabled}
+                            source={source}
+                            onChange={(actions) => patch({ actions })}
+                        />
+                        <Disclosure title="Cài đặt quy tắc" variant="panel">
+                            <fieldset
+                                disabled={disabled}
+                                className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0"
+                            >
+                                <Field>
+                                    <FieldLabel htmlFor={`rule-${selected.id}-name`}>
+                                        Tên quy tắc
+                                    </FieldLabel>
                                     <Input
                                         id={`rule-${selected.id}-name`}
                                         maxLength={100}
@@ -196,58 +434,11 @@ export function InteractionEditor({
                                             patch({ name: event.currentTarget.value })
                                         }
                                     />
-                                </FieldLabel>
-                            </Field>
-                            <Field orientation="contents">
-                                <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                    <Checkbox
-                                        checked={selected.enabled}
-                                        onCheckedChange={(checked) =>
-                                            patch({ enabled: checked === true })
-                                        }
-                                    />
-                                    Bật quy tắc
-                                </FieldLabel>
-                            </Field>
-                            <Field orientation="contents">
-                                <FieldLabel htmlFor={`rule-${selected.id}-trigger`}>
-                                    Sự kiện
-                                    <FormSelect
-                                        id={`rule-${selected.id}-trigger`}
-                                        value={selected.trigger.type}
-                                        onValueChange={(value) => {
-                                            const type = value as Trigger['type'];
-                                            patch({
-                                                trigger:
-                                                    type === 'onTap'
-                                                        ? { type, objectId: '' }
-                                                        : { type },
-                                            });
-                                        }}
-                                        options={[
-                                            ...(Object.entries(triggerLabels).map(
-                                                ([value, label]) => ({
-                                                    value: value,
-                                                    label: label,
-                                                }),
-                                            ) ?? []),
-                                        ]}
-                                    />
-                                </FieldLabel>
-                            </Field>
-                            {selected.trigger.type === 'onTap' && (
-                                <InteractionTarget
-                                    id={`rule-${selected.id}-target`}
-                                    value={selected.trigger.objectId}
-                                    objects={targetObjects(scene.objects, 'onTap')}
-                                    onChange={(objectId) =>
-                                        patch({ trigger: { type: 'onTap', objectId } })
-                                    }
-                                />
-                            )}
-                            <Field orientation="contents">
-                                <FieldLabel htmlFor={`rule-${selected.id}-retrigger`}>
-                                    Khi sự kiện lặp lại lúc đang chạy
+                                </Field>
+                                <Field>
+                                    <FieldLabel htmlFor={`rule-${selected.id}-retrigger`}>
+                                        Nếu sự kiện lặp lại khi đang chạy
+                                    </FieldLabel>
                                     <FormSelect
                                         id={`rule-${selected.id}-retrigger`}
                                         value={selected.onRetrigger}
@@ -262,207 +453,31 @@ export function InteractionEditor({
                                             { value: 'restart', label: 'Chạy lại từ đầu' },
                                         ]}
                                     />
-                                </FieldLabel>
-                            </Field>
-                            <div className="form-actions interaction-wide col-[1_/_-1] mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                                <Button
-                                    variant="outline"
-                                    aria-label="Đưa quy tắc lên"
-                                    disabled={scene.interactions[0].id === selected.id}
-                                    onClick={() =>
-                                        changeRules(
-                                            moveItem(
-                                                scene.interactions,
-                                                scene.interactions.indexOf(selected),
-                                                -1,
-                                            ),
-                                        )
-                                    }
-                                >
-                                    <ArrowUp data-icon="inline-start" aria-hidden="true" />
-                                    Lên
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    aria-label="Đưa quy tắc xuống"
-                                    disabled={scene.interactions.at(-1)?.id === selected.id}
-                                    onClick={() =>
-                                        changeRules(
-                                            moveItem(
-                                                scene.interactions,
-                                                scene.interactions.indexOf(selected),
-                                                1,
-                                            ),
-                                        )
-                                    }
-                                >
-                                    <ArrowDown data-icon="inline-start" aria-hidden="true" />
-                                    Xuống
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    disabled={scene.interactions.length >= SCENE_LIMITS.maxRules}
-                                    onClick={() => {
-                                        const id = crypto.randomUUID();
-                                        changeRules(copyRule(scene.interactions, selected.id, id));
-                                        setSelectedId(id);
-                                    }}
-                                >
-                                    Nhân bản quy tắc
-                                </Button>
-                                <Button variant="destructive" onClick={() => setDeleting(selected)}>
-                                    Xóa quy tắc
-                                </Button>
-                            </div>
-                        </fieldset>
-                        {validation && !validation.success && (
-                            <p
-                                role="alert"
-                                className="scene-reference-error text-danger-foreground"
-                            >
-                                {validation.error.issues
-                                    .map(
-                                        (issue) =>
-                                            `${issue.path[0] === 'actions' && typeof issue.path[1] === 'number' ? `Hành động ${issue.path[1] + 1}` : 'Quy tắc'} · ${issue.path.join('.')}: ${issue.message}`,
-                                    )
-                                    .join('; ')}
-                            </p>
-                        )}
-                        <h5>
-                            Hành động theo thứ tự ({selected.actions.length}/
-                            {SCENE_LIMITS.maxActionsPerRule})
-                        </h5>
-                        <ol className="interaction-actions mx-0 mt-0 mb-4 list-none p-0 [&_>_li]:border-t-[1px] [&_>_li]:border-t-border [&_>_li]:[border-top-style:solid] [&_[data-slot=accordion-trigger]]:cursor-pointer [&_[data-slot=accordion-trigger]]:py-4 [&_[data-slot=accordion-trigger]]:font-semibold">
-                            {selected.actions.map((action, index) => (
-                                <li key={`${actionKey(action)}-${action.type}`}>
-                                    <Disclosure
-                                        title={
-                                            <>
-                                                Hành động {index + 1}: {actionLabels[action.type]}
-                                            </>
-                                        }
-                                        defaultOpen
-                                    >
-                                        <div className="interaction-action-body grid gap-4 pb-5">
-                                            <InteractionActionEditor
-                                                id={`action-${selected.id}-${index}`}
-                                                action={action}
-                                                objects={scene.objects}
-                                                assets={assets}
-                                                disabled={disabled}
-                                                onChange={(next) => {
-                                                    actionKeys.current.set(next, actionKey(action));
-                                                    patch({
-                                                        actions: selected.actions.map((item, i) =>
-                                                            i === index ? next : item,
-                                                        ),
-                                                    });
-                                                }}
-                                            />
-                                            <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    disabled={disabled || index === 0}
-                                                    aria-label={`Đưa hành động ${index + 1} lên`}
-                                                    onClick={() =>
-                                                        patch({
-                                                            actions: moveItem(
-                                                                selected.actions,
-                                                                index,
-                                                                -1,
-                                                            ),
-                                                        })
-                                                    }
-                                                >
-                                                    <ArrowUp
-                                                        data-icon="inline-start"
-                                                        aria-hidden="true"
-                                                    />
-                                                    Lên
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    disabled={
-                                                        disabled ||
-                                                        index === selected.actions.length - 1
-                                                    }
-                                                    aria-label={`Đưa hành động ${index + 1} xuống`}
-                                                    onClick={() =>
-                                                        patch({
-                                                            actions: moveItem(
-                                                                selected.actions,
-                                                                index,
-                                                                1,
-                                                            ),
-                                                        })
-                                                    }
-                                                >
-                                                    <ArrowDown
-                                                        data-icon="inline-start"
-                                                        aria-hidden="true"
-                                                    />
-                                                    Xuống
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    disabled={
-                                                        disabled || selected.actions.length === 1
-                                                    }
-                                                    aria-label={`Xóa hành động ${index + 1}`}
-                                                    onClick={() =>
-                                                        patch({
-                                                            actions: removeAction(
-                                                                selected.actions,
-                                                                index,
-                                                            ),
-                                                        })
-                                                    }
-                                                >
-                                                    Xóa hành động
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </Disclosure>
-                                </li>
-                            ))}
-                        </ol>
-                        <Button
-                            variant="secondary"
-                            disabled={
-                                disabled ||
-                                selected.actions.length >= SCENE_LIMITS.maxActionsPerRule
-                            }
-                            onClick={() =>
-                                patch({
-                                    actions: appendAction(selected.actions, newAction('wait')),
-                                })
-                            }
-                        >
-                            Thêm hành động
-                        </Button>
-                        <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
-                            Mỗi quy tắc cần ít nhất một hành động. Các giá trị thời gian tính bằng
-                            mili giây (1000 ms = 1 giây).
-                        </p>
+                                </Field>
+                            </fieldset>
+                        </Disclosure>
                     </section>
                 </div>
             )}
+            <p className="m-0 text-muted-foreground text-xs leading-relaxed">
+                Thay đổi được lưu cùng nội dung trang bằng nút Lưu trên header.
+            </p>
             {deleting && (
                 <ConfirmationDialog
+                    title="Xóa quy tắc tương tác?"
                     description={
                         <>
                             Quy tắc “{deleting.name || 'Chưa đặt tên'}” cùng các hành động sẽ bị bỏ
                             khỏi bản đang sửa.
                         </>
                     }
-                    title="Xóa quy tắc tương tác?"
                     busy={disabled}
                     onClose={() => setDeleting(null)}
                 >
-                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
+                    <div className="mt-6 flex justify-end gap-3">
                         <AlertDialogCancel variant="plain" asChild>
                             <Button
-                                variant="secondary"
+                                variant="outline"
                                 disabled={disabled}
                                 onClick={() => setDeleting(null)}
                             >

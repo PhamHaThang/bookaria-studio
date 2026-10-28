@@ -1,6 +1,19 @@
+import { RotateCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import { cn } from '@/shared/lib/cn';
+import { Button } from '@/shared/ui/primitives/button';
+import { Field, FieldLabel, FieldLegend, FieldSet } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/shared/ui/primitives/input-group';
+
+type Axis = 'X' | 'Y' | 'Z';
+const axisColor = { X: 'text-[#ba2548]', Y: 'text-[#167142]', Z: 'text-[#215dd0]' };
+
+function compactNumber(value: number) {
+    if (!Number.isFinite(value)) return '';
+    if (value !== 0 && Math.abs(value) < 0.001) return Number(value.toPrecision(3)).toExponential();
+    return String(Number(value.toFixed(3)));
+}
 
 export function NumericField({
     id,
@@ -8,47 +21,89 @@ export function NumericField({
     value,
     onChange,
     disabled = false,
+    axis,
+    positive = false,
 }: {
     disabled?: boolean;
     id: string;
     label: string;
     value: number;
     onChange: (value: number) => void;
+    axis?: Axis;
+    positive?: boolean;
 }) {
-    const [text, setText] = useState(Number.isFinite(value) ? String(value) : '');
+    const [text, setText] = useState(
+        Number.isFinite(value) ? (axis ? compactNumber(value) : String(value)) : '',
+    );
     const emitted = useRef(value);
     useEffect(() => {
         if (!Object.is(value, emitted.current)) {
-            setText(Number.isFinite(value) ? String(value) : '');
+            setText(Number.isFinite(value) ? (axis ? compactNumber(value) : String(value)) : '');
             emitted.current = value;
         }
-    }, [value]);
+    }, [value, axis]);
+    const inputError = !Number.isFinite(value)
+        ? 'Vui lòng nhập một số hợp lệ.'
+        : positive && value <= 0
+          ? 'Tỉ lệ phải lớn hơn 0.'
+          : undefined;
+    const Control = axis ? InputGroupInput : Input;
+    const control = (
+        <Control
+            id={id}
+            type="text"
+            inputMode="decimal"
+            disabled={disabled}
+            value={text}
+            title={inputError || (axis && Number.isFinite(value) ? String(value) : undefined)}
+            className={
+                axis ? 'h-full px-2 py-0 text-right text-sm tabular-nums leading-none' : undefined
+            }
+            aria-invalid={Boolean(inputError)}
+            aria-describedby={inputError ? `${id}-error` : undefined}
+            onBlur={() => {
+                if (axis && Number.isFinite(value)) setText(compactNumber(value));
+            }}
+            onChange={(event) => {
+                const raw = event.currentTarget.value;
+                const parsed = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(raw.trim())
+                    ? Number(raw)
+                    : Number.NaN;
+                emitted.current = parsed;
+                setText(raw);
+                onChange(parsed);
+            }}
+        />
+    );
     return (
         <Field
-            orientation="contents"
-            data-invalid={!Number.isFinite(value)}
+            orientation={axis ? 'vertical' : 'contents'}
+            className={axis ? 'relative min-w-0 gap-0' : undefined}
+            data-invalid={Boolean(inputError)}
             data-disabled={disabled}
         >
-            <FieldLabel htmlFor={id}>
+            <FieldLabel htmlFor={id} className={axis ? 'sr-only' : undefined}>
                 {label}
-                <Input
-                    id={id}
-                    type="text"
-                    inputMode="decimal"
-                    disabled={disabled}
-                    value={text}
-                    aria-invalid={!Number.isFinite(value)}
-                    onChange={(event) => {
-                        const raw = event.currentTarget.value;
-                        const parsed = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(raw.trim())
-                            ? Number(raw)
-                            : Number.NaN;
-                        emitted.current = parsed;
-                        setText(raw);
-                        onChange(parsed);
-                    }}
-                />
             </FieldLabel>
+            <span id={`${id}-error`} hidden>
+                {inputError}
+            </span>
+            {axis ? (
+                <InputGroup className="h-10 min-h-10" data-disabled={disabled}>
+                    <InputGroupAddon
+                        aria-hidden="true"
+                        className={cn(
+                            'h-full w-6 shrink-0 pt-1 text-sm leading-none',
+                            axisColor[axis],
+                        )}
+                    >
+                        {axis}
+                    </InputGroupAddon>
+                    {control}
+                </InputGroup>
+            ) : (
+                control
+            )}
         </Field>
     );
 }
@@ -60,6 +115,8 @@ export function VectorFields({
     onChange,
     disabled = false,
     disabledAxes = [],
+    resetValues,
+    positive = false,
 }: {
     id: string;
     label: string;
@@ -67,19 +124,46 @@ export function VectorFields({
     disabledAxes?: readonly number[];
     values: [number, number, number];
     onChange: (values: [number, number, number]) => void;
+    resetValues?: [number, number, number];
+    positive?: boolean;
 }) {
+    const resettable = resetValues?.some(
+        (value, index) => !disabledAxes.includes(index) && !Object.is(value, values[index]),
+    );
     return (
-        <fieldset
-            disabled={disabled}
-            className="scene-vector m-0 min-w-0 border-0 border-[transparent] border-solid p-0 [&_legend]:mb-2 [&_legend]:font-semibold [.property-section_&]:mb-3 [.property-section_&]:rounded-[10px] [.property-section_&]:bg-muted [.property-section_&]:p-[10px] [.property-section_&_legend]:mx-0 [.property-section_&_legend]:mt-0 [.property-section_&_legend]:mb-2 [.property-section_&_legend]:w-full [.property-section_&_legend]:text-[length:10px] [.property-section_&_legend]:text-muted-foreground [.property-section_&_legend]:[float:left] [.property-section_&_legend]:[text-transform:uppercase]"
-        >
-            <legend>{label}</legend>
-            <div className="scene-vector-inputs grid grid-cols-[repeat(3,_minmax(0,_1fr))] gap-2 [&_input]:px-2 [&_input]:text-foreground [&_input]:tabular-nums [&_label:nth-child(1)]:text-[#ba2548] [&_label:nth-child(2)]:text-[#167142] [&_label:nth-child(3)]:text-[#215dd0] [&_label]:text-[length:var(--text-xs)] [.property-section_&]:gap-[7px] [.property-section_&]:[clear:both]">
+        <FieldSet disabled={disabled} className="scene-vector m-0 min-w-0 gap-2 border-0 p-0">
+            <FieldLegend
+                variant="label"
+                className="mb-2 flex w-full items-center justify-between font-medium text-muted-foreground tracking-wide data-[variant=label]:text-[12px]"
+            >
+                <span>{label}</span>
+                {resetValues && (
+                    <Button
+                        variant="plain"
+                        aria-label={`Đặt lại ${label.toLowerCase()}`}
+                        title={`Đặt lại ${label.toLowerCase()}`}
+                        disabled={disabled || !resettable}
+                        className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 [&_svg]:size-3.5"
+                        onClick={() => {
+                            const next: [number, number, number] = [...values];
+                            for (let index = 0; index < 3; index++) {
+                                if (!disabledAxes.includes(index)) next[index] = resetValues[index];
+                            }
+                            onChange(next);
+                        }}
+                    >
+                        <RotateCcw aria-hidden="true" />
+                    </Button>
+                )}
+            </FieldLegend>
+            <div className="scene-vector-inputs grid min-w-0 grid-cols-3 gap-2">
                 {(['X', 'Y', 'Z'] as const).map((axis, index) => (
                     <NumericField
                         key={axis}
                         id={`${id}-${axis}`}
                         label={`${label} ${axis}`}
+                        axis={axis}
+                        positive={positive}
                         value={values[index]}
                         disabled={disabledAxes.includes(index)}
                         onChange={(value) => {
@@ -90,6 +174,6 @@ export function VectorFields({
                     />
                 ))}
             </div>
-        </fieldset>
+        </FieldSet>
     );
 }

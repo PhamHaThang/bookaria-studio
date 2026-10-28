@@ -12,16 +12,31 @@ export function DisclosureGroup({
     children,
     defaultValue,
     disabledContent = false,
+    multiple = false,
 }: {
     children: ReactNode;
-    defaultValue: string;
+    defaultValue: string | string[];
+    multiple?: boolean;
     disabledContent?: boolean;
 }) {
     return (
         <GroupContext.Provider value={{ disabledContent }}>
-            <Accordion type="single" collapsible defaultValue={defaultValue}>
-                {children}
-            </Accordion>
+            {multiple ? (
+                <Accordion
+                    type="multiple"
+                    defaultValue={Array.isArray(defaultValue) ? defaultValue : [defaultValue]}
+                >
+                    {children}
+                </Accordion>
+            ) : (
+                <Accordion
+                    type="single"
+                    collapsible
+                    defaultValue={Array.isArray(defaultValue) ? defaultValue[0] : defaultValue}
+                >
+                    {children}
+                </Accordion>
+            )}
         </GroupContext.Provider>
     );
 }
@@ -48,10 +63,15 @@ export function Disclosure({
             value={itemValue}
             className={cn(
                 className,
-                variant === 'panel' && 'rounded-[var(--radius-lg)] border border-border px-4',
+                variant === 'panel' &&
+                    'rounded-[var(--radius-lg)] border border-border px-4 [&>[data-slot=accordion-header]]:m-0!',
             )}
         >
-            <AccordionTrigger>{title}</AccordionTrigger>
+            <AccordionTrigger
+                className={variant === 'panel' ? 'min-h-12 items-center py-3' : undefined}
+            >
+                {title}
+            </AccordionTrigger>
             <AccordionContent forceMount>
                 <fieldset disabled={group?.disabledContent} className="contents">
                     {children}

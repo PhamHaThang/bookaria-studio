@@ -12,13 +12,16 @@ import {
     RefreshCw,
     Save,
     Send,
+    TriangleAlert,
     Undo2,
     Upload,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { Disclosure } from '@/shared/ui/Disclosure';
 import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import {
@@ -32,7 +35,7 @@ import {
 import { Input } from '@/shared/ui/primitives/input';
 import { Separator } from '@/shared/ui/primitives/separator';
 import { Spinner } from '@/shared/ui/primitives/spinner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
+import { Tabs, TabsContent } from '@/shared/ui/primitives/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/primitives/tooltip';
 import { errorMessage } from '../../../shared/api/errors';
@@ -82,6 +85,8 @@ import { PageSettingsEditor } from './PageSettingsEditor';
 import { PageStrip } from './PageStrip';
 import { SceneCanvas, type SceneCanvasHandle } from './SceneCanvas';
 import { SceneEditorSidebar } from './SceneEditorSidebar';
+import { SceneInspectorEmpty } from './SceneInspectorEmpty';
+import { SceneInspectorHeader } from './SceneInspectorHeader';
 import { SceneObjectsPanel } from './SceneObjectsPanel';
 import { SceneShortcutsDialog } from './SceneShortcutsDialog';
 import { SceneWorkbench } from './SceneWorkbench';
@@ -170,6 +175,7 @@ export function SceneEditor({
     const activeIds = selection.map((object) => object.id);
     const selected = selection.at(-1);
     function selectMany(ids: string[], mode: SelectionMode = 'replace') {
+        if (ids.length > 0 && panel !== 'preview') setPanel('properties');
         setSelectedIds((current) =>
             updateSelection(
                 current.filter((id) => editor.draft.objects.some((item) => item.id === id)),
@@ -180,6 +186,27 @@ export function SceneEditor({
     }
     const sceneAssets = useSceneAssets(editor.draft, { ...page.assets, ...assets });
     const validation = SceneSchema.safeParse(editor.draft);
+    const validationIssue = validation.success ? undefined : validation.error.issues[0];
+    const invalidObjectIndex =
+        validationIssue?.path[0] === 'objects' && typeof validationIssue.path[1] === 'number'
+            ? validationIssue.path[1]
+            : undefined;
+    const invalidObject =
+        invalidObjectIndex === undefined ? undefined : editor.draft.objects[invalidObjectIndex];
+    const invalidField = validationIssue?.path.includes('position')
+        ? 'Vị trí'
+        : validationIssue?.path.includes('rotation')
+          ? 'Góc xoay'
+          : validationIssue?.path.includes('scale')
+            ? 'Tỉ lệ'
+            : 'Thông số';
+    const invalidAxis =
+        invalidField !== 'Thông số' && typeof validationIssue?.path.at(-1) === 'number'
+            ? ['X', 'Y', 'Z'][Number(validationIssue.path.at(-1))]
+            : undefined;
+    const validationMessage = validationIssue
+        ? `${invalidObject?.name ? `${invalidObject.name}: ` : ''}${invalidField}${invalidAxis ? ` ${invalidAxis}` : ''} chưa hợp lệ. ${validationIssue.code === 'invalid_type' ? 'Vui lòng nhập một số hợp lệ.' : validationIssue.code === 'too_small' && invalidField === 'Tỉ lệ' ? 'Tỉ lệ phải lớn hơn 0.' : 'Kiểm tra giá trị trước khi lưu.'}`
+        : null;
     const warnings = getSceneWarnings(editor.draft, { pageAspect: book.pageAspect });
     function changeMany(objects: SceneObject[]) {
         const replacements = new Map(objects.map((object) => [object.id, object]));
@@ -284,7 +311,8 @@ export function SceneEditor({
             const modifier = event.ctrlKey || event.metaKey;
             if (modifier && event.key.toLowerCase() === 's') {
                 event.preventDefault();
-                if (!state.blocked) void state.editor.save();
+                if (!state.blocked && SceneSchema.safeParse(state.editor.draft).success)
+                    void state.editor.save();
                 return;
             }
             if (typing || state.blocked) return;
@@ -482,23 +510,43 @@ export function SceneEditor({
                     </ToggleGroupItem>
                 </ToggleGroup>
                 <div className="editor-save-actions flex min-w-0 items-center justify-end gap-3">
-                    <span
-                        role="status"
-                        className="flex w-32 shrink-0 items-center justify-end gap-1.5 text-muted-foreground text-xs"
-                    >
-                        {editor.busy || settingsBusy ? (
-                            <Spinner className="size-3.5" aria-hidden="true" />
-                        ) : editor.dirty || settingsDirty ? (
-                            <Circle className="size-2 fill-current" aria-hidden="true" />
-                        ) : (
-                            <Check className="size-3.5" aria-hidden="true" />
+                    <Tooltip delayDuration={250}>
+                        <TooltipTrigger asChild>
+                            <span
+                                role="status"
+                                tabIndex={validationMessage ? 0 : undefined}
+                                className={cn(
+                                    'flex w-32 shrink-0 items-center justify-end gap-1.5 whitespace-nowrap text-muted-foreground text-xs',
+                                    validationMessage && 'text-destructive',
+                                )}
+                            >
+                                {validationMessage ? (
+                                    <TriangleAlert
+                                        className="size-3.5 shrink-0"
+                                        aria-hidden="true"
+                                    />
+                                ) : editor.busy || settingsBusy ? (
+                                    <Spinner className="size-3.5" aria-hidden="true" />
+                                ) : editor.dirty || settingsDirty ? (
+                                    <Circle className="size-2 fill-current" aria-hidden="true" />
+                                ) : (
+                                    <Check className="size-3.5" aria-hidden="true" />
+                                )}
+                                {validationMessage
+                                    ? 'Kiểm tra thông số'
+                                    : editor.busy || settingsBusy
+                                      ? 'Đang lưu…'
+                                      : editor.dirty || settingsDirty
+                                        ? 'Chưa lưu thay đổi'
+                                        : 'Đã lưu nội dung'}
+                            </span>
+                        </TooltipTrigger>
+                        {validationMessage && (
+                            <TooltipContent side="bottom" sideOffset={8}>
+                                {validationMessage}
+                            </TooltipContent>
                         )}
-                        {editor.busy || settingsBusy
-                            ? 'Đang lưu…'
-                            : editor.dirty || settingsDirty
-                              ? 'Chưa lưu thay đổi'
-                              : 'Đã lưu nội dung'}
-                    </span>
+                    </Tooltip>
                     <Tooltip delayDuration={250}>
                         <TooltipTrigger asChild>
                             <span className="inline-flex shrink-0">
@@ -583,11 +631,6 @@ export function SceneEditor({
                 success={editor.notice}
                 warning={editor.warning}
             />
-            {!validation.success && (
-                <Feedback
-                    error={`Nội dung chưa hợp lệ${typeof validation.error.issues[0]?.path[1] === 'number' ? ` ở ${validation.error.issues[0].path[0] === 'interactions' ? 'quy tắc' : 'đối tượng'} ${Number(validation.error.issues[0].path[1]) + 1}` : ''}: ${validation.error.issues[0]?.message || 'Kiểm tra các trường đang nhập.'}`}
-                />
-            )}
             {(editor.conflict || editor.uncertain) && (
                 <Alert tone="warning" className="my-4">
                     <p>
@@ -808,178 +851,193 @@ export function SceneEditor({
                         }
                     />
                     <Tabs
+                        className="gap-0"
                         value={panel}
                         onValueChange={(value) => setPanel(value as typeof panel)}
                         asChild
                     >
                         <aside
-                            className="workbench-panel min-w-0 overflow-auto border-l-[1px] border-l-border bg-muted [border-left-style:solid] max-[760px]:max-h-125 max-[760px]:border-t-[1px] max-[760px]:border-t-border max-[760px]:border-l-[0] max-[760px]:border-l-[transparent] max-[760px]:[border-left-style:solid] max-[760px]:[border-top-style:solid] [&_[data-slot=select-trigger]]:mt-1 [&_[data-slot=select-trigger]]:border-input [&_[data-slot=select-trigger]]:p-2 [&_[data-slot=select-trigger]]:text-[length:12px] max-[760px]:[&_[data-slot=select-trigger]]:text-[length:16px] [&_[role=tabpanel][hidden]]:hidden [&_[role=tabpanel]]:px-4 [&_[role=tabpanel]]:py-[18px] max-[760px]:[&_[role=tabpanel]]:m-auto max-[760px]:[&_[role=tabpanel]]:max-w-150 [&_h2]:text-[length:15px] [&_input:not([type=checkbox])]:mt-1 [&_input:not([type=checkbox])]:border-input [&_input:not([type=checkbox])]:p-2 [&_input:not([type=checkbox])]:text-[length:12px] max-[760px]:[&_input:not([type=checkbox])]:text-[length:16px] [&_label]:mb-[10px] [&_label]:text-[length:12px] [&_p]:text-[length:11px] [&_textarea]:mt-1 [&_textarea]:border-input [&_textarea]:p-2 [&_textarea]:text-[length:12px] max-[760px]:[&_textarea]:text-[length:16px] [.scene-editor[data-panel=preview]_&]:border-l-[0] [.scene-editor[data-panel=preview]_&]:border-l-[transparent] [.scene-editor[data-panel=preview]_&]:bg-surface [.scene-editor[data-panel=preview]_&]:[border-left-style:solid] [.scene-editor[data-panel=preview]_&_[role=tabpanel]]:m-auto [.scene-editor[data-panel=preview]_&_[role=tabpanel]]:max-w-300"
+                            className="workbench-panel flex min-h-0 min-w-0 flex-col overflow-hidden border-border border-l bg-surface [&>section[hidden]]:hidden [&_[data-slot=select-trigger]]:mt-1 [&_[data-slot=select-trigger]]:min-w-0 [&_[data-slot=select-trigger]]:border-input [&_[data-slot=select-trigger]]:text-xs [&_input:not([type=checkbox])]:mt-1 [&_input:not([type=checkbox])]:border-input [&_input:not([type=checkbox])]:text-xs [&_textarea]:mt-1 [&_textarea]:border-input [&_textarea]:text-xs [.scene-editor[data-panel=preview]_&]:border-l-0"
                             aria-label="Bảng chỉnh sửa"
                         >
-                            <TabsList
-                                variant="line"
-                                className="workbench-tabs sticky top-0 z-2 bg-surface px-3"
-                                aria-label="Bảng công cụ"
-                            >
-                                {(
-                                    [
-                                        ['properties', 'Thuộc tính'],
-                                        ['interactions', 'Tương tác'],
-                                        ['settings', 'Cài đặt'],
-                                        ['preview', 'Xem thử'],
-                                    ] as const
-                                ).map(([value, label]) => (
-                                    <TabsTrigger
-                                        key={value}
-                                        value={value}
-                                        id={`panel-tab-${value}`}
-                                        aria-controls={`panel-${value}`}
-                                    >
-                                        {label}
-                                    </TabsTrigger>
-                                ))}
-                            </TabsList>
-                            <TabsContent
-                                value="properties"
-                                forceMount
-                                id="panel-properties"
-                                aria-labelledby="panel-tab-properties"
-                            >
-                                {selection.length > 1 ? (
-                                    <SelectionEditor
-                                        objects={selection}
-                                        disabled={blocked}
-                                        canDuplicate={
-                                            editor.draft.objects.length + selection.length <=
-                                            SCENE_LIMITS.hardMaxObjects
-                                        }
-                                        onDuplicate={() => duplicateChosen(activeIds)}
-                                        onDelete={() => setDeleting(selection)}
-                                        onFlag={flagChosen}
-                                        onClear={() => setSelectedId('')}
-                                    />
-                                ) : selected ? (
-                                    <ObjectEditor
-                                        onEditText={() => {
-                                            if (
-                                                selected?.type === 'text' ||
-                                                selected?.type === 'label'
-                                            )
-                                                setTextDialog({
-                                                    start:
-                                                        selected.type === 'label'
-                                                            ? 'annotation'
-                                                            : 'text',
-                                                    initial: selected,
-                                                });
-                                        }}
-                                        key={selected.id}
-                                        object={selected}
-                                        loadStore={commands.current.loads}
-                                        audioStore={commands.current.audio}
-                                        assetRef={
-                                            'assetId' in selected
-                                                ? assets[selected.assetId] ||
-                                                  page.assets[selected.assetId]
-                                                : undefined
-                                        }
-                                        disabled={blocked}
-                                        onChange={change}
-                                        onBillboardChange={billboardChosen}
-                                        onDuplicate={() => {
-                                            if (
-                                                editor.draft.objects.length >=
+                            <SceneInspectorHeader
+                                panel={panel}
+                                selected={selected}
+                                count={selection.length}
+                                pageNumber={page.orderIndex + 1}
+                                disabled={Boolean(blocked)}
+                                onBack={() => {
+                                    setPanel('properties');
+                                    document
+                                        .getElementById('inspector-heading')
+                                        ?.focus({ preventScroll: true });
+                                }}
+                                onClear={() => {
+                                    setSelectedId('');
+                                    setPanel('properties');
+                                }}
+                            />
+                            <TabsContent value="properties" forceMount asChild>
+                                <section
+                                    key={`${selected?.id || 'empty'}:${selection.length > 1 ? 'group' : 'single'}`}
+                                    id="panel-properties"
+                                    hidden={panel !== 'properties'}
+                                    aria-labelledby="inspector-heading"
+                                    className="inspector-panel flex min-h-0 flex-1 flex-col overflow-y-auto p-4"
+                                >
+                                    {selection.length > 1 ? (
+                                        <SelectionEditor
+                                            objects={selection}
+                                            disabled={blocked}
+                                            canDuplicate={
+                                                editor.draft.objects.length + selection.length <=
                                                 SCENE_LIMITS.hardMaxObjects
-                                            ) {
-                                                setError('Trang đã đạt giới hạn đối tượng.');
-                                                return;
                                             }
-                                            const id = crypto.randomUUID();
-                                            editor.setDraft((current) =>
-                                                duplicateObject(current, selected.id, id),
-                                            );
-                                            setSelectedId(id);
-                                        }}
-                                        onDelete={() => setDeleting([selected])}
-                                        onChooseAsset={() => {
-                                            if (usesAsset(selected.type))
-                                                setPicker({
-                                                    type: selected.type,
-                                                    replace: selected.id,
-                                                });
-                                        }}
+                                            onDuplicate={() => duplicateChosen(activeIds)}
+                                            onDelete={() => setDeleting(selection)}
+                                            onFlag={flagChosen}
+                                            onClear={() => setSelectedId('')}
+                                        />
+                                    ) : selected ? (
+                                        <ObjectEditor
+                                            onEditText={() => {
+                                                if (
+                                                    selected?.type === 'text' ||
+                                                    selected?.type === 'label'
+                                                )
+                                                    setTextDialog({
+                                                        start:
+                                                            selected.type === 'label'
+                                                                ? 'annotation'
+                                                                : 'text',
+                                                        initial: selected,
+                                                    });
+                                            }}
+                                            key={selected.id}
+                                            object={selected}
+                                            loadStore={commands.current.loads}
+                                            audioStore={commands.current.audio}
+                                            assetRef={
+                                                'assetId' in selected
+                                                    ? assets[selected.assetId] ||
+                                                      page.assets[selected.assetId]
+                                                    : undefined
+                                            }
+                                            disabled={blocked}
+                                            onChange={change}
+                                            onBillboardChange={billboardChosen}
+                                            onDuplicate={() => {
+                                                if (
+                                                    editor.draft.objects.length >=
+                                                    SCENE_LIMITS.hardMaxObjects
+                                                ) {
+                                                    setError('Trang đã đạt giới hạn đối tượng.');
+                                                    return;
+                                                }
+                                                const id = crypto.randomUUID();
+                                                editor.setDraft((current) =>
+                                                    duplicateObject(current, selected.id, id),
+                                                );
+                                                setSelectedId(id);
+                                            }}
+                                            onDelete={() => setDeleting([selected])}
+                                            onChooseAsset={() => {
+                                                if (usesAsset(selected.type))
+                                                    setPicker({
+                                                        type: selected.type,
+                                                        replace: selected.id,
+                                                    });
+                                            }}
+                                        />
+                                    ) : (
+                                        <SceneInspectorEmpty
+                                            empty={editor.draft.objects.length === 0}
+                                            disabled={Boolean(blocked)}
+                                            onList={() => setLayersOpen(true)}
+                                            onAddText={() => setTextDialog({ start: 'text' })}
+                                        />
+                                    )}
+                                </section>
+                            </TabsContent>
+                            <TabsContent value="interactions" forceMount asChild>
+                                <section
+                                    id="panel-interactions"
+                                    hidden={panel !== 'interactions'}
+                                    aria-labelledby="inspector-heading"
+                                    className="inspector-panel min-h-0 flex-1 overflow-y-auto p-4"
+                                >
+                                    {panel === 'interactions' &&
+                                        (warnings.length > 0 ||
+                                            (!editor.dirty && editor.warnings.length > 0)) && (
+                                            <Disclosure
+                                                title="Gợi ý trước khi xuất bản"
+                                                className="mb-4"
+                                            >
+                                                <Alert tone="warning" className="mb-4">
+                                                    <h3>Gợi ý trước khi xuất bản</h3>
+                                                    <ul>
+                                                        {[
+                                                            ...new Map(
+                                                                [
+                                                                    ...warnings,
+                                                                    ...(!editor.dirty
+                                                                        ? editor.warnings
+                                                                        : []),
+                                                                ].map((warning) => [
+                                                                    `${warning.code}-${warning.objectId || ''}`,
+                                                                    warning,
+                                                                ]),
+                                                            ).values(),
+                                                        ].map((warning) => (
+                                                            <li
+                                                                key={`${warning.code}-${warning.objectId || ''}`}
+                                                            >
+                                                                {warning.message}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </Alert>
+                                            </Disclosure>
+                                        )}
+                                    <InteractionEditor
+                                        onShowPageRules={() => setPanel('interactions')}
+                                        scene={editor.draft}
+                                        assets={sceneAssets}
+                                        disabled={blocked}
+                                        onChange={(scene) => editor.setDraft(scene)}
                                     />
-                                ) : (
-                                    <p className="scene-no-selection">
-                                        Thuộc tính sẽ xuất hiện khi bạn thêm hoặc chọn một đối
-                                        tượng.
-                                    </p>
-                                )}
+                                </section>
                             </TabsContent>
-                            <TabsContent
-                                value="interactions"
-                                forceMount
-                                id="panel-interactions"
-                                aria-labelledby="panel-tab-interactions"
-                            >
-                                {(warnings.length > 0 ||
-                                    (!editor.dirty && editor.warnings.length > 0)) && (
-                                    <Alert tone="warning" className="my-4">
-                                        <h3>Gợi ý trước khi xuất bản</h3>
-                                        <ul>
-                                            {[
-                                                ...new Map(
-                                                    [
-                                                        ...warnings,
-                                                        ...(!editor.dirty ? editor.warnings : []),
-                                                    ].map((warning) => [
-                                                        `${warning.code}-${warning.objectId || ''}`,
-                                                        warning,
-                                                    ]),
-                                                ).values(),
-                                            ].map((warning) => (
-                                                <li
-                                                    key={`${warning.code}-${warning.objectId || ''}`}
-                                                >
-                                                    {warning.message}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </Alert>
-                                )}
-                                <InteractionEditor
-                                    scene={editor.draft}
-                                    assets={sceneAssets}
-                                    disabled={blocked}
-                                    onChange={(scene) => editor.setDraft(scene)}
-                                />
+                            <TabsContent value="settings" forceMount asChild>
+                                <section
+                                    id="panel-settings"
+                                    hidden={panel !== 'settings'}
+                                    aria-labelledby="inspector-heading"
+                                    className="inspector-panel min-h-0 flex-1 overflow-y-auto p-4"
+                                >
+                                    <PageSettingsEditor
+                                        page={page}
+                                        disabled={disabled || editor.busy || editor.uncertain}
+                                        onDirtyChange={setSettingsDirty}
+                                        onBusyChange={setSettingsBusy}
+                                    />
+                                </section>
                             </TabsContent>
-                            <TabsContent
-                                value="settings"
-                                forceMount
-                                id="panel-settings"
-                                aria-labelledby="panel-tab-settings"
-                            >
-                                <PageSettingsEditor
-                                    page={page}
-                                    disabled={disabled || editor.busy || editor.uncertain}
-                                    onDirtyChange={setSettingsDirty}
-                                    onBusyChange={setSettingsBusy}
-                                />
-                            </TabsContent>
-                            <TabsContent
-                                value="preview"
-                                forceMount
-                                id="panel-preview"
-                                aria-labelledby="panel-tab-preview"
-                            >
-                                <PreviewPanel
-                                    page={page}
-                                    book={book}
-                                    scene={editor.draft}
-                                    disabled={blocked || settingsDirty}
-                                    unsaved={editor.dirty || settingsDirty}
-                                />
+                            <TabsContent value="preview" forceMount asChild>
+                                <section
+                                    id="panel-preview"
+                                    hidden={panel !== 'preview'}
+                                    aria-labelledby="inspector-heading"
+                                    className="inspector-panel min-h-0 w-full max-w-300 flex-1 self-center overflow-y-auto p-4"
+                                >
+                                    <PreviewPanel
+                                        page={page}
+                                        book={book}
+                                        scene={editor.draft}
+                                        disabled={blocked || settingsDirty}
+                                        unsaved={editor.dirty || settingsDirty}
+                                    />
+                                </section>
                             </TabsContent>
                         </aside>
                     </Tabs>

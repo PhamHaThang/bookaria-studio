@@ -17,7 +17,8 @@ import { Button } from '../../../shared/ui/Button';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { assetKeys, assetsApi } from '../../assets';
 import { useAuth } from '../../auth';
-import { actionLabels, newAction, targetObjects } from '../model/interactions';
+import { scopedAction } from '../model/interaction-scope';
+import { actionLabels, targetObjects } from '../model/interactions';
 import { AssetPicker } from './AssetPicker';
 import { InteractionTarget } from './InteractionTarget';
 import { NumericField, VectorFields } from './NumericField';
@@ -28,6 +29,7 @@ export function InteractionActionEditor({
     assets,
     id,
     disabled,
+    defaultTarget,
     onChange,
 }: {
     action: Action;
@@ -35,6 +37,7 @@ export function InteractionActionEditor({
     assets: Record<string, AssetRef>;
     id: string;
     disabled: boolean;
+    defaultTarget?: SceneObject;
     onChange: (action: Action) => void;
 }) {
     const { user } = useAuth();
@@ -72,7 +75,9 @@ export function InteractionActionEditor({
                         <FormSelect
                             id={`${id}-type`}
                             value={action.type}
-                            onValueChange={(value) => onChange(newAction(value as ActionType))}
+                            onValueChange={(value) =>
+                                onChange(scopedAction(value as ActionType, defaultTarget))
+                            }
                             options={[
                                 ...(Object.entries(actionLabels).map(([value, label]) => ({
                                     value: value,

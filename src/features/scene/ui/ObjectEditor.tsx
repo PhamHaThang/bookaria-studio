@@ -2,28 +2,27 @@ import { useQuery } from '@tanstack/react-query';
 import { Copy, Eye, Info, Move, Play, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
-import { AUDIO_KIND_OPTIONS, facesCamera } from '@/shared/scene/audio-kind';
+import { facesCamera } from '@/shared/scene/audio-kind';
 import { Disclosure, DisclosureGroup } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { Textarea } from '@/shared/ui/primitives/textarea';
+import { Switch } from '@/shared/ui/primitives/switch';
 import { errorMessage } from '../../../shared/api/errors';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import type { SceneObject } from '../../../shared/contracts/scene.schema';
-import { SCENE_LIMITS } from '../../../shared/contracts/scene.schema';
 import { Button } from '../../../shared/ui/Button';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { assetKeys, assetsApi } from '../../assets';
 import { useAuth } from '../../auth';
-import { objectLabels } from '../model/objects';
+import { objectInspectorMeta } from '../model/object-inspector';
 import type { SceneAudioStore } from '../model/scene-audio-store';
 import type { SceneLoadStore } from '../model/scene-load-store';
 import { isPlanarObject } from '../model/selection-frame';
-import { withObjectPosition, withPaperSnap } from '../model/transforms';
-import { NumericField, VectorFields } from './NumericField';
-import { SceneAudioControls } from './SceneAudioControls';
+import { withObjectPosition } from '../model/transforms';
+import { VectorFields } from './NumericField';
+import { ObjectSpecificProperties } from './ObjectSpecificProperties';
 
 export function ObjectEditor({
     object,
@@ -72,39 +71,32 @@ export function ObjectEditor({
         clips.push(object.animation.clip);
     const id = `object-${object.id}`;
     return (
-        <section
-            className="scene-inspector min-w-0 rounded-[var(--radius-md)] border border-border border-solid bg-surface p-4 max-[1200px]:col-[1_/_-1] max-[600px]:col-[auto] [&.scene-inspector>h3]:text-[length:15px] [&_>_h3]:mb-4 [.workbench-panel_&]:border-0 [.workbench-panel_&]:border-[transparent] [.workbench-panel_&]:border-solid [.workbench-panel_&]:bg-[transparent] [.workbench-panel_&]:p-0"
-            aria-labelledby="object-editor-heading"
-        >
-            <h3 id="object-editor-heading">
-                Thuộc tính {objectLabels[object.type].charAt(0).toLowerCase()}
-                {objectLabels[object.type].slice(1)}
-            </h3>
-            <p className="inspector-object-name mx-0 mt-[-8px] mb-[18px] text-muted-foreground">
-                {object.name || objectLabels[object.type]}
-            </p>
-            <Field orientation="contents">
-                <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                    <Checkbox
-                        checked={object.locked}
-                        disabled={disabled}
-                        onCheckedChange={(checked) => patch({ locked: checked === true })}
-                    />
+        <section className="scene-inspector min-w-0" aria-labelledby="inspector-heading">
+            <Field
+                orientation="horizontal"
+                className="mb-4 items-center justify-between gap-3 rounded-lg border border-border px-3 py-3"
+            >
+                <FieldLabel htmlFor={`${id}-locked`} className="m-0">
                     Khóa đối tượng
                 </FieldLabel>
+                <Switch
+                    id={`${id}-locked`}
+                    checked={object.locked}
+                    disabled={disabled}
+                    onCheckedChange={(checked) => patch({ locked: checked })}
+                />
             </Field>
             {object.locked && (
-                <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
+                <p className="mb-4 text-muted-foreground text-xs">
                     Mở khóa để chỉnh sửa, nhân bản hoặc xóa đối tượng.
                 </p>
             )}
             <DisclosureGroup
-                defaultValue={
-                    object.type === 'text' || object.type === 'label' ? 'content' : 'transform'
-                }
+                multiple
+                defaultValue={objectInspectorMeta(object).defaultSections}
                 disabledContent={disabled || object.locked}
             >
-                <fieldset className="scene-object-fields m-0 grid min-w-0 gap-4 border-0 border-[transparent] border-solid p-0 max-[1200px]:grid-cols-[repeat(2,_minmax(0,_1fr))] max-[600px]:grid-cols-[1fr] [&_[data-slot=select-trigger]]:w-full [&_[data-slot=select-trigger]]:min-w-0 [&_input:not([type=checkbox])]:w-full [&_input:not([type=checkbox])]:min-w-0 [&_textarea]:w-full [&_textarea]:min-w-0 [.workbench-panel_&]:gap-[14px]">
+                <fieldset className="scene-object-fields m-0 flex min-w-0 flex-col gap-3 border-0 p-0 [&_[data-slot=select-trigger]]:w-full [&_[data-slot=select-trigger]]:min-w-0 [&_input:not([type=checkbox])]:w-full [&_input:not([type=checkbox])]:min-w-0 [&_textarea]:w-full [&_textarea]:min-w-0 [.workbench-panel_&]:gap-[14px]">
                     <Disclosure
                         value="identity"
                         title={
@@ -178,13 +170,36 @@ export function ObjectEditor({
                             )}
                         </div>
                     </Disclosure>
+                    {object.type !== 'model' && (
+                        <Disclosure
+                            value="content"
+                            title={
+                                <>
+                                    <SlidersHorizontal size={17} />
+                                    {objectInspectorMeta(object).contentTitle}
+                                </>
+                            }
+                            variant="panel"
+                            className="property-section"
+                        >
+                            <ObjectSpecificProperties
+                                object={object}
+                                id={id}
+                                disabled={disabled}
+                                unavailable={unavailable}
+                                patch={patch}
+                                onEditText={onEditText}
+                                audioStore={audioStore}
+                            />
+                        </Disclosure>
+                    )}
                     {object.type === 'model' && (
                         <Disclosure
                             value="animation"
                             title={
                                 <>
                                     <Play size={17} />
-                                    Animations
+                                    Chuyển động
                                 </>
                             }
                             variant="panel"
@@ -196,7 +211,7 @@ export function ObjectEditor({
                                     <>
                                         <Field orientation="contents">
                                             <FieldLabel htmlFor={`${id}-animation`}>
-                                                Animation
+                                                Chuyển động
                                                 <FormSelect
                                                     id={`${id}-animation`}
                                                     value={object.animation?.clip || ''}
@@ -274,28 +289,36 @@ export function ObjectEditor({
                                     [
                                         ['visible', 'Hiện khi mở trang'],
                                         ['billboard', 'Luôn hướng về camera'],
-                                        ['editorHidden', 'Ẩn khỏi sơ đồ chỉnh sửa'],
+                                        ['editorHidden', 'Ẩn trong editor'],
                                     ] as const
                                 ).map(([key, label]) => (
-                                    <Field orientation="contents" key={key}>
-                                        <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                            <Checkbox
-                                                checked={
-                                                    key === 'billboard'
-                                                        ? facesCamera(object)
-                                                        : object[key]
-                                                }
-                                                disabled={
-                                                    key === 'billboard' && object.type === 'audio'
-                                                }
-                                                onCheckedChange={(checked) =>
-                                                    key === 'billboard'
-                                                        ? onBillboardChange(checked === true)
-                                                        : patch({ [key]: checked === true })
-                                                }
-                                            />
+                                    <Field
+                                        orientation="horizontal"
+                                        className="items-center justify-between gap-3"
+                                        key={key}
+                                    >
+                                        <FieldLabel
+                                            htmlFor={`${id}-${key}`}
+                                            className="m-0 flex-1 font-normal"
+                                        >
                                             {label}
                                         </FieldLabel>
+                                        <Switch
+                                            id={`${id}-${key}`}
+                                            checked={
+                                                key === 'billboard'
+                                                    ? facesCamera(object)
+                                                    : object[key]
+                                            }
+                                            disabled={
+                                                key === 'billboard' && object.type === 'audio'
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                key === 'billboard'
+                                                    ? onBillboardChange(checked)
+                                                    : patch({ [key]: checked })
+                                            }
+                                        />
                                     </Field>
                                 ))}
                             </div>
@@ -312,30 +335,7 @@ export function ObjectEditor({
                         variant="panel"
                         className="property-section"
                     >
-                        <div>
-                            {' '}
-                            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
-                                Tâm trang là (0, 0, 0). Một đơn vị bằng chiều rộng trang; X sang
-                                phải, Y lên trên, Z nhô khỏi giấy. Góc xoay tính bằng độ.
-                            </p>
-                            <Field className="mb-4 gap-2">
-                                <FieldLabel className="mb-0">
-                                    <span className="flex items-center gap-2 font-normal">
-                                        <Checkbox
-                                            checked={object.snapToPaper}
-                                            disabled={unavailable}
-                                            onCheckedChange={(checked) =>
-                                                onChange(withPaperSnap(object, checked === true))
-                                            }
-                                        />
-                                        Bám mặt giấy (Z = 0)
-                                    </span>{' '}
-                                </FieldLabel>
-                                <p className="m-0 text-muted-foreground text-xs">
-                                    Kéo trục Z hoặc nhập độ cao để di chuyển trong 3D. Chọn Phối
-                                    cảnh để dễ kéo Z.
-                                </p>
-                            </Field>
+                        <div className="flex min-w-0 flex-col gap-5">
                             {(['position', 'rotation', 'scale'] as const).map((key) => (
                                 <VectorFields
                                     key={key}
@@ -348,6 +348,8 @@ export function ObjectEditor({
                                         }[key]
                                     }
                                     values={object.transform[key]}
+                                    resetValues={key === 'scale' ? [1, 1, 1] : [0, 0, 0]}
+                                    positive={key === 'scale'}
                                     disabled={
                                         unavailable || (key === 'rotation' && facesCamera(object))
                                     }
@@ -371,247 +373,11 @@ export function ObjectEditor({
                                         : 'Tắt “Luôn hướng về camera” để chỉnh góc xoay.'}
                                 </p>
                             )}
+                            <p className="m-0 text-muted-foreground text-xs leading-relaxed">
+                                Tâm trang là (0, 0, 0). Một đơn vị bằng chiều rộng trang.
+                            </p>
                         </div>
                     </Disclosure>
-                    {object.type !== 'model' && (
-                        <Disclosure
-                            value="content"
-                            title={
-                                <>
-                                    <SlidersHorizontal size={17} />
-                                    Nội dung
-                                </>
-                            }
-                            variant="panel"
-                            className="property-section"
-                        >
-                            <div
-                                className={
-                                    object.type === 'audio' ? 'flex flex-col gap-4' : undefined
-                                }
-                            >
-                                {' '}
-                                {(object.type === 'text' || object.type === 'label') && (
-                                    <>
-                                        <Button
-                                            variant="outline"
-                                            disabled={disabled || object.locked}
-                                            onClick={onEditText}
-                                        >
-                                            Chỉnh nội dung & kiểu chữ
-                                        </Button>
-                                        <Field orientation="contents">
-                                            <FieldLabel htmlFor={`${id}-text`}>
-                                                Nội dung chữ
-                                                <Textarea
-                                                    id={`${id}-text`}
-                                                    rows={3}
-                                                    maxLength={SCENE_LIMITS.maxTextChars}
-                                                    value={object.text}
-                                                    onChange={(event) =>
-                                                        patch({ text: event.currentTarget.value })
-                                                    }
-                                                />
-                                            </FieldLabel>
-                                        </Field>
-                                        <Field orientation="contents">
-                                            <FieldLabel htmlFor={`${id}-color`}>
-                                                Màu chữ
-                                                <Input
-                                                    id={`${id}-color`}
-                                                    type="color"
-                                                    value={object.style.color}
-                                                    onChange={(event) =>
-                                                        patch({
-                                                            style: {
-                                                                ...object.style,
-                                                                color: event.currentTarget.value,
-                                                            },
-                                                        })
-                                                    }
-                                                />
-                                            </FieldLabel>
-                                        </Field>
-                                        <NumericField
-                                            id={`${id}-text-size`}
-                                            label="Cỡ chữ (theo chiều rộng trang)"
-                                            value={object.style.size}
-                                            onChange={(size) =>
-                                                patch({ style: { ...object.style, size } })
-                                            }
-                                        />
-                                        <Field orientation="contents">
-                                            <FieldLabel htmlFor={`${id}-font`}>
-                                                Kiểu chữ
-                                                <FormSelect
-                                                    id={`${id}-font`}
-                                                    disabled={
-                                                        object.presentation?.kind === 'extruded'
-                                                    }
-                                                    value={object.style.font}
-                                                    onValueChange={(value) =>
-                                                        patch({
-                                                            style: {
-                                                                ...object.style,
-                                                                font: value as typeof object.style.font,
-                                                            },
-                                                        })
-                                                    }
-                                                    options={[
-                                                        { value: 'sans', label: 'Không chân' },
-                                                        { value: 'serif', label: 'Có chân' },
-                                                        { value: 'rounded', label: 'Bo tròn' },
-                                                    ]}
-                                                />
-                                            </FieldLabel>
-                                        </Field>
-                                        <Field orientation="contents">
-                                            <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                                <Checkbox
-                                                    checked={object.style.bold}
-                                                    onCheckedChange={(checked) =>
-                                                        patch({
-                                                            style: {
-                                                                ...object.style,
-                                                                bold: checked === true,
-                                                            },
-                                                        })
-                                                    }
-                                                />
-                                                Chữ đậm
-                                            </FieldLabel>
-                                        </Field>
-                                    </>
-                                )}
-                                {object.type === 'label' &&
-                                    !(
-                                        object.presentation?.kind === 'annotation' &&
-                                        object.presentation.shape === 'circle'
-                                    ) && (
-                                        <VectorFields
-                                            id={`${id}-target`}
-                                            label="Đầu mũi chỉ"
-                                            values={object.target}
-                                            onChange={(target) => patch({ target })}
-                                        />
-                                    )}
-                                {object.type === 'image' && (
-                                    <NumericField
-                                        id={`${id}-opacity`}
-                                        label="Độ hiện ảnh (0–1)"
-                                        value={object.opacity}
-                                        onChange={(opacity) => patch({ opacity })}
-                                    />
-                                )}
-                                {object.type === 'audio' && (
-                                    <>
-                                        <Field>
-                                            <FieldLabel htmlFor={`${id}-audio-kind`}>
-                                                Loại âm thanh
-                                            </FieldLabel>
-                                            <FormSelect
-                                                id={`${id}-audio-kind`}
-                                                value={object.audioKind || 'BGM'}
-                                                options={AUDIO_KIND_OPTIONS}
-                                                onValueChange={(value) =>
-                                                    patch({
-                                                        audioKind: value as 'BGM' | 'SFX' | 'VOICE',
-                                                    })
-                                                }
-                                            />
-                                        </Field>
-                                        <SceneAudioControls
-                                            id={object.id}
-                                            store={audioStore}
-                                            disabled={disabled || unavailable}
-                                        />
-                                    </>
-                                )}
-                                {(object.type === 'audio' || object.type === 'video') && (
-                                    <>
-                                        <Field orientation="contents">
-                                            <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                                <Checkbox
-                                                    checked={object.autoplay}
-                                                    onCheckedChange={(checked) =>
-                                                        patch({ autoplay: checked === true })
-                                                    }
-                                                />
-                                                Tự phát khi đọc trang
-                                            </FieldLabel>
-                                        </Field>
-                                        <Field orientation="contents">
-                                            <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                                <Checkbox
-                                                    checked={object.loop}
-                                                    onCheckedChange={(checked) =>
-                                                        patch({ loop: checked === true })
-                                                    }
-                                                />
-                                                Phát lặp
-                                            </FieldLabel>
-                                        </Field>
-                                        <NumericField
-                                            id={`${id}-volume`}
-                                            label="Âm lượng (0–1)"
-                                            value={object.volume}
-                                            onChange={(volume) => patch({ volume })}
-                                        />
-                                        {object.type === 'video' && (
-                                            <Field orientation="contents">
-                                                <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                                    <Checkbox
-                                                        checked={object.muted}
-                                                        onCheckedChange={(checked) =>
-                                                            patch({
-                                                                muted: checked === true,
-                                                            })
-                                                        }
-                                                    />
-                                                    Tắt tiếng video
-                                                </FieldLabel>
-                                            </Field>
-                                        )}
-                                        <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
-                                            Trình duyệt có thể yêu cầu người đọc chạm trước khi phát
-                                            âm thanh hoặc video.
-                                        </p>
-                                    </>
-                                )}
-                                {object.type === 'hotspot' && (
-                                    <>
-                                        <NumericField
-                                            id={`${id}-width`}
-                                            label="Rộng vùng chạm"
-                                            value={object.size[0]}
-                                            onChange={(value) =>
-                                                patch({ size: [value, object.size[1]] })
-                                            }
-                                        />
-                                        <NumericField
-                                            id={`${id}-height`}
-                                            label="Cao vùng chạm"
-                                            value={object.size[1]}
-                                            onChange={(value) =>
-                                                patch({ size: [object.size[0], value] })
-                                            }
-                                        />
-                                        <Field orientation="contents">
-                                            <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                                <Checkbox
-                                                    checked={object.showHint}
-                                                    onCheckedChange={(checked) =>
-                                                        patch({ showHint: checked === true })
-                                                    }
-                                                />
-                                                Hiện gợi ý vùng chạm
-                                            </FieldLabel>
-                                        </Field>
-                                    </>
-                                )}
-                            </div>
-                        </Disclosure>
-                    )}
                 </fieldset>
             </DisclosureGroup>
             <div className="inspector-object-actions mt-[18px] flex flex-wrap gap-2 [&_.button:last-child]:border [&_.button:last-child]:border-border [&_.button:last-child]:border-solid [&_.button:last-child]:bg-surface [&_.button:last-child]:text-destructive">
