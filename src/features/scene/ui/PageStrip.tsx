@@ -33,6 +33,7 @@ import { PageActionsMenu } from './PageActionsMenu';
 import { usePageReorderMotion } from './use-page-reorder-motion';
 
 export function PageStrip({
+    requestAction,
     book,
     pageId,
     disabled,
@@ -40,6 +41,7 @@ export function PageStrip({
     onBusyChange,
     onDraftChange,
 }: {
+    requestAction: (label: string, action: () => void, returnFocus?: HTMLElement | null) => void;
     book: BookDetail;
     pageId: string;
     disabled: boolean;
@@ -85,7 +87,7 @@ export function PageStrip({
             ? droppedPageIds(listing.data || [], draggingId, dropTarget)
             : pendingOrder;
     usePageReorderMotion(pageScroll, listing.data, previewOrder);
-    const locked = disabled || dirty || busy || uncertain;
+    const locked = disabled || busy || uncertain;
     const dragLocked = locked || listing.isPending || listing.isError || listing.isFetching;
     const clearDrag = useCallback(() => {
         dragSession.current = null;
@@ -249,8 +251,27 @@ export function PageStrip({
         }
     }
     async function move(page: PageSummary, direction: -1 | 1) {
-        const ids = movedPageIds(listing.data || [], page.id, direction);
+        const pages =
+            cache.getQueryData<PageSummary[]>(pageKeys.list(actor.current || '', bookId)) || [];
+        const ids = movedPageIds(pages, page.id, direction);
         if (ids) await reorder(ids);
+    }
+    function requestPageAction(label: string, action: () => void) {
+        if (locked || !currentSession()) return;
+        setMenu(null);
+        setError(null);
+        const focused = document.activeElement;
+        requestAction(
+            label,
+            () => {
+                if (currentSession()) action();
+            },
+            focused?.getAttribute('role') === 'menuitem'
+                ? menuAnchor.current
+                : focused instanceof HTMLElement
+                  ? focused
+                  : currentPageLink.current,
+        );
     }
     function dragOver(event: DragEvent<HTMLFieldSetElement>) {
         if (!dragSession.current || dragLocked) return;
@@ -276,10 +297,21 @@ export function PageStrip({
             return;
         }
         const ids = droppedPageIds(pages, session.id, target);
-        if (ids) {
-            setPendingOrder(ids);
-            void reorder(ids);
-        }
+        if (ids)
+            requestPageAction('Di chuyển trang', () => {
+                const current =
+                    cache.getQueryData<PageSummary[]>(pageKeys.list(actor.current || '', bookId)) ||
+                    [];
+                if (
+                    session.ids.length !== current.length ||
+                    session.ids.some((id, index) => id !== current[index].id)
+                ) {
+                    setError('Danh sách trang đã thay đổi. Vui lòng kéo lại.');
+                    return;
+                }
+                setPendingOrder(ids);
+                void reorder(ids);
+            });
     }
     const menuIndex = listing.data?.findIndex((page) => page.id === menu?.id) ?? -1;
     return (
@@ -390,6 +422,21 @@ export function PageStrip({
                                                 Date.now() < suppressClickUntil.current)
                                         )
                                             event.preventDefault();
+                                        else if (
+                                            dirty &&
+                                            page.id !== pageId &&
+                                            !event.ctrlKey &&
+                                            !event.metaKey &&
+                                            !event.shiftKey &&
+                                            !event.altKey &&
+                                            event.button === 0
+                                        ) {
+                                            event.preventDefault();
+                                            requestPageAction(
+                                                `Mở trang ${page.orderIndex + 1}`,
+                                                () => navigate(`/books/${bookId}/pages/${page.id}`),
+                                            );
+                                        }
                                     }}
                                     title={`${page.title || `Trang ${page.orderIndex + 1}`}${!dragLocked ? ' · Kéo để đổi thứ tự' : ''}`}
                                 >
@@ -452,19 +499,38 @@ export function PageStrip({
                                             first={menuIndex <= 0}
                                             last={menuIndex >= (listing.data?.length || 0) - 1}
                                             error={error}
-                                            onRename={() => setRenaming(true)}
-                                            onMove={(direction) => void move(menu, direction)}
-                                            onDelete={() => setDeleting(true)}
+                                            onRename={() =>
+                                                requestPageAction('Đổi tên trang', () => {
+                                                    setMenu(menu);
+                                                    setRenaming(true);
+                                                })
+                                            }
+                                            onMove={(direction) =>
+                                                requestPageAction(
+                                                    'Di chuyển trang',
+                                                    () => void move(menu, direction),
+                                                )
+                                            }
+                                            onDelete={() =>
+                                                requestPageAction('Xóa trang', () => {
+                                                    setMenu(menu);
+                                                    setDeleting(true);
+                                                })
+                                            }
                                             onDuplicate={() =>
-                                                void run(async () => {
-                                                    const result = await pagesApi.duplicate(
-                                                        menu.id,
-                                                    );
-                                                    if (currentSession())
-                                                        setTarget(
-                                                            `/books/${bookId}/pages/${result.page.id}`,
-                                                        );
-                                                }, true)
+                                                requestPageAction(
+                                                    'Nhân bản trang',
+                                                    () =>
+                                                        void run(async () => {
+                                                            const result = await pagesApi.duplicate(
+                                                                menu.id,
+                                                            );
+                                                            if (currentSession())
+                                                                setTarget(
+                                                                    `/books/${bookId}/pages/${result.page.id}`,
+                                                                );
+                                                        }, true),
+                                                )
                                             }
                                         />
                                     )}
@@ -475,10 +541,7 @@ export function PageStrip({
                 </fieldset>
                 <Tooltip delayDuration={250}>
                     <TooltipTrigger asChild>
-                        <span
-                            className="mt-2 inline-flex shrink-0 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
-                            tabIndex={dirty ? 0 : undefined}
-                        >
+                        <span className="mt-2 inline-flex shrink-0 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2">
                             <ActionButton
                                 variant="plain"
                                 className="strip-add-page grid size-14 shrink-0 place-items-center rounded-xl border border-border bg-surface text-primary transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:pointer-events-none"
@@ -486,10 +549,9 @@ export function PageStrip({
                                 disabled={locked || listing.isPending || listing.isError}
                                 aria-label="Thêm trang"
                                 ref={addAnchor}
-                                onClick={() => {
-                                    setAdding(true);
-                                    setError(null);
-                                }}
+                                onClick={() =>
+                                    requestPageAction('Thêm trang', () => setAdding(true))
+                                }
                             >
                                 <Plus size={20} aria-hidden="true" />
                                 <span className="sr-only">Thêm trang</span>
@@ -674,7 +736,6 @@ export function PageStrip({
                                 </Field>
                             </FieldGroup>
                             <Feedback error={error} />
-                            {dirty && <p>Lưu nội dung đang sửa trước khi thao tác với trang.</p>}
                             <DialogFooter className="mx-0 mb-0 flex-row justify-end gap-2 rounded-none border-0 bg-transparent p-0">
                                 <DialogClose asChild>
                                     <Button

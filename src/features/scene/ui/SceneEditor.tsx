@@ -80,7 +80,7 @@ import { AssetPicker } from './AssetPicker';
 import { InteractionEditor } from './InteractionEditor';
 import { NavigationGuard } from './NavigationGuard';
 import { ObjectEditor } from './ObjectEditor';
-import { PageSettingsEditor } from './PageSettingsEditor';
+import { PageSettingsEditor, type PageSettingsEditorHandle } from './PageSettingsEditor';
 import { PageStrip } from './PageStrip';
 import { SceneCanvas, type SceneCanvasHandle } from './SceneCanvas';
 import { SceneEditorSidebar } from './SceneEditorSidebar';
@@ -92,6 +92,7 @@ import { SceneShortcutsDialog } from './SceneShortcutsDialog';
 import { SceneWorkbench } from './SceneWorkbench';
 import { SelectionEditor } from './SelectionEditor';
 import { TextComposer, type TextMode, type TextualObject } from './TextComposer';
+import { useSaveBeforeAction } from './use-save-before-action';
 
 export function SceneEditor({
     page,
@@ -141,6 +142,7 @@ export function SceneEditor({
     const importFile = useRef<HTMLInputElement>(null);
     const [deleting, setDeleting] = useState<SceneObject[] | null>(null),
         [resetting, setResetting] = useState(false);
+    const settingsEditor = useRef<PageSettingsEditorHandle>(null);
     const [settingsDirty, setSettingsDirty] = useState(false),
         [settingsBusy, setSettingsBusy] = useState(false);
     useEffect(() => {
@@ -174,6 +176,24 @@ export function SceneEditor({
     const selected = selection.at(-1);
     const inspectorVisible = panel !== 'properties' || selection.length > 0;
     const workspaceRef = useRef<HTMLDivElement>(null);
+    const saveBeforeAction = useSaveBeforeAction({
+        dirty: editor.dirty || settingsDirty,
+        blocked,
+        save: async () => {
+            if (!SceneSchema.safeParse(editor.draft).success)
+                return 'Thông số chưa hợp lệ. Hãy kiểm tra các ô được đánh dấu trước khi lưu.';
+            if (editor.conflict || editor.uncertain)
+                return 'Cần kiểm tra phiên bản trên máy chủ trước khi tiếp tục. Bản đang sửa vẫn được giữ.';
+            if (
+                settingsDirty &&
+                (!settingsEditor.current || !(await settingsEditor.current.save()))
+            )
+                return 'Chưa lưu được thiết lập trang. Bản đang sửa vẫn được giữ; vui lòng thử lại.';
+            if (!(await commands.current.editor.save()))
+                return 'Chưa lưu được nội dung trang. Bản đang sửa vẫn được giữ; hãy kiểm tra kết nối hoặc phiên bản trên máy chủ.';
+            return null;
+        },
+    });
     useEffect(() => {
         const workspace = workspaceRef.current;
         if (!workspace) return;
@@ -420,10 +440,11 @@ export function SceneEditor({
                                         ? 'Lưu thay đổi để sửa thông tin sách'
                                         : undefined
                                 }
-                                aria-disabled={blocked || editor.dirty || settingsDirty}
+                                aria-disabled={blocked}
                                 onClick={() => {
-                                    if (!blocked && !editor.dirty && !settingsDirty)
-                                        setInfoOpen(true);
+                                    saveBeforeAction.request('Sửa thông tin sách', () =>
+                                        setInfoOpen(true),
+                                    );
                                 }}
                             >
                                 <FileText className="size-4 shrink-0" aria-hidden="true" />
@@ -589,15 +610,16 @@ export function SceneEditor({
 
                     <Tooltip delayDuration={250}>
                         <TooltipTrigger asChild>
-                            <span
-                                className="inline-flex shrink-0"
-                                tabIndex={editor.dirty || settingsDirty ? 0 : undefined}
-                            >
+                            <span className="inline-flex shrink-0">
                                 <Button
                                     size="sm"
                                     className="editor-publish h-10 min-w-26 disabled:pointer-events-none"
-                                    disabled={blocked || editor.dirty || settingsDirty}
-                                    onClick={() => setPublishOpen(true)}
+                                    disabled={blocked}
+                                    onClick={() =>
+                                        saveBeforeAction.request('Xuất bản sách', () =>
+                                            setPublishOpen(true),
+                                        )
+                                    }
                                 >
                                     <Send data-icon="inline-start" /> Xuất bản
                                 </Button>
@@ -1052,6 +1074,7 @@ export function SceneEditor({
                                             className="inspector-panel min-h-0 flex-1 overflow-y-auto p-4"
                                         >
                                             <PageSettingsEditor
+                                                ref={settingsEditor}
                                                 page={page}
                                                 disabled={
                                                     disabled || editor.busy || editor.uncertain
@@ -1087,6 +1110,7 @@ export function SceneEditor({
                     >
                         <div className="col-start-1 flex min-w-0 -translate-x-[calc(var(--inspector-offset)/2)] justify-center px-4 transition-[translate] duration-200 ease-out motion-reduce:transition-none [.scene-editor[data-panel=preview]_&]:translate-x-0">
                             <PageStrip
+                                requestAction={saveBeforeAction.request}
                                 book={book}
                                 pageId={page.id}
                                 dirty={editor.dirty || settingsDirty}
@@ -1098,6 +1122,7 @@ export function SceneEditor({
                     </div>
                 </div>
             </SceneWorkbench>
+            {saveBeforeAction.dialog}
             {infoOpen && (
                 <BookInfoDialog
                     bookId={book.id}

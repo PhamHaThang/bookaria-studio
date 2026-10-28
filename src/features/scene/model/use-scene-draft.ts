@@ -73,8 +73,9 @@ export function useSceneDraft(page: Page) {
             cache.invalidateQueries({ queryKey: assetKeys.all }),
         ]);
     }
-    async function save() {
-        if (active.current || !dirty || conflict || uncertain) return;
+    async function save(): Promise<boolean> {
+        if (active.current || conflict || uncertain) return false;
+        if (!dirty) return true;
         active.current = true;
         setBusy(true);
         setError(null);
@@ -85,13 +86,14 @@ export function useSceneDraft(page: Page) {
             await cache.cancelQueries({ queryKey: pageKeys.detail(user?.id || '', page.id) });
             try {
                 const result = await sceneApi.save(page.id, attempt);
-                if (!currentSession()) return;
+                if (!currentSession()) return false;
                 remember({ scene: attempt.scene, revision: result.revision }, result.updatedAt);
                 setWarnings(result.warnings || []);
                 setNotice('Đã lưu nội dung trang.');
                 await invalidate();
+                return currentSession();
             } catch (cause) {
-                if (!currentSession()) return;
+                if (!currentSession()) return false;
                 if (isSceneConflict(cause)) {
                     setConflict(true);
                     setError(
@@ -108,6 +110,7 @@ export function useSceneDraft(page: Page) {
             active.current = false;
             if (currentSession()) setBusy(false);
         }
+        return false;
     }
     async function readLatest(replace: boolean) {
         if (active.current) return;

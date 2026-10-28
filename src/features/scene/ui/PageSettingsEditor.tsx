@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
@@ -16,12 +16,16 @@ import { pageKeys, pagesApi } from '../../pages';
 import { settingsPatch } from '../model/objects';
 import { AssetPicker } from './AssetPicker';
 
+export type PageSettingsEditorHandle = { save: () => Promise<boolean> };
+
 export function PageSettingsEditor({
+    ref,
     page,
     disabled,
     onDirtyChange,
     onBusyChange,
 }: {
+    ref?: Ref<PageSettingsEditorHandle>;
     page: Page;
     disabled: boolean;
     onDirtyChange: (dirty: boolean) => void;
@@ -66,6 +70,44 @@ export function PageSettingsEditor({
         setDraft((current) => ({ ...current, [key]: value }));
         setNotice(null);
     }
+    async function save(): Promise<boolean> {
+        if (disabled || guard.current) return false;
+        if (!dirty) return true;
+        guard.current = true;
+        setBusy(true);
+        setError(null);
+        setNotice(null);
+        try {
+            const parsed = PageSettingsSchema.parse(draft);
+            const delta = settingsPatch(base, parsed);
+            await pagesApi.update(page.id, { settings: delta });
+            if (!alive.current || auth.store.getState().user?.id !== user?.id) return false;
+            setBase(parsed);
+            setDraft(parsed);
+            cache.setQueryData<Page>(pageKeys.detail(user?.id || '', page.id), (current) =>
+                current
+                    ? {
+                          ...current,
+                          settings: { ...current.settings, ...delta },
+                      }
+                    : current,
+            );
+            setNotice('Đã lưu cài đặt âm thanh và ánh sáng.');
+            await Promise.all([
+                cache.invalidateQueries({ queryKey: pageKeys.all }),
+                cache.invalidateQueries({ queryKey: bookKeys.all }),
+                cache.invalidateQueries({ queryKey: assetKeys.all }),
+            ]);
+            return alive.current && auth.store.getState().user?.id === user?.id;
+        } catch (cause) {
+            if (alive.current) setError(errorMessage(cause));
+        } finally {
+            guard.current = false;
+            if (alive.current) setBusy(false);
+        }
+        return false;
+    }
+    useImperativeHandle(ref, () => ({ save }));
     return (
         <section
             className="scene-settings mt-6 border-t-[1px] border-t-border pt-5 [border-top-style:solid] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [.workbench-panel_&]:m-0 [.workbench-panel_&]:border-0 [.workbench-panel_&]:border-[transparent] [.workbench-panel_&]:border-solid [.workbench-panel_&]:p-0"
@@ -149,43 +191,7 @@ export function PageSettingsEditor({
                 <Button
                     aria-busy={busy}
                     disabled={disabled || !dirty || busy}
-                    onClick={async () => {
-                        if (disabled || guard.current || !dirty) return;
-                        guard.current = true;
-                        setBusy(true);
-                        setError(null);
-                        setNotice(null);
-                        try {
-                            const parsed = PageSettingsSchema.parse(draft);
-                            const delta = settingsPatch(base, parsed);
-                            await pagesApi.update(page.id, { settings: delta });
-                            if (!alive.current || auth.store.getState().user?.id !== user?.id)
-                                return;
-                            setBase(parsed);
-                            setDraft(parsed);
-                            cache.setQueryData<Page>(
-                                pageKeys.detail(user?.id || '', page.id),
-                                (current) =>
-                                    current
-                                        ? {
-                                              ...current,
-                                              settings: { ...current.settings, ...delta },
-                                          }
-                                        : current,
-                            );
-                            setNotice('Đã lưu cài đặt âm thanh và ánh sáng.');
-                            await Promise.all([
-                                cache.invalidateQueries({ queryKey: pageKeys.all }),
-                                cache.invalidateQueries({ queryKey: bookKeys.all }),
-                                cache.invalidateQueries({ queryKey: assetKeys.all }),
-                            ]);
-                        } catch (cause) {
-                            if (alive.current) setError(errorMessage(cause));
-                        } finally {
-                            guard.current = false;
-                            if (alive.current) setBusy(false);
-                        }
-                    }}
+                    onClick={() => void save()}
                 >
                     {busy && <Spinner data-icon="inline-start" aria-hidden="true" />}
                     Lưu cài đặt trang
