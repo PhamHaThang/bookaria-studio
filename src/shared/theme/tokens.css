@@ -56,6 +56,8 @@
     --editor-grid-strong: #b3b3b3;
     --editor-grid: #d6d6d6;
     --editor-transform-guide: #333333;
+    --editor-marker-safe-area: #333333;
+    --editor-marker-safe-area-outline: var(--palette-white);
 
     --font-body: "Be Vietnam Pro", "Segoe UI", sans-serif;
     --font-heading: "Bricolage Grotesque", "Be Vietnam Pro", "Segoe UI", sans-serif;

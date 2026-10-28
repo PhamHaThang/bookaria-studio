@@ -164,8 +164,8 @@ export function SceneEditorSidebar({
                                 <SidebarMenuButton
                                     type="button"
                                     className={itemClass}
-                                    aria-label="Trang và nhận diện AR"
-                                    disabled={disabled}
+                                    aria-label="Thiết lập AR Marker"
+                                    aria-haspopup="dialog"
                                     onClick={onRecognition}
                                 >
                                     <QrCode strokeWidth={iconStrokeWidth} aria-hidden="true" />
