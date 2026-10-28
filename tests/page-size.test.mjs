@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
     bookPageSize,
     customBookSize,
+    imageBookSize,
     pdfPageSizeMm,
 } from '../src/features/books/model/page-size.ts';
 
@@ -50,4 +51,49 @@ test('existing books restore real sizes with a fallback for legacy custom books'
         heightMm: 210,
     });
     assert.deepEqual(bookPageSize(), { widthMm: 210, heightMm: 297 });
+});
+
+test('explicit image ratio keeps the physical width for portrait, landscape and square images', () => {
+    assert.deepEqual(imageBookSize({ width: 600, height: 900 }, 148), {
+        widthMm: 148,
+        heightMm: 222,
+    });
+    assert.deepEqual(imageBookSize({ width: 1200, height: 600 }, 210), {
+        widthMm: 210,
+        heightMm: 105,
+    });
+    assert.deepEqual(imageBookSize({ width: 300, height: 300 }, '180.5'), {
+        widthMm: 180.5,
+        heightMm: 180.5,
+    });
+    assert.deepEqual(
+        imageBookSize({ width: 4000, height: 6000 }, 148),
+        imageBookSize({ width: 600, height: 900 }, 148),
+    );
+});
+
+test('image ratio action rejects unsupported panoramic ratios and invalid widths without changing the image', () => {
+    for (const image of [
+        { width: 1000, height: 100 },
+        { width: 100, height: 1000 },
+        { width: 0, height: 500 },
+        { width: Infinity, height: 500 },
+    ])
+        assert.throws(() => imageBookSize(image, 210));
+    for (const width of ['', 0, 1001, 'bad', 180.55])
+        assert.throws(() => imageBookSize({ width: 400, height: 600 }, width));
+    assert.deepEqual(imageBookSize({ width: 1000, height: 200 }, 210), {
+        widthMm: 210,
+        heightMm: 42,
+    });
+    assert.deepEqual(imageBookSize({ width: 200, height: 1000 }, 210), {
+        widthMm: 210,
+        heightMm: 1050,
+    });
+});
+
+test('image ratio at the lower bound stays valid after millimetre rounding', () => {
+    const result = imageBookSize({ width: 1000, height: 200 }, 147.7);
+    assert.deepEqual(result, { widthMm: 147.7, heightMm: 29.6 });
+    assert.doesNotThrow(() => customBookSize(result.widthMm, result.heightMm));
 });

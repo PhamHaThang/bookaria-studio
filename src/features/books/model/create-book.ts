@@ -10,6 +10,7 @@ type AddPageResult = z.infer<typeof AddPageResultSchema>;
 export interface CreationCheckpoint extends PageImportCheckpoint {
     bookId?: string;
     aspect?: number;
+    coverSaved?: boolean;
 }
 /** Checkpoints belong to one immutable form submission, in this tab only. */
 export async function createBookWithPages({
@@ -17,6 +18,7 @@ export async function createBookWithPages({
     indices,
     checkpoint,
     create,
+    saveCover,
     detail,
     render,
     upload,
@@ -29,6 +31,7 @@ export async function createBookWithPages({
     indices: number[];
     checkpoint: CreationCheckpoint;
     create: (body: CreateBookBody) => Promise<{ book: { id: string } }>;
+    saveCover?: (bookId: string) => Promise<void>;
     detail: (id: string) => Promise<{ pageAspect: number }>;
     render: (index: number, aspect: number) => Promise<File>;
     upload: (
@@ -61,6 +64,12 @@ export async function createBookWithPages({
         }
     }
     checkSession();
+    if (saveCover && !current.coverSaved) {
+        onStage('Đang lưu ảnh bìa…');
+        await saveCover(current.bookId as string);
+        checkSession();
+        save({ ...current, coverSaved: true });
+    }
     if (current.aspect === undefined) {
         const book = await detail(current.bookId as string);
         save({ ...current, aspect: book.pageAspect });

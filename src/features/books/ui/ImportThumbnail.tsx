@@ -1,9 +1,18 @@
 import { ImageOff } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { cn } from '../../../shared/lib/cn';
 import { Skeleton } from '../../../shared/ui/primitives/skeleton';
 import type { ImportSource } from '../model/import-source';
 
-export function ImportThumbnail({ source, index }: { source: ImportSource; index: number }) {
+export function ImportThumbnail({
+    source,
+    index,
+    className,
+}: {
+    source: ImportSource;
+    index: number;
+    className?: string;
+}) {
     const host = useRef<HTMLDivElement>(null);
     const [url, setUrl] = useState<string | null>(null);
     const [failed, setFailed] = useState(false);
@@ -42,11 +51,20 @@ export function ImportThumbnail({ source, index }: { source: ImportSource; index
     return (
         <div
             ref={host}
-            className="flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-lg bg-muted"
+            className={cn(
+                'flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-lg bg-muted',
+                className,
+            )}
             aria-hidden="true"
         >
-            {url ? (
-                <img src={url} alt="" className="size-full object-contain" />
+            {url && !failed ? (
+                <img
+                    src={url}
+                    alt=""
+                    draggable={false}
+                    className="pointer-events-none size-full select-none object-contain"
+                    onError={() => setFailed(true)}
+                />
             ) : failed ? (
                 <ImageOff />
             ) : (

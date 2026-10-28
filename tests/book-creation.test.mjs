@@ -208,3 +208,57 @@ test('a changed session stops before the next page write', async () => {
     await assert.rejects(f.run(), /Changed actor/);
     assert.equal(f.counts().adds, 0);
 });
+
+test('cover failure resumes on the same book before importing any pages', async () => {
+    const f = fixture();
+    let attempts = 0;
+    f.options.saveCover = async (id) => {
+        assert.equal(id, 'book');
+        attempts++;
+        if (attempts === 1) throw new Error('Cover save failed');
+    };
+    await assert.rejects(f.run(), /Cover save failed/);
+    assert.equal(f.state().bookId, 'book');
+    assert.equal(f.counts().uploads, 0);
+    await f.run();
+    assert.equal(attempts, 2);
+    assert.equal(f.counts().creates, 1);
+    assert.equal(f.state().coverSaved, true);
+});
+
+test('a saved cover is not repeated when a later page import is resumed', async () => {
+    const f = fixture();
+    let covers = 0,
+        first = true;
+    const add = f.options.add;
+    f.options.saveCover = async () => {
+        covers++;
+    };
+    f.options.add = async (...args) => {
+        if (first) {
+            first = false;
+            throw new Error('Page failed');
+        }
+        return add(...args);
+    };
+    await assert.rejects(f.run(), /Page failed/);
+    assert.equal(f.state().coverSaved, true);
+    await f.run();
+    assert.equal(covers, 1);
+    assert.equal(f.counts().creates, 1);
+    assert.equal(f.counts().uploads, 2);
+});
+
+test('session change after cover persistence stops before page writes', async () => {
+    const f = fixture();
+    let changed = false;
+    f.options.saveCover = async () => {
+        changed = true;
+    };
+    f.options.checkSession = () => {
+        if (changed) throw new Error('Changed actor');
+    };
+    await assert.rejects(f.run(), /Changed actor/);
+    assert.equal(f.counts().adds, 0);
+    assert.equal(f.counts().uploads, 0);
+});

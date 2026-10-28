@@ -3,6 +3,7 @@ import { BookOpen, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/shared/ui/Badge';
+import { BookCoverImage } from '@/shared/ui/BookCoverImage';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { FilterBar } from '@/shared/ui/FilterBar';
@@ -307,16 +308,8 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                             </ActionButton>
                                         )}
                                         <CardContent asChild className="p-0">
-                                            <div className="book-cover motion-safe:[.book-gallery_.book-row:hover_&_img]:transform-[scale(1.025)] grid h-[66px] w-[50px] overflow-hidden rounded-[var(--radius-sm)] bg-[var(--bg-cover)] text-[var(--text-cover)] [place-items:center] max-[760px]:row-[span_2] max-[760px]:h-[54px] max-[760px]:w-10 [&_img]:size-full [&_img]:object-cover [.book-gallery_&]:col-[1_/_-1] [.book-gallery_&]:row-[1] [.book-gallery_&]:h-[190px] [.book-gallery_&]:w-full [.book-gallery_&]:rounded-[7px] [.book-gallery_&]:bg-[var(--bg-cover)] [.book-gallery_&_img]:object-contain motion-safe:[.book-gallery_&_img]:[transition:transform_180ms_ease-out]">
-                                                {book.coverUrl ? (
-                                                    <img
-                                                        src={book.coverUrl}
-                                                        alt=""
-                                                        loading="lazy"
-                                                    />
-                                                ) : (
-                                                    <BookOpen size={27} aria-hidden="true" />
-                                                )}
+                                            <div className="book-cover motion-safe:[.book-gallery_.book-row:hover_&_img]:transform-[scale(1.025)] grid h-[66px] w-[50px] overflow-hidden rounded-[var(--radius-sm)] bg-surface text-[var(--text-cover)] [place-items:center] max-[760px]:row-[span_2] max-[760px]:h-[54px] max-[760px]:w-10 [&_img]:size-full [&_img]:object-cover [.book-gallery_&]:col-[1_/_-1] [.book-gallery_&]:row-[1] [.book-gallery_&]:h-[190px] [.book-gallery_&]:w-full [.book-gallery_&]:rounded-[7px] [.book-gallery_&]:bg-surface [.book-gallery_&_img]:object-contain motion-safe:[.book-gallery_&_img]:[transition:transform_180ms_ease-out]">
+                                                <BookCoverImage url={book.coverUrl} />
                                             </div>
                                         </CardContent>
                                         <CardHeader asChild className="gap-0 p-0">

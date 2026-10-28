@@ -53,7 +53,7 @@ export async function preparePdf(
             page.cleanup();
             onProgress?.(index, document.numPages);
         }
-        async function renderCanvas(index: number, aspect?: number) {
+        async function renderCanvas(index: number, aspect?: number, previewWidth = 240) {
             const page = await document.getPage(index + 1);
             const raw = page.getViewport({ scale: 1 });
             const fit = pageFit(
@@ -61,7 +61,8 @@ export async function preparePdf(
                 raw.height,
                 aspect ?? Math.max(0.2, Math.min(5, raw.height / raw.width)),
             );
-            const scale = aspect === undefined ? 240 / fit.width : 1;
+            const scale =
+                aspect === undefined ? Math.min(previewWidth / fit.width, 2000 / fit.height) : 1;
             const canvas = window.document.createElement('canvas');
             canvas.width = Math.max(1, Math.round(fit.width * scale));
             canvas.height = Math.max(1, Math.round(fit.height * scale));
@@ -106,6 +107,20 @@ export async function preparePdf(
                         const url = canvas.toDataURL('image/jpeg', 0.8);
                         thumbnails.set(index, url);
                         return url;
+                    } finally {
+                        canvas.width = canvas.height = 0;
+                    }
+                });
+                queue = result.catch(() => undefined);
+                return result;
+            },
+            previewPage(index, signal) {
+                const result = queue.then(async () => {
+                    signal.throwIfAborted();
+                    const canvas = await renderCanvas(index, undefined, 1400);
+                    try {
+                        signal.throwIfAborted();
+                        return await canvasFile(canvas, `trang-pdf-${index + 1}.jpg`);
                     } finally {
                         canvas.width = canvas.height = 0;
                     }

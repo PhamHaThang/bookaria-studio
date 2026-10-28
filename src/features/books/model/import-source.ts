@@ -9,7 +9,11 @@ export interface ImportSource {
     labels: string[];
     /** Displayed page dimensions in PDF order, including rotation and crop box. */
     pageSizesMm?: PageSizeMm[];
+    /** Original decoded dimensions; image pixels do not imply a physical print size. */
+    imageSizesPx?: { width: number; height: number }[];
     thumbnail: (index: number, signal: AbortSignal) => Promise<string>;
+    /** A single bounded, high-resolution page for the image preview dialog. */
+    previewPage?: (index: number, signal: AbortSignal) => Promise<File>;
     render: (index: number, aspect: number) => Promise<File>;
     dispose: () => void;
 }
@@ -127,6 +131,7 @@ export async function prepareImport(
     }
     // Decode one image at a time; validate every source before creating a book.
     const previews: string[] = [];
+    const imageSizesPx: { width: number; height: number }[] = [];
     onProgress?.(0, files.length);
     for (const [index, file] of files.entries()) {
         const image = await readImage(file);
@@ -134,6 +139,7 @@ export async function prepareImport(
             signal.throwIfAborted();
             if (image.width * image.height > 40_000_000)
                 throw new Error(`Ảnh “${file.name}” quá lớn (tối đa 40 megapixel).`);
+            imageSizesPx.push({ width: image.width, height: image.height });
             {
                 const canvas = document.createElement('canvas');
                 const scale = Math.min(240 / image.width, 320 / image.height);
@@ -153,6 +159,7 @@ export async function prepareImport(
         name: `${files.length} ảnh`,
         count: files.length,
         preview: previews[0],
+        imageSizesPx,
         labels: files.map((file) => file.name),
         async thumbnail(index, signal) {
             signal.throwIfAborted();

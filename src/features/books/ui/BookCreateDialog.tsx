@@ -3,7 +3,6 @@ import { ArrowRight, BookOpen, FileUp, LoaderCircle, X } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
-import { Disclosure } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -17,13 +16,22 @@ import {
     type CreateBookBody,
     CreateBookBodySchema,
 } from '../../../shared/contracts/api/books.schema';
+import type { Asset } from '../../../shared/contracts/dto.schema';
 import type { PageFormat } from '../../../shared/contracts/enums.schema';
 import { Button } from '../../../shared/ui/Button';
-import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
+import { Button as IconButton } from '../../../shared/ui/primitives/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '../../../shared/ui/primitives/dialog';
 import { assetKeys, assetsApi } from '../../assets';
 import { uploadFile } from '../../assets/api/upload-file';
-import { runAssetUpload } from '../../assets/model/upload';
+import { saveUploadedImage } from '../../assets/model/image';
+import { runAssetUpload, type UploadCheckpoint } from '../../assets/model/upload';
 import { auth, useAuth } from '../../auth';
 import { pageKeys, pagesApi } from '../../pages';
 import { blankPageImage } from '../../pages/model/blank-page';
@@ -32,8 +40,10 @@ import { bookKeys, booksApi } from '../model/books';
 import { type CreationCheckpoint, createBookWithPages } from '../model/create-book';
 import type { ImportSource } from '../model/import-source';
 import { customBookSize } from '../model/page-size';
+import { BookCoverField } from './BookCoverField';
 import { BookImportField, type BookImportValue } from './BookImportField';
 import { BookSizeFields } from './BookSizeFields';
+import { BookTopicField } from './BookTopicField';
 
 export function BookCreateDialog() {
     const navigate = useNavigate(),
@@ -46,7 +56,14 @@ export function BookCreateDialog() {
         active = useRef(false);
     const sourceRef = useRef<ImportSource | null>(null);
     const checkpoint = useRef<CreationCheckpoint>({ pages: [] });
-    const submission = useRef<{ body: CreateBookBody; indices: number[] } | null>(null);
+    const submission = useRef<{
+        body: CreateBookBody;
+        indices: number[];
+        cover: File | null;
+    } | null>(null);
+    const [cover, setCover] = useState<File | null>(null);
+    const coverCheckpoint = useRef<UploadCheckpoint | null>(null);
+    const readyCover = useRef<Asset | null>(null);
     const [mode, setMode] = useState<'blank' | 'import'>('blank');
     const [source, setSource] = useState<ImportSource | null>(null);
     const [title, setTitle] = useState('');
@@ -132,6 +149,7 @@ export function BookCreateDialog() {
         });
     const dirty = Boolean(
         title ||
+            cover ||
             description ||
             topic ||
             source ||
@@ -161,6 +179,7 @@ export function BookCreateDialog() {
                         source: { type: 'BLANK' },
                     }),
                     indices: mode === 'blank' ? [0] : selection,
+                    cover,
                 };
             }
             const frozen = submission.current;
@@ -173,6 +192,52 @@ export function BookCreateDialog() {
                 ...frozen,
                 checkpoint: checkpoint.current,
                 create: booksApi.create,
+                saveCover: frozen.cover
+                    ? async (bookId) => {
+                          checkSession();
+                          await saveUploadedImage({
+                              api: {
+                                  signature: (...args) => {
+                                      checkSession();
+                                      return assetsApi.signature(...args);
+                                  },
+                                  complete: (...args) => {
+                                      checkSession();
+                                      return assetsApi.complete(...args);
+                                  },
+                              },
+                              transfer: uploadFile,
+                              file: frozen.cover as File,
+                              purpose: 'ASSET',
+                              metadata: { name: frozen.cover?.name || 'Ảnh bìa', tags: [] },
+                              signal: new AbortController().signal,
+                              checkpoint: coverCheckpoint.current,
+                              readyAsset: readyCover.current,
+                              onCheckpoint: (value) => {
+                                  coverCheckpoint.current = value;
+                              },
+                              onReady: (value) => {
+                                  checkSession();
+                                  readyCover.current = value;
+                              },
+                              onStage: (value) =>
+                                  setStage(
+                                      {
+                                          signing: 'Đang chuẩn bị ảnh bìa…',
+                                          uploading: 'Đang tải ảnh bìa…',
+                                          completing: 'Đang xác nhận ảnh bìa…',
+                                      }[value],
+                                  ),
+                              onProgress: (percent) => setStage(`Đang tải ảnh bìa… ${percent}%`),
+                              onSaving: () => setStage('Đang lưu ảnh bìa…'),
+                              save: async (coverAssetId) => {
+                                  checkSession();
+                                  await booksApi.update(bookId, { coverAssetId });
+                                  checkSession();
+                              },
+                          });
+                      }
+                    : undefined,
                 detail: booksApi.detail,
                 add: pagesApi.add,
                 render: (index, ratio) =>
@@ -246,276 +311,321 @@ export function BookCreateDialog() {
                           : 'Thông tin sách và tài liệu bạn đã chọn chưa được lưu. Đóng cửa sổ sẽ bỏ phần đang nhập.'
                 }
             />
-            <ConfirmDialog
-                title="Tạo sách mới"
-                className="book-create-dialog [&[data-state=open]]:flex [&[data-state=open]]:flex-col [&_>_form]:flex [&_>_form]:min-h-0 [&_>_form]:flex-col [&_>_h2]:mx-0 [&_>_h2]:mt-0 [&_>_h2]:mb-2 [&_>_h2]:pr-17 [&_>_h2]:pl-7 [&_>_h2]:text-[length:var(--text-xl)] max-[600px]:[&_>_h2]:pl-[18px] [.confirm-dialog&]:max-h-[calc(100dvh_-_32px)] [.confirm-dialog&]:w-[min(760px,_calc(100vw_-_32px))] [.confirm-dialog&]:max-w-[calc(100vw_-_32px)] [.confirm-dialog&]:overflow-hidden [.confirm-dialog&]:border-0 [.confirm-dialog&]:border-[transparent] [.confirm-dialog&]:border-solid [.confirm-dialog&]:px-0 [.confirm-dialog&]:pt-7 [.confirm-dialog&]:pb-0 [.confirm-dialog&]:shadow-[var(--shadow-popover)] max-[600px]:[.confirm-dialog&]:max-h-[calc(100dvh_-_16px)] max-[600px]:[.confirm-dialog&]:w-[calc(100vw_-_16px)] max-[600px]:[.confirm-dialog&]:max-w-[calc(100vw_-_16px)] max-[600px]:[.confirm-dialog&]:pt-[22px]"
-                busy={busy}
-                onClose={close}
+            <Dialog
+                open
+                onOpenChange={(open) => {
+                    if (!open) close();
+                }}
             >
-                <Button
-                    variant="outline"
-                    className="creation-close absolute top-[18px] right-[18px] size-11 p-0"
-                    aria-label="Đóng tạo sách"
-                    disabled={busy}
-                    onClick={close}
+                <DialogContent
+                    showCloseButton={false}
+                    className="flex h-[min(820px,calc(100dvh-48px))] max-w-[min(1160px,calc(100vw-48px))] flex-col overflow-hidden p-0"
+                    onEscapeKeyDown={(event) => {
+                        if (busy) event.preventDefault();
+                    }}
+                    onInteractOutside={(event) => event.preventDefault()}
                 >
-                    <X data-icon="inline-start" />
-                </Button>
-                <p className="creation-intro [.book-create-dialog_&]:mx-0 [.book-create-dialog_&]:mt-0 [.book-create-dialog_&]:mb-6 [.book-create-dialog_&]:pr-17 [.book-create-dialog_&]:pl-7 [.book-create-dialog_&]:text-[length:14px] max-[600px]:[.book-create-dialog_&]:pr-16 max-[600px]:[.book-create-dialog_&]:pl-[18px]">
-                    Bắt đầu từ trang trắng hoặc biến tài liệu có sẵn thành sách AR.
-                </p>
-                <form onSubmit={(event) => void submit(event)}>
-                    <FieldGroup className="contents">
-                        <div className="creation-body overflow-y-auto px-7 pt-0 pb-6 [overscroll-behavior:contain] [scrollbar-color:var(--border-input)_var(--bg-surface)] [scrollbar-width:thin] max-[600px]:px-[18px]">
-                            <fieldset
-                                disabled={busy || locked}
-                                className="creation-fields m-0 min-w-0 border-0 border-[transparent] border-solid p-0 [&_>_label]:block [&_>_label]:font-semibold [&_>_label]:text-[length:14px] [&_[data-slot=select-trigger]]:mt-2 [&_[data-slot=select-trigger]]:flex [&_[data-slot=select-trigger]]:min-h-11 [&_[data-slot=select-trigger]]:w-full [&_input::placeholder]:text-muted-foreground [&_input::placeholder]:opacity-100 [&_input:not([type=radio]):not([type=file])]:mt-2 [&_input:not([type=radio]):not([type=file])]:block [&_input:not([type=radio]):not([type=file])]:min-h-11 [&_input:not([type=radio]):not([type=file])]:w-full [&_textarea]:mt-2 [&_textarea]:block [&_textarea]:min-h-11 [&_textarea]:w-full"
-                            >
-                                <Field orientation="contents">
-                                    <FieldLabel htmlFor="new-book-title">
-                                        Tên sách <span aria-hidden="true">*</span>
-                                        <Input
-                                            id="new-book-title"
-                                            value={title}
-                                            onChange={(event) => setTitle(event.target.value)}
-                                            maxLength={200}
-                                            required
-                                            placeholder="Ví dụ: Khám phá hệ Mặt Trời"
-                                        />
-                                    </FieldLabel>
-                                </Field>
-                                <FieldSet className="creation-modes mx-0 mt-6 mb-0 grid min-w-0 grid-cols-[1fr_1fr] gap-3 border-0 border-[transparent] border-solid p-0 max-[600px]:grid-cols-[1fr] max-[600px]:gap-2 [&_input]:size-4 [&_input]:shrink-0 [&_input]:[accent-color:var(--action-primary)] [&_legend]:mb-[10px] [&_legend]:font-semibold [&_legend]:text-[length:14px] [&_small]:mt-1 [&_small]:block [&_small]:text-[length:12px] [&_small]:text-current [&_small]:leading-[1.6] [&_strong]:block [&_strong]:font-semibold [&_strong]:text-[length:14px] [&_svg]:shrink-0 [&_svg]:text-current">
-                                    <FieldLegend>Bắt đầu với</FieldLegend>
-                                    <RadioGroup
-                                        name="creation-source"
-                                        disabled={preparing}
-                                        value={mode}
-                                        onValueChange={(value) => setMode(value as typeof mode)}
-                                        className="contents"
-                                        aria-label="Bắt đầu với"
-                                    >
-                                        <Field orientation="contents">
-                                            <FieldLabel
-                                                className={cn(
-                                                    'creation-mode-option relative m-0 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-primary border-solid bg-surface px-4 py-4 text-primary transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring has-[:focus-visible]:outline-offset-3 [&.selected]:bg-primary [&.selected]:text-primary-foreground [.creation-fields:disabled_&]:cursor-default',
-                                                    mode === 'blank' ? 'selected' : '',
-                                                )}
-                                            >
-                                                <RadioGroupItem
-                                                    value="blank"
-                                                    className="sr-only absolute"
+                    <DialogHeader className="relative shrink-0 gap-2 border-border border-b px-6 py-5 pr-16">
+                        <DialogTitle size="lg" className="m-0">
+                            Tạo sách mới
+                        </DialogTitle>
+                        <DialogDescription className="m-0">
+                            Điền thông tin sách, sau đó bắt đầu với trang trắng hoặc tài liệu của
+                            bạn.
+                        </DialogDescription>
+                        <IconButton
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="absolute top-5 right-5"
+                            aria-label="Đóng tạo sách"
+                            disabled={busy}
+                            onClick={close}
+                        >
+                            <X />
+                        </IconButton>
+                    </DialogHeader>
+                    <form
+                        className="flex min-h-0 flex-1 flex-col [&_[data-slot=select-trigger]]:mt-0 [&_input]:mt-0 [&_textarea]:mt-0"
+                        onSubmit={(event) => void submit(event)}
+                    >
+                        <FieldGroup className="contents">
+                            <div className="m-0 grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] overflow-hidden border-0 p-0 max-[960px]:grid-cols-1 max-[960px]:overflow-y-auto">
+                                <fieldset disabled={busy || locked} className="contents">
+                                    <div className="relative min-h-0 min-w-0 overflow-y-auto overscroll-contain border-border border-r p-6 max-[960px]:overflow-visible max-[960px]:border-r-0 max-[960px]:border-b">
+                                        <FieldGroup className="gap-5 [container-type:normal]">
+                                            <Field className="gap-2">
+                                                <FieldLabel
+                                                    htmlFor="new-book-title"
+                                                    className="mb-0"
+                                                >
+                                                    Tên sách <span aria-hidden="true">*</span>
+                                                </FieldLabel>
+                                                <Input
+                                                    id="new-book-title"
+                                                    value={title}
+                                                    onChange={(event) =>
+                                                        setTitle(event.target.value)
+                                                    }
+                                                    maxLength={200}
+                                                    required
+                                                    placeholder="Ví dụ: Khám phá hệ Mặt Trời"
                                                 />
-                                                <BookOpen size={23} aria-hidden="true" />
-                                                <span>
-                                                    <strong>Sách trống</strong>
-                                                    <small>Một trang trắng để sáng tạo</small>
-                                                </span>
-                                            </FieldLabel>
-                                        </Field>
-                                        <Field orientation="contents">
-                                            <FieldLabel
-                                                className={cn(
-                                                    'creation-mode-option relative m-0 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-primary border-solid bg-surface px-4 py-4 text-primary transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring has-[:focus-visible]:outline-offset-3 [&.selected]:bg-primary [&.selected]:text-primary-foreground [.creation-fields:disabled_&]:cursor-default',
-                                                    mode === 'import' ? 'selected' : '',
-                                                )}
-                                            >
-                                                <RadioGroupItem
-                                                    value="import"
-                                                    className="sr-only absolute"
-                                                />
-                                                <FileUp size={23} aria-hidden="true" />
-                                                <span>
-                                                    <strong>Nhập PDF / ảnh</strong>
-                                                    <small>
-                                                        Mỗi trang hoặc ảnh là một trang sách
-                                                    </small>
-                                                </span>
-                                            </FieldLabel>
-                                        </Field>
-                                    </RadioGroup>
-                                </FieldSet>
-                                <div className={mode === 'import' ? undefined : 'hidden'}>
-                                    <BookImportField
-                                        value={source ? { source, indices: selection } : null}
-                                        disabled={busy || locked}
-                                        onChange={changeImport}
-                                        onBusyChange={setPreparing}
-                                    />
-                                </div>
-                                <div className="creation-format mt-6 grid grid-cols-[repeat(2,_minmax(0,_1fr))] gap-4 [&_>_label]:block [&_>_label]:font-semibold [&_>_label]:text-[length:14px]">
-                                    <Field orientation="contents">
-                                        <FieldLabel htmlFor="new-book-format">
-                                            Khổ sách
-                                            <FormSelect
-                                                id="new-book-format"
-                                                value={format}
-                                                onValueChange={(value) => {
-                                                    setFormat(value as PageFormat);
-                                                    setDetectedPage(null);
+                                            </Field>
+                                            <BookCoverField
+                                                file={cover}
+                                                disabled={busy || locked}
+                                                onChange={(value) => {
+                                                    setCover(value);
+                                                    coverCheckpoint.current = null;
+                                                    readyCover.current = null;
+                                                    setError(null);
                                                 }}
-                                                options={[
-                                                    { value: 'A4', label: 'A4 · Dọc' },
-                                                    { value: 'A5', label: 'A5 · Dọc' },
-                                                    { value: 'SQUARE', label: 'Vuông · 1:1' },
-                                                    { value: 'CUSTOM', label: 'Tùy chỉnh' },
-                                                ]}
                                             />
-                                        </FieldLabel>
-                                    </Field>
-                                    <BookSizeFields
-                                        format={format}
-                                        className="col-span-full"
-                                        idPrefix="new-book"
-                                        width={width}
-                                        height={height}
-                                        onWidthChange={(value) => {
-                                            setWidth(value);
-                                            setDetectedPage(null);
-                                        }}
-                                        onHeightChange={(value) => {
-                                            setHeight(value);
-                                            setDetectedPage(null);
-                                        }}
-                                    />
-                                </div>
-                                {format === 'CUSTOM' && (
-                                    <p className="mt-2 mb-0 text-muted-foreground text-xs leading-relaxed">
-                                        {detectedPage !== null
-                                            ? `Đã lấy kích thước từ trang PDF ${detectedPage}. Bạn có thể chỉnh lại trước khi tạo.`
-                                            : 'Nhập kích thước mỗi trang bằng milimét.'}
-                                    </p>
-                                )}
-                                {mode === 'import' && mixedPageSizes && (
-                                    <p className="mt-2 mb-0 text-muted-foreground text-xs leading-relaxed">
-                                        PDF có nhiều khổ trang. Các trang được chọn sẽ được đặt vừa
-                                        khổ sách bên trên.
-                                    </p>
-                                )}
-                                {mode === 'import' && (
-                                    <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
-                                        Ảnh luôn nằm trọn trong khổ sách; phần dư được thêm nền
-                                        trắng.
-                                    </p>
-                                )}
-                                <Disclosure
-                                    title={<>Thông tin bổ sung</>}
-                                    className="creation-details mt-6 border-t-[1px] border-t-border pt-[18px] [border-top-style:solid] [&_>_label]:block [&_>_label]:font-semibold [&_>_label]:text-[length:14px] [&_[data-slot=accordion-trigger]]:min-h-[30px] [&_[data-slot=accordion-trigger]]:cursor-pointer [&_[data-slot=accordion-trigger]]:font-semibold [&_[data-slot=accordion-trigger]]:text-[length:14px] [&_label]:mt-[14px]"
-                                >
-                                    <Field orientation="contents">
-                                        <FieldLabel htmlFor="new-book-description">
-                                            Mô tả
-                                            <Textarea
-                                                id="new-book-description"
-                                                rows={3}
-                                                maxLength={2000}
-                                                value={description}
-                                                onChange={(event) =>
-                                                    setDescription(event.target.value)
-                                                }
-                                            />
-                                        </FieldLabel>
-                                    </Field>
-                                    <Field orientation="contents">
-                                        <FieldLabel htmlFor="new-book-topic">
-                                            Chủ đề
-                                            <Input
+                                            <Field className="gap-2">
+                                                <FieldLabel
+                                                    htmlFor="new-book-description"
+                                                    className="mb-0"
+                                                >
+                                                    Mô tả
+                                                </FieldLabel>
+                                                <Textarea
+                                                    id="new-book-description"
+                                                    rows={3}
+                                                    maxLength={2000}
+                                                    value={description}
+                                                    placeholder="Giới thiệu ngắn về nội dung cuốn sách"
+                                                    onChange={(event) =>
+                                                        setDescription(event.currentTarget.value)
+                                                    }
+                                                />
+                                            </Field>
+                                            <BookTopicField
                                                 id="new-book-topic"
-                                                maxLength={50}
                                                 value={topic}
-                                                onChange={(event) => setTopic(event.target.value)}
-                                                placeholder="Ví dụ: Khoa học"
+                                                disabled={busy || locked}
+                                                onChange={setTopic}
                                             />
-                                        </FieldLabel>
-                                    </Field>
-                                </Disclosure>
-                            </fieldset>
-                        </div>
-                        {(error || busy) && (
-                            <div className="creation-result max-h-[32dvh] shrink-0 overflow-y-auto px-7 pt-0 pb-4 max-[600px]:px-[18px] [&_>_.feedback]:m-0">
-                                <Feedback error={error} />
-                                {locked && !busy && error && (
-                                    <p className="creation-recovery mx-0 my-2 text-[length:12px]">
-                                        {checkpoint.current.uncertain
-                                            ? 'Yêu cầu có thể đã được lưu. Mở sách để kiểm tra; hệ thống sẽ không tự gửi lại và tạo trùng.'
-                                            : `Sách đã tạo, ${completed}/${count} trang đã nhập. Tiếp tục sẽ giữ nguyên các trang đã xong. Giữ tab này để tiếp tục.`}
-                                    </p>
-                                )}
-                                {busy && (
-                                    <div
-                                        className="creation-progress mt-0 flex items-center gap-3 text-[length:14px] text-primary [&_small]:mt-[6px] [&_small]:block [&_small]:text-current"
-                                        role="status"
-                                    >
-                                        <LoaderCircle
-                                            size={20}
-                                            className="button-spinner shrink-0 motion-safe:animate-spin"
-                                        />
-                                        <span>
-                                            {stage}
-                                            <small>
-                                                {completed}/{count} trang đã hoàn tất. Giữ trang này
-                                                mở đến khi hoàn tất.
-                                            </small>
-                                        </span>
+                                        </FieldGroup>
                                     </div>
-                                )}
-                                {locked && (
-                                    <Progress
-                                        value={completed}
-                                        max={count}
-                                        className="mt-3"
-                                        aria-label="Tiến độ tạo trang sách"
-                                        getValueLabel={() =>
-                                            `${completed}/${count} trang đã hoàn tất`
-                                        }
-                                    />
-                                )}
-                            </div>
-                        )}
-                        <div className="creation-footer flex shrink-0 items-center justify-between gap-4 border-t-[1px] border-t-border px-7 py-[18px] [border-top-style:solid] max-[600px]:flex-col max-[600px]:items-stretch max-[600px]:gap-[10px] max-[600px]:px-[18px] max-[600px]:py-[14px] max-[600px]:[&_.button]:min-w-0 [&_>_div]:flex [&_>_div]:flex-wrap [&_>_div]:justify-end [&_>_div]:gap-[10px] max-[600px]:[&_>_div]:flex-nowrap [&_>_span]:text-[length:12px] [&_>_span]:text-muted-foreground">
-                            <span>
-                                {locked
-                                    ? 'Sách đang ở chế độ nháp'
-                                    : `${count} trang · Nháp riêng tư`}
-                            </span>
-                            <div>
-                                <Button variant="secondary" disabled={busy} onClick={close}>
-                                    {checkpoint.current.bookId
-                                        ? 'Mở sách đã tạo'
-                                        : checkpoint.current.uncertain
-                                          ? 'Kiểm tra sách của tôi'
-                                          : 'Hủy'}
-                                </Button>
-                                {!checkpoint.current.uncertain && (
-                                    <Button
-                                        type="submit"
-                                        aria-busy={busy}
-                                        disabled={
-                                            preparing ||
-                                            (mode === 'import' && (!source || !selection.length)) ||
-                                            busy
-                                        }
-                                    >
-                                        {busy && (
-                                            <Spinner data-icon="inline-start" aria-hidden="true" />
-                                        )}
-                                        {busy
-                                            ? 'Đang tạo…'
-                                            : locked
-                                              ? 'Tiếp tục nhập'
-                                              : 'Tạo và mở editor'}
-                                        {!busy && (
-                                            <ArrowRight
-                                                data-icon="inline-start"
-                                                aria-hidden="true"
+                                    <div className="relative min-h-0 min-w-0 overflow-y-auto overscroll-contain p-6 max-[960px]:overflow-visible">
+                                        <div className="mb-4">
+                                            <div className="creation-format grid grid-cols-[minmax(0,1.2fr)_repeat(2,minmax(0,1fr))] items-start gap-4 max-[600px]:grid-cols-2 [&_>_label]:block [&_>_label]:font-semibold [&_>_label]:text-[length:14px] [&_[data-slot=field]]:gap-2 [&_[data-slot=select-trigger]]:mt-0! [&_input]:mt-0!">
+                                                <Field className="min-w-0 max-[600px]:col-span-full">
+                                                    <FieldLabel
+                                                        htmlFor="new-book-format"
+                                                        className="mb-0"
+                                                    >
+                                                        Khổ sách
+                                                    </FieldLabel>
+                                                    <FormSelect
+                                                        id="new-book-format"
+                                                        value={format}
+                                                        onValueChange={(value) => {
+                                                            setFormat(value as PageFormat);
+                                                            setDetectedPage(null);
+                                                        }}
+                                                        options={[
+                                                            { value: 'A4', label: 'A4 - Dọc' },
+                                                            { value: 'A5', label: 'A5 - Dọc' },
+                                                            { value: 'SQUARE', label: 'Vuông' },
+                                                            { value: 'CUSTOM', label: 'Tùy chỉnh' },
+                                                        ]}
+                                                    />
+                                                </Field>
+                                                <BookSizeFields
+                                                    format={format}
+                                                    className="contents"
+                                                    idPrefix="new-book"
+                                                    width={width}
+                                                    height={height}
+                                                    onWidthChange={(value) => {
+                                                        setWidth(value);
+                                                        setDetectedPage(null);
+                                                    }}
+                                                    onHeightChange={(value) => {
+                                                        setHeight(value);
+                                                        setDetectedPage(null);
+                                                    }}
+                                                />
+                                            </div>
+                                            {(mode === 'import' || format === 'CUSTOM') && (
+                                                <p className="mt-2 mb-0 text-muted-foreground text-xs leading-relaxed">
+                                                    {mode === 'import'
+                                                        ? detectedPage !== null
+                                                            ? `Theo trang PDF ${detectedPage}.${mixedPageSizes ? ' Các trang khác được đặt vừa khổ này.' : ' Có thể chỉnh lại kích thước.'}`
+                                                            : 'Ảnh vừa trang, phần dư nền trắng.'
+                                                        : 'Nhập kích thước trang bằng milimét.'}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <FieldSet className="m-0 min-w-0 gap-3 border-0 p-0">
+                                            <FieldLegend
+                                                variant="label"
+                                                className="m-0 mb-2 font-semibold"
+                                            >
+                                                Nội dung ban đầu
+                                            </FieldLegend>
+                                            <RadioGroup
+                                                name="creation-source"
+                                                disabled={preparing}
+                                                value={mode}
+                                                onValueChange={(value) =>
+                                                    setMode(value as typeof mode)
+                                                }
+                                                className="grid grid-cols-2 gap-3"
+                                                aria-label="Bắt đầu với"
+                                            >
+                                                <Field orientation="contents">
+                                                    <FieldLabel
+                                                        className={cn(
+                                                            'creation-mode-option relative m-0 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-primary border-solid bg-surface px-4 py-4 text-primary transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring has-[:focus-visible]:outline-offset-3 [&.selected]:bg-primary [&.selected]:text-primary-foreground [.creation-fields:disabled_&]:cursor-default',
+                                                            mode === 'blank' ? 'selected' : '',
+                                                        )}
+                                                    >
+                                                        <RadioGroupItem
+                                                            value="blank"
+                                                            className="sr-only absolute"
+                                                        />
+                                                        <BookOpen size={23} aria-hidden="true" />
+                                                        <span>
+                                                            <strong className="block font-semibold text-sm">
+                                                                Sách trống
+                                                            </strong>
+                                                            <small className="mt-1 block text-xs leading-relaxed">
+                                                                Một trang trắng để sáng tạo
+                                                            </small>
+                                                        </span>
+                                                    </FieldLabel>
+                                                </Field>
+                                                <Field orientation="contents">
+                                                    <FieldLabel
+                                                        className={cn(
+                                                            'creation-mode-option relative m-0 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-primary border-solid bg-surface px-4 py-4 text-primary transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring has-[:focus-visible]:outline-offset-3 [&.selected]:bg-primary [&.selected]:text-primary-foreground [.creation-fields:disabled_&]:cursor-default',
+                                                            mode === 'import' ? 'selected' : '',
+                                                        )}
+                                                    >
+                                                        <RadioGroupItem
+                                                            value="import"
+                                                            className="sr-only absolute"
+                                                        />
+                                                        <FileUp size={23} aria-hidden="true" />
+                                                        <span>
+                                                            <strong className="block font-semibold text-sm">
+                                                                Nhập PDF / ảnh
+                                                            </strong>
+                                                            <small className="mt-1 block text-xs leading-relaxed">
+                                                                Mỗi trang hoặc ảnh là một trang sách
+                                                            </small>
+                                                        </span>
+                                                    </FieldLabel>
+                                                </Field>
+                                            </RadioGroup>
+                                        </FieldSet>
+                                        <div className={mode === 'import' ? undefined : 'hidden'}>
+                                            <BookImportField
+                                                value={
+                                                    source ? { source, indices: selection } : null
+                                                }
+                                                disabled={busy || locked}
+                                                onChange={changeImport}
+                                                onBusyChange={setPreparing}
                                             />
-                                        )}
-                                    </Button>
-                                )}
+                                        </div>
+                                    </div>
+                                </fieldset>
                             </div>
-                        </div>
-                    </FieldGroup>
-                </form>
-            </ConfirmDialog>
+                            {(error || busy) && (
+                                <div className="creation-result max-h-[28dvh] shrink-0 overflow-y-auto px-6 pt-3 pb-4 [&_>_.feedback]:m-0">
+                                    <Feedback error={error} />
+                                    {locked && !busy && error && (
+                                        <p className="creation-recovery mx-0 my-2 text-[length:12px]">
+                                            {checkpoint.current.uncertain
+                                                ? 'Yêu cầu có thể đã được lưu. Mở sách để kiểm tra; hệ thống sẽ không tự gửi lại và tạo trùng.'
+                                                : `Sách đã tạo, ${completed}/${count} trang đã nhập. Tiếp tục sẽ giữ nguyên các trang đã xong. Giữ tab này để tiếp tục.`}
+                                        </p>
+                                    )}
+                                    {busy && (
+                                        <div
+                                            className="creation-progress mt-0 flex items-center gap-3 text-[length:14px] text-primary [&_small]:mt-[6px] [&_small]:block [&_small]:text-current"
+                                            role="status"
+                                        >
+                                            <LoaderCircle
+                                                size={20}
+                                                className="button-spinner shrink-0 motion-safe:animate-spin"
+                                            />
+                                            <span>
+                                                {stage}
+                                                <small>
+                                                    {completed}/{count} trang đã hoàn tất. Giữ trang
+                                                    này mở đến khi hoàn tất.
+                                                </small>
+                                            </span>
+                                        </div>
+                                    )}
+                                    {locked && (
+                                        <Progress
+                                            value={completed}
+                                            max={count}
+                                            className="mt-3"
+                                            aria-label="Tiến độ tạo trang sách"
+                                            getValueLabel={() =>
+                                                `${completed}/${count} trang đã hoàn tất`
+                                            }
+                                        />
+                                    )}
+                                </div>
+                            )}
+                            <footer className="flex shrink-0 items-center justify-between gap-4 border-border border-t px-6 py-4 [&>div]:flex [&>div]:items-center [&>div]:gap-3 [&>span]:text-muted-foreground [&>span]:text-xs">
+                                <span>
+                                    {locked
+                                        ? 'Sách đang ở chế độ nháp'
+                                        : `${count} trang · Nháp riêng tư`}
+                                </span>
+                                <div>
+                                    <Button variant="secondary" disabled={busy} onClick={close}>
+                                        {checkpoint.current.bookId
+                                            ? 'Mở sách đã tạo'
+                                            : checkpoint.current.uncertain
+                                              ? 'Kiểm tra sách của tôi'
+                                              : 'Hủy'}
+                                    </Button>
+                                    {!checkpoint.current.uncertain && (
+                                        <Button
+                                            type="submit"
+                                            aria-busy={busy}
+                                            disabled={
+                                                preparing ||
+                                                (mode === 'import' &&
+                                                    (!source || !selection.length)) ||
+                                                busy
+                                            }
+                                        >
+                                            {busy && (
+                                                <Spinner
+                                                    data-icon="inline-start"
+                                                    aria-hidden="true"
+                                                />
+                                            )}
+                                            {busy
+                                                ? 'Đang tạo…'
+                                                : locked
+                                                  ? 'Tiếp tục nhập'
+                                                  : 'Tạo và mở editor'}
+                                            {!busy && (
+                                                <ArrowRight
+                                                    data-icon="inline-start"
+                                                    aria-hidden="true"
+                                                />
+                                            )}
+                                        </Button>
+                                    )}
+                                </div>
+                            </footer>
+                        </FieldGroup>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

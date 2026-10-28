@@ -1,9 +1,10 @@
-import { ArrowLeft, ArrowRight, Eye, FileUp, Images, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, FileUp, ImagePlus, Images, Trash2 } from 'lucide-react';
 import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../../../shared/api/errors';
 import { Button } from '../../../shared/ui/Button';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { Button as ActionButton } from '../../../shared/ui/primitives/button';
+import { FieldSet } from '../../../shared/ui/primitives/field';
 import { Input } from '../../../shared/ui/primitives/input';
 import { Progress } from '../../../shared/ui/primitives/progress';
 import { Spinner } from '../../../shared/ui/primitives/spinner';
@@ -13,8 +14,8 @@ import {
     prepareImport,
     validateImportFiles,
 } from '../model/import-source';
+import { ImportPageCard } from './ImportPageCard';
 import { ImportPreviewDialog } from './ImportPreviewDialog';
-import { ImportThumbnail } from './ImportThumbnail';
 import { PdfPagesDialog } from './PdfPagesDialog';
 
 export interface BookImportValue {
@@ -159,7 +160,7 @@ export function BookImportField({
     }
     const images = value?.source.kind === 'images' ? value : null;
     return (
-        <div ref={host} className="mt-4 flex flex-col gap-4">
+        <div ref={host} className="mt-4 flex flex-col gap-2">
             {!value ? (
                 <ActionButton
                     variant="plain"
@@ -185,22 +186,26 @@ export function BookImportField({
                     </span>
                     <div className="flex flex-wrap gap-2">
                         {images && (
-                            <Button
-                                variant="secondary"
-                                size="sm"
+                            <ActionButton
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Thêm ảnh"
+                                title="Thêm ảnh"
                                 disabled={disabled || reading}
                                 onClick={(event) => pick(event, 'append')}
                             >
-                                Thêm ảnh
-                            </Button>
+                                <ImagePlus aria-hidden="true" />
+                            </ActionButton>
                         )}
                         <ActionButton
                             variant="ghost"
-                            size="sm"
+                            size="icon"
+                            aria-label="Đổi tài liệu"
+                            title="Đổi tài liệu"
                             disabled={disabled || reading}
                             onClick={(event) => pick(event, 'replace')}
                         >
-                            Đổi tài liệu
+                            <FileUp aria-hidden="true" />
                         </ActionButton>
                     </div>
                 </div>
@@ -264,37 +269,46 @@ export function BookImportField({
                             ? 'Dùng mũi tên để đổi thứ tự trang. Bấm vào ảnh để xem lớn; xóa ảnh không muốn nhập.'
                             : 'Ảnh được xếp theo tên file. Bấm vào ảnh để xem lớn; xóa ảnh không muốn nhập.'}
                     </p>
-                    <div className="grid grid-cols-4 gap-3">
+                    <FieldSet
+                        className="m-0 grid grid-cols-[repeat(auto-fill,minmax(min(100%,148px),1fr))] items-stretch gap-3 border-0 p-0"
+                        aria-label="Ảnh sẽ nhập thành trang sách"
+                    >
                         {images.indices.map((index, position) => (
-                            <div
+                            <ImportPageCard
                                 key={index}
-                                className="flex min-w-0 flex-col gap-2 rounded-xl border border-border p-2"
-                            >
-                                <ActionButton
-                                    variant="plain"
-                                    className="cursor-zoom-in rounded-lg"
-                                    aria-label={`Xem ảnh ${images.source.labels[index]}`}
-                                    disabled={disabled || reading}
-                                    onClick={(event) =>
-                                        setPreview({
-                                            file: files[index],
-                                            opener: event.currentTarget,
-                                        })
-                                    }
-                                >
-                                    <ImportThumbnail source={images.source} index={index} />
-                                </ActionButton>
-                                <span
-                                    className="truncate text-xs"
-                                    title={images.source.labels[index]}
-                                >
-                                    {images.source.labels[index]}
-                                </span>
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <span className="text-muted-foreground text-xs">
-                                        Trang {position + 1}
-                                    </span>
-                                    {allowReorder && (
+                                source={images.source}
+                                index={index}
+                                title={images.source.labels[index]}
+                                description={`Trang ${position + 1}`}
+                                previewLabel={`Xem ảnh ${images.source.labels[index]}`}
+                                disabled={disabled || reading}
+                                onPreview={(event) =>
+                                    setPreview({ file: files[index], opener: event.currentTarget })
+                                }
+                                actions={
+                                    <ActionButton
+                                        variant="destructive-ghost"
+                                        size="icon-xs"
+                                        aria-label={`Xóa ảnh ${images.source.labels[index]}`}
+                                        disabled={disabled || reading}
+                                        onClick={() => {
+                                            const indices = images.indices.filter(
+                                                (item) => item !== index,
+                                            );
+                                            onChange(
+                                                indices.length
+                                                    ? { source: images.source, indices }
+                                                    : null,
+                                            );
+                                            if (!indices.length) setFiles([]);
+                                            requestAnimationFrame(focusInputAction);
+                                        }}
+                                    >
+                                        <Trash2 aria-hidden="true" />
+                                    </ActionButton>
+                                }
+                                reorderActions={
+                                    allowReorder && (
                                         <div className="flex items-center gap-1">
                                             {([-1, 1] as const).map((direction) => (
                                                 <ActionButton
@@ -332,31 +346,11 @@ export function BookImportField({
                                                 </ActionButton>
                                             ))}
                                         </div>
-                                    )}
-                                    <ActionButton
-                                        variant="ghost"
-                                        size="icon-xs"
-                                        aria-label={`Xóa ảnh ${images.source.labels[index]}`}
-                                        disabled={disabled || reading}
-                                        onClick={() => {
-                                            const indices = images.indices.filter(
-                                                (item) => item !== index,
-                                            );
-                                            onChange(
-                                                indices.length
-                                                    ? { source: images.source, indices }
-                                                    : null,
-                                            );
-                                            if (!indices.length) setFiles([]);
-                                            requestAnimationFrame(focusInputAction);
-                                        }}
-                                    >
-                                        <Trash2 aria-hidden="true" />
-                                    </ActionButton>
-                                </div>
-                            </div>
+                                    )
+                                }
+                            />
                         ))}
-                    </div>
+                    </FieldSet>
                 </>
             )}
             {value?.source.kind === 'pdf' && (
@@ -387,10 +381,6 @@ export function BookImportField({
                     </div>
                 </div>
             )}
-            <p className="m-0 text-muted-foreground text-xs leading-relaxed">
-                Các trang được chuyển thành ảnh nền. Bạn có thể thêm chữ, mô hình 3D và tương tác
-                trong editor.
-            </p>
             {pdf && (
                 <PdfPagesDialog
                     source={pdf.source}

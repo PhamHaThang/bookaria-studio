@@ -47,3 +47,25 @@ export function bookPageSize(
     const widthMm = pageWidthMm(book.pageFormat, book.pageWidthMm);
     return { widthMm, heightMm: roundMm(widthMm * book.pageAspect) };
 }
+
+/** Explicit image-ratio action: retain the chosen physical width; never infer DPI. */
+export function imageBookSize(
+    image: { width: number; height: number },
+    currentWidth: string | number,
+): PageSizeMm {
+    if (![image.width, image.height].every((value) => Number.isFinite(value) && value > 0))
+        throw new Error('Không đọc được tỉ lệ ảnh. Hãy chọn lại ảnh.');
+    const aspect = image.height / image.width;
+    if (aspect < 0.2 || aspect > 5)
+        throw new Error(
+            'Ảnh quá dài để dùng làm khổ sách. Tỉ lệ cao/rộng cần từ 0,2 đến 5. Bạn vẫn có thể nhập ảnh trong khổ hiện tại.',
+        );
+    const widthMm =
+        typeof currentWidth === 'string' && !currentWidth.trim() ? NaN : Number(currentWidth);
+    const heightMm = Math.max(
+        Math.ceil((widthMm * 0.2 - 1e-8) * 10) / 10,
+        Math.min(Math.floor((widthMm * 5 + 1e-8) * 10) / 10, roundMm(widthMm * aspect)),
+    );
+    customBookSize(widthMm, heightMm);
+    return { widthMm, heightMm };
+}

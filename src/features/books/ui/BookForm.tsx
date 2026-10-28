@@ -11,6 +11,7 @@ import { Feedback } from '../../../shared/ui/Feedback';
 import { bookLanguageOptions } from '../model/languages';
 import { bookPageSize } from '../model/page-size';
 import { BookSizeFields } from './BookSizeFields';
+import { BookTopicField } from './BookTopicField';
 
 export function BookForm({
     book,
@@ -33,6 +34,7 @@ export function BookForm({
 }) {
     const prefix = useId();
     const [format, setFormat] = useState(book?.pageFormat || 'A4');
+    const [topic, setTopic] = useState(book?.topic || '');
     const [width, setWidth] = useState(() => String(bookPageSize(book).widthMm));
     const [height, setHeight] = useState(() => String(bookPageSize(book).heightMm));
     function submit(event: FormEvent<HTMLFormElement>) {
@@ -76,17 +78,16 @@ export function BookForm({
                         />
                     </Field>
                     <FieldGroup className="grid grid-cols-2 gap-4 [container-type:normal]">
-                        <Field className="min-w-0">
-                            <FieldLabel className="mb-0" htmlFor={`${prefix}-topic`}>
-                                Chủ đề
-                            </FieldLabel>
-                            <Input
-                                id={`${prefix}-topic`}
-                                name="topic"
-                                defaultValue={book?.topic || ''}
-                                maxLength={50}
-                            />
-                        </Field>
+                        <BookTopicField
+                            id={`${prefix}-topic`}
+                            name="topic"
+                            value={topic}
+                            disabled={busy}
+                            onChange={(value) => {
+                                setTopic(value);
+                                onDirtyChange?.(true);
+                            }}
+                        />
                         <Field className="min-w-0">
                             <FieldLabel className="mb-0" htmlFor={`${prefix}-format`}>
                                 Khổ sách

@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, ImagePlus, Trash2, X } from 'lucide-react';
+import { ImagePlus, Trash2, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { BookCoverImage } from '@/shared/ui/BookCoverImage';
 import { errorMessage } from '../../../shared/api/errors';
 import { IdSchema } from '../../../shared/contracts/common.schema';
 import type { Asset, BookDetail } from '../../../shared/contracts/dto.schema';
@@ -267,20 +268,13 @@ export function BookInfoDialog({
                                         disabled={busy}
                                         aria-label="Chọn ảnh bìa sách"
                                         onClick={() => input.current?.click()}
-                                        className="flex h-32 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted"
+                                        className="flex h-32 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface"
                                     >
-                                        {cover ? (
-                                            <img
-                                                src={cover}
-                                                alt="Ảnh bìa sách"
-                                                className="size-full object-contain"
-                                            />
-                                        ) : (
-                                            <BookOpen
-                                                aria-hidden="true"
-                                                className="size-8 text-muted-foreground"
-                                            />
-                                        )}
+                                        <BookCoverImage
+                                            url={cover}
+                                            alt="Ảnh bìa sách"
+                                            loading="eager"
+                                        />
                                     </ActionButton>
                                     <div className="flex min-w-0 flex-col items-start gap-3">
                                         <span className="font-semibold text-sm">Ảnh bìa</span>

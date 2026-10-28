@@ -1,28 +1,16 @@
-import { BookOpen } from 'lucide-react';
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BookCoverImage } from '@/shared/ui/BookCoverImage';
 import { Button } from '@/shared/ui/Button';
 import type { PublicBookCard } from '../../shared/contracts/api/public.schema';
 import { publishedReaderUrl } from './api';
 
 function Cover({ url }: { url: string | null }) {
-    const [failed, setFailed] = useState(false);
     return (
         <span
-            className="book-cover motion-safe:[.book-gallery_.book-row:hover_&_img]:transform-[scale(1.025)] grid h-[66px] w-[50px] overflow-hidden rounded-[var(--radius-sm)] bg-[var(--bg-cover)] text-[var(--text-cover)] [place-items:center] max-[760px]:row-[span_2] max-[760px]:h-[54px] max-[760px]:w-10 [&_img]:size-full [&_img]:object-cover [.book-gallery_&]:col-[1_/_-1] [.book-gallery_&]:row-[1] [.book-gallery_&]:h-[190px] [.book-gallery_&]:w-full [.book-gallery_&]:rounded-[7px] [.book-gallery_&]:bg-[var(--bg-cover)] [.book-gallery_&_img]:object-contain motion-safe:[.book-gallery_&_img]:[transition:transform_180ms_ease-out]"
+            className="book-cover motion-safe:[.book-gallery_.book-row:hover_&_img]:transform-[scale(1.025)] grid h-[66px] w-[50px] overflow-hidden rounded-[var(--radius-sm)] bg-surface text-[var(--text-cover)] [place-items:center] max-[760px]:row-[span_2] max-[760px]:h-[54px] max-[760px]:w-10 [&_img]:size-full [&_img]:object-cover [.book-gallery_&]:col-[1_/_-1] [.book-gallery_&]:row-[1] [.book-gallery_&]:h-[190px] [.book-gallery_&]:w-full [.book-gallery_&]:rounded-[7px] [.book-gallery_&]:bg-surface [.book-gallery_&_img]:object-contain motion-safe:[.book-gallery_&_img]:[transition:transform_180ms_ease-out]"
             aria-hidden="true"
         >
-            {url && !failed ? (
-                <img
-                    src={url}
-                    alt=""
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    onError={() => setFailed(true)}
-                />
-            ) : (
-                <BookOpen size={24} />
-            )}
+            <BookCoverImage url={url} />
         </span>
     );
 }
