@@ -18,6 +18,8 @@ const buttonVariants = cva(
                 ghost: 'bg-transparent text-primary hover:not-disabled:bg-primary hover:not-disabled:text-primary-foreground disabled:border-transparent disabled:bg-transparent',
                 destructive:
                     'danger bg-destructive text-destructive-foreground hover:not-disabled:bg-destructive-hover',
+                'destructive-ghost':
+                    'bg-transparent text-destructive hover:not-disabled:bg-destructive/10 hover:not-disabled:text-destructive-hover disabled:border-transparent disabled:bg-transparent disabled:text-destructive/40',
                 link: 'bg-transparent text-primary underline-offset-4 hover:underline',
             },
             size: {

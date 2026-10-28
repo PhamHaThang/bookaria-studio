@@ -7,11 +7,13 @@ export function Feedback({
     success,
     warning,
     successMode = 'toast',
+    className,
 }: {
     error?: string | null;
     success?: string | null;
     warning?: string | null;
     successMode?: 'toast' | 'inline';
+    className?: string;
 }) {
     const id = useId();
     const shown = useRef<string | null>(null);
@@ -27,9 +29,21 @@ export function Feedback({
     }, [success, error, successMode, id]);
     return (
         <>
-            {error && <Alert tone="danger">{error}</Alert>}
-            {warning && <Alert tone="warning">{warning}</Alert>}
-            {success && successMode === 'inline' && <Alert tone="success">{success}</Alert>}
+            {error && (
+                <Alert tone="danger" className={className}>
+                    {error}
+                </Alert>
+            )}
+            {warning && (
+                <Alert tone="warning" className={className}>
+                    {warning}
+                </Alert>
+            )}
+            {success && successMode === 'inline' && (
+                <Alert tone="success" className={className}>
+                    {success}
+                </Alert>
+            )}
         </>
     );
 }
