@@ -1,29 +1,19 @@
 import {
-    Box,
     Check,
     ChevronDown,
     Circle,
     Download,
     Eye,
     FileText,
-    Image,
-    Keyboard,
     Layers,
     MoreHorizontal,
-    MousePointer2,
     Pencil,
-    QrCode,
     Redo2,
     RefreshCw,
     Save,
     Send,
-    Settings2,
-    Type,
     Undo2,
     Upload,
-    Video,
-    Volume2,
-    Zap,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -91,8 +81,10 @@ import { ObjectEditor } from './ObjectEditor';
 import { PageSettingsEditor } from './PageSettingsEditor';
 import { PageStrip } from './PageStrip';
 import { SceneCanvas, type SceneCanvasHandle } from './SceneCanvas';
+import { SceneEditorSidebar } from './SceneEditorSidebar';
 import { SceneObjectsPanel } from './SceneObjectsPanel';
 import { SceneShortcutsDialog } from './SceneShortcutsDialog';
+import { SceneWorkbench } from './SceneWorkbench';
 import { SelectionEditor } from './SelectionEditor';
 import { TextComposer, type TextMode, type TextualObject } from './TextComposer';
 
@@ -656,83 +648,27 @@ export function SceneEditor({
                     </div>
                 </Alert>
             )}
-            <div className="workbench-body grid grid-cols-[72px_minmax(0,_1fr)] max-[760px]:grid-cols-[56px_minmax(0,_1fr)]">
-                <div
-                    className="scene-add m-0 flex h-[calc(100dvh_-_76px)] min-h-125 flex-col flex-wrap items-center gap-[6px] overflow-y-auto border-t-[0] border-t-[transparent] border-r-[1px] border-r-border border-b-[0] border-b-[transparent] border-l-[0] border-l-[transparent] border-solid px-[6px] py-5 max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:gap-[3px] max-[760px]:px-[3px] max-[760px]:py-3 max-[600px]:[&_>_.button]:w-full [&_label]:grid [&_label]:min-w-45 [&_label]:gap-2 max-[600px]:[&_label]:w-full [.scene-editor_&_.button:hover]:border-[transparent] [.scene-editor_&_.button:hover]:bg-selected [.scene-editor_&_.button:hover]:text-primary [.scene-editor_&_.button]:flex [.scene-editor_&_.button]:min-h-[54px] [.scene-editor_&_.button]:w-[58px] [.scene-editor_&_.button]:flex-col [.scene-editor_&_.button]:gap-[5px] [.scene-editor_&_.button]:rounded-[11px] [.scene-editor_&_.button]:border-[transparent] [.scene-editor_&_.button]:px-1 [.scene-editor_&_.button]:py-2 [.scene-editor_&_.button]:font-medium [.scene-editor_&_.button]:text-[length:9px] [.scene-editor_&_.button]:text-muted-foreground max-[760px]:[.scene-editor_&_.button]:min-h-12 max-[760px]:[.scene-editor_&_.button]:w-12 max-[760px]:[.scene-editor_&_.button]:text-[length:8px] [.scene-editor_&_.button_svg]:size-[22px]"
-                    role="toolbar"
-                    aria-label="Thêm đối tượng"
-                >
-                    {(
-                        [
-                            { type: 'model', icon: Box },
-                            { type: 'image', icon: Image },
-                            { type: 'text', icon: Type },
-                            { type: 'video', icon: Video },
-                            { type: 'audio', icon: Volume2 },
-                            { type: 'hotspot', icon: MousePointer2 },
-                        ] as const
-                    ).map((item) => (
-                        <Button
-                            key={item.type}
-                            variant="outline"
-                            disabled={
-                                blocked ||
-                                editor.draft.objects.length >= SCENE_LIMITS.hardMaxObjects
-                            }
-                            onClick={() => {
-                                if (usesAsset(item.type)) setPicker({ type: item.type });
-                                else if (item.type === 'text')
-                                    setTextDialog({
-                                        start: 'text',
-                                    });
-                                else insert(item.type);
-                            }}
-                        >
-                            <item.icon size={18} />
-                            {objectLabels[item.type]}
-                        </Button>
-                    ))}
-                    <Button
-                        variant="outline"
-                        aria-label="Mở tương tác"
-                        title="Tương tác"
-                        onClick={() => setPanel('interactions')}
-                    >
-                        <Zap data-icon="inline-start" />
-                        <span>Tương tác</span>
-                    </Button>
-                    <Button
-                        variant="outline"
-                        aria-label="Trang và nhận diện AR"
-                        title="Trang và nhận diện AR"
-                        disabled={blocked}
-                        onClick={onRecognition}
-                    >
-                        <QrCode data-icon="inline-start" />
-                        <span>AR Marker</span>
-                    </Button>
-                    <Button
-                        variant="outline"
-                        aria-label="Cài đặt trang"
-                        title="Cài đặt trang"
-                        onClick={() => setPanel('settings')}
-                    >
-                        <Settings2 data-icon="inline-start" />
-                        <span>Cài đặt</span>
-                    </Button>
-                    <Button
-                        variant="outline"
-                        aria-label="Phím tắt"
-                        ref={(element) => {
-                            commands.current.shortcutsButton = element;
-                        }}
-                        onClick={() => setHelpOpen(true)}
-                    >
-                        <Keyboard data-icon="inline-start" />
-                        <span>Phím tắt</span>
-                    </Button>
-                </div>
-                <div className="scene-workspace relative m-0 grid h-[calc(100dvh_-_76px)] min-h-125 grid-cols-[minmax(0,_1fr)_340px] items-stretch gap-0 max-[760px]:h-auto max-[760px]:min-h-0 max-[1100px]:grid-cols-[minmax(0,_1fr)_300px] max-[1200px]:grid-cols-[minmax(180px,_0.8fr)_minmax(240px,_1fr)] max-[600px]:grid-cols-[1fr] max-[760px]:grid-cols-[minmax(0,_1fr)] min-[1600px]:grid-cols-[minmax(0,_1fr)_380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[minmax(0,_1fr)_minmax(480px,_45%)] [.scene-editor[data-panel=preview]_&]:grid-cols-[minmax(0,_1fr)]">
+            <SceneWorkbench>
+                <SceneEditorSidebar
+                    activeObjectType={picker?.type || (textDialog ? 'text' : undefined)}
+                    activePanel={panel}
+                    disabled={Boolean(blocked)}
+                    objectLimitReached={editor.draft.objects.length >= SCENE_LIMITS.hardMaxObjects}
+                    helpOpen={helpOpen}
+                    onAdd={(type) => {
+                        if (usesAsset(type)) setPicker({ type });
+                        else if (type === 'text') setTextDialog({ start: 'text' });
+                        else insert(type);
+                    }}
+                    onInteractions={() => setPanel('interactions')}
+                    onRecognition={onRecognition}
+                    onSettings={() => setPanel('settings')}
+                    onShortcuts={() => setHelpOpen(true)}
+                    shortcutsRef={(element) => {
+                        commands.current.shortcutsButton = element;
+                    }}
+                />
+                <div className="scene-workspace relative m-0 grid h-[calc(100dvh_-_76px)] min-h-125 min-w-0 flex-1 grid-cols-[minmax(0,_1fr)_340px] items-stretch gap-0 max-[760px]:h-auto max-[760px]:min-h-0 max-[1100px]:grid-cols-[minmax(0,_1fr)_300px] max-[1200px]:grid-cols-[minmax(180px,_0.8fr)_minmax(240px,_1fr)] max-[600px]:grid-cols-[1fr] max-[760px]:grid-cols-[minmax(0,_1fr)] min-[1600px]:grid-cols-[minmax(0,_1fr)_380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[minmax(0,_1fr)_minmax(480px,_45%)] [.scene-editor[data-panel=preview]_&]:grid-cols-[minmax(0,_1fr)]">
                     <SceneObjectsPanel
                         objects={editor.draft.objects}
                         selectedIds={activeIds}
@@ -1063,7 +999,7 @@ export function SceneEditor({
                         </div>
                     </div>
                 </div>
-            </div>
+            </SceneWorkbench>
             {infoOpen && (
                 <BookInfoDialog
                     bookId={book.id}
