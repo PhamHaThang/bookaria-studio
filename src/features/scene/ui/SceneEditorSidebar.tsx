@@ -15,7 +15,6 @@ import type { SceneObjectType } from '@/shared/contracts/scene.schema';
 import {
     Sidebar,
     SidebarContent,
-    SidebarFooter,
     SidebarGroup,
     SidebarGroupContent,
     SidebarGroupLabel,
@@ -176,39 +175,42 @@ export function SceneEditorSidebar({
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
+                <SidebarGroup className="shrink-0 px-[calc((var(--sidebar-width-icon)_-_2.5rem)/2)] py-0">
+                    <SidebarSectionLabel divider>Cài đặt</SidebarSectionLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu className={menuClass}>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton
+                                    type="button"
+                                    className={itemClass}
+                                    aria-label="Thiết lập trang"
+                                    aria-pressed={activePanel === 'settings'}
+                                    isActive={activePanel === 'settings'}
+                                    onClick={onSettings}
+                                >
+                                    <Settings2 strokeWidth={iconStrokeWidth} aria-hidden="true" />
+                                    <span className={labelClass}>Thiết lập trang</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton
+                                    type="button"
+                                    ref={shortcutsRef}
+                                    className={itemClass}
+                                    aria-label="Phím tắt"
+                                    aria-haspopup="dialog"
+                                    aria-expanded={helpOpen}
+                                    isActive={helpOpen}
+                                    onClick={onShortcuts}
+                                >
+                                    <Keyboard strokeWidth={iconStrokeWidth} aria-hidden="true" />
+                                    <span className={labelClass}>Phím tắt</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
             </SidebarContent>
-            <SidebarFooter className="shrink-0 border-border border-t px-[calc((var(--sidebar-width-icon)_-_2.5rem)/2)] py-2">
-                <SidebarMenu className={menuClass}>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton
-                            type="button"
-                            className={itemClass}
-                            aria-label="Cài đặt trang"
-                            aria-pressed={activePanel === 'settings'}
-                            isActive={activePanel === 'settings'}
-                            onClick={onSettings}
-                        >
-                            <Settings2 strokeWidth={iconStrokeWidth} aria-hidden="true" />
-                            <span className={labelClass}>Cài đặt</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton
-                            type="button"
-                            ref={shortcutsRef}
-                            className={itemClass}
-                            aria-label="Phím tắt"
-                            aria-haspopup="dialog"
-                            aria-expanded={helpOpen}
-                            isActive={helpOpen}
-                            onClick={onShortcuts}
-                        >
-                            <Keyboard strokeWidth={iconStrokeWidth} aria-hidden="true" />
-                            <span className={labelClass}>Phím tắt</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-            </SidebarFooter>
         </Sidebar>
     );
 }

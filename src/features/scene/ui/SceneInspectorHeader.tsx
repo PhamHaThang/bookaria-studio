@@ -54,7 +54,7 @@ export function SceneInspectorHeader({
         : panel === 'interactions'
           ? 'Tương tác của trang'
           : panel === 'settings'
-            ? 'Cài đặt trang'
+            ? 'Thiết lập trang'
             : 'Xem trước';
     const subtitle = properties
         ? count > 1

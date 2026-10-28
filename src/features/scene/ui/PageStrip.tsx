@@ -4,6 +4,14 @@ import { type DragEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/shared/ui/primitives/dialog';
 import { DropdownMenu, DropdownMenuTrigger } from '@/shared/ui/primitives/dropdown-menu';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -50,6 +58,7 @@ export function PageStrip({
     const [menu, setMenu] = useState<PageSummary | null>(null);
     const [renaming, setRenaming] = useState(false);
     const menuAnchor = useRef<HTMLButtonElement | null>(null);
+    const renameInput = useRef<HTMLInputElement>(null);
     const addAnchor = useRef<HTMLButtonElement | null>(null);
     const [deleting, setDeleting] = useState(false),
         [adding, setAdding] = useState(false);
@@ -100,6 +109,35 @@ export function PageStrip({
         );
         return next;
     }, []);
+    useEffect(() => {
+        const scroll = pageScroll.current;
+        const dock = scroll?.closest('nav');
+        if (!scroll || !dock) return;
+        const onWheel = (event: WheelEvent) => {
+            if (
+                event.defaultPrevented ||
+                event.ctrlKey ||
+                event.metaKey ||
+                scroll.scrollWidth <= scroll.clientWidth
+            )
+                return;
+            const delta =
+                Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+            if (!delta) return;
+            const unit =
+                event.deltaMode === WheelEvent.DOM_DELTA_LINE
+                    ? Number.parseFloat(getComputedStyle(scroll).lineHeight) || 16
+                    : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+                      ? scroll.clientWidth
+                      : 1;
+            event.preventDefault();
+            event.stopPropagation();
+            scroll.scrollLeft += delta * unit;
+            if (dragSession.current && dragX.current !== null) locateDrop(dragX.current);
+        };
+        dock.addEventListener('wheel', onWheel, { passive: false });
+        return () => dock.removeEventListener('wheel', onWheel);
+    }, [locateDrop]);
     useEffect(() => {
         if (dragLocked) clearDrag();
     }, [dragLocked, clearDrag]);
@@ -497,13 +535,13 @@ export function PageStrip({
                 </div>
             )}
 
-            {menu && (renaming || deleting) && (
+            {menu && deleting && (
                 <ConfirmDialog
-                    confirmation={deleting}
+                    confirmation
                     returnFocus={menuAnchor.current}
-                    title={deleting ? 'Xóa trang sách?' : `Trang ${menu.orderIndex + 1}`}
+                    title="Xóa trang sách?"
                     busy={busy}
-                    className="page-actions-dialog max-h-[calc(100dvh_-_32px)] w-[min(480px,_calc(100vw_-_24px))] overflow-y-auto [&_form]:my-5 [&_form_>_.button]:mt-3 max-[760px]:[&_input]:text-[length:16px]"
+                    className="page-actions-dialog max-h-[calc(100dvh_-_32px)] w-[min(480px,_calc(100vw_-_24px))] overflow-y-auto"
                     onClose={() => {
                         if (!busy) {
                             setMenu(null);
@@ -512,96 +550,154 @@ export function PageStrip({
                     }}
                 >
                     <Feedback error={error} />
-                    {deleting ? (
-                        <>
-                            <p>
-                                Xóa “{menu.title || `Trang ${menu.orderIndex + 1}`}” và nội dung của
-                                trang khỏi bản nháp?
-                            </p>
-                            <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                                <Button
-                                    variant="secondary"
-                                    disabled={busy}
-                                    onClick={() => {
-                                        setDeleting(false);
-                                        setMenu(null);
-                                    }}
-                                >
-                                    Giữ lại
-                                </Button>
-                                <Button
-                                    variant="destructive"
-                                    disabled={locked}
-                                    onClick={() =>
-                                        void run(async () => {
-                                            await pagesApi.remove(menu.id);
-                                            if (menu.id === pageId && currentSession()) {
-                                                // Deletion is confirmed: a failed refresh must not leave the editor on a deleted page.
-                                                const remaining = await pagesApi
-                                                    .list(bookId)
-                                                    .catch(() => null);
-                                                if (!currentSession()) return;
-                                                setTarget(
-                                                    remaining?.[0]
-                                                        ? `/books/${bookId}/pages/${remaining[0].id}`
-                                                        : `/books/${bookId}/edit`,
-                                                );
-                                            }
-                                        })
+                    <p>
+                        Xóa “{menu.title || `Trang ${menu.orderIndex + 1}`}” và nội dung của trang
+                        khỏi bản nháp?
+                    </p>
+                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
+                        <Button
+                            variant="secondary"
+                            disabled={busy}
+                            onClick={() => {
+                                setDeleting(false);
+                                setMenu(null);
+                            }}
+                        >
+                            Giữ lại
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            disabled={locked}
+                            onClick={() =>
+                                void run(async () => {
+                                    await pagesApi.remove(menu.id);
+                                    if (menu.id === pageId && currentSession()) {
+                                        // Deletion is confirmed: a failed refresh must not leave the editor on a deleted page.
+                                        const remaining = await pagesApi
+                                            .list(bookId)
+                                            .catch(() => null);
+                                        if (!currentSession()) return;
+                                        setTarget(
+                                            remaining?.[0]
+                                                ? `/books/${bookId}/pages/${remaining[0].id}`
+                                                : `/books/${bookId}/edit`,
+                                        );
                                     }
-                                >
-                                    Xóa trang
-                                </Button>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <form
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    const title = String(
-                                        new FormData(event.currentTarget).get('title') || '',
-                                    ).trim();
-                                    void run(async () => {
-                                        const saved = await pagesApi.update(menu.id, {
-                                            title: title || null,
-                                        });
-                                        if (currentSession())
-                                            cache.setQueryData<Page>(
-                                                pageKeys.detail(actor.current || '', menu.id),
-                                                (current) =>
-                                                    current ? { ...current, ...saved } : current,
-                                            );
-                                    });
-                                }}
-                            >
-                                <FieldGroup className="contents">
-                                    <Field orientation="contents">
-                                        <FieldLabel htmlFor="scene-page-title">
-                                            Tên trang
-                                            <Input
-                                                id="scene-page-title"
-                                                name="title"
-                                                maxLength={150}
-                                                defaultValue={menu.title || ''}
-                                                disabled={locked}
-                                                placeholder={`Trang ${menu.orderIndex + 1}`}
-                                            />
-                                        </FieldLabel>
-                                    </Field>
-                                    <Button type="submit" disabled={locked}>
-                                        Lưu tên trang
-                                    </Button>
-                                </FieldGroup>
-                            </form>
-                            {dirty && <p>Lưu nội dung đang sửa trước khi thao tác với trang.</p>}
-                            <Button variant="outline" disabled={busy} onClick={() => setMenu(null)}>
-                                <X data-icon="inline-start" />
-                                Đóng
-                            </Button>
-                        </>
-                    )}
+                                })
+                            }
+                        >
+                            Xóa trang
+                        </Button>
+                    </div>
                 </ConfirmDialog>
+            )}
+            {menu && renaming && !deleting && (
+                <Dialog
+                    open
+                    onOpenChange={(open) => {
+                        if (!open && !busy) {
+                            setRenaming(false);
+                            setMenu(null);
+                        }
+                    }}
+                >
+                    <DialogContent
+                        className="page-rename-dialog w-[min(440px,calc(100vw-32px))] gap-5 p-6 [--control-height:40px]"
+                        showCloseButton={false}
+                        aria-describedby={undefined}
+                        onOpenAutoFocus={(event) => {
+                            event.preventDefault();
+                            renameInput.current?.focus({ preventScroll: true });
+                            renameInput.current?.select();
+                        }}
+                        onCloseAutoFocus={(event) => {
+                            if (menuAnchor.current?.isConnected) {
+                                event.preventDefault();
+                                menuAnchor.current.focus({ preventScroll: true });
+                            }
+                        }}
+                        onEscapeKeyDown={(event) => {
+                            if (busy) event.preventDefault();
+                        }}
+                        onInteractOutside={(event) => event.preventDefault()}
+                    >
+                        <DialogHeader className="pr-8">
+                            <DialogTitle className="m-0">Đổi tên trang</DialogTitle>
+                        </DialogHeader>
+                        <DialogClose asChild>
+                            <ActionButton
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                className="absolute top-3 right-3"
+                                aria-label="Đóng"
+                                disabled={busy}
+                            >
+                                <X />
+                            </ActionButton>
+                        </DialogClose>
+                        <form
+                            className="flex flex-col gap-5"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                const title = String(
+                                    new FormData(event.currentTarget).get('title') || '',
+                                ).trim();
+                                void run(async () => {
+                                    const saved = await pagesApi.update(menu.id, {
+                                        title: title || null,
+                                    });
+                                    if (currentSession())
+                                        cache.setQueryData<Page>(
+                                            pageKeys.detail(actor.current || '', menu.id),
+                                            (current) =>
+                                                current ? { ...current, ...saved } : current,
+                                        );
+                                });
+                            }}
+                        >
+                            <FieldGroup>
+                                <Field className="relative">
+                                    <FieldLabel htmlFor="scene-page-title" className="sr-only m-0">
+                                        Tên trang
+                                    </FieldLabel>
+                                    <Input
+                                        ref={renameInput}
+                                        id="scene-page-title"
+                                        name="title"
+                                        className="m-0 h-10"
+                                        maxLength={150}
+                                        defaultValue={menu.title || ''}
+                                        disabled={locked}
+                                        placeholder={`Trang ${menu.orderIndex + 1}`}
+                                    />
+                                </Field>
+                            </FieldGroup>
+                            <Feedback error={error} />
+                            {dirty && <p>Lưu nội dung đang sửa trước khi thao tác với trang.</p>}
+                            <DialogFooter className="mx-0 mb-0 flex-row justify-end gap-2 rounded-none border-0 bg-transparent p-0">
+                                <DialogClose asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="h-10 min-w-28 py-2"
+                                        disabled={busy}
+                                    >
+                                        Hủy
+                                    </Button>
+                                </DialogClose>
+                                <Button
+                                    type="submit"
+                                    className="h-10 min-w-28 py-2"
+                                    disabled={locked}
+                                    aria-busy={busy}
+                                >
+                                    {busy ? 'Đang lưu…' : 'Lưu tên'}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             )}
             {adding && (
                 <AddPagesDialog

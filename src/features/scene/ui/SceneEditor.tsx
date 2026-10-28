@@ -36,7 +36,6 @@ import { Input } from '@/shared/ui/primitives/input';
 import { Separator } from '@/shared/ui/primitives/separator';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Tabs, TabsContent } from '@/shared/ui/primitives/tabs';
-import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/primitives/tooltip';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset, BookDetail, Page } from '../../../shared/contracts/dto.schema';
@@ -397,7 +396,7 @@ export function SceneEditor({
                 }
                 saving={editor.busy || settingsBusy || publicationBusy || pagesBusy || infoBusy}
             />
-            <header className="scene-heading editor-header grid min-h-19 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-border border-b bg-surface px-5 py-3">
+            <header className="scene-heading editor-header grid min-h-19 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-border border-b bg-surface px-5 py-3">
                 <div className="editor-project flex min-w-0 items-center gap-4">
                     <Link
                         to="/books"
@@ -501,29 +500,6 @@ export function SceneEditor({
                         </DropdownMenu>
                     </fieldset>
                 </div>
-                <ToggleGroup
-                    type="single"
-                    value={panel === 'preview' ? 'preview' : 'edit'}
-                    onValueChange={(value) => {
-                        if (value === 'edit') setPanel('properties');
-                        if (value === 'preview' && !annotationPlacement) setPanel('preview');
-                    }}
-                    size="lg"
-                    spacing={1}
-                    className="editor-mode-switch shrink-0 rounded-xl border border-border bg-surface p-1"
-                    aria-label="Chế độ editor"
-                >
-                    <ToggleGroupItem value="edit" className="gap-2 px-3">
-                        <Pencil /> Chỉnh sửa
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                        value="preview"
-                        disabled={Boolean(annotationPlacement)}
-                        className="gap-2 px-3"
-                    >
-                        <Eye /> Xem trước
-                    </ToggleGroupItem>
-                </ToggleGroup>
                 <div className="editor-save-actions flex min-w-0 items-center justify-end gap-3">
                     <Tooltip delayDuration={250}>
                         <TooltipTrigger asChild>
@@ -591,6 +567,25 @@ export function SceneEditor({
                             Lưu nội dung · Ctrl S
                         </TooltipContent>
                     </Tooltip>
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="editor-preview h-10 min-w-32 shrink-0"
+                        disabled={Boolean(annotationPlacement)}
+                        aria-controls={panel === 'preview' ? 'panel-properties' : 'panel-preview'}
+                        onClick={() => setPanel(panel === 'preview' ? 'properties' : 'preview')}
+                    >
+                        {panel === 'preview' ? (
+                            <>
+                                <Pencil data-icon="inline-start" /> Về editor
+                            </>
+                        ) : (
+                            <>
+                                <Eye data-icon="inline-start" /> Xem trước
+                            </>
+                        )}
+                    </Button>
 
                     <Tooltip delayDuration={250}>
                         <TooltipTrigger asChild>
