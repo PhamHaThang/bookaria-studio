@@ -127,7 +127,7 @@ export function AddPagesDialog({
                 render: (index, aspect) =>
                     frozen.mode === 'blank'
                         ? blankPageImage(aspect)
-                        : (source.current as BookImportValue).source.render(index, aspect),
+                        : (source.current as BookImportValue).source.render(index),
                 add: pagesApi.add,
                 checkSession,
                 onStage: setStage,

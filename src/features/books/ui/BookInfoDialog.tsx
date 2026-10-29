@@ -27,10 +27,14 @@ import { uploadFile } from '../../assets/api/upload-file';
 import { imageUploadRequest, saveUploadedImage } from '../../assets/model/image';
 import type { UploadCheckpoint } from '../../assets/model/upload';
 import { auth, useAuth } from '../../auth';
+import { pageKeys, pagesApi } from '../../pages';
+import { compileMarker } from '../../pages/api/compile-marker';
+import { prepareMarkerUpload } from '../../pages/model/marker-upload';
 import { profileKey } from '../../profile';
 import { NavigationGuard } from '../../scene/ui/NavigationGuard';
 import { bookKeys, booksApi } from '../model/books';
 import { updateBookForm } from '../model/form';
+import { type BookResizeState, prepareBookResize } from '../model/resize-pages';
 import { BookForm } from './BookForm';
 
 export function BookInfoDialog({
@@ -67,6 +71,7 @@ export function BookInfoDialog({
     const [progress, setProgress] = useState(0);
     const checkpoint = useRef<UploadCheckpoint | null>(null),
         ready = useRef<Asset | null>(null);
+    const resizeState = useRef<BookResizeState>({});
     const valid = IdSchema.safeParse(bookId).success;
     const detail = useQuery({
         queryKey: bookKeys.detail(user?.id || '', bookId),
@@ -121,11 +126,42 @@ export function BookInfoDialog({
             controller.current = active;
             setBusy(true);
             setError(null);
+            const currentBook = await booksApi.detail(bookId, active.signal);
+            checkSession();
+            const resized = await prepareBookResize({
+                book: currentBook,
+                body,
+                state: resizeState.current,
+                signal: active.signal,
+                onStage: setStage,
+                layouts: pagesApi.bookImageLayouts,
+                prepareMind: (source, pending) =>
+                    prepareMarkerUpload({
+                        source,
+                        signal: active.signal,
+                        checkpoint: pending.mind,
+                        onCheckpoint: (value) => {
+                            pending.mind = value;
+                        },
+                        compile: compileMarker,
+                        api: assetsApi,
+                        transfer: uploadFile,
+                        onProgress: setProgress,
+                        onStage: (value) =>
+                            setStage(
+                                value === 'compiling'
+                                    ? 'Đang cập nhật nhận diện AR…'
+                                    : 'Đang tải dữ liệu nhận diện…',
+                            ),
+                    }),
+            });
+            checkSession();
             const persist = async (coverAssetId?: string | null) => {
                 checkSession();
                 setStage('Đang lưu thông tin sách…');
                 const saved = await booksApi.update(bookId, {
                     ...body,
+                    ...resized,
                     ...(coverAssetId !== undefined ? { coverAssetId } : {}),
                 });
                 checkSession();
@@ -174,7 +210,10 @@ export function BookInfoDialog({
                     save: persist,
                 });
             } else await persist(removed ? null : undefined);
-            await cache.invalidateQueries({ queryKey: bookKeys.all });
+            await Promise.all([
+                cache.invalidateQueries({ queryKey: bookKeys.all }),
+                cache.invalidateQueries({ queryKey: pageKeys.all }),
+            ]);
             checkSession();
             toast.success('Đã lưu thông tin sách.');
             setClosing(true);

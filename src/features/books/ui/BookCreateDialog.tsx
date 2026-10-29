@@ -243,7 +243,7 @@ export function BookCreateDialog() {
                 render: (index, ratio) =>
                     mode === 'blank'
                         ? blankPageImage(ratio)
-                        : (source as ImportSource).render(index, ratio),
+                        : (source as ImportSource).render(index),
                 checkSession,
                 onStage: setStage,
                 onCheckpoint: (value) => {

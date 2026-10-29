@@ -5,7 +5,6 @@ import {
     type ImportProgress,
     type ImportSource,
     MAX_IMPORT_PAGES,
-    pageFit,
 } from './import-source';
 import { type PageSizeMm, pdfPageSizeMm } from './page-size';
 
@@ -53,24 +52,17 @@ export async function preparePdf(
             page.cleanup();
             onProgress?.(index, document.numPages);
         }
-        async function renderCanvas(index: number, aspect?: number, previewWidth = 240) {
+        async function renderCanvas(index: number, maxWidth = 240, maxHeight = 2000) {
             const page = await document.getPage(index + 1);
             const raw = page.getViewport({ scale: 1 });
-            const fit = pageFit(
-                raw.width,
-                raw.height,
-                aspect ?? Math.max(0.2, Math.min(5, raw.height / raw.width)),
-            );
-            const scale =
-                aspect === undefined ? Math.min(previewWidth / fit.width, 2000 / fit.height) : 1;
+            const scale = Math.min(maxWidth / raw.width, maxHeight / raw.height);
             const canvas = window.document.createElement('canvas');
-            canvas.width = Math.max(1, Math.round(fit.width * scale));
-            canvas.height = Math.max(1, Math.round(fit.height * scale));
+            canvas.width = Math.max(1, Math.round(raw.width * scale));
+            canvas.height = Math.max(1, Math.round(raw.height * scale));
             try {
                 await page.render({
                     canvas,
-                    viewport: page.getViewport({ scale: fit.scale * scale }),
-                    transform: [1, 0, 0, 1, fit.x * scale, fit.y * scale],
+                    viewport: page.getViewport({ scale }),
                     background: '#ffffff',
                 }).promise;
                 return canvas;
@@ -117,7 +109,7 @@ export async function preparePdf(
             previewPage(index, signal) {
                 const result = queue.then(async () => {
                     signal.throwIfAborted();
-                    const canvas = await renderCanvas(index, undefined, 1400);
+                    const canvas = await renderCanvas(index, 1400);
                     try {
                         signal.throwIfAborted();
                         return await canvasFile(canvas, `trang-pdf-${index + 1}.jpg`);
@@ -131,13 +123,17 @@ export async function preparePdf(
             dispose: () => {
                 void task.destroy();
             },
-            async render(index, aspect) {
-                const canvas = await renderCanvas(index, aspect);
-                try {
-                    return await canvasFile(canvas, `trang-pdf-${index + 1}.jpg`);
-                } finally {
-                    canvas.width = canvas.height = 0;
-                }
+            render(index) {
+                const result = queue.then(async () => {
+                    const canvas = await renderCanvas(index, 1600, 2400);
+                    try {
+                        return await canvasFile(canvas, `trang-pdf-${index + 1}.jpg`);
+                    } finally {
+                        canvas.width = canvas.height = 0;
+                    }
+                });
+                queue = result.catch(() => undefined);
+                return result;
             },
         };
     } catch (error) {

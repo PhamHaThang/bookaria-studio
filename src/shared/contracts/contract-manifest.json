@@ -5,19 +5,19 @@
     "api/admin.schema.ts": "33876148c149274d5d9452f48de9fbb2b43c14dd93eeb1a2e8689d31b78e61d0",
     "api/assets.schema.ts": "675209bf6ba4485a9d2aeae773df88b8100dbf9a53f981865175793d08a4902a",
     "api/auth.schema.ts": "d1ed9f9265a39fcb10298bd76053ba6c405ad99b140c4032591952df8f4ce05e",
-    "api/books.schema.ts": "0e6a9a3833ca211425c96ba7f022f74f5dc2adab12daa37ced3bee910ea8efec",
+    "api/books.schema.ts": "7624b7ea2e02a25fca47368f2ff359a06c94dc1db02a99edc8bc389206fb2293",
     "api/me.schema.ts": "09443bfa6b7363c9f115ab9fa04acdd7176a8190dc395ae4831cdb55bf43cfe6",
-    "api/pages.schema.ts": "f606205de83de8236ea53cda289f177c0db01720ba26267aea1c92ee81d92d31",
+    "api/pages.schema.ts": "56849a3a39b9dbe3d41b0bb18dabfa8e15aa101e38f3d141d4c3ea1a685c78d0",
     "api/public.schema.ts": "3e54283b87a2b60b31ab2faf9352f5d11bf2f14cf4641a51dc71e9d7178cafa6",
     "api/publish.schema.ts": "bee237d1f43a44db5a6e061b7bc231e962648035406b4a8b530216000155e9aa",
     "asset.schema.ts": "ada6c40629cba82f6efc08fac2042fed3c6f77664fa40b22caa01a4729a08b37",
     "common.schema.ts": "41d88395a2f9e44b909dba8b8ca0e4b557dc439ba2527912b91a7849e6fbcd3d",
-    "dto.schema.ts": "01721820f6c5d431340dbdd51f8fe1b2202388e0485133d61ae12e1b3e33c1bf",
+    "dto.schema.ts": "f88e82a5e992eaf14fe22f2185f2b620469ef53f487b929abcd5edf5b4f59096",
     "enums.schema.ts": "735aab626ffdd48416de58e8e6a161683bb9a744a5f162e3b3351eff36640452",
     "error.schema.ts": "da9a1ab3c8a3a8de6ce67c5b23bb905b0011e6376d368085a7eabd15b9299c9e",
     "manifest.schema.ts": "faf3165b23dba2f6f20811191e2adfc1e55a9a4f9035640273cfc9a379ef5928",
     "marker.schema.ts": "a3a4c6f08fc50c7894daef1155a68d6d7ee1e3f302d78925be5975f9edd7fa39",
-    "routes.schema.ts": "9f3db5ca6d45da92a4fc2221b1e1bae743802fc6b5888f634feded62b014a69a",
+    "routes.schema.ts": "d006ce8ae1ad005547afb79cd7b585699ae451d00a8b5e99a7b28d00223e4750",
     "scene.schema.ts": "16a845bb3a4869be9ebd63c66f67ddff9818d586a9c27e3debd5940c14a8c6d8"
   }
 }

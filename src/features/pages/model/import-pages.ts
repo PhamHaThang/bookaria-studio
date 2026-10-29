@@ -63,7 +63,10 @@ export async function importPages({
             save({ ...current, pages });
         };
         if (!current.pages[position]?.imageAssetId) {
-            if (!current.pages[position]?.file) savePage({ file: await render(index, aspect) });
+            if (!current.pages[position]?.file)
+                savePage({
+                    file: await render(index, aspect),
+                });
             checkSession();
             const page = current.pages[position];
             const id = await upload(page.file as File, page.upload, (upload) =>

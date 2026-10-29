@@ -40,6 +40,7 @@ import { createFrontGuide } from '../model/front-guide';
 import { beginLocalDepthDrag, type LocalDepthDrag, localDepthPosition } from '../model/local-depth';
 import { createModelSelectionBounds } from '../model/model-selection-bounds';
 import { objectLabels } from '../model/objects';
+import { pageImageSize } from '../model/page-image-fit';
 import { fitPreviewCamera } from '../model/preview-fit';
 import { scaleConstraint, scaleFromGesture } from '../model/scale-gesture';
 import type { SceneAudioStore } from '../model/scene-audio-store';
@@ -347,10 +348,24 @@ export function SceneCanvas(props: Props) {
         if (frontGuide) scene.add(frontGuide.mesh);
         const paper = new THREE.Mesh(
             new THREE.PlaneGeometry(1, latest.current.aspect),
-            new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
+            new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                side: THREE.DoubleSide,
+                polygonOffset: true,
+                polygonOffsetFactor: 1,
+                polygonOffsetUnits: 1,
+            }),
         );
         paper.position.z = -0.003;
         scene.add(paper);
+        const paperImage = new THREE.Mesh(
+            new THREE.PlaneGeometry(1, 1),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
+        );
+        paperImage.name = 'bookaria-page-image';
+        paperImage.position.copy(paper.position);
+        paperImage.visible = false;
+        scene.add(paperImage);
         const paperTexture = new THREE.TextureLoader();
         paperTexture.setCrossOrigin('anonymous');
         let paperSource = '';
@@ -365,9 +380,16 @@ export function SceneCanvas(props: Props) {
                         return;
                     }
                     texture.colorSpace = THREE.SRGBColorSpace;
-                    const previous = paper.material.map;
-                    paper.material.map = texture;
-                    paper.material.needsUpdate = true;
+                    const size = pageImageSize(
+                        texture.image.naturalWidth || texture.image.width,
+                        texture.image.naturalHeight || texture.image.height,
+                        latest.current.aspect,
+                    );
+                    paperImage.scale.set(size.width, size.height, 1);
+                    const previous = paperImage.material.map;
+                    paperImage.material.map = texture;
+                    paperImage.material.needsUpdate = true;
+                    paperImage.visible = true;
                     previous?.dispose();
                     setIssues((current) => {
                         if (!current.page) return current;
@@ -2136,7 +2158,9 @@ export function SceneCanvas(props: Props) {
             for (const node of nodes.values()) node.dispose();
             draco.dispose();
             frontGuide?.dispose();
-            paper.material.map?.dispose();
+            paperImage.material.map?.dispose();
+            paperImage.geometry.dispose();
+            paperImage.material.dispose();
             paper.geometry.dispose();
             paper.material.dispose();
             grid.geometry.dispose();

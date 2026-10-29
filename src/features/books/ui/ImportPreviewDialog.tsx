@@ -43,15 +43,7 @@ export function ImportPreviewDialog({
                 if (!image && source && index !== undefined) {
                     if (source.previewPage)
                         image = await source.previewPage(index, controller.signal);
-                    else {
-                        const size = source.pageSizesMm?.[index];
-                        image = await source.render(
-                            index,
-                            size
-                                ? Math.max(0.2, Math.min(5, size.heightMm / size.widthMm))
-                                : Math.SQRT2,
-                        );
-                    }
+                    else image = await source.render(index);
                 }
                 controller.signal.throwIfAborted();
                 if (!image) throw new Error('Không tìm thấy ảnh xem trước.');

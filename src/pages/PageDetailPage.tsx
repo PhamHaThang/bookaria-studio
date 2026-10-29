@@ -93,7 +93,18 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
             onProgress: context.onProgress,
         });
     }
-    async function replaceBackground(asset: Asset, context: ImageAttachmentContext) {
+    async function replaceBackground(source: Asset, context: ImageAttachmentContext) {
+        context.onStage('saving');
+        const layout = await pagesApi.imageLayout(
+            page.id,
+            { aspect: book.pageAspect, imageAssetId: source.id },
+            context.signal,
+        );
+        const asset = {
+            ...source,
+            url: layout.url,
+            meta: { ...source.meta, width: layout.width, height: layout.height },
+        };
         const markerMindPublicId =
             page.markerMode === 'CUSTOM_MARKER' ? await mind(asset.url, context) : undefined;
         context.signal.throwIfAborted();
@@ -111,6 +122,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                       ...current,
                       ...result.page,
                       image: {
+                          assetId: asset.id,
                           url: asset.url,
                           width:
                               typeof asset.meta.width === 'number' && asset.meta.width > 0

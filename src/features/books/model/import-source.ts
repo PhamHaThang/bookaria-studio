@@ -14,7 +14,7 @@ export interface ImportSource {
     thumbnail: (index: number, signal: AbortSignal) => Promise<string>;
     /** A single bounded, high-resolution page for the image preview dialog. */
     previewPage?: (index: number, signal: AbortSignal) => Promise<File>;
-    render: (index: number, aspect: number) => Promise<File>;
+    render: (index: number) => Promise<File>;
     dispose: () => void;
 }
 export type ImportProgress = (current: number, total: number) => void;
@@ -167,23 +167,6 @@ export async function prepareImport(
             return previews[index];
         },
         dispose: () => undefined,
-        async render(index, aspect) {
-            const image = await readImage(files[index]);
-            const canvas = document.createElement('canvas');
-            try {
-                const fit = pageFit(image.width, image.height, aspect);
-                canvas.width = fit.width;
-                canvas.height = fit.height;
-                const context = canvas.getContext('2d');
-                if (!context) throw new Error('Trình duyệt không tạo được ảnh trang.');
-                context.fillStyle = '#ffffff';
-                context.fillRect(0, 0, fit.width, fit.height);
-                context.drawImage(image, fit.x, fit.y, fit.drawWidth, fit.drawHeight);
-                return await canvasFile(canvas, `trang-${index + 1}.jpg`);
-            } finally {
-                image.close();
-                canvas.width = canvas.height = 0;
-            }
-        },
+        render: async (index) => files[index],
     };
 }

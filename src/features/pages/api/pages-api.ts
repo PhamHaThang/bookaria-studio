@@ -5,8 +5,11 @@ import {
     AddPageBodySchema,
     AddPageResultSchema,
     BookariaMarkerResultSchema,
+    BookPageLayoutsSchema,
     CustomMarkerResultSchema,
     MarkerInfoSchema,
+    PageImageLayoutBodySchema,
+    PageImageLayoutSchema,
     ReorderPagesBodySchema,
     ReorderPagesResultSchema,
     ReplacePageImageBodySchema,
@@ -19,6 +22,30 @@ import { JobSchema, PageSchema, PageSummarySchema } from '../../../shared/contra
 
 export function createPagesApi(http: AxiosInstance) {
     return {
+        async imageLayout(
+            pageId: string,
+            body: z.input<typeof PageImageLayoutBodySchema>,
+            signal?: AbortSignal,
+        ) {
+            return readData(
+                await http.post(
+                    `/pages/${IdSchema.parse(pageId)}/image-layout`,
+                    PageImageLayoutBodySchema.parse(body),
+                    { signal },
+                ),
+                PageImageLayoutSchema,
+            );
+        },
+        async bookImageLayouts(bookId: string, aspect: number, signal?: AbortSignal) {
+            return readData(
+                await http.post(
+                    `/books/${IdSchema.parse(bookId)}/pages/layout`,
+                    { aspect },
+                    { signal },
+                ),
+                BookPageLayoutsSchema,
+            );
+        },
         async list(bookId: string, signal?: AbortSignal) {
             return readData(
                 await http.get(`/books/${IdSchema.parse(bookId)}/pages`, { signal }),
