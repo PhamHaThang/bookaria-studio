@@ -1,0 +1,17 @@
+{
+    "source": "bookaria-viewer/src/scene-core",
+    "files": {
+        "buildScene.ts": {
+            "source": "d8f1cb699e3e2a73ad0a31ced05bcc867b4dae2fe366f258c161146be448dda7",
+            "snapshot": "a0ad14058eb9d9c79e2eecf1f64e69ca8c1e07d016fea76d940c030bd191b14d"
+        },
+        "InteractionRunner.ts": {
+            "source": "fce070c493449250c996cee5aa17349760de5e73fd93c15f1224ff8dc788306a",
+            "snapshot": "97f12aa0e6f00bfedd390cc0926199913531b2744077944c9343aac921780902"
+        },
+        "fetchBytes.ts": {
+            "source": "a89e8d77b030e9e979a63d43f04fa19fb18791304e0ac3e35e126ecebcc22890",
+            "snapshot": "a89e8d77b030e9e979a63d43f04fa19fb18791304e0ac3e35e126ecebcc22890"
+        }
+    }
+}

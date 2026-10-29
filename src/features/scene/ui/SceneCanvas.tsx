@@ -21,6 +21,7 @@ import { annotationConnectorSide } from '@/shared/scene/annotation-connector';
 import { createAudioCard } from '@/shared/scene/audio-card';
 import { facesCamera } from '@/shared/scene/audio-kind';
 import { createBillboard } from '@/shared/scene/billboard';
+import { configureSceneOrbit, stopSceneOrbit } from '@/shared/scene/camera-navigation';
 import { createPageLighting } from '@/shared/scene/page-lighting';
 import { createTextVisual, disposeTextVisual } from '@/shared/scene/text-renderer';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
@@ -28,6 +29,7 @@ import { Separator } from '@/shared/ui/primitives/separator';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import type { Page } from '../../../shared/contracts/dto.schema';
 import type { Scene, SceneObject } from '../../../shared/contracts/scene.schema';
+import type { PreviewView } from '../../preview/model/LocalPreviewStage';
 import {
     type AnnotationLabelDrag,
     annotationLabelOffset,
@@ -59,7 +61,6 @@ import {
     createViewGizmoProjection,
     rotateSceneView,
     setAxisView,
-    VIEW_POLE_EPSILON,
     type ViewGizmoController,
 } from '../model/view-gizmo';
 import { SceneAssetLoading } from './SceneAssetLoading';
@@ -72,6 +73,7 @@ import { SceneViewGizmo } from './SceneViewGizmo';
 type Mode = 'translate' | 'rotate' | 'scale';
 type Space = 'world' | 'local';
 export type SceneCanvasHandle = {
+    getPreviewView: () => PreviewView | undefined;
     getDisplayedRotation: (id: string) => SceneObject['transform']['rotation'] | undefined;
 };
 type Props = {
@@ -128,6 +130,7 @@ export function SceneCanvas(props: Props) {
     latest.current = props;
     const loadStates = useSyncExternalStore(props.loadStore.subscribe, props.loadStore.getSnapshot);
     const api = useRef<{
+        getPreviewView: () => PreviewView;
         sync: () => void;
         retry: (id: string) => void;
         getDisplayedRotation: SceneCanvasHandle['getDisplayedRotation'];
@@ -142,7 +145,10 @@ export function SceneCanvas(props: Props) {
     } | null>(null);
     useImperativeHandle(
         props.ref,
-        () => ({ getDisplayedRotation: (id) => api.current?.getDisplayedRotation(id) }),
+        () => ({
+            getDisplayedRotation: (id) => api.current?.getDisplayedRotation(id),
+            getPreviewView: () => api.current?.getPreviewView(),
+        }),
         [],
     );
     const [mode, setMode] = useState<Mode>('translate'),
@@ -206,35 +212,12 @@ export function SceneCanvas(props: Props) {
         camera.position.set(0, -0.9, stageDistance());
         const orbit = new OrbitControls(camera, renderer.domElement);
         orbit.target.set(0, -0.18, 0);
-        orbit.enableDamping = true;
-        orbit.dampingFactor = 0.18;
-        orbit.minPolarAngle = VIEW_POLE_EPSILON;
-        orbit.maxPolarAngle = Math.PI - VIEW_POLE_EPSILON;
-        orbit.rotateSpeed = 0.65;
-        orbit.panSpeed = 0.8;
-        orbit.zoomSpeed = 0.8;
-        orbit.zoomToCursor = true;
-        orbit.minDistance = 0.15;
-        orbit.maxDistance = 15;
-        orbit.mouseButtons = {
-            LEFT: THREE.MOUSE.ROTATE,
-            MIDDLE: THREE.MOUSE.DOLLY,
-            RIGHT: THREE.MOUSE.PAN,
-        };
+        configureSceneOrbit(orbit);
         const viewGizmo = gizmoHost.current
             ? createViewGizmoProjection(gizmoHost.current, camera)
             : null;
         function stopOrbitMomentum() {
-            const damping = orbit.enableDamping;
-            const position = camera.position.clone();
-            const target = orbit.target.clone();
-            orbit.enableDamping = false;
-            orbit.update();
-            // Flush internal deltas, then retain the view the user was actually seeing.
-            camera.position.copy(position);
-            orbit.target.copy(target);
-            orbit.update();
-            orbit.enableDamping = damping;
+            stopSceneOrbit(orbit);
         }
         gizmoController.current = {
             begin() {
@@ -2029,6 +2012,13 @@ export function SceneCanvas(props: Props) {
             positionLoadingCards();
         }
         api.current = {
+            getPreviewView: () => ({
+                position: camera.position.toArray(),
+                target: orbit.target.toArray(),
+                up: camera.up.toArray(),
+                minDistance: orbit.minDistance,
+                maxDistance: orbit.maxDistance,
+            }),
             sync,
             retry(id) {
                 const node = nodes.get(id);
@@ -2279,7 +2269,7 @@ export function SceneCanvas(props: Props) {
                 {props.annotationToPlace && (
                     <section
                         aria-label="Đặt chú thích"
-                        className="pointer-events-auto absolute bottom-[var(--transform-feedback-bottom,148px)] left-1/2 z-3 flex max-w-[calc(100%-32px)] -translate-x-1/2 items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-sm"
+                        className="pointer-events-auto absolute bottom-[var(--transform-feedback-bottom,148px)] left-1/2 z-3 flex max-w-[calc(100%_-_var(--inspector-offset,0px)_-_32px)] -translate-x-[calc(50%+var(--inspector-offset,0px)/2)] items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-sm transition-[translate] duration-200 ease-out motion-reduce:transition-none"
                     >
                         <MousePointerClick className="size-5 shrink-0" />
                         <div role="status" className="flex min-w-0 flex-col gap-1 text-xs">
@@ -2403,7 +2393,7 @@ export function SceneCanvas(props: Props) {
                     <output
                         aria-live="off"
                         data-transform-feedback
-                        className="pointer-events-none absolute bottom-[var(--transform-feedback-bottom,148px)] left-1/2 max-w-[80%] -translate-x-1/2 rounded-lg bg-surface px-3 py-2 text-center text-xs tabular-nums"
+                        className="pointer-events-none absolute bottom-[var(--transform-feedback-bottom,148px)] left-1/2 max-w-[calc(100%_-_var(--inspector-offset,0px)_-_32px)] -translate-x-[calc(50%+var(--inspector-offset,0px)/2)] rounded-lg bg-surface px-3 py-2 text-center text-xs tabular-nums transition-[translate] duration-200 ease-out motion-reduce:transition-none"
                     >
                         {toolName}
                         {props.selectedIds.length > 1
@@ -2423,7 +2413,7 @@ export function SceneCanvas(props: Props) {
                 )}
                 {failure && (
                     <p
-                        className="canvas-failure absolute top-[35%] right-[10%] bottom-auto left-[10%] bg-surface p-5 text-[length:13px]"
+                        className="canvas-failure absolute top-[35%] bottom-auto left-1/2 m-0 w-[calc(100%_-_var(--inspector-offset,0px)_-_32px)] max-w-xl -translate-x-[calc(50%+var(--inspector-offset,0px)/2)] bg-surface p-5 text-[length:13px] transition-[translate] duration-200 ease-out motion-reduce:transition-none"
                         role="alert"
                     >
                         {failure}
@@ -2431,7 +2421,7 @@ export function SceneCanvas(props: Props) {
                 )}
                 {loading > 0 && (
                     <p
-                        className="canvas-loading absolute bottom-2 left-[74px] rounded-[5px] bg-surface px-[10px] py-[5px] text-[length:12px]"
+                        className="canvas-loading absolute bottom-2 left-[74px] m-0 max-w-[calc(100%_-_var(--inspector-offset,0px)_-_100px)] translate-x-[var(--sidebar-toolbar-offset,0px)] rounded-[5px] bg-surface px-[10px] py-[5px] text-[length:12px] transition-[translate] duration-200 ease-out motion-reduce:transition-none"
                         role="status"
                     >
                         Đang tải {loading} đối tượng…

@@ -17,9 +17,12 @@
         "contract:sync": "node scripts/sync-contract.mjs",
         "contract:check": "node scripts/sync-contract.mjs --check",
         "contract:verify": "node scripts/sync-contract.mjs --verify",
-        "pdf:assets": "node scripts/sync-pdf-assets.mjs"
+        "pdf:assets": "node scripts/sync-pdf-assets.mjs",
+        "preview:sync": "node scripts/sync-preview-runtime.mjs",
+        "preview:check": "node scripts/sync-preview-runtime.mjs --check"
     },
     "dependencies": {
+        "@animate-ui/react": "2.4.1",
         "@fontsource/be-vietnam-pro": "5.3.0",
         "@fontsource/bricolage-grotesque": "5.3.0",
         "@fontsource/noto-serif": "5.3.0",
@@ -28,6 +31,7 @@
         "class-variance-authority": "0.7.1",
         "clsx": "2.1.1",
         "lucide-react": "1.60.0",
+        "motion": "^14.7.1",
         "pdfjs-dist": "6.4.299",
         "qrcode": "1.5.4",
         "radix-ui": "1.8.1",

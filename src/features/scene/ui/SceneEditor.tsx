@@ -3,11 +3,9 @@ import {
     ChevronDown,
     Circle,
     Download,
-    Eye,
     FileText,
     Layers,
     MoreHorizontal,
-    Pencil,
     Redo2,
     RefreshCw,
     Save,
@@ -52,7 +50,8 @@ import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { BookInfoDialog } from '../../books/ui/BookInfoDialog';
 import type { ImageAttachmentContext } from '../../pages/ui/PageImageForm';
-import { PreviewPanel } from '../../preview/ui/PreviewPanel';
+import type { PreviewView } from '../../preview/model/LocalPreviewStage';
+import { LocalPreviewPanel } from '../../preview/ui/LocalPreviewPanel';
 import { PublicationPanel } from '../../publication/ui/PublicationPanel';
 import { type AnnotationObject, placeAnnotation } from '../model/annotation-placement';
 import { createFittedAssetObject } from '../model/asset-insertion';
@@ -92,6 +91,7 @@ import { SceneEditorSidebar } from './SceneEditorSidebar';
 import { SceneInspectorContent } from './SceneInspectorContent';
 import { SceneInspectorEmpty } from './SceneInspectorEmpty';
 import { SceneInspectorHeader } from './SceneInspectorHeader';
+import { SceneModeSwitcher } from './SceneModeSwitcher';
 import { SceneObjectsPanel } from './SceneObjectsPanel';
 import { SceneShortcutsDialog } from './SceneShortcutsDialog';
 import { SceneWorkbench } from './SceneWorkbench';
@@ -183,7 +183,8 @@ export function SceneEditor({
     });
     const activeIds = selection.map((object) => object.id);
     const selected = selection.at(-1);
-    const inspectorVisible = panel !== 'properties' || selection.length > 0;
+    const inspectorVisible =
+        panel !== 'preview' && (panel !== 'properties' || selection.length > 0);
     const workspaceRef = useRef<HTMLDivElement>(null);
     const saveBeforeAction = useSaveBeforeAction({
         dirty: editor.dirty || settingsDirty,
@@ -221,8 +222,14 @@ export function SceneEditor({
         if (panel === 'settings' && settingsDirty) settingsEditor.current?.confirmLeave(action);
         else action();
     }
+    const previewView = useRef<PreviewView | undefined>(undefined);
     function changePanel(next: typeof panel) {
-        if (next !== panel) runOutsideSettings(() => setPanel(next));
+        if (next !== panel)
+            runOutsideSettings(() => {
+                if (next === 'preview')
+                    previewView.current = commands.current.canvas?.getPreviewView();
+                setPanel(next);
+            });
     }
     function selectMany(ids: string[], mode: SelectionMode = 'replace') {
         const select = () => {
@@ -342,6 +349,7 @@ export function SceneEditor({
     }
     const commands = useRef({
         editor,
+        previewing: panel === 'preview',
         blocked,
         selection,
         duplicateChosen,
@@ -354,6 +362,7 @@ export function SceneEditor({
     });
     commands.current = {
         editor,
+        previewing: panel === 'preview',
         blocked,
         selection,
         duplicateChosen,
@@ -375,6 +384,15 @@ export function SceneEditor({
                 return;
             if (document.getElementById('scene-heading')?.closest('[hidden]')) return;
             const state = commands.current;
+            if (state.previewing) {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setPanel('properties');
+                    return;
+                }
+                if (!((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's')) return;
+            }
+
             const typing = (event.target as HTMLElement)?.closest(
                 'input,textarea,select,[role="combobox"],[role="checkbox"],[role="radio"],[role="switch"],[role="tab"],[data-slot="accordion-trigger"],[contenteditable="true"]',
             );
@@ -452,7 +470,7 @@ export function SceneEditor({
                 }
                 saving={editor.busy || settingsBusy || publicationBusy || pagesBusy || infoBusy}
             />
-            <header className="scene-heading editor-header grid min-h-19 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-border border-b bg-surface px-5 py-3">
+            <header className="scene-heading editor-header grid min-h-19 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-border border-b bg-surface px-5 py-3">
                 <div className="editor-project flex min-w-0 items-center gap-4">
                     <Link
                         to="/books"
@@ -557,6 +575,11 @@ export function SceneEditor({
                         </DropdownMenu>
                     </fieldset>
                 </div>
+                <SceneModeSwitcher
+                    value={panel === 'settings' ? 'properties' : panel}
+                    onValueChange={changePanel}
+                    disabled={blocked}
+                />
                 <div className="editor-save-actions flex min-w-0 items-center justify-end gap-3">
                     <Tooltip delayDuration={250}>
                         <TooltipTrigger asChild>
@@ -564,7 +587,7 @@ export function SceneEditor({
                                 role="status"
                                 tabIndex={validationMessage ? 0 : undefined}
                                 className={cn(
-                                    'flex w-32 shrink-0 items-center justify-end gap-1.5 whitespace-nowrap text-muted-foreground text-xs',
+                                    'flex w-32 shrink-0 items-center justify-end gap-1.5 whitespace-nowrap text-muted-foreground text-xs max-[1280px]:w-5',
                                     validationMessage && 'text-destructive',
                                 )}
                             >
@@ -580,13 +603,15 @@ export function SceneEditor({
                                 ) : (
                                     <Check className="size-3.5" aria-hidden="true" />
                                 )}
-                                {validationMessage
-                                    ? 'Kiểm tra thông số'
-                                    : editor.busy || settingsBusy
-                                      ? 'Đang lưu…'
-                                      : editor.dirty || settingsDirty
-                                        ? 'Chưa lưu thay đổi'
-                                        : 'Đã lưu nội dung'}
+                                <span className="max-[1280px]:sr-only">
+                                    {validationMessage
+                                        ? 'Kiểm tra thông số'
+                                        : editor.busy || settingsBusy
+                                          ? 'Đang lưu…'
+                                          : editor.dirty || settingsDirty
+                                            ? 'Chưa lưu thay đổi'
+                                            : 'Đã lưu nội dung'}
+                                </span>
                             </span>
                         </TooltipTrigger>
                         {validationMessage && (
@@ -624,25 +649,6 @@ export function SceneEditor({
                             Lưu nội dung · Ctrl S
                         </TooltipContent>
                     </Tooltip>
-
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="editor-preview h-10 min-w-32 shrink-0"
-                        disabled={Boolean(annotationPlacement)}
-                        aria-controls={panel === 'preview' ? 'panel-properties' : 'panel-preview'}
-                        onClick={() => changePanel(panel === 'preview' ? 'properties' : 'preview')}
-                    >
-                        {panel === 'preview' ? (
-                            <>
-                                <Pencil data-icon="inline-start" /> Về editor
-                            </>
-                        ) : (
-                            <>
-                                <Eye data-icon="inline-start" /> Xem trước
-                            </>
-                        )}
-                    </Button>
 
                     <Tooltip delayDuration={250}>
                         <TooltipTrigger asChild>
@@ -760,31 +766,35 @@ export function SceneEditor({
                 </Alert>
             )}
             <SceneWorkbench>
-                <SceneEditorSidebar
-                    activeObjectType={picker?.type || (textDialog ? 'text' : undefined)}
-                    activePanel={panel}
-                    disabled={Boolean(blocked)}
-                    objectLimitReached={editor.draft.objects.length >= SCENE_LIMITS.hardMaxObjects}
-                    helpOpen={helpOpen}
-                    onAdd={(type) =>
-                        runOutsideSettings(() => {
-                            if (usesAsset(type)) setPicker({ type });
-                            else if (type === 'text') setTextDialog({ start: 'text' });
-                            else insert(type);
-                        })
-                    }
-                    onInteractions={() => changePanel('interactions')}
-                    onRecognition={() => runOutsideSettings(onRecognition)}
-                    onSettings={() => changePanel('settings')}
-                    onShortcuts={() => setHelpOpen(true)}
-                    shortcutsRef={(element) => {
-                        commands.current.shortcutsButton = element;
-                    }}
-                />
+                <div hidden={panel === 'preview'} className="[&[hidden]]:hidden">
+                    <SceneEditorSidebar
+                        activeObjectType={picker?.type || (textDialog ? 'text' : undefined)}
+                        activePanel={panel}
+                        disabled={Boolean(blocked)}
+                        objectLimitReached={
+                            editor.draft.objects.length >= SCENE_LIMITS.hardMaxObjects
+                        }
+                        helpOpen={helpOpen}
+                        onAdd={(type) =>
+                            runOutsideSettings(() => {
+                                if (usesAsset(type)) setPicker({ type });
+                                else if (type === 'text') setTextDialog({ start: 'text' });
+                                else insert(type);
+                            })
+                        }
+                        onInteractions={() => changePanel('interactions')}
+                        onRecognition={() => runOutsideSettings(onRecognition)}
+                        onSettings={() => changePanel('settings')}
+                        onShortcuts={() => setHelpOpen(true)}
+                        shortcutsRef={(element) => {
+                            commands.current.shortcutsButton = element;
+                        }}
+                    />
+                </div>
                 <div
                     ref={workspaceRef}
                     data-inspector-visible="false"
-                    className="scene-workspace relative m-0 grid h-[calc(100dvh_-_76px)] min-h-125 min-w-0 flex-1 grid-cols-[minmax(0,_1fr)] items-stretch gap-0 overflow-hidden [--inspector-offset:var(--inspector-width)] [--inspector-width:340px] [container-type:inline-size] data-[inspector-visible=false]:[--inspector-offset:0px] max-[1100px]:[--inspector-width:300px] min-[1600px]:[--inspector-width:380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:[--inspector-width:max(480px,45cqw)] [.scene-editor[data-panel=preview]_&]:[--inspector-width:100%]"
+                    className="scene-workspace relative m-0 grid h-[calc(100dvh_-_76px)] min-h-125 min-w-0 flex-1 grid-cols-[minmax(0,_1fr)] items-stretch gap-0 overflow-hidden [--inspector-offset:var(--inspector-width)] [--inspector-width:340px] [container-type:inline-size] data-[inspector-visible=false]:[--inspector-offset:0px] max-[1100px]:[--inspector-width:300px] min-[1600px]:[--inspector-width:380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:[--inspector-width:max(480px,45cqw)]"
                 >
                     <SceneObjectsPanel
                         objects={editor.draft.objects}
@@ -926,7 +936,7 @@ export function SceneEditor({
                             </Button>
                         }
                     />
-                    <div className="inspector-slot pointer-events-none absolute top-0 right-0 bottom-[var(--canvas-hints-height)] z-10 min-h-0 w-[var(--inspector-width)] min-w-0 [.scene-editor[data-panel=preview]_&]:bottom-0">
+                    <div className="inspector-slot pointer-events-none absolute top-0 right-0 bottom-[var(--canvas-hints-height)] z-10 min-h-0 w-[var(--inspector-width)] min-w-0 [.scene-editor[data-panel=preview]_&]:hidden">
                         <Tabs
                             className="gap-0"
                             value={panel}
@@ -940,35 +950,42 @@ export function SceneEditor({
                                 aria-label="Bảng chỉnh sửa"
                             >
                                 <SceneInspectorContent active={inspectorVisible}>
-                                    <SceneInspectorHeader
-                                        panel={panel}
-                                        selected={selected}
-                                        count={selection.length}
-                                        pageNumber={page.orderIndex + 1}
-                                        disabled={Boolean(blocked)}
-                                        onBack={() =>
-                                            runOutsideSettings(() => {
-                                                setPanel('properties');
-                                                const focusTarget = selection.length
-                                                    ? document.getElementById('inspector-heading')
-                                                    : document.querySelector<HTMLCanvasElement>(
-                                                          '.scene-three-host canvas',
-                                                      );
-                                                focusTarget?.focus({ preventScroll: true });
-                                            })
-                                        }
-                                        onClear={() =>
-                                            runOutsideSettings(() => {
-                                                setSelectedId('');
-                                                setPanel('properties');
-                                                document
-                                                    .querySelector<HTMLCanvasElement>(
-                                                        '.scene-three-host canvas',
-                                                    )
-                                                    ?.focus({ preventScroll: true });
-                                            })
-                                        }
-                                    />
+                                    <div
+                                        hidden={panel === 'preview'}
+                                        className="[&[hidden]]:hidden"
+                                    >
+                                        <SceneInspectorHeader
+                                            panel={panel}
+                                            selected={selected}
+                                            count={selection.length}
+                                            pageNumber={page.orderIndex + 1}
+                                            disabled={Boolean(blocked)}
+                                            onBack={() =>
+                                                runOutsideSettings(() => {
+                                                    setPanel('properties');
+                                                    const focusTarget = selection.length
+                                                        ? document.getElementById(
+                                                              'inspector-heading',
+                                                          )
+                                                        : document.querySelector<HTMLCanvasElement>(
+                                                              '.scene-three-host canvas',
+                                                          );
+                                                    focusTarget?.focus({ preventScroll: true });
+                                                })
+                                            }
+                                            onClear={() =>
+                                                runOutsideSettings(() => {
+                                                    setSelectedId('');
+                                                    setPanel('properties');
+                                                    document
+                                                        .querySelector<HTMLCanvasElement>(
+                                                            '.scene-three-host canvas',
+                                                        )
+                                                        ?.focus({ preventScroll: true });
+                                                })
+                                            }
+                                        />
+                                    </div>
                                     <TabsContent value="properties" forceMount asChild>
                                         <section
                                             key={`${selected?.id || 'empty'}:${selection.length > 1 ? 'group' : 'single'}`}
@@ -1110,22 +1127,6 @@ export function SceneEditor({
                                             />
                                         </section>
                                     </TabsContent>
-                                    <TabsContent value="preview" forceMount asChild>
-                                        <section
-                                            id="panel-preview"
-                                            hidden={panel !== 'preview'}
-                                            aria-labelledby="inspector-heading"
-                                            className="inspector-panel min-h-0 w-full max-w-300 flex-1 self-center overflow-y-auto p-4"
-                                        >
-                                            <PreviewPanel
-                                                page={page}
-                                                book={book}
-                                                scene={editor.draft}
-                                                disabled={blocked || settingsDirty}
-                                                unsaved={editor.dirty || settingsDirty}
-                                            />
-                                        </section>
-                                    </TabsContent>
                                 </SceneInspectorContent>
                                 <TabsContent value="settings" forceMount asChild>
                                     <section
@@ -1157,8 +1158,23 @@ export function SceneEditor({
                             </aside>
                         </Tabs>
                     </div>
+                    <section
+                        id="panel-preview"
+                        hidden={panel !== 'preview'}
+                        aria-label="Xem trước sách"
+                        className="pointer-events-auto absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden [&[hidden]]:hidden"
+                    >
+                        <LocalPreviewPanel
+                            active={panel === 'preview'}
+                            initialView={previewView.current}
+                            page={page}
+                            book={book}
+                            scene={editor.draft}
+                            unsaved={editor.dirty || settingsDirty}
+                        />
+                    </section>
                     <div
-                        className="pointer-events-none absolute inset-x-0 bottom-12 z-5 grid [grid-template-columns:inherit] [.scene-editor[data-panel=preview]_&]:bottom-4"
+                        className="pointer-events-none absolute inset-x-0 bottom-12 z-5 grid [grid-template-columns:inherit] [.scene-editor[data-panel=preview]_&]:hidden"
                         data-page-dock
                     >
                         <div className="col-start-1 flex min-w-0 -translate-x-[calc(var(--inspector-offset)/2)] justify-center px-4 transition-[translate] duration-200 ease-out motion-reduce:transition-none [.scene-editor[data-panel=preview]_&]:translate-x-0">
