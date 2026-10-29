@@ -10,6 +10,7 @@ import { Textarea } from '@/shared/ui/primitives/textarea';
 import type { SceneAudioStore } from '../model/scene-audio-store';
 import { NumericField, VectorFields } from './NumericField';
 import { SceneAudioControls } from './SceneAudioControls';
+import { useSceneWidthMm } from './SceneUnits';
 
 export function ObjectSpecificProperties({
     object,
@@ -28,6 +29,7 @@ export function ObjectSpecificProperties({
     onEditText: () => void;
     audioStore: SceneAudioStore;
 }) {
+    const widthMm = useSceneWidthMm();
     return (
         <div className="flex flex-col gap-4">
             {(object.type === 'text' || object.type === 'label') && (
@@ -135,10 +137,18 @@ export function ObjectSpecificProperties({
                         label={
                             object.presentation?.kind === 'screen' ||
                             object.presentation?.kind === 'bubble'
-                                ? 'Kích thước thẻ (theo chiều rộng trang)'
+                                ? 'Chiều rộng thẻ'
                                 : object.presentation?.kind === 'annotation'
-                                  ? 'Kích thước nhãn (theo chiều rộng trang)'
-                                  : 'Cỡ chữ (theo chiều rộng trang)'
+                                  ? 'Cỡ chữ nhãn'
+                                  : 'Cỡ chữ'
+                        }
+                        unit="mm"
+                        displayFactor={
+                            widthMm *
+                            (object.presentation?.kind === 'screen' ||
+                            object.presentation?.kind === 'bubble'
+                                ? 16
+                                : 1)
                         }
                         value={object.style.size}
                         onChange={(size) => patch({ style: { ...object.style, size } })}
@@ -196,6 +206,8 @@ export function ObjectSpecificProperties({
                     <VectorFields
                         id={`${id}-target`}
                         label="Đầu mũi chỉ"
+                        unit="mm"
+                        displayFactor={widthMm}
                         values={object.target}
                         onChange={(target) => patch({ target })}
                     />
@@ -282,12 +294,16 @@ export function ObjectSpecificProperties({
                     <NumericField
                         id={`${id}-width`}
                         label="Rộng vùng chạm"
+                        unit="mm"
+                        displayFactor={widthMm}
                         value={object.size[0]}
                         onChange={(value) => patch({ size: [value, object.size[1]] })}
                     />
                     <NumericField
                         id={`${id}-height`}
                         label="Cao vùng chạm"
+                        unit="mm"
+                        displayFactor={widthMm}
                         value={object.size[1]}
                         onChange={(value) => patch({ size: [object.size[0], value] })}
                     />

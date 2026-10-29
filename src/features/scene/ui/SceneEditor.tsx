@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { pageWidthMm } from '@/shared/contracts/marker.schema';
 import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
@@ -94,12 +95,21 @@ import { SceneInspectorHeader } from './SceneInspectorHeader';
 import { SceneModeSwitcher } from './SceneModeSwitcher';
 import { SceneObjectsPanel } from './SceneObjectsPanel';
 import { SceneShortcutsDialog } from './SceneShortcutsDialog';
+import { SceneUnitsProvider } from './SceneUnits';
 import { SceneWorkbench } from './SceneWorkbench';
 import { SelectionEditor } from './SelectionEditor';
 import { TextComposer, type TextMode, type TextualObject } from './TextComposer';
 import { useSaveBeforeAction } from './use-save-before-action';
 
-export function SceneEditor({
+export function SceneEditor(props: Parameters<typeof SceneEditorContent>[0]) {
+    return (
+        <SceneUnitsProvider widthMm={pageWidthMm(props.book.pageFormat, props.book.pageWidthMm)}>
+            <SceneEditorContent {...props} />
+        </SceneUnitsProvider>
+    );
+}
+
+function SceneEditorContent({
     page,
     book,
     disabled,

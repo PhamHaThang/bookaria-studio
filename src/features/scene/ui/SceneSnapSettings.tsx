@@ -11,12 +11,21 @@ import {
     PopoverTitle,
     PopoverTrigger,
 } from '@/shared/ui/primitives/popover';
-import { DEFAULT_SNAP_STEPS, parseSnapStep, SNAP_FIELDS, type SnapSteps } from '../model/snap';
+import {
+    defaultSnapStepsForPage,
+    parseSnapStep,
+    SNAP_FIELDS,
+    type SnapSteps,
+    snapDisplayFactor,
+} from '../model/snap';
+import { useSceneWidthMm } from './SceneUnits';
 
-const strings = (value: SnapSteps) => ({
-    translation: String(value.translation),
+const strings = (value: SnapSteps, widthMm: number) => ({
+    translation: String(
+        Number((value.translation * snapDisplayFactor('translation', widthMm)).toPrecision(12)),
+    ),
     rotation: String(value.rotation),
-    scale: String(value.scale),
+    scale: String(Number((value.scale * snapDisplayFactor('scale', widthMm)).toPrecision(12))),
 });
 
 export function SceneSnapSettings({
@@ -32,16 +41,17 @@ export function SceneSnapSettings({
     onChange: (steps: SnapSteps) => void;
     onEnabledChange: (enabled: boolean) => void;
 }) {
+    const widthMm = useSceneWidthMm();
     const id = useId();
     const [open, setOpen] = useState(false);
-    const [draft, setDraft] = useState(strings(steps));
+    const [draft, setDraft] = useState(strings(steps, widthMm));
     const [submitted, setSubmitted] = useState(false);
     return (
         <Popover
             open={open}
             onOpenChange={(value) => {
                 if (value) {
-                    setDraft(strings(steps));
+                    setDraft(strings(steps, widthMm));
                     setSubmitted(false);
                 }
                 setOpen(value);
@@ -94,7 +104,11 @@ export function SceneSnapSettings({
                         setSubmitted(true);
                         const next = {} as SnapSteps;
                         for (const field of SNAP_FIELDS) {
-                            const value = parseSnapStep(field.key, draft[field.key]);
+                            const value = parseSnapStep(
+                                field.key,
+                                draft[field.key],
+                                snapDisplayFactor(field.key, widthMm),
+                            );
                             if (value === null) {
                                 document.getElementById(`${id}-${field.key}`)?.focus();
                                 return;
@@ -108,7 +122,12 @@ export function SceneSnapSettings({
                     <FieldGroup className="gap-4">
                         {SNAP_FIELDS.map((field) => {
                             const invalid =
-                                submitted && parseSnapStep(field.key, draft[field.key]) === null;
+                                submitted &&
+                                parseSnapStep(
+                                    field.key,
+                                    draft[field.key],
+                                    snapDisplayFactor(field.key, widthMm),
+                                ) === null;
                             return (
                                 <Field key={field.key} data-invalid={invalid}>
                                     <FieldLabel className="mb-0" htmlFor={`${id}-${field.key}`}>
@@ -134,18 +153,24 @@ export function SceneSnapSettings({
                                     {invalid && (
                                         <FieldError id={`${id}-${field.key}-error`}>
                                             Nhập số từ{' '}
-                                            {field.min.toLocaleString('vi-VN', {
+                                            {(
+                                                field.min * snapDisplayFactor(field.key, widthMm)
+                                            ).toLocaleString('vi-VN', {
                                                 maximumFractionDigits: 5,
                                             })}{' '}
-                                            đến {field.max}.
+                                            đến{' '}
+                                            {(
+                                                field.max * snapDisplayFactor(field.key, widthMm)
+                                            ).toLocaleString('vi-VN')}
+                                            .
                                         </FieldError>
                                     )}
                                 </Field>
                             );
                         })}
                         <p className="m-0 text-muted-foreground text-xs">
-                            1 đơn vị bằng chiều rộng trang. Snap không thay đổi nội dung cho đến khi
-                            bạn kéo đối tượng.
+                            Bước di chuyển tính bằng mm. Tỉ lệ 0,05 tương đương 5%. Snap chỉ áp dụng
+                            khi bạn kéo đối tượng.
                         </p>
                         <div className="flex justify-end gap-2">
                             <Button
@@ -153,7 +178,7 @@ export function SceneSnapSettings({
                                 size="sm"
                                 disabled={disabled}
                                 onClick={() => {
-                                    setDraft(strings(DEFAULT_SNAP_STEPS));
+                                    setDraft(strings(defaultSnapStepsForPage(widthMm), widthMm));
                                     setSubmitted(false);
                                 }}
                             >

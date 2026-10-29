@@ -65,7 +65,7 @@ test('history stays bounded across long editing sessions', () => {
 test('canvas transform keeps schema degrees, clamps positive scale and snaps only translation to paper', () => {
     const t = { position: [0.1234567, -0.2, 1], rotation: [90, 180, -45], scale: [0, -1, 2] };
     assert.deepEqual(safeTransform(t, true, true), {
-        position: [0.12346, -0.2, 0],
+        position: [0.1234567, -0.2, 0],
         rotation: [90, 180, -45],
         scale: [0.001, 0.001, 2],
     });

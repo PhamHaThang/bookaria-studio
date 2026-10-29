@@ -38,6 +38,11 @@ import {
 import type { AnnotationObject, AnnotationPlacement } from '../model/annotation-placement';
 import { createAssetPlaceholder, waitForVideo } from '../model/asset-placeholder';
 import { beginDolly, type DollyStart, dragDolly } from '../model/dolly';
+import {
+    createEditorGrid,
+    DEFAULT_EDITOR_GRID,
+    type EditorGridSettings,
+} from '../model/editor-grid';
 import { createFrontGuide } from '../model/front-guide';
 import { beginLocalDepthDrag, type LocalDepthDrag, localDepthPosition } from '../model/local-depth';
 import { createModelSelectionBounds } from '../model/model-selection-bounds';
@@ -47,6 +52,7 @@ import { fitPreviewCamera } from '../model/preview-fit';
 import { scaleConstraint, scaleFromGesture } from '../model/scale-gesture';
 import type { SceneAudioStore } from '../model/scene-audio-store';
 import type { SceneLoadStore } from '../model/scene-load-store';
+import { formatTransformValue, mmToPageUnits, pageUnitsToMm } from '../model/scene-units';
 import type { SelectionMode } from '../model/selection';
 import {
     isPlanarObject,
@@ -55,7 +61,7 @@ import {
 } from '../model/selection-frame';
 import { layoutSelectionTools, projectSelectionBounds } from '../model/selection-tools';
 import { selectionFrustum, transformSelection } from '../model/selection-transform';
-import { DEFAULT_SNAP_STEPS, type SnapSteps, transformSnapSteps } from '../model/snap';
+import { defaultSnapStepsForPage, type SnapSteps, transformSnapSteps } from '../model/snap';
 import { objectFromGizmo } from '../model/transforms';
 import {
     createViewGizmoProjection,
@@ -66,8 +72,10 @@ import {
 import { SceneAssetLoading } from './SceneAssetLoading';
 import { SceneCanvasHints } from './SceneCanvasHints';
 import { SceneDepthGizmo } from './SceneDepthGizmo';
+import { SceneGridSettings } from './SceneGridSettings';
 import { SceneSelectionTools, type SelectionActions } from './SceneSelectionTools';
 import { SceneSnapSettings } from './SceneSnapSettings';
+import { useSceneWidthMm } from './SceneUnits';
 import { SceneViewGizmo } from './SceneViewGizmo';
 
 type Mode = 'translate' | 'rotate' | 'scale';
@@ -118,6 +126,8 @@ type Node = {
 };
 
 export function SceneCanvas(props: Props) {
+    const widthMm = useSceneWidthMm();
+    const widthMmRef = useRef(widthMm);
     const host = useRef<HTMLDivElement>(null),
         marqueeHost = useRef<HTMLDivElement>(null),
         loadingHost = useRef<HTMLDivElement>(null),
@@ -135,6 +145,7 @@ export function SceneCanvas(props: Props) {
         retry: (id: string) => void;
         getDisplayedRotation: SceneCanvasHandle['getDisplayedRotation'];
         mode: (mode: Mode, snap: boolean, space: Space, steps: SnapSteps) => void;
+        grid: (settings: EditorGridSettings, widthMm: number) => void;
         shift: (active: boolean) => void;
         pan: (active: boolean) => void;
         isDragging: () => boolean;
@@ -153,12 +164,28 @@ export function SceneCanvas(props: Props) {
     );
     const [mode, setMode] = useState<Mode>('translate'),
         [snap, setSnap] = useState(false),
-        [snapSteps, setSnapSteps] = useState<SnapSteps>(DEFAULT_SNAP_STEPS),
+        [snapSteps, setSnapSteps] = useState<SnapSteps>(() => defaultSnapStepsForPage(widthMm)),
         [space, setSpace] = useState<Space>('world'),
         [transforming, setTransforming] = useState(false);
+    const [gridSettings, setGridSettings] = useState<EditorGridSettings>(DEFAULT_EDITOR_GRID);
+    const gridSettingsRef = useRef(gridSettings);
+    gridSettingsRef.current = gridSettings;
     const [failure, setFailure] = useState(''),
         [loading, setLoading] = useState(0),
         [issues, setIssues] = useState<Record<string, string>>({});
+    useEffect(() => {
+        const previousWidth = widthMmRef.current;
+        widthMmRef.current = widthMm;
+        if (previousWidth !== widthMm) {
+            setSnapSteps((current) => ({
+                ...current,
+                translation: mmToPageUnits(
+                    pageUnitsToMm(current.translation, previousWidth),
+                    widthMm,
+                ),
+            }));
+        }
+    }, [widthMm]);
     const [hintsHost, setHintsHost] = useState<HTMLElement | null>(null);
     useEffect(() => {
         setHintsHost(
@@ -312,15 +339,13 @@ export function SceneCanvas(props: Props) {
             latest.current.lighting ?? latest.current.page.settings.lighting,
         );
         scene.add(lighting.group);
-        const grid = new THREE.GridHelper(
-            4,
-            40,
-            themeColor('--editor-grid-strong'),
-            themeColor('--editor-grid'),
+        const editorGrid = createEditorGrid(
+            widthMmRef.current,
+            latest.current.aspect,
+            gridSettingsRef.current,
+            { center: themeColor('--editor-grid-strong'), line: themeColor('--editor-grid') },
         );
-        grid.rotation.x = Math.PI / 2;
-        grid.position.z = -0.008;
-        scene.add(grid);
+        scene.add(editorGrid.grid);
         const frontGuide = createFrontGuide(latest.current.aspect, {
             surface: theme.getPropertyValue('--bg-surface').trim(),
             foreground: theme.getPropertyValue('--text-primary').trim(),
@@ -1910,7 +1935,7 @@ export function SceneCanvas(props: Props) {
                     .copy(billboardPivot.position)
                     .sub(depthDrag.start.position)
                     .dot(depthDrag.start.axis);
-                const text = `Z ${offset >= 0 ? '+' : ''}${depthFormat.format(offset)}`;
+                const text = `Z ${offset >= 0 ? '+' : ''}${depthFormat.format(pageUnitsToMm(offset, widthMmRef.current))} mm`;
                 if (depthFeedback.textContent !== text) depthFeedback.textContent = text;
             }
             depthButton.style.visibility = 'visible';
@@ -2012,6 +2037,9 @@ export function SceneCanvas(props: Props) {
             positionLoadingCards();
         }
         api.current = {
+            grid(settings, pageWidthMm) {
+                editorGrid.update(settings, pageWidthMm, latest.current.aspect);
+            },
             getPreviewView: () => ({
                 position: camera.position.toArray(),
                 target: orbit.target.toArray(),
@@ -2153,8 +2181,7 @@ export function SceneCanvas(props: Props) {
             paperImage.material.dispose();
             paper.geometry.dispose();
             paper.material.dispose();
-            grid.geometry.dispose();
-            (grid.material as THREE.Material).dispose();
+            editorGrid.dispose();
             outline.geometry.dispose();
             (outline.material as THREE.Material).dispose();
             renderer.dispose();
@@ -2167,6 +2194,9 @@ export function SceneCanvas(props: Props) {
     useEffect(() => {
         api.current?.mode(mode, snap, space, snapSteps);
     }, [mode, snap, space, snapSteps]);
+    useEffect(() => {
+        api.current?.grid(gridSettings, widthMm);
+    }, [gridSettings, widthMm]);
     useEffect(() => {
         const key = (event: KeyboardEvent) => {
             if (
@@ -2297,7 +2327,7 @@ export function SceneCanvas(props: Props) {
                     className="pointer-events-none absolute border border-primary bg-primary/10"
                 />
                 <div
-                    className="canvas-toolbar absolute top-[18px] left-[18px] z-2 flex translate-x-[var(--sidebar-toolbar-offset,0px)] items-center gap-1 rounded-xl bg-surface p-1 shadow-[0_4px_14px_#00000014] transition-[translate] duration-200 ease-out motion-reduce:transition-none [&_button.primary:disabled]:bg-primary [&_button.primary:disabled]:text-primary-foreground [&_button:disabled]:border-transparent [.workbench-body[data-sidebar-expanded=false]_&]:duration-150"
+                    className="canvas-toolbar absolute top-[18px] left-[18px] z-2 flex max-w-[calc(100%_-_var(--inspector-offset,0px)_-_var(--sidebar-toolbar-offset,0px)_-_176px)] translate-x-[var(--sidebar-toolbar-offset,0px)] flex-wrap items-center gap-1 rounded-xl bg-surface p-1 shadow-[0_4px_14px_#00000014] transition-[translate] duration-200 ease-out motion-reduce:transition-none [&_button.primary:disabled]:bg-primary [&_button.primary:disabled]:text-primary-foreground [&_button:disabled]:border-transparent [.workbench-body[data-sidebar-expanded=false]_&]:duration-150"
                     role="toolbar"
                     aria-label="Công cụ canvas"
                 >
@@ -2363,6 +2393,11 @@ export function SceneCanvas(props: Props) {
                             onEnabledChange={setSnap}
                         />
                     </div>
+                    <SceneGridSettings
+                        value={gridSettings}
+                        disabled={transforming || Boolean(failure)}
+                        onChange={setGridSettings}
+                    />
                 </div>
                 {!failure && (
                     <SceneViewGizmo
@@ -2406,7 +2441,7 @@ export function SceneCanvas(props: Props) {
                                               : selectedObject.transform[
                                                     mode === 'scale' ? 'scale' : 'position'
                                                 ][index];
-                                      return `${axis} ${Number(value.toFixed(mode === 'rotate' ? 1 : 3))}${mode === 'rotate' ? '°' : ''}`;
+                                      return `${axis} ${formatTransformValue(mode, value, widthMm)}`;
                                   })
                                   .join(' · ')}`}
                     </output>

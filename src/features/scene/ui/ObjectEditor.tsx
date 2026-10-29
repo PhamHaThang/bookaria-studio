@@ -23,6 +23,7 @@ import { isPlanarObject } from '../model/selection-frame';
 import { withObjectPosition } from '../model/transforms';
 import { VectorFields } from './NumericField';
 import { ObjectSpecificProperties } from './ObjectSpecificProperties';
+import { useSceneWidthMm } from './SceneUnits';
 
 export function ObjectEditor({
     object,
@@ -49,6 +50,7 @@ export function ObjectEditor({
     onDuplicate: () => void;
     onDelete: () => void;
 }) {
+    const widthMm = useSceneWidthMm();
     const unavailable = useSyncExternalStore(loadStore.subscribe, loadStore.getSnapshot).has(
         object.id,
     );
@@ -92,7 +94,6 @@ export function ObjectEditor({
                 </p>
             )}
             <DisclosureGroup
-                multiple
                 defaultValue={objectInspectorMeta(object).defaultSections}
                 disabledContent={disabled || object.locked}
             >
@@ -199,7 +200,7 @@ export function ObjectEditor({
                             title={
                                 <>
                                     <Play size={17} />
-                                    Chuyển động
+                                    {objectInspectorMeta(object).contentTitle}
                                 </>
                             }
                             variant="panel"
@@ -347,6 +348,14 @@ export function ObjectEditor({
                                             scale: 'Tỉ lệ',
                                         }[key]
                                     }
+                                    unit={
+                                        key === 'position'
+                                            ? 'mm'
+                                            : key === 'rotation'
+                                              ? '°'
+                                              : undefined
+                                    }
+                                    displayFactor={key === 'position' ? widthMm : 1}
                                     values={object.transform[key]}
                                     resetValues={key === 'scale' ? [1, 1, 1] : [0, 0, 0]}
                                     positive={key === 'scale'}
@@ -374,7 +383,8 @@ export function ObjectEditor({
                                 </p>
                             )}
                             <p className="m-0 text-muted-foreground text-xs leading-relaxed">
-                                Tâm trang là (0, 0, 0). Một đơn vị bằng chiều rộng trang.
+                                Tâm trang là (0, 0, 0) mm. X sang phải, Y lên trên, Z nhô khỏi
+                                trang.
                             </p>
                         </div>
                     </Disclosure>

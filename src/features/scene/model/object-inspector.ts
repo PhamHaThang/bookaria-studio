@@ -3,18 +3,11 @@ import { sceneObjectLabel } from './object-list';
 
 export function objectInspectorMeta(object: SceneObject) {
     const label = sceneObjectLabel(object);
-    const contentTitle =
-        object.type === 'audio'
-            ? 'Phát âm thanh'
-            : object.type === 'video'
-              ? 'Phát video'
-              : object.type === 'hotspot'
-                ? 'Vùng chạm'
-                : label;
+    const title = `Thuộc tính ${label.charAt(0).toLocaleLowerCase('vi')}${label.slice(1)}`;
     return {
         label,
-        title: `Thuộc tính ${label.charAt(0).toLocaleLowerCase('vi')}${label.slice(1)}`,
-        contentTitle,
+        title,
+        contentTitle: title,
         defaultSections: object.type === 'model' ? ['identity'] : ['content'],
     };
 }

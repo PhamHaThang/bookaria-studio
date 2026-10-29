@@ -22,6 +22,7 @@ import { actionLabels, targetObjects } from '../model/interactions';
 import { AssetPicker } from './AssetPicker';
 import { InteractionTarget } from './InteractionTarget';
 import { NumericField, VectorFields } from './NumericField';
+import { useSceneWidthMm } from './SceneUnits';
 
 export function InteractionActionEditor({
     action,
@@ -40,6 +41,7 @@ export function InteractionActionEditor({
     defaultTarget?: SceneObject;
     onChange: (action: Action) => void;
 }) {
+    const widthMm = useSceneWidthMm();
     const { user } = useAuth();
     const [picking, setPicking] = useState(false);
     const target =
@@ -277,8 +279,8 @@ export function InteractionActionEditor({
                             </FieldLabel>
                         </Field>
                         <p className="field-hint interaction-wide col-[1_/_-1] mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
-                            Bật ít nhất một thuộc tính đích. Vị trí theo chiều rộng trang; góc xoay
-                            dùng độ; tỉ lệ phải lớn hơn 0.
+                            Bật ít nhất một thuộc tính đích. Vị trí dùng mm; góc xoay dùng độ; tỉ lệ
+                            dùng hệ số lớn hơn 0.
                         </p>
                         {(['position', 'rotation', 'scale'] as const).map((key) => {
                             const label = {
@@ -313,6 +315,14 @@ export function InteractionActionEditor({
                                         <VectorFields
                                             id={`${id}-${key}`}
                                             label={label}
+                                            unit={
+                                                key === 'position'
+                                                    ? 'mm'
+                                                    : key === 'rotation'
+                                                      ? '°'
+                                                      : undefined
+                                            }
+                                            displayFactor={key === 'position' ? widthMm : 1}
                                             values={action[key]}
                                             onChange={(value) => patch({ [key]: value })}
                                         />
