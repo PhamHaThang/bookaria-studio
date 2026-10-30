@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { SceneObject } from '@/shared/contracts/scene.schema';
 import { annotationConnectorSide } from '@/shared/scene/annotation-connector';
 import { createBillboard } from '@/shared/scene/billboard';
+import type { TextVisualColors } from '@/shared/scene/text-renderer';
 import { createTextVisual, disposeTextVisual } from '@/shared/scene/text-renderer';
 import { Button } from '@/shared/ui/primitives/button';
 import { Spinner } from '@/shared/ui/primitives/spinner';
@@ -15,6 +16,7 @@ import {
 } from '../model/annotation-label-drag';
 import { fitPreviewCamera } from '../model/preview-fit';
 import { createTextPreviewImageCache } from '../model/text-preview-image';
+import { textVisualColors } from '../model/text-visual-colors';
 
 type Textual = Extract<SceneObject, { type: 'text' | 'label' }>;
 // Placement, billboard and links do not affect the cached geometry or texture.
@@ -55,6 +57,7 @@ function updateKey(spec: Textual, url?: string) {
 }
 
 export type TextVisualPreviewHandle = {
+    previewColors: (colors: Partial<TextVisualColors>, objectId?: string) => void;
     cancelAnnotationDrag: () => boolean;
     getDisplayedRotation: () => Textual['transform']['rotation'] | undefined;
 };
@@ -78,6 +81,7 @@ export function TextVisualPreview({
     const host = useRef<HTMLDivElement>(null);
     const api = useRef<{
         show: (object: Textual, url?: string, page?: number) => void;
+        previewColors: TextVisualPreviewHandle['previewColors'];
         reset: () => void;
         cancelAnnotationDrag: TextVisualPreviewHandle['cancelAnnotationDrag'];
         getDisplayedRotation: TextVisualPreviewHandle['getDisplayedRotation'];
@@ -85,6 +89,7 @@ export function TextVisualPreview({
     useImperativeHandle(
         ref,
         () => ({
+            previewColors: (colors, objectId) => api.current?.previewColors(colors, objectId),
             getDisplayedRotation: () => api.current?.getDisplayedRotation(),
             cancelAnnotationDrag: () => api.current?.cancelAnnotationDrag() ?? false,
         }),
@@ -140,6 +145,7 @@ export function TextVisualPreview({
         grid.rotation.x = Math.PI / 2;
         grid.position.z = -0.04;
         scene.add(grid);
+        let currentColors: TextVisualColors | undefined;
         let current: THREE.Group | null = null,
             currentSpec: Textual | null = null,
             currentUrl: string | undefined,
@@ -426,7 +432,17 @@ export function TextVisualPreview({
                     ? billboard.getDisplayedRotation()
                     : undefined,
             reset: () => fit(true),
+            previewColors(colors, objectId) {
+                if (disposed || (objectId && objectId !== latest.current.object.id)) return;
+                currentColors = {
+                    ...(currentColors ?? textVisualColors(latest.current.object)),
+                    ...colors,
+                };
+                currentVisual?.updateColors?.(currentColors);
+                invalidate();
+            },
             show(spec, url, selectedPage) {
+                currentColors = textVisualColors(spec);
                 const attempt = ++version;
                 controller?.abort();
                 controller = new AbortController();
@@ -492,29 +508,7 @@ export function TextVisualPreview({
                         currentVisual.setAnnotationOffset?.(
                             spec.presentation.labelOffset ?? [0, 0],
                         );
-                    currentVisual.updateColors({
-                        color: spec.style.color,
-                        background:
-                            spec.presentation && 'background' in spec.presentation
-                                ? spec.presentation.background
-                                : undefined,
-                        buttonBackground:
-                            spec.presentation?.kind === 'screen'
-                                ? spec.presentation.buttonBackground
-                                : undefined,
-                        border:
-                            spec.presentation && 'border' in spec.presentation
-                                ? spec.presentation.border
-                                : undefined,
-                        descriptionColor:
-                            spec.presentation?.kind === 'annotation'
-                                ? spec.presentation.descriptionColor
-                                : undefined,
-                        descriptionBackground:
-                            spec.presentation?.kind === 'annotation'
-                                ? spec.presentation.descriptionBackground
-                                : undefined,
-                    });
+                    currentVisual.updateColors(currentColors);
                     if (
                         spec.presentation?.kind === 'bubble' &&
                         currentSpec.presentation?.kind === 'bubble' &&
@@ -585,6 +579,7 @@ export function TextVisualPreview({
                         clearDamping();
                         current = visual.group;
                         currentVisual = visual;
+                        visual.updateColors?.(currentColors ?? textVisualColors(spec));
                         currentSpec = spec;
                         currentUrl = url;
                         billboard.content.add(current);

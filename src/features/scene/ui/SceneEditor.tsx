@@ -1097,6 +1097,14 @@ function SceneEditorContent({
                                                     }
                                                     disabled={blocked}
                                                     onChange={change}
+                                                    onColorPreview={(color) =>
+                                                        commands.current.canvas?.previewTextColor(
+                                                            selected.id,
+                                                            color,
+                                                        )
+                                                    }
+                                                    onBegin={editor.begin}
+                                                    onEnd={editor.end}
                                                     onBillboardChange={billboardChosen}
                                                     onDuplicate={() => {
                                                         if (

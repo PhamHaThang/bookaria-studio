@@ -17,6 +17,7 @@ import {
 } from 'three/addons/controls/TransformControls.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { isHexColor } from '@/shared/lib/color-change-session';
 import { annotationConnectorSide } from '@/shared/scene/annotation-connector';
 import { createAudioCard } from '@/shared/scene/audio-card';
 import { facesCamera } from '@/shared/scene/audio-kind';
@@ -63,6 +64,7 @@ import {
 import { layoutSelectionTools, projectSelectionBounds } from '../model/selection-tools';
 import { selectionFrustum, transformSelection } from '../model/selection-transform';
 import { defaultSnapStepsForPage, type SnapSteps, transformSnapSteps } from '../model/snap';
+import { textVisualColors } from '../model/text-visual-colors';
 import { objectFromGizmo } from '../model/transforms';
 import {
     createViewGizmoProjection,
@@ -82,6 +84,7 @@ import { SceneViewGizmo } from './SceneViewGizmo';
 type Mode = 'translate' | 'rotate' | 'scale';
 type Space = 'world' | 'local';
 export type SceneCanvasHandle = {
+    previewTextColor: (id: string, color: string) => void;
     getPreviewView: () => PreviewView | undefined;
     getDisplayedRotation: (id: string) => SceneObject['transform']['rotation'] | undefined;
 };
@@ -143,6 +146,7 @@ export function SceneCanvas(props: Props) {
     const api = useRef<{
         getPreviewView: () => PreviewView;
         sync: () => void;
+        previewTextColor: SceneCanvasHandle['previewTextColor'];
         retry: (id: string) => void;
         getDisplayedRotation: SceneCanvasHandle['getDisplayedRotation'];
         mode: (mode: Mode, snap: boolean, space: Space, steps: SnapSteps) => void;
@@ -160,6 +164,7 @@ export function SceneCanvas(props: Props) {
         () => ({
             getDisplayedRotation: (id) => api.current?.getDisplayedRotation(id),
             getPreviewView: () => api.current?.getPreviewView(),
+            previewTextColor: (id, color) => api.current?.previewTextColor(id, color),
         }),
         [],
     );
@@ -666,6 +671,8 @@ export function SceneCanvas(props: Props) {
                         return;
                     }
                     node.textVisual = visual;
+                    if (node.spec.type === 'text' || node.spec.type === 'label')
+                        visual.updateColors?.(textVisualColors(node.spec));
                     visual.setExpanded?.(latest.current.selectedIds.includes(spec.id));
                     node.billboard.content.add(visual.group);
                 } else if (spec.type === 'video' && asset) {
@@ -838,6 +845,16 @@ export function SceneCanvas(props: Props) {
                     node = nodes.get(spec.id);
                 }
                 if (!node) continue;
+                if (
+                    (spec.type === 'text' || spec.type === 'label') &&
+                    (node.spec.type === 'text' || node.spec.type === 'label') &&
+                    node.spec !== spec &&
+                    node.textVisual?.updateColors &&
+                    JSON.stringify(textVisualColors(node.spec)) !==
+                        JSON.stringify(textVisualColors(spec))
+                ) {
+                    node.textVisual.updateColors(textVisualColors(spec));
+                }
                 node.spec = spec;
                 if (
                     (spec.type === 'text' || spec.type === 'label') &&
@@ -2011,6 +2028,19 @@ export function SceneCanvas(props: Props) {
             positionLoadingCards();
         }
         api.current = {
+            previewTextColor(id, color) {
+                const node = nodes.get(id);
+                if (
+                    !disposed &&
+                    node?.textVisual &&
+                    (node.spec.type === 'text' || node.spec.type === 'label') &&
+                    isHexColor(color)
+                ) {
+                    node.textVisual.updateColors?.(
+                        textVisualColors({ ...node.spec, style: { ...node.spec.style, color } }),
+                    );
+                }
+            },
             grid(settings, pageWidthMm) {
                 editorGrid.update(settings, pageWidthMm, latest.current.aspect);
             },

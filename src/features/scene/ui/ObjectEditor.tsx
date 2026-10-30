@@ -32,6 +32,9 @@ export function ObjectEditor({
     assetRef,
     disabled,
     onChange,
+    onColorPreview,
+    onBegin,
+    onEnd,
     onBillboardChange,
     onChooseAsset,
     onEditText,
@@ -44,6 +47,9 @@ export function ObjectEditor({
     assetRef?: AssetRef;
     disabled: boolean;
     onChange: (object: SceneObject) => void;
+    onColorPreview?: (color: string) => void;
+    onBegin?: () => void;
+    onEnd?: () => void;
     onBillboardChange: (enabled: boolean) => void;
     onChooseAsset: () => void;
     onEditText: () => void;
@@ -189,6 +195,9 @@ export function ObjectEditor({
                                 disabled={disabled}
                                 unavailable={unavailable}
                                 patch={patch}
+                                onColorPreview={onColorPreview}
+                                onColorBegin={onBegin}
+                                onColorEnd={onEnd}
                                 onEditText={onEditText}
                                 audioStore={audioStore}
                             />

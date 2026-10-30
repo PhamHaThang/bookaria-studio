@@ -2,6 +2,7 @@ import type { SceneObject } from '@/shared/contracts/scene.schema';
 import { SCENE_LIMITS } from '@/shared/contracts/scene.schema';
 import { AUDIO_KIND_OPTIONS } from '@/shared/scene/audio-kind';
 import { Button } from '@/shared/ui/Button';
+import { ColorInput } from '@/shared/ui/ColorInput';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
@@ -20,6 +21,9 @@ export function ObjectSpecificProperties({
     patch,
     onEditText,
     audioStore,
+    onColorPreview,
+    onColorBegin,
+    onColorEnd,
 }: {
     object: Exclude<SceneObject, { type: 'model' }>;
     id: string;
@@ -28,6 +32,9 @@ export function ObjectSpecificProperties({
     patch: (value: Partial<SceneObject>) => void;
     onEditText: () => void;
     audioStore: SceneAudioStore;
+    onColorPreview?: (color: string) => void;
+    onColorBegin?: () => void;
+    onColorEnd?: () => void;
 }) {
     const widthMm = useSceneWidthMm();
     return (
@@ -117,19 +124,15 @@ export function ObjectSpecificProperties({
                     )}
                     <Field orientation="contents">
                         <FieldLabel htmlFor={`${id}-color`}>Màu chữ</FieldLabel>
-                        <Input
+                        <ColorInput
                             id={`${id}-color`}
-                            type="color"
-                            className="h-10 cursor-pointer p-1"
+                            label="Màu chữ"
                             value={object.style.color}
-                            onChange={(event) =>
-                                patch({
-                                    style: {
-                                        ...object.style,
-                                        color: event.currentTarget.value,
-                                    },
-                                })
-                            }
+                            disabled={disabled || object.locked || unavailable}
+                            onPreview={onColorPreview}
+                            onInteractionStart={onColorBegin}
+                            onInteractionEnd={onColorEnd}
+                            onValueChange={(color) => patch({ style: { ...object.style, color } })}
                         />
                     </Field>
                     <NumericField

@@ -35,14 +35,38 @@ export function createSceneNodeKey() {
                       loop: undefined,
                       autoplay: undefined,
                   }
-                : 'presentation' in content && content.presentation?.kind === 'annotation'
+                : content.type === 'text' || content.type === 'label'
                   ? {
                         ...content,
-                        presentation: {
-                            ...content.presentation,
-                            labelOffset: undefined,
-                            connectorSide: undefined,
-                        },
+                        style: { ...content.style, color: undefined },
+                        presentation: content.presentation
+                            ? {
+                                  ...content.presentation,
+                                  ...('background' in content.presentation
+                                      ? { background: undefined }
+                                      : {}),
+                                  ...(content.presentation.kind === 'screen'
+                                      ? { buttonBackground: undefined }
+                                      : {}),
+                                  ...('border' in content.presentation &&
+                                  content.presentation.border
+                                      ? {
+                                            border: {
+                                                ...content.presentation.border,
+                                                color: undefined,
+                                            },
+                                        }
+                                      : {}),
+                                  ...(content.presentation.kind === 'annotation'
+                                      ? {
+                                            labelOffset: undefined,
+                                            connectorSide: undefined,
+                                            descriptionColor: undefined,
+                                            descriptionBackground: undefined,
+                                        }
+                                      : {}),
+                              }
+                            : undefined,
                     }
                   : content;
         const key = JSON.stringify([visual, resources], (_name, value: unknown) => {

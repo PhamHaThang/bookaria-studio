@@ -27,7 +27,9 @@ import {
     type TextPresentation,
     TextPresentationSchema,
 } from '@/shared/contracts/scene.schema';
+import { isHexColor as colorValid } from '@/shared/lib/color-change-session';
 import { annotationConnectorSide } from '@/shared/scene/annotation-connector';
+import { ColorInput } from '@/shared/ui/ColorInput';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Button } from '@/shared/ui/primitives/button';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
@@ -66,7 +68,6 @@ const connectorSides = [
     { value: 'top', icon: ArrowUp, label: 'Trên' },
     { value: 'bottom', icon: ArrowDown, label: 'Dưới' },
 ] as const;
-const colorValid = (value: string) => /^#[0-9a-f]{6}$/i.test(value);
 function initialDraft(mode: TextMode): TextualObject {
     const object = newObject(mode === 'annotation' ? 'label' : 'text', crypto.randomUUID());
     if (object.type !== 'text' && object.type !== 'label')
@@ -112,31 +113,24 @@ function ColorField({
     label,
     value,
     onChange,
+    onPreview,
 }: {
     id: string;
     label: string;
     value: string;
     onChange: (value: string) => void;
+    onPreview: (value: string) => void;
 }) {
     return (
         <Field data-invalid={!colorValid(value)}>
             <FieldLabel htmlFor={id}>{label}</FieldLabel>
-            <div className="flex items-center gap-2">
-                <Input
-                    type="color"
-                    aria-label={`Chọn ${label.toLowerCase()}`}
-                    value={colorValid(value) ? value : '#252525'}
-                    onChange={(event) => onChange(event.target.value)}
-                    className="size-10 shrink-0 cursor-pointer p-1"
-                />
-                <Input
-                    id={id}
-                    value={value}
-                    maxLength={7}
-                    onChange={(event) => onChange(event.target.value)}
-                    aria-invalid={!colorValid(value)}
-                />
-            </div>
+            <ColorInput
+                id={id}
+                label={label}
+                value={value}
+                onValueChange={onChange}
+                onPreview={onPreview}
+            />
         </Field>
     );
 }
@@ -321,6 +315,9 @@ export function TextComposer({
         >
             <ColorField
                 id={`${id}-color`}
+                onPreview={(color) =>
+                    annotationTexts.current.preview?.previewColors({ color }, draft.id)
+                }
                 label="Màu chữ"
                 value={draft.style.color}
                 onChange={(value) => style({ color: value })}
@@ -328,6 +325,12 @@ export function TextComposer({
             {presentation && 'background' in presentation && (
                 <ColorField
                     id={`${id}-background`}
+                    onPreview={(color) =>
+                        annotationTexts.current.preview?.previewColors(
+                            { background: color },
+                            draft.id,
+                        )
+                    }
                     label="Màu nền"
                     value={presentation.background}
                     onChange={(value) => appearance({ background: value })}
@@ -628,6 +631,12 @@ export function TextComposer({
                                                     </Field>
                                                     <ColorField
                                                         id={`${id}-button-background`}
+                                                        onPreview={(color) =>
+                                                            annotationTexts.current.preview?.previewColors(
+                                                                { buttonBackground: color },
+                                                                draft.id,
+                                                            )
+                                                        }
                                                         label="Màu nút"
                                                         value={
                                                             presentation.buttonBackground ??
@@ -672,6 +681,12 @@ export function TextComposer({
                                                 <FieldGroup className="grid grid-cols-2 gap-3">
                                                     <ColorField
                                                         id={`${id}-description-color`}
+                                                        onPreview={(color) =>
+                                                            annotationTexts.current.preview?.previewColors(
+                                                                { descriptionColor: color },
+                                                                draft.id,
+                                                            )
+                                                        }
                                                         label="Chữ mô tả"
                                                         value={
                                                             presentation.descriptionColor ??
@@ -683,6 +698,12 @@ export function TextComposer({
                                                     />
                                                     <ColorField
                                                         id={`${id}-description-background`}
+                                                        onPreview={(color) =>
+                                                            annotationTexts.current.preview?.previewColors(
+                                                                { descriptionBackground: color },
+                                                                draft.id,
+                                                            )
+                                                        }
                                                         label="Nền mô tả"
                                                         value={
                                                             presentation.descriptionBackground ??
@@ -794,6 +815,12 @@ export function TextComposer({
                                                     </Field>
                                                     <ColorField
                                                         id={`${id}-border-color`}
+                                                        onPreview={(color) =>
+                                                            annotationTexts.current.preview?.previewColors(
+                                                                { border: { ...border, color } },
+                                                                draft.id,
+                                                            )
+                                                        }
                                                         label="Màu viền"
                                                         value={border.color}
                                                         onChange={(color) =>

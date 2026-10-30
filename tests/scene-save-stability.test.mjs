@@ -64,7 +64,11 @@ test('real text, style and screen-image changes still invalidate the render key'
     const key = createSceneNodeKey(),
         text = newObject('text', 'text');
     assert.notEqual(key(text), key({ ...text, text: 'Changed' }));
-    assert.notEqual(key(text), key({ ...text, style: { ...text.style, color: '#ff0000' } }));
+    assert.equal(key(text), key({ ...text, style: { ...text.style, color: '#ff0000' } }));
+    assert.notEqual(
+        key(text),
+        key({ ...text, style: { ...text.style, size: text.style.size * 2 } }),
+    );
     assert.notEqual(
         key(text, undefined, 'https://fake.test/a.png'),
         key(text, undefined, 'https://fake.test/b.png'),
@@ -120,4 +124,39 @@ test('annotation positioning stays live without rebuilding its text card', () =>
             },
         }),
     );
+});
+
+test('text palettes update in place while border geometry and text presentation remain significant', () => {
+    const key = createSceneNodeKey();
+    for (const kind of ['screen', 'bubble', 'annotation', 'extruded']) {
+        const object = SceneObjectSchema.parse({
+            ...newObject('text', `text-${kind}`),
+            presentation: { kind },
+        });
+        const presentation = { ...object.presentation };
+        if ('background' in presentation) presentation.background = '#88aa44';
+        if (kind === 'screen') presentation.buttonBackground = '#337799';
+        if (kind === 'annotation') {
+            presentation.descriptionColor = '#112233';
+            presentation.descriptionBackground = '#445566';
+        }
+        if (presentation.border) presentation.border = { ...presentation.border, color: '#336699' };
+        assert.equal(
+            key(object),
+            key({ ...object, style: { ...object.style, color: '#aa2244' }, presentation }),
+            kind,
+        );
+        if (presentation.border)
+            assert.notEqual(
+                key(object),
+                key({
+                    ...object,
+                    presentation: {
+                        ...presentation,
+                        border: { ...presentation.border, width: presentation.border.width + 1 },
+                    },
+                }),
+            );
+        assert.notEqual(key(object), key({ ...object, text: 'Changed content' }));
+    }
 });
