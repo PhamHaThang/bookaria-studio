@@ -24,6 +24,7 @@ import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { assetKeys } from '../../assets';
 import { auth, useAuth } from '../../auth';
+import { useOptionalBookDraft } from '../../book-draft/ui/BookDraftProvider';
 import { bookKeys } from '../../books';
 import { pageKeys, pagesApi } from '../../pages';
 import { movedPageIds, uncertainWrite } from '../../pages/model/operations';
@@ -50,6 +51,7 @@ export function PageStrip({
     onDraftChange: (dirty: boolean) => void;
 }) {
     const { user } = useAuth();
+    const bookDraft = useOptionalBookDraft();
     const bookId = book.id;
     const cache = useQueryClient(),
         navigate = useNavigate();
@@ -77,11 +79,21 @@ export function PageStrip({
         alive = useRef(true);
     const actor = useRef(user?.id);
     const currentSession = () => alive.current && auth.store.getState().user?.id === actor.current;
-    const listing = useQuery({
+    const remoteListing = useQuery({
+        enabled: !bookDraft,
         queryKey: pageKeys.list(user?.id || '', bookId),
         queryFn: ({ signal }) => pagesApi.list(bookId, signal),
         refetchOnWindowFocus: false,
     });
+    const listing = bookDraft
+        ? {
+              ...remoteListing,
+              data: book.pages,
+              isPending: false,
+              isError: false,
+              isFetching: false,
+          }
+        : remoteListing;
     const previewOrder =
         draggingId && dropTarget
             ? droppedPageIds(listing.data || [], draggingId, dropTarget)
@@ -192,6 +204,7 @@ export function PageStrip({
         [onBusyChange],
     );
     async function refresh() {
+        if (bookDraft) return;
         await Promise.all([
             cache.invalidateQueries({ queryKey: bookKeys.all }),
             cache.invalidateQueries({ queryKey: pageKeys.list(actor.current || '', bookId) }),
@@ -225,6 +238,10 @@ export function PageStrip({
     async function reorder(ids: string[]) {
         try {
             await run(async () => {
+                if (bookDraft) {
+                    bookDraft.reorder(ids);
+                    return;
+                }
                 setStage('Đang lưu thứ tự trang…');
                 const result = await pagesApi.reorder(bookId, ids);
                 if (!currentSession()) return;
@@ -252,7 +269,10 @@ export function PageStrip({
     }
     async function move(page: PageSummary, direction: -1 | 1) {
         const pages =
-            cache.getQueryData<PageSummary[]>(pageKeys.list(actor.current || '', bookId)) || [];
+            (bookDraft
+                ? book.pages
+                : cache.getQueryData<PageSummary[]>(pageKeys.list(actor.current || '', bookId))) ||
+            [];
         const ids = movedPageIds(pages, page.id, direction);
         if (ids) await reorder(ids);
     }
@@ -300,8 +320,11 @@ export function PageStrip({
         if (ids)
             requestPageAction('Di chuyển trang', () => {
                 const current =
-                    cache.getQueryData<PageSummary[]>(pageKeys.list(actor.current || '', bookId)) ||
-                    [];
+                    (bookDraft
+                        ? bookDraft.getSnapshot().working?.pages
+                        : cache.getQueryData<PageSummary[]>(
+                              pageKeys.list(actor.current || '', bookId),
+                          )) || [];
                 if (
                     session.ids.length !== current.length ||
                     session.ids.some((id, index) => id !== current[index].id)
@@ -522,9 +545,11 @@ export function PageStrip({
                                                     'Nhân bản trang',
                                                     () =>
                                                         void run(async () => {
-                                                            const result = await pagesApi.duplicate(
-                                                                menu.id,
-                                                            );
+                                                            const result = await (bookDraft
+                                                                ? bookDraft.duplicatePage.bind(
+                                                                      bookDraft,
+                                                                  )
+                                                                : pagesApi.duplicate)(menu.id);
                                                             if (currentSession())
                                                                 setTarget(
                                                                     `/books/${bookId}/pages/${result.page.id}`,
@@ -559,7 +584,7 @@ export function PageStrip({
                         </span>
                     </TooltipTrigger>
                     <TooltipContent side="top" sideOffset={8}>
-                        {dirty ? 'Lưu thay đổi để tiếp tục' : 'Thêm trang'}
+                        {dirty && !bookDraft ? 'Lưu thay đổi để tiếp tục' : 'Thêm trang'}
                     </TooltipContent>
                 </Tooltip>
             </nav>
@@ -632,17 +657,20 @@ export function PageStrip({
                             disabled={locked}
                             onClick={() =>
                                 void run(async () => {
-                                    await pagesApi.remove(menu.id);
+                                    if (bookDraft) await bookDraft.removePage(menu.id);
+                                    else await pagesApi.remove(menu.id);
                                     if (menu.id === pageId && currentSession()) {
                                         // Deletion is confirmed: a failed refresh must not leave the editor on a deleted page.
-                                        const remaining = await pagesApi
-                                            .list(bookId)
-                                            .catch(() => null);
+                                        const remaining = bookDraft
+                                            ? bookDraft.getSnapshot().working?.pages || []
+                                            : await pagesApi.list(bookId).catch(() => null);
                                         if (!currentSession()) return;
                                         setTarget(
                                             remaining?.[0]
                                                 ? `/books/${bookId}/pages/${remaining[0].id}`
-                                                : `/books/${bookId}/edit`,
+                                                : bookDraft
+                                                  ? `/books/${bookId}/pages/${pageId}`
+                                                  : `/books/${bookId}/edit`,
                                         );
                                     }
                                 })
@@ -706,6 +734,10 @@ export function PageStrip({
                                     new FormData(event.currentTarget).get('title') || '',
                                 ).trim();
                                 void run(async () => {
+                                    if (bookDraft) {
+                                        bookDraft.renamePage(menu.id, title || null);
+                                        return;
+                                    }
                                     const saved = await pagesApi.update(menu.id, {
                                         title: title || null,
                                     });
@@ -763,18 +795,24 @@ export function PageStrip({
             {adding && (
                 <AddPagesDialog
                     book={book}
-                    disabled={disabled || dirty || uncertain}
+                    disabled={disabled || (!bookDraft && dirty) || uncertain}
                     opener={addAnchor.current}
                     onBusyChange={busyChange}
                     onDraftChange={onDraftChange}
                     onClose={() => {
                         setAdding(false);
                         void refresh();
-                        void cache.invalidateQueries({ queryKey: assetKeys.all });
+                        void cache.invalidateQueries({
+                            queryKey: assetKeys.all,
+                            refetchType: bookDraft ? 'none' : 'active',
+                        });
                     }}
                     onComplete={async (id) => {
                         await refresh();
-                        void cache.invalidateQueries({ queryKey: assetKeys.all });
+                        void cache.invalidateQueries({
+                            queryKey: assetKeys.all,
+                            refetchType: bookDraft ? 'none' : 'active',
+                        });
                         if (currentSession()) {
                             setAdding(false);
                             setTarget(`/books/${bookId}/pages/${id}`);
@@ -782,7 +820,10 @@ export function PageStrip({
                     }}
                     onInspect={async () => {
                         await refresh();
-                        void cache.invalidateQueries({ queryKey: assetKeys.all });
+                        void cache.invalidateQueries({
+                            queryKey: assetKeys.all,
+                            refetchType: bookDraft ? 'none' : 'active',
+                        });
                         if (currentSession()) setAdding(false);
                     }}
                 />

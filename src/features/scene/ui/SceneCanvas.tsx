@@ -52,6 +52,7 @@ import { fitPreviewCamera } from '../model/preview-fit';
 import { scaleConstraint, scaleFromGesture } from '../model/scale-gesture';
 import type { SceneAudioStore } from '../model/scene-audio-store';
 import type { SceneLoadStore } from '../model/scene-load-store';
+import { createSceneNodeKey } from '../model/scene-node-key';
 import { formatTransformValue, mmToPageUnits, pageUnitsToMm } from '../model/scene-units';
 import type { SelectionMode } from '../model/selection';
 import {
@@ -794,6 +795,7 @@ export function SceneCanvas(props: Props) {
                 if (!disposed) setLoading((count) => Math.max(0, count - 1));
             }
         }
+        const sceneNodeKey = createSceneNodeKey();
         function sync() {
             if (disposed) return;
             const value = latest.current;
@@ -813,45 +815,17 @@ export function SceneCanvas(props: Props) {
                     latest.current.loadStore.set(id);
                 }
             for (const spec of value.scene.objects) {
-                const {
-                    transform: _t,
-                    name: _n,
-                    visible: _v,
-                    locked: _l,
-                    editorHidden: _h,
-                    snapToPaper: _snap,
-                    billboard: _billboard,
-                    ...content
-                } = spec;
                 const asset = 'assetId' in spec ? value.assets[spec.assetId] : undefined;
                 const imageId =
                     (spec.type === 'text' || spec.type === 'label') &&
                     spec.presentation?.kind === 'screen'
                         ? spec.presentation.imageAssetId
                         : undefined;
-                const key = JSON.stringify([
-                    content.type === 'audio'
-                        ? {
-                              ...content,
-                              audioKind: undefined,
-                              volume: undefined,
-                              loop: undefined,
-                              autoplay: undefined,
-                          }
-                        : 'presentation' in content && content.presentation?.kind === 'annotation'
-                          ? {
-                                ...content,
-                                presentation: {
-                                    ...content.presentation,
-                                    labelOffset: undefined,
-                                    connectorSide: undefined,
-                                },
-                            }
-                          : content,
-                    asset?.url,
-                    asset?.meta,
+                const key = sceneNodeKey(
+                    spec,
+                    asset,
                     imageId ? value.assets[imageId]?.url : undefined,
-                ]);
+                );
                 let node = nodes.get(spec.id);
                 if (node && node.key !== key) {
                     if (controls.object === node.root) controls.detach();

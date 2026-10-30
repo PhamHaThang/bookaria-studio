@@ -118,6 +118,11 @@ const BooksPage = lazy(() =>
 const BookCreatePage = lazy(() =>
     import('../pages/BookCreatePage').then((module) => ({ default: module.BookCreatePage })),
 );
+const BookDraftRoute = lazy(() =>
+    import('../features/book-draft/ui/BookDraftProvider').then((module) => ({
+        default: module.BookDraftRoute,
+    })),
+);
 const BookEditorPage = lazy(() =>
     import('../pages/BookEditorPage').then((module) => ({ default: module.BookEditorPage })),
 );
@@ -245,9 +250,15 @@ const router = createBrowserRouter(
                         />
                         <Route path="/books/trash" element={<BooksPage key="trash" trash />} />
                         <Route path="/books/new" element={<BookCreatePage />} />
-                        <Route path="/books/:bookId/edit" element={<BookEditorPage />} />
+
                         <Route path="/books/:bookId" element={<BookDetailPage />} />
-                        <Route path="/books/:bookId/pages/:pageId" element={<PageDetailPage />} />
+                        <Route element={<BookDraftRoute />}>
+                            <Route path="/books/:bookId/edit" element={<BookEditorPage />} />
+                            <Route
+                                path="/books/:bookId/pages/:pageId"
+                                element={<PageDetailPage />}
+                            />
+                        </Route>
                         <Route path="/assets" element={<AssetsPage />} />
                         <Route path="/assets/upload" element={<AssetUploadPage />} />
                         <Route path="/assets/:assetId" element={<AssetDetailPage />} />

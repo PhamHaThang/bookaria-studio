@@ -5,6 +5,8 @@ import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { assetsApi } from '../features/assets';
 import { uploadFile } from '../features/assets/api/upload-file';
 import { auth, useAuth } from '../features/auth';
+import { bookDraftApi } from '../features/book-draft/api/book-draft-api';
+import { useBookDraft } from '../features/book-draft/ui/BookDraftProvider';
 import { bookKeys, booksApi } from '../features/books';
 import { pageKeys, pagesApi } from '../features/pages';
 import { compileMarker } from '../features/pages/api/compile-marker';
@@ -12,6 +14,7 @@ import { type MindCheckpoint, prepareMarkerUpload } from '../features/pages/mode
 import { ArMarkerDialog } from '../features/pages/ui/ArMarkerDialog';
 import type { ImageAttachmentContext } from '../features/pages/ui/PageImageForm';
 import { SceneEditor } from '../features/scene';
+import { EmptyBookEditor } from '../features/scene/ui/EmptyBookEditor';
 import { errorMessage } from '../shared/api/errors';
 import { IdSchema } from '../shared/contracts/common.schema';
 import type { Asset, BookDetail, Page } from '../shared/contracts/dto.schema';
@@ -19,6 +22,7 @@ import { Button } from '../shared/ui/Button';
 import { Feedback } from '../shared/ui/Feedback';
 
 function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
+    const { store, state: bookDraftState } = useBookDraft();
     const { user } = useAuth(),
         cache = useQueryClient(),
         location = useLocation(),
@@ -28,6 +32,10 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
         [sceneBusy, setSceneBusy] = useState(false);
     const [jobId, setJobId] = useState<string | null>(null);
     const checkpoint = useRef<MindCheckpoint | null>(null);
+    useEffect(() => {
+        const next = bookDraftState.jobs.find((job) => job.pageId === page.id);
+        if (next) setJobId(next.jobId);
+    }, [bookDraftState.jobs, page.id]);
     const job = useQuery({
         queryKey: ['page-score-job', user?.id || '', jobId],
         queryFn: ({ signal }) => pagesApi.job(jobId || '', signal),
@@ -68,11 +76,13 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
         )
             return;
         refreshedJob.current = jobId;
+        void store.readLatest(false);
         void cache.invalidateQueries({ queryKey: pageKeys.all });
         void cache.invalidateQueries({ queryKey: bookKeys.all });
-    }, [jobId, job.data, cache]);
+    }, [jobId, job.data, cache, store]);
     async function refresh() {
         if (auth.store.getState().user?.id !== user?.id) return;
+        await store.readLatest(false);
         await Promise.all([
             cache.invalidateQueries({ queryKey: pageKeys.all }),
             cache.invalidateQueries({ queryKey: bookKeys.all }),
@@ -95,11 +105,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
     }
     async function replaceBackground(source: Asset, context: ImageAttachmentContext) {
         context.onStage('saving');
-        const layout = await pagesApi.imageLayout(
-            page.id,
-            { aspect: book.pageAspect, imageAssetId: source.id },
-            context.signal,
-        );
+        const layout = await bookDraftApi.imageLayout(book.id, source.id, book.pageAspect);
         const asset = {
             ...source,
             url: layout.url,
@@ -109,35 +115,21 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
             page.markerMode === 'CUSTOM_MARKER' ? await mind(asset.url, context) : undefined;
         context.signal.throwIfAborted();
         context.onStage('saving');
-        const result = await pagesApi.replaceImage(page.id, {
-            imageAssetId: asset.id,
+        store.registerAsset(source, true);
+        store.patchPage(
+            page.id,
+            {
+                image: {
+                    assetId: asset.id,
+                    url: layout.url,
+                    width: layout.width,
+                    height: layout.height,
+                },
+                thumbnailUrl: layout.url,
+            },
             markerMindPublicId,
-        });
-        context.signal.throwIfAborted();
-        if (auth.store.getState().user?.id !== user?.id) return;
-        checkpoint.current = null;
-        cache.setQueryData<Page>(pageKeys.detail(user?.id || '', page.id), (current) =>
-            current
-                ? {
-                      ...current,
-                      ...result.page,
-                      image: {
-                          assetId: asset.id,
-                          url: asset.url,
-                          width:
-                              typeof asset.meta.width === 'number' && asset.meta.width > 0
-                                  ? asset.meta.width
-                                  : current.image.width,
-                          height:
-                              typeof asset.meta.height === 'number' && asset.meta.height > 0
-                                  ? asset.meta.height
-                                  : current.image.height,
-                      },
-                  }
-                : current,
         );
-        if (result.jobId) setJobId(result.jobId);
-        await refresh();
+        checkpoint.current = null;
     }
 
     return (
@@ -171,70 +163,62 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
 }
 
 function PageDetailContent({ bookId, pageId }: { bookId: string; pageId: string }) {
-    const { user } = useAuth();
-    const valid = IdSchema.safeParse(bookId).success && IdSchema.safeParse(pageId).success;
-    const page = useQuery({
-        queryKey: pageKeys.detail(user?.id || '', pageId),
-        queryFn: ({ signal }) => pagesApi.detail(pageId, signal),
-        enabled: valid && Boolean(user),
-        refetchOnWindowFocus: false,
-    });
+    const { user } = useAuth(),
+        { store, state } = useBookDraft(),
+        navigate = useNavigate();
+    const page = store.getPage(pageId);
+    const summaries = state.working?.pages || [];
+    const exists = summaries.some((item) => item.id === pageId);
     const book = useQuery({
         queryKey: bookKeys.detail(user?.id || '', bookId),
         queryFn: ({ signal }) => booksApi.detail(bookId, signal),
-        enabled: valid && Boolean(user),
         refetchOnWindowFocus: false,
     });
-    if (!valid || (page.data && page.data.bookId !== bookId))
+    const detail = useQuery({
+        queryKey: ['book-draft-page', user?.id, bookId, pageId, state.base?.revision],
+        queryFn: () => store.loadPage(pageId),
+        enabled: exists && !page,
+        retry: false,
+        refetchOnWindowFocus: false,
+    });
+    const firstPageId = summaries[0]?.id;
+    useEffect(() => {
+        store.activate(pageId);
+        if (!exists && firstPageId)
+            navigate(`/books/${bookId}/pages/${firstPageId}`, { replace: true });
+    }, [store, pageId, exists, firstPageId, bookId, navigate]);
+    const problem = (!book.data && book.error) || (!page && detail.error);
+    if (problem)
         return (
-            <>
-                <h1>Không tìm thấy trang sách</h1>
-                <Link to="/books">Về sách của tôi</Link>
-            </>
+            <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+                <h1>Chưa mở được editor</h1>
+                <Feedback error={errorMessage(problem)} />
+                <Button
+                    onClick={() => {
+                        void detail.refetch();
+                        void book.refetch();
+                    }}
+                >
+                    Thử lại
+                </Button>
+                <Link to="/books">Về Studio</Link>
+            </div>
         );
-    if ((page.isError && !page.data) || (book.isError && !book.data))
-        return (
-            <>
-                <h1>Chưa mở được trang sách</h1>
-                <Feedback error={errorMessage(page.error || book.error)} />
-                <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                    <Button
-                        variant="secondary"
-                        onClick={() => {
-                            void page.refetch();
-                            void book.refetch();
-                        }}
-                    >
-                        Thử lại
-                    </Button>
-                    <Link to={`/books/${bookId}`}>Về cuốn sách</Link>
-                </div>
-            </>
-        );
-    if (!page.data || !book.data)
+    if (!book.data || (exists && !page))
         return <LoadingScreen fullScreen message="Đang tải trang sách…" />;
-    return (
-        <>
-            {(page.isError || book.isError) && (
-                <div>
-                    <Feedback error="Chưa cập nhật được dữ liệu mới nhất. Nội dung đang sửa vẫn được giữ." />
-                    <Button
-                        variant="outline"
-                        onClick={() => {
-                            void page.refetch();
-                            void book.refetch();
-                        }}
-                    >
-                        Thử đọc lại dữ liệu trang
-                    </Button>
-                </div>
-            )}
-            <PageEditor key={pageId} page={page.data} book={book.data} />
-        </>
-    );
+    if (!book.data) return null;
+    const currentBook = {
+        ...book.data,
+        pages: summaries,
+        pageCount: summaries.length,
+        ...state.base?.geometry,
+    };
+    if (!page) return <EmptyBookEditor book={currentBook} />;
+    return <PageEditor key={pageId} page={page} book={currentBook} />;
 }
-
 export function PageDetailPage() {
     const { bookId = '', pageId = '' } = useParams();
-    return <PageDetailContent key={`${bookId}-${pageId}`} bookId={bookId} pageId={pageId} />;
+    if (!IdSchema.safeParse(bookId).success || !IdSchema.safeParse(pageId).success)
+        return <Link to="/books">Về Studio</Link>;
+    return <PageDetailContent bookId={bookId} pageId={pageId} />;
 }

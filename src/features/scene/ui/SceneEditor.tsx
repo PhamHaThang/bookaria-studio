@@ -49,6 +49,7 @@ import { BookariaLogo } from '../../../shared/ui/BookariaLogo';
 import { Button } from '../../../shared/ui/Button';
 import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
+import { useBookDraft } from '../../book-draft/ui/BookDraftProvider';
 import { BookInfoDialog } from '../../books/ui/BookInfoDialog';
 import type { ImageAttachmentContext } from '../../pages/ui/PageImageForm';
 import type { PreviewView } from '../../preview/model/LocalPreviewStage';
@@ -125,6 +126,7 @@ function SceneEditorContent({
     onReplacePageImage: (asset: Asset, context: ImageAttachmentContext) => Promise<void>;
 }) {
     const editor = useSceneDraft(page);
+    const { store: bookDraft } = useBookDraft();
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [transforming, setTransforming] = useState(false);
     function setSelectedId(id: string) {
@@ -187,6 +189,14 @@ function SceneEditorContent({
         infoBusy ||
         editor.uncertain;
     const blocked = sceneBlocked || transforming || Boolean(annotationPlacement);
+    useEffect(() => {
+        const key = `editor:${page.id}`;
+        bookDraft.setAutosavePaused(
+            key,
+            blocked || panel === 'preview' || settingsDirty || pagesDirty || infoDirty,
+        );
+        return () => bookDraft.setAutosavePaused(key, false);
+    }, [bookDraft, page.id, blocked, panel, settingsDirty, pagesDirty, infoDirty]);
     const selection = selectedIds.flatMap((id) => {
         const object = editor.draft.objects.find((item) => item.id === id);
         return object ? [object] : [];
@@ -210,9 +220,17 @@ function SceneEditorContent({
             )
                 return 'Chưa lưu được thiết lập trang. Bản đang sửa vẫn được giữ; vui lòng thử lại.';
             if (!(await commands.current.editor.save()))
-                return 'Chưa lưu được nội dung trang. Bản đang sửa vẫn được giữ; hãy kiểm tra kết nối hoặc phiên bản trên máy chủ.';
+                return 'Chưa lưu được sách. Bản nháp sách vẫn được giữ; hãy kiểm tra kết nối hoặc phiên bản trên máy chủ.';
             return null;
         },
+    });
+    const pageAction = useSaveBeforeAction({
+        dirty: settingsDirty,
+        blocked,
+        save: async () =>
+            settingsEditor.current && (await settingsEditor.current.save())
+                ? null
+                : 'Chưa áp dụng được thiết lập trang.',
     });
     useEffect(() => {
         const workspace = workspaceRef.current;
@@ -355,7 +373,7 @@ function SceneEditorContent({
             setPanel('settings');
             return false;
         }
-        return commands.current.editor.dirty ? commands.current.editor.save() : true;
+        return bookDraft.save();
     }
     const commands = useRef({
         editor,
@@ -444,6 +462,18 @@ function SceneEditorContent({
         window.addEventListener('keydown', keyboard);
         return () => window.removeEventListener('keydown', keyboard);
     }, []);
+    function exportBookDraft() {
+        const link = document.createElement('a'),
+            url = URL.createObjectURL(
+                new Blob([JSON.stringify(bookDraft.exportDraft(), null, 2)], {
+                    type: 'application/json',
+                }),
+            );
+        link.href = url;
+        link.download = `bookaria-draft-${book.id}.json`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
     function exportScene() {
         const blob = new Blob([JSON.stringify({ pageId: page.id, scene: editor.draft }, null, 2)], {
             type: 'application/json',
@@ -478,6 +508,18 @@ function SceneEditorContent({
                           ? 'Tài liệu và tiến độ thêm trang chỉ được giữ trong tab hiện tại. Trang đã thêm vẫn ở trong sách; rời editor sẽ bỏ phần nhập còn lại.'
                           : undefined
                 }
+                allowBookNavigation={
+                    !settingsDirty && !pagesDirty && !infoDirty && !annotationPlacement && !blocked
+                }
+                onSave={async () => {
+                    if (infoDirty)
+                        return 'Hãy lưu hoặc đóng hộp thoại thông tin sách trước khi tiếp tục.';
+                    if (pagesDirty)
+                        return 'Hãy hoàn tất hoặc đóng hộp thoại thêm trang trước khi tiếp tục.';
+                    if (annotationPlacement)
+                        return 'Hãy đặt chú thích vào trang hoặc hủy thao tác trước khi lưu sách.';
+                    return savePage();
+                }}
                 saving={editor.busy || settingsBusy || publicationBusy || pagesBusy || infoBusy}
             />
             <header className="scene-heading editor-header grid min-h-19 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-border border-b bg-surface px-5 py-3">
@@ -565,6 +607,9 @@ function SceneEditorContent({
                                     Nội dung trang {page.orderIndex + 1}
                                 </DropdownMenuLabel>
                                 <DropdownMenuGroup>
+                                    <DropdownMenuItem onSelect={exportBookDraft}>
+                                        <Download /> Tải bản nháp sách
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem onSelect={exportScene}>
                                         <Download /> Xuất bản sao scene JSON
                                     </DropdownMenuItem>
@@ -606,7 +651,7 @@ function SceneEditorContent({
                                         className="size-3.5 shrink-0"
                                         aria-hidden="true"
                                     />
-                                ) : editor.busy || settingsBusy ? (
+                                ) : editor.saving || settingsBusy ? (
                                     <Spinner className="size-3.5" aria-hidden="true" />
                                 ) : editor.dirty || settingsDirty ? (
                                     <Circle className="size-2 fill-current" aria-hidden="true" />
@@ -616,11 +661,13 @@ function SceneEditorContent({
                                 <span className="max-[1280px]:sr-only">
                                     {validationMessage
                                         ? 'Kiểm tra thông số'
-                                        : editor.busy || settingsBusy
-                                          ? 'Đang lưu…'
+                                        : editor.saving || settingsBusy
+                                          ? editor.autosaving
+                                              ? 'Đang tự lưu…'
+                                              : 'Đang lưu…'
                                           : editor.dirty || settingsDirty
                                             ? 'Chưa lưu thay đổi'
-                                            : 'Đã lưu nội dung'}
+                                            : 'Đã lưu sách'}
                                 </span>
                             </span>
                         </TooltipTrigger>
@@ -637,8 +684,8 @@ function SceneEditorContent({
                                     variant="outline"
                                     size="sm"
                                     className="h-10 min-w-26"
-                                    aria-label="Lưu nội dung"
-                                    aria-busy={editor.busy || settingsBusy}
+                                    aria-label="Lưu sách"
+                                    aria-busy={editor.saving || settingsBusy}
                                     disabled={
                                         disabled ||
                                         settingsBusy ||
@@ -647,16 +694,17 @@ function SceneEditorContent({
                                         !validation.success ||
                                         editor.conflict ||
                                         editor.uncertain ||
-                                        editor.busy
+                                        editor.saving
                                     }
                                     onClick={() => void savePage()}
                                 >
-                                    <Save data-icon="inline-start" /> Lưu
+                                    <Save data-icon="inline-start" /> Lưu sách
                                 </Button>
                             </span>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" sideOffset={8}>
-                            Lưu nội dung · Ctrl S
+                            Tự lưu sau 5 giây ngừng thao tác trong Thiết kế. Tạm dừng khi xem trước.
+                            Ctrl S để lưu ngay.
                         </TooltipContent>
                     </Tooltip>
 
@@ -793,7 +841,11 @@ function SceneEditorContent({
                             })
                         }
                         onInteractions={() => changePanel('interactions')}
-                        onRecognition={() => runOutsideSettings(onRecognition)}
+                        onRecognition={() =>
+                            runOutsideSettings(() =>
+                                saveBeforeAction.request('Thiết lập AR Marker', onRecognition),
+                            )
+                        }
                         onSettings={() => changePanel('settings')}
                         onShortcuts={() => setHelpOpen(true)}
                         shortcutsRef={(element) => {
@@ -1189,7 +1241,7 @@ function SceneEditorContent({
                     >
                         <div className="col-start-1 flex min-w-0 -translate-x-[calc(var(--inspector-offset)/2)] justify-center px-4 transition-[translate] duration-200 ease-out motion-reduce:transition-none [.scene-editor[data-panel=preview]_&]:translate-x-0">
                             <PageStrip
-                                requestAction={saveBeforeAction.request}
+                                requestAction={pageAction.request}
                                 book={book}
                                 pageId={page.id}
                                 dirty={editor.dirty || settingsDirty}
@@ -1202,12 +1254,16 @@ function SceneEditorContent({
                 </div>
             </SceneWorkbench>
             {saveBeforeAction.dialog}
+            {pageAction.dialog}
             {infoOpen && (
                 <BookInfoDialog
                     bookId={book.id}
                     opener={infoAnchor.current}
                     guardNavigation={false}
-                    onClose={() => setInfoOpen(false)}
+                    onClose={() => {
+                        setInfoOpen(false);
+                        if (!bookDraft.getSnapshot().dirty) void bookDraft.readLatest(false);
+                    }}
                     onBusyChange={setInfoBusy}
                     onDirtyChange={setInfoDirty}
                 />
@@ -1298,6 +1354,7 @@ function SceneEditorContent({
                                   signal,
                               );
                         signal.throwIfAborted();
+                        bookDraft.registerAsset(asset);
                         if (commands.current.blocked)
                             throw new Error('Trang đang bận. Vui lòng thử lại.');
                         if (
@@ -1378,10 +1435,10 @@ function SceneEditorContent({
                 <ConfirmationDialog
                     description={
                         editor.dirty
-                            ? 'Bản đang sửa sẽ được thay bằng nội dung từ máy chủ. Cài đặt âm thanh và ánh sáng chưa lưu vẫn được giữ.'
-                            : 'Lấy lại nội dung đối tượng và quy tắc đang lưu trên máy chủ.'
+                            ? 'Toàn bộ bản nháp sách, gồm nội dung và thay đổi các trang, sẽ được thay bằng bản đã lưu trên máy chủ. Thiết lập trang đang nhập trong bảng bên phải chưa áp dụng vẫn được giữ.'
+                            : 'Đọc lại toàn bộ trang và nội dung sách đã lưu trên máy chủ.'
                     }
-                    title="Tải nội dung mới nhất?"
+                    title="Đọc lại sách đã lưu?"
                     busy={editor.busy}
                     onClose={() => {
                         if (!editor.busy) setResetting(false);

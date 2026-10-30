@@ -34,6 +34,7 @@ import { uploadFile } from '../../assets/api/upload-file';
 import { uploadRequest } from '../../assets/model/form';
 import { runAssetUpload, type UploadCheckpoint } from '../../assets/model/upload';
 import { auth, useAuth } from '../../auth';
+import { useOptionalBookDraft } from '../../book-draft/ui/BookDraftProvider';
 import { bookKeys } from '../../books';
 import { pageKeys, pagesApi } from '../../pages';
 import type { ImageAttachmentContext } from '../../pages/ui/PageImageForm';
@@ -76,6 +77,7 @@ export function PageSettingsEditor({
     onDirtyChange: (dirty: boolean) => void;
     onBusyChange: (busy: boolean) => void;
 }) {
+    const bookDraft = useOptionalBookDraft();
     const { user } = useAuth(),
         cache = useQueryClient();
     const [base, setBase] = useState(page.settings),
@@ -331,6 +333,17 @@ export function PageSettingsEditor({
                     return false;
                 imageSaved = true;
                 resetImage();
+            }
+            if (bookDraft) {
+                for (const asset of Object.values(uploadedAudio)) bookDraft.registerAsset(asset);
+                bookDraft.patchPage(page.id, { title: title.trim() || null, settings: parsed });
+                setBase(parsed);
+                setDraft(parsed);
+                setBaseTitle(title.trim());
+                setTitle(title.trim());
+                audioUploads.current = {};
+                setAudioFiles({});
+                return true;
             }
             setStage('Đang lưu thiết lập…');
             if (titleDirty || Object.keys(delta).length > 0) {

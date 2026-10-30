@@ -1,5 +1,6 @@
 import { BookOpen, FileUp, Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import type { Asset } from '@/shared/contracts/dto.schema';
 import { ContractError } from '../../../shared/api/contract';
 import { errorMessage } from '../../../shared/api/errors';
 import type { BookDetail } from '../../../shared/contracts/dto.schema';
@@ -24,6 +25,7 @@ import { assetsApi } from '../../assets';
 import { uploadFile } from '../../assets/api/upload-file';
 import { runAssetUpload } from '../../assets/model/upload';
 import { auth } from '../../auth';
+import { useOptionalBookDraft } from '../../book-draft/ui/BookDraftProvider';
 import { booksApi } from '../../books';
 import { bookPageSize } from '../../books/model/page-size';
 import { BookImportField, type BookImportValue } from '../../books/ui/BookImportField';
@@ -50,6 +52,8 @@ export function AddPagesDialog({
     onBusyChange: (value: boolean) => void;
     onDraftChange: (value: boolean) => void;
 }) {
+    const bookDraft = useOptionalBookDraft();
+    const uploadedAssets = useRef(new Map<string, Asset>());
     const [mode, setMode] = useState<'blank' | 'import'>('blank');
     const [value, setValue] = useState<BookImportValue | null>(null);
     const source = useRef<BookImportValue | null>(null);
@@ -105,11 +109,16 @@ export function AddPagesDialog({
         setBusy(true);
         try {
             checkSession();
+            if (bookDraft && mode === 'blank') {
+                const result = bookDraft.addBlankPage();
+                await onComplete(result.page.id);
+                return;
+            }
             if (!submission.current) {
                 if (mode === 'import' && !value?.indices.length)
                     throw new Error('Chọn PDF hoặc ảnh và ít nhất một trang.');
                 setStage('Đang kiểm tra khổ sách…');
-                const currentBook = await booksApi.detail(book.id);
+                const currentBook = bookDraft ? book : await booksApi.detail(book.id);
                 checkSession();
                 submission.current = {
                     mode,
@@ -128,7 +137,22 @@ export function AddPagesDialog({
                     frozen.mode === 'blank'
                         ? blankPageImage(aspect)
                         : (source.current as BookImportValue).source.render(index),
-                add: pagesApi.add,
+                add: bookDraft
+                    ? async (_id, body) => {
+                          try {
+                              const asset =
+                                  uploadedAssets.current.get(body.imageAssetId) ||
+                                  (await assetsApi.detail(body.imageAssetId));
+                              return await bookDraft.addPage(
+                                  asset,
+                                  body.title || null,
+                                  body.afterPageId,
+                              );
+                          } catch (cause) {
+                              throw new Error(errorMessage(cause));
+                          }
+                      }
+                    : pagesApi.add,
                 checkSession,
                 onStage: setStage,
                 onCheckpoint: (next) => {
@@ -156,8 +180,15 @@ export function AddPagesDialog({
                         signal: new AbortController().signal,
                         checkpoint: saved || null,
                         onCheckpoint: save,
-                        onStage: () => undefined,
-                        onProgress: () => undefined,
+                        onStage: (step) =>
+                            setStage(
+                                step === 'uploading'
+                                    ? 'Đang tải ảnh trang…'
+                                    : step === 'completing'
+                                      ? 'Đang xác nhận ảnh trang…'
+                                      : 'Đang chuẩn bị ảnh trang…',
+                            ),
+                        onProgress: (value) => setStage(`Đang tải ảnh trang… ${value}%`),
                     });
                     checkSession();
                     if (
@@ -166,6 +197,8 @@ export function AddPagesDialog({
                         uploaded.asset.status !== 'READY'
                     )
                         throw new ContractError();
+                    uploadedAssets.current.set(uploaded.asset.id, uploaded.asset);
+                    bookDraft?.registerAsset(uploaded.asset, true);
                     return uploaded.asset.id;
                 },
             });

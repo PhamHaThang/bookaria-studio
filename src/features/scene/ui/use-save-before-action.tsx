@@ -68,7 +68,7 @@ export function useSaveBeforeAction({
         try {
             problem = await latest.current.save();
         } catch {
-            problem = 'Chưa lưu được trang. Vui lòng thử lại.';
+            problem = 'Chưa lưu được thay đổi. Vui lòng thử lại.';
         }
         saving.current = false;
         if (pending.current !== attempt) return;

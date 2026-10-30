@@ -46,6 +46,9 @@ export function ConfirmationDialog({
                 onOpenAutoFocus={(event) => {
                     event.preventDefault();
                     const firstButton =
+                        content.current?.querySelector<HTMLButtonElement>(
+                            '[data-initial-focus]:not(:disabled)',
+                        ) ??
                         content.current?.querySelector<HTMLButtonElement>('button:not(:disabled)');
                     (firstButton ?? content.current)?.focus();
                 }}

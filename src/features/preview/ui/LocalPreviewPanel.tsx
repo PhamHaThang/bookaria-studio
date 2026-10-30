@@ -9,6 +9,7 @@ import { BookariaLogo } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { assetsApi } from '../../assets';
+import { useOptionalBookDraft } from '../../book-draft/ui/BookDraftProvider';
 import { pagesApi } from '../../pages';
 import { LocalPreviewStage, type PreviewView } from '../model/LocalPreviewStage';
 import { PreviewRendererCache } from '../model/PreviewRendererCache';
@@ -71,6 +72,7 @@ function ActivePreview({
     initialView?: PreviewView;
     rendererCache: PreviewRendererCache;
 }) {
+    const bookDraft = useOptionalBookDraft();
     const host = useRef<HTMLDivElement>(null);
     const stage = useRef<LocalPreviewStage | null>(null),
         runtime = useRef<PageRuntime | null>(null);
@@ -122,7 +124,9 @@ function ActivePreview({
                 const previewPage =
                     previewPageId === page.id
                         ? page
-                        : await pagesApi.detail(previewPageId, controller.signal);
+                        : bookDraft
+                          ? await bookDraft.loadPage(previewPageId)
+                          : await pagesApi.detail(previewPageId, controller.signal);
                 const payload = await makePreviewPayload(
                     previewPage,
                     book,
@@ -173,7 +177,7 @@ function ActivePreview({
             element.removeEventListener('preview-error', contextError);
             toast.dismiss('local-preview-media');
         };
-    }, [page, book, scene, revision, previewPageId, initialView, rendererCache]);
+    }, [page, book, scene, revision, previewPageId, initialView, rendererCache, bookDraft]);
     const start = () => {
         if (state !== 'ready') return;
         autoStart.current = true;

@@ -3,6 +3,7 @@ import { BookOpen, CircleAlert, Library, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../features/auth';
+import { useBookDraft } from '../features/book-draft/ui/BookDraftProvider';
 import { bookKeys, booksApi } from '../features/books';
 import { EmptyBookEditor } from '../features/scene/ui/EmptyBookEditor';
 import { errorMessage } from '../shared/api/errors';
@@ -23,6 +24,8 @@ import { Spinner } from '../shared/ui/primitives/spinner';
 /** Resolve the current first page on demand; opening an editor never creates a page. */
 function BookEditorContent({ bookId }: { bookId: string }) {
     const { user } = useAuth();
+    const { state } = useBookDraft();
+    const draftPages = state.working?.pages || [];
     const valid = IdSchema.safeParse(bookId).success;
     const book = useQuery({
         queryKey: bookKeys.detail(user?.id || '', bookId),
@@ -36,8 +39,8 @@ function BookEditorContent({ bookId }: { bookId: string }) {
     const [entry, setEntry] = useState<'empty' | 'pages' | null>(null);
     useEffect(() => {
         if (!entry && book.isSuccess && !book.isFetching)
-            setEntry(book.data.pages.length ? 'pages' : 'empty');
-    }, [entry, book.isSuccess, book.isFetching, book.data]);
+            setEntry(draftPages.length ? 'pages' : 'empty');
+    }, [entry, book.isSuccess, book.isFetching, draftPages.length]);
     if (!valid || (book.isError && (entry !== 'empty' || !book.data)))
         return (
             <section
@@ -100,16 +103,33 @@ function BookEditorContent({ bookId }: { bookId: string }) {
         );
     if (book.isPending || !entry || !book.data)
         return <LoadingScreen fullScreen message="Đang mở editor…" />;
-    if (entry === 'empty') return <EmptyBookEditor book={book.data} />;
+    if (entry === 'empty')
+        return (
+            <EmptyBookEditor
+                book={{
+                    ...book.data,
+                    pages: draftPages,
+                    pageCount: draftPages.length,
+                    ...state.base?.geometry,
+                }}
+            />
+        );
 
-    const firstPage = book.data.pages.reduce<(typeof book.data.pages)[number] | undefined>(
+    const firstPage = draftPages.reduce<(typeof book.data.pages)[number] | undefined>(
         (first, page) => (!first || page.orderIndex < first.orderIndex ? page : first),
         undefined,
     );
     return firstPage ? (
         <Navigate to={`/books/${bookId}/pages/${firstPage.id}`} replace />
     ) : (
-        <EmptyBookEditor book={book.data} />
+        <EmptyBookEditor
+            book={{
+                ...book.data,
+                pages: draftPages,
+                pageCount: draftPages.length,
+                ...state.base?.geometry,
+            }}
+        />
     );
 }
 
