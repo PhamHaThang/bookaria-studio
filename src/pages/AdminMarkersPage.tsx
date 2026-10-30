@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { ScanLine } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
@@ -15,6 +16,7 @@ import {
     useLibraryAction,
     WriteFeedback,
 } from '../features/admin/library-ui';
+import { MarkerTestDialog } from '../features/admin/MarkerTestDialog';
 import { AdminPager, AdminReload } from '../features/admin/ui';
 import { useAuth } from '../features/auth';
 import { errorMessage } from '../shared/api/errors';
@@ -27,6 +29,7 @@ import { Badge } from '../shared/ui/Badge';
 import { Feedback } from '../shared/ui/Feedback';
 
 export function AdminMarkersPage() {
+    const [testing, setTesting] = useState(false);
     const { user } = useAuth(),
         [params] = useSearchParams(),
         query = readAdminQueueSearch(params),
@@ -44,10 +47,17 @@ export function AdminMarkersPage() {
                     <h1>Bộ marker Bookaria</h1>
                     <p>Quản lý marker đã biên dịch sẵn để cấp cho trang mới.</p>
                 </div>
-                <Button asChild>
-                    <Link to="/admin/markers/new">Đăng ký marker</Link>
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                    <Button variant="outline" onClick={() => setTesting(true)}>
+                        <ScanLine data-icon="inline-start" />
+                        Thử điểm marker
+                    </Button>
+                    <Button asChild>
+                        <Link to="/admin/markers/new">Đăng ký marker</Link>
+                    </Button>
+                </div>
             </div>
+            {testing && <MarkerTestDialog onClose={() => setTesting(false)} />}
             <Feedback success={success} />
             <WriteFeedback action={action} />
             <AdminReload retry={() => void list.refetch()} busy={list.isFetching || action.busy} />

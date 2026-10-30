@@ -6,6 +6,7 @@ import {
     CreateCategoryBodySchema,
     CreateLibraryAssetBodySchema,
     LibraryAssetsQuerySchema,
+    MarkerTestResultSchema,
     UpdateBookariaMarkerBodySchema,
     UpdateCategoryBodySchema,
     UpdateLibraryAssetBodySchema,
@@ -27,6 +28,18 @@ export function createAdminLibraryApi(http: AxiosInstance) {
         return same(asset, id);
     };
     return {
+        async testMarker(file: File, signal: AbortSignal, onProgress: (percent: number) => void) {
+            const res = await http.post('/admin/bookaria-markers/test', file, {
+                signal,
+                timeout: 60_000,
+                headers: { 'Content-Type': file.type || 'application/octet-stream' },
+                onUploadProgress: ({ loaded, total }) => {
+                    if (total) onProgress(Math.min(100, Math.round((loaded * 100) / total)));
+                },
+            });
+            expectStatus(res, 200);
+            return readData(res, MarkerTestResultSchema);
+        },
         async library(input: z.input<typeof LibraryAssetsQuerySchema>, signal?: AbortSignal) {
             const res = await http.get('/admin/library/assets', {
                 params: LibraryAssetsQuerySchema.parse(input),

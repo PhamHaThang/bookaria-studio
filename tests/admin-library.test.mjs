@@ -272,3 +272,45 @@ test('marker toggle distinguishes false from missing and validates result identi
     data = { ...marker, id: other };
     await assert.rejects(() => api.setMarker(id, { isActive: true }), ContractError);
 });
+
+test('marker testing sends the original binary file with cancellation and validates the response', async () => {
+    const result = {
+        policyVersion: 'orb-4.12-grid-v1-provisional',
+        algorithm: 'ORB',
+        score: 1,
+        features: 0,
+        coverage: 0,
+        width: 640,
+        height: 640,
+        image: 'data:image/png;base64,AA==',
+        points: [],
+        cells: Array(16).fill(0),
+        hints: [],
+    };
+    const calls = [];
+    let payload = result;
+    const api = createAdminLibraryApi(
+        axios.create({
+            adapter: async (config) => {
+                calls.push(config);
+                return response(config, { data: payload });
+            },
+        }),
+    );
+    const controller = new AbortController();
+    const file = new File(['temporary image'], 'marker.png', { type: 'image/png' });
+    assert.deepEqual(await api.testMarker(file, controller.signal, () => {}), result);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, '/admin/bookaria-markers/test');
+    assert.equal(calls[0].method, 'post');
+    assert.equal(calls[0].data, file);
+    assert.equal(calls[0].headers.get('Content-Type'), 'image/png');
+    assert.equal(calls[0].signal, controller.signal);
+    assert.equal(calls[0].timeout, 60_000);
+    payload = { ...result, cells: [0] };
+    await assert.rejects(() => api.testMarker(file, controller.signal, () => {}), ContractError);
+    controller.abort();
+    const beforeCancel = calls.length;
+    await assert.rejects(() => api.testMarker(file, controller.signal, () => {}), axios.isCancel);
+    assert.equal(calls.length, beforeCancel);
+});
