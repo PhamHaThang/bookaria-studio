@@ -28,6 +28,7 @@ export function usePublicationJob(userId: string, bookId: string, onComplete: ()
         [done, setDone] = useState(false);
     const [posting, setPosting] = useState(false),
         [message, setMessage] = useState('');
+    const [progress, setProgress] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null),
         [outcome, setOutcome] = useState<Outcome | null>(null);
     const alive = useRef(true),
@@ -58,8 +59,9 @@ export function usePublicationJob(userId: string, bookId: string, onComplete: ()
                 const job = await pagesApi.job(task?.jobId || '', abort.signal);
                 if (abort.signal.aborted || !session() || !task) return;
                 const result = jobOutcome(task, bookId, job);
+                setProgress(job.progress);
                 setMessage(
-                    `${task.type === 'PUBLISH_BOOK' ? 'Xuất bản' : 'Xuất PDF'}: ${job.progress}% · ${statusLabels[job.status]}`,
+                    `${task.type === 'PUBLISH_BOOK' ? 'Xuất bản' : 'Xuất PDF'}: ${job.progress}% | ${statusLabels[job.status]}`,
                 );
                 if (job.status === 'FAILED') {
                     setError(
@@ -114,6 +116,7 @@ export function usePublicationJob(userId: string, bookId: string, onComplete: ()
         // Persist before sending: a lost response/reload must not silently replay the mutation.
         const pending = { type, versionNo, jobId: null };
         remember(pending);
+        setProgress(null);
         setMessage('Đang gửi yêu cầu…');
         try {
             const result = await send();
@@ -139,6 +142,7 @@ export function usePublicationJob(userId: string, bookId: string, onComplete: ()
         paused,
         done,
         message,
+        progress,
         error,
         outcome,
         start,

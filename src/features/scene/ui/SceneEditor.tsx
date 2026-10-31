@@ -10,6 +10,7 @@ import {
     RefreshCw,
     Save,
     Send,
+    Share2,
     TriangleAlert,
     Undo2,
     Upload,
@@ -47,14 +48,13 @@ import {
 } from '../../../shared/contracts/scene.schema';
 import { BookariaLogo } from '../../../shared/ui/BookariaLogo';
 import { Button } from '../../../shared/ui/Button';
-import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { useBookDraft } from '../../book-draft/ui/BookDraftProvider';
 import { BookInfoDialog } from '../../books/ui/BookInfoDialog';
 import type { ImageAttachmentContext } from '../../pages/ui/PageImageForm';
 import type { PreviewView } from '../../preview/model/LocalPreviewStage';
 import { LocalPreviewPanel } from '../../preview/ui/LocalPreviewPanel';
-import { PublicationPanel } from '../../publication/ui/PublicationPanel';
+import { PublicationDialog } from '../../publication/ui/PublicationDialog';
 import { type AnnotationObject, placeAnnotation } from '../model/annotation-placement';
 import { createFittedAssetObject } from '../model/asset-insertion';
 import {
@@ -151,6 +151,8 @@ function SceneEditorContent({
         [helpOpen, setHelpOpen] = useState(false),
         [publishOpen, setPublishOpen] = useState(false),
         [publicationBusy, setPublicationBusy] = useState(false);
+    const [publicationRunning, setPublicationRunning] = useState(false);
+    const [publicationMode, setPublicationMode] = useState<'publish' | 'share'>('publish');
     const [layerSearch, setLayerSearch] = useState('');
     const [pagesBusy, setPagesBusy] = useState(false);
     const [pagesDirty, setPagesDirty] = useState(false);
@@ -712,22 +714,61 @@ function SceneEditorContent({
                         <TooltipTrigger asChild>
                             <span className="inline-flex shrink-0">
                                 <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-10"
+                                    disabled={
+                                        disabled ||
+                                        publicationBusy ||
+                                        !book.currentVersion ||
+                                        book.visibility === 'PRIVATE' ||
+                                        book.takenDown
+                                    }
+                                    onClick={() => {
+                                        setPublicationMode('share');
+                                        setPublishOpen(true);
+                                    }}
+                                >
+                                    <Share2 data-icon="inline-start" />
+                                    Chia sẻ
+                                </Button>
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                            {!book.currentVersion || book.visibility === 'PRIVATE'
+                                ? 'Xuất bản sách để chia sẻ liên kết và QR'
+                                : 'Chia sẻ phiên bản đang phát hành'}
+                        </TooltipContent>
+                    </Tooltip>
+                    <Tooltip delayDuration={250}>
+                        <TooltipTrigger asChild>
+                            <span className="inline-flex shrink-0">
+                                <Button
                                     size="sm"
                                     className="editor-publish h-10 min-w-26 disabled:pointer-events-none"
+                                    aria-label={
+                                        publicationRunning ? 'Xem tiến trình xuất bản' : 'Xuất bản'
+                                    }
                                     disabled={blocked}
                                     onClick={() =>
-                                        saveBeforeAction.request('Xuất bản sách', () =>
-                                            setPublishOpen(true),
-                                        )
+                                        runOutsideSettings(() => {
+                                            setPublicationMode('publish');
+                                            setPublishOpen(true);
+                                        })
                                     }
                                 >
-                                    <Send data-icon="inline-start" /> Xuất bản
+                                    {publicationRunning ? (
+                                        <Spinner data-icon="inline-start" />
+                                    ) : (
+                                        <Send data-icon="inline-start" />
+                                    )}{' '}
+                                    {publicationRunning ? 'Đang xuất bản' : 'Xuất bản'}
                                 </Button>
                             </span>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" sideOffset={8}>
                             {editor.dirty || settingsDirty
-                                ? 'Lưu thay đổi trước khi xuất bản'
+                                ? 'Lưu và kiểm tra sách trước khi xuất bản'
                                 : 'Kiểm tra và xuất bản sách'}
                         </TooltipContent>
                     </Tooltip>
@@ -1282,21 +1323,30 @@ function SceneEditorContent({
                     returnFocus={commands.current.shortcutsButton}
                 />
             )}
-            {publishOpen && (
-                <ConfirmDialog
-                    className="editor-publication-dialog w-[min(900px,_calc(100vw_-_32px))] max-w-225"
-                    title="Xuất bản sách"
-                    busy={publicationBusy}
-                    onClose={() => setPublishOpen(false)}
-                >
-                    <PublicationPanel
-                        book={book}
-                        disabled={disabled || editor.busy || editor.uncertain}
-                        unsaved={editor.dirty || settingsDirty}
-                        onBusyChange={setPublicationBusy}
-                    />
-                </ConfirmDialog>
-            )}
+            <PublicationDialog
+                key={book.id}
+                book={book}
+                open={publishOpen}
+                mode={publicationMode}
+                onShare={() => setPublicationMode('share')}
+                onClose={() => setPublishOpen(false)}
+                prepare={async () => {
+                    const current = commands.current.editor;
+                    if (
+                        current.conflict ||
+                        current.uncertain ||
+                        !SceneSchema.safeParse(current.draft).success
+                    )
+                        return false;
+                    return bookDraft.save();
+                }}
+                onEditInfo={() => {
+                    setPublishOpen(false);
+                    setInfoOpen(true);
+                }}
+                onBusyChange={setPublicationBusy}
+                onTaskChange={setPublicationRunning}
+            />
             {textDialog && !annotationPlacement && (
                 <TextComposer
                     initial={textDialog.initial}

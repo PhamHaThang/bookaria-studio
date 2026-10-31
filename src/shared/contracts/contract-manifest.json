@@ -10,7 +10,7 @@
     "api/me.schema.ts": "09443bfa6b7363c9f115ab9fa04acdd7176a8190dc395ae4831cdb55bf43cfe6",
     "api/pages.schema.ts": "56849a3a39b9dbe3d41b0bb18dabfa8e15aa101e38f3d141d4c3ea1a685c78d0",
     "api/public.schema.ts": "3e54283b87a2b60b31ab2faf9352f5d11bf2f14cf4641a51dc71e9d7178cafa6",
-    "api/publish.schema.ts": "bee237d1f43a44db5a6e061b7bc231e962648035406b4a8b530216000155e9aa",
+    "api/publish.schema.ts": "3877a5fc70f596fb9ddcb2b218bc450fd98f264556b3482179648b4252bc90ee",
     "asset.schema.ts": "ada6c40629cba82f6efc08fac2042fed3c6f77664fa40b22caa01a4729a08b37",
     "common.schema.ts": "41d88395a2f9e44b909dba8b8ca0e4b557dc439ba2527912b91a7849e6fbcd3d",
     "dto.schema.ts": "f88e82a5e992eaf14fe22f2185f2b620469ef53f487b929abcd5edf5b4f59096",
@@ -18,7 +18,7 @@
     "error.schema.ts": "da9a1ab3c8a3a8de6ce67c5b23bb905b0011e6376d368085a7eabd15b9299c9e",
     "manifest.schema.ts": "faf3165b23dba2f6f20811191e2adfc1e55a9a4f9035640273cfc9a379ef5928",
     "marker.schema.ts": "a3a4c6f08fc50c7894daef1155a68d6d7ee1e3f302d78925be5975f9edd7fa39",
-    "routes.schema.ts": "a927a95cd80cf1b9b6f5d44556876682398f487fc886b6d82026eb56829f7844",
+    "routes.schema.ts": "e0afae7b81dc422198ce01f46cbe4b0061e7ec1620643caf54da98e477a98fa9",
     "scene.schema.ts": "16a845bb3a4869be9ebd63c66f67ddff9818d586a9c27e3debd5940c14a8c6d8"
   }
 }

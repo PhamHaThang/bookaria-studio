@@ -43,16 +43,51 @@ test('publication reads reject schema drift and use the author-owned book paths'
             calls.push(url);
             return {
                 status: 200,
-                data: { data: url.endsWith('versions') ? [] : { canPublish: true } },
+                data: {
+                    data: url.endsWith('versions')
+                        ? { items: [], nextCursor: null }
+                        : { canPublish: true },
+                },
             };
         },
     });
-    assert.deepEqual(await api.versions(bookId), []);
+    assert.deepEqual(await api.versions(bookId), { items: [], nextCursor: null });
     await assert.rejects(api.check(bookId));
     await assert.rejects(api.share(bookId));
     await assert.rejects(api.versions('../other'));
     assert.equal(calls.length, 3);
 });
+test('version history sends validated cursors and rejects the old unbounded response', async () => {
+    const calls = [];
+    const controller = new AbortController();
+    const api = createPublicationApi({
+        get: async (...args) => {
+            calls.push(args);
+            return { status: 200, data: { data: { items: [], nextCursor: null } } };
+        },
+    });
+    await api.versions(bookId, {}, controller.signal);
+    await api.versions(bookId, { limit: 5, before: 8 }, controller.signal);
+    assert.deepEqual(calls, [
+        [`/books/${bookId}/versions`, { params: { limit: 5 }, signal: controller.signal }],
+        [
+            `/books/${bookId}/versions`,
+            { params: { limit: 5, before: 8 }, signal: controller.signal },
+        ],
+    ]);
+    for (const query of [
+        { limit: 0 },
+        { limit: 51 },
+        { before: 0 },
+        { before: -1 },
+        { before: 1.5 },
+    ])
+        await assert.rejects(api.versions(bookId, query));
+    assert.equal(calls.length, 2);
+    const drift = createPublicationApi({ get: async () => ({ status: 200, data: { data: [] } }) });
+    await assert.rejects(drift.versions(bookId));
+});
+
 test('polling verifies job identity, type and book before accepting any result', () => {
     const task = { type: 'EXPORT_PDF', jobId, versionNo: 2 };
     const job = {

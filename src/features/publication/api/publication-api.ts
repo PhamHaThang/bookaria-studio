@@ -1,19 +1,18 @@
 import type { AxiosInstance } from 'axios';
-import { z } from 'zod';
+import type { z } from 'zod';
 import { expectStatus, readData } from '../../../shared/api/contract';
 import {
     JobStartedSchema,
+    ListBookVersionsQuerySchema,
+    PrintLayoutSchema,
     PrintPdfBodySchema,
     PublishBodySchema,
     PublishCheckSchema,
     ShareInfoSchema,
+    VersionPageSchema,
 } from '../../../shared/contracts/api/publish.schema';
 import { IdSchema, SlugSchema } from '../../../shared/contracts/common.schema';
-import {
-    BookSummarySchema,
-    PublicBookSchema,
-    VersionSchema,
-} from '../../../shared/contracts/dto.schema';
+import { BookSummarySchema, PublicBookSchema } from '../../../shared/contracts/dto.schema';
 
 export function createPublicationApi(http: AxiosInstance) {
     const path = (id: string) => `/books/${IdSchema.parse(id)}`;
@@ -24,10 +23,15 @@ export function createPublicationApi(http: AxiosInstance) {
                 PublishCheckSchema,
             );
         },
-        async versions(id: string, signal?: AbortSignal) {
+        async versions(
+            id: string,
+            query: z.input<typeof ListBookVersionsQuerySchema> = {},
+            signal?: AbortSignal,
+        ) {
+            const params = ListBookVersionsQuerySchema.parse(query);
             return readData(
-                await http.get(`${path(id)}/versions`, { signal }),
-                z.array(VersionSchema),
+                await http.get(`${path(id)}/versions`, { params, signal }),
+                VersionPageSchema,
             );
         },
         async share(id: string, signal?: AbortSignal) {
@@ -43,6 +47,12 @@ export function createPublicationApi(http: AxiosInstance) {
         },
         async unpublish(id: string) {
             return readData(await http.post(`${path(id)}/unpublish`), BookSummarySchema);
+        },
+        async printLayout(id: string, signal?: AbortSignal) {
+            return readData(
+                await http.get(`${path(id)}/print-layout`, { signal }),
+                PrintLayoutSchema,
+            );
         },
         async print(id: string, body: z.input<typeof PrintPdfBodySchema>) {
             const response = await http.post(

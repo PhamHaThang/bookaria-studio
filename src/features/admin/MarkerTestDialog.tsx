@@ -1,4 +1,4 @@
-import { Download, ImagePlus, Info, ScanLine, Star, Upload, X } from 'lucide-react';
+import { Download, ImagePlus, ScanLine, Star, Upload, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/shared/api/errors';
