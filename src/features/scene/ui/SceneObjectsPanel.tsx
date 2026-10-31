@@ -71,7 +71,7 @@ type Props = {
     canDuplicate: boolean;
     onClose: () => void;
     onSelect: (ids: string[], mode?: SelectionMode) => void;
-    onFlag: (id: string, flag: 'locked' | 'editorHidden', value: boolean) => void;
+    onFlag: (id: string, flag: 'locked' | 'visible', value: boolean) => void;
     onMove: (id: string, direction: -1 | 1) => void;
     onDuplicate: (id: string) => void;
     onDelete: (object: SceneObject) => void;
@@ -236,7 +236,7 @@ export function SceneObjectsPanel({
                                                 {object.type === 'audio'
                                                     ? ` · ${object.audioKind === 'VOICE' ? 'Voice' : object.audioKind || 'BGM'}`
                                                     : ''}
-                                                {!object.visible ? ' · Ẩn trong Viewer' : ''}
+                                                {!object.visible ? ' · Đang ẩn' : ''}
                                             </span>
                                         </span>
                                     </Button>
@@ -245,22 +245,16 @@ export function SceneObjectsPanel({
                                             variant="ghost"
                                             size="icon-xs"
                                             disabled={disabled || object.locked}
-                                            aria-label={`${object.editorHidden ? 'Hiện' : 'Ẩn'} ${name} trong editor`}
-                                            aria-pressed={object.editorHidden}
+                                            aria-label={`${object.visible ? 'Ẩn' : 'Hiện'} ${name}`}
+                                            aria-pressed={object.visible}
                                             title={
-                                                object.editorHidden
-                                                    ? 'Hiện trong editor'
-                                                    : 'Ẩn trong editor'
+                                                object.visible ? 'Ẩn đối tượng' : 'Hiện đối tượng'
                                             }
                                             onClick={() =>
-                                                onFlag(
-                                                    object.id,
-                                                    'editorHidden',
-                                                    !object.editorHidden,
-                                                )
+                                                onFlag(object.id, 'visible', !object.visible)
                                             }
                                         >
-                                            {object.editorHidden ? <EyeOff /> : <Eye />}
+                                            {object.visible ? <Eye /> : <EyeOff />}
                                         </Button>
                                         <Button
                                             variant="ghost"

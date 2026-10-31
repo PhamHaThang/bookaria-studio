@@ -24,11 +24,7 @@ export function SceneAssetLoading({
         <div ref={hostRef} className="pointer-events-none absolute inset-0 z-2">
             {objects.flatMap((object) => {
                 const state = states.get(object.id);
-                if (
-                    !state ||
-                    object.editorHidden ||
-                    !['model', 'image', 'video'].includes(object.type)
-                )
+                if (!state || !object.visible || !['model', 'image', 'video'].includes(object.type))
                     return [];
                 const name = object.name || 'Tài nguyên';
                 const failed = state.status === 'failed';

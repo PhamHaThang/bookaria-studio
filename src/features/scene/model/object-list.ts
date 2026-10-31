@@ -30,7 +30,7 @@ export function findSceneObjects(objects: SceneObject[], query: string) {
 }
 export function objectListSelection(objects: SceneObject[], selectedIds: string[]) {
     const ids = objects
-        .filter((object) => !object.locked && !object.editorHidden)
+        .filter((object) => !object.locked && object.visible)
         .map((object) => object.id);
     const selected = new Set(selectedIds);
     const count = ids.filter((id) => selected.has(id)).length;

@@ -46,7 +46,12 @@ export function newObject(type: SceneObjectType, id: string, asset?: Asset): Sce
         },
         ...(usesAsset(type) ? { assetId: asset?.id } : {}),
         ...(type === 'audio'
-            ? { billboard: true, autoplay: false, audioKind: audioKindFromTags(asset?.tags) }
+            ? {
+                  visible: false,
+                  billboard: true,
+                  autoplay: false,
+                  audioKind: audioKindFromTags(asset?.tags),
+              }
             : {}),
         ...(type === 'text' || type === 'label'
             ? { text: type === 'text' ? 'Văn bản mới' : 'Chú thích mới' }

@@ -21,7 +21,6 @@ export function createSceneNodeKey() {
             name: _name,
             visible: _visible,
             locked: _locked,
-            editorHidden: _hidden,
             snapToPaper: _snap,
             billboard: _billboard,
             ...content

@@ -38,7 +38,7 @@ export function removeSelection(scene: Scene, ids: string[]): Scene {
 export function setSelectionFlag(
     scene: Scene,
     ids: string[],
-    flag: 'locked' | 'editorHidden',
+    flag: 'locked' | 'visible',
     value: boolean,
 ): Scene {
     const selected = members(scene, ids);

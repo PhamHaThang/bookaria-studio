@@ -341,7 +341,7 @@ function SceneEditorContent({
             setError(errorMessage(cause));
         }
     }
-    function flagChosen(flag: 'locked' | 'editorHidden', value: boolean) {
+    function flagChosen(flag: 'locked' | 'visible', value: boolean) {
         if (blocked) return;
         try {
             editor.setDraft((current) => setSelectionFlag(current, activeIds, flag, value));
@@ -447,7 +447,7 @@ function SceneEditorContent({
                 event.preventDefault();
                 setSelectedIds(
                     state.editor.draft.objects
-                        .filter((object) => !object.locked && !object.editorHidden)
+                        .filter((object) => !object.locked && object.visible)
                         .map((object) => object.id),
                 );
             }
@@ -1369,7 +1369,6 @@ function SceneEditorContent({
                                 },
                                 visible: original.visible,
                                 locked: original.locked,
-                                editorHidden: original.editorHidden,
                                 groupId: original.groupId,
                                 snapToPaper: original.snapToPaper,
                             });

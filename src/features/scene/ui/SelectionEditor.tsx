@@ -16,11 +16,11 @@ export function SelectionEditor({
     canDuplicate: boolean;
     onDuplicate: () => void;
     onDelete: () => void;
-    onFlag: (flag: 'locked' | 'editorHidden', value: boolean) => void;
+    onFlag: (flag: 'locked' | 'visible', value: boolean) => void;
     onClear: () => void;
 }) {
     const locked = objects.some((object) => object.locked);
-    const hidden = objects.some((object) => object.editorHidden);
+    const hidden = objects.some((object) => !object.visible);
     return (
         <section aria-labelledby="selection-heading" className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
@@ -57,7 +57,7 @@ export function SelectionEditor({
                 <Button
                     variant="secondary"
                     disabled={disabled || locked}
-                    onClick={() => onFlag('editorHidden', !hidden)}
+                    onClick={() => onFlag('visible', hidden)}
                 >
                     {hidden ? (
                         <Eye data-icon="inline-start" />

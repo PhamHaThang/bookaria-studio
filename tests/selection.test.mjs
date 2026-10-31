@@ -38,13 +38,13 @@ test('bulk operations reject a locked member atomically and preserve unrelated o
     const original = scene(text('a'), { ...text('b'), locked: true }, text('c'));
     assert.throws(() => duplicateSelection(original, ['a', 'b'], () => 'copy'), /Mở khóa/);
     assert.throws(() => removeSelection(original, ['a', 'b']), /Mở khóa/);
-    assert.throws(() => setSelectionFlag(original, ['a', 'b'], 'editorHidden', true), /Mở khóa/);
+    assert.throws(() => setSelectionFlag(original, ['a', 'b'], 'visible', false), /Mở khóa/);
     const unlocked = setSelectionFlag(original, ['a', 'b'], 'locked', false);
     assert.equal(unlocked.objects[1].locked, false);
-    const hidden = setSelectionFlag(unlocked, ['a', 'b'], 'editorHidden', true);
+    const hidden = setSelectionFlag(unlocked, ['a', 'b'], 'visible', false);
     assert.deepEqual(
-        hidden.objects.map((o) => o.editorHidden),
-        [true, true, false],
+        hidden.objects.map((o) => o.visible),
+        [false, false, true],
     );
     assert.deepEqual(
         original.objects.map((o) => o.locked),
@@ -157,7 +157,7 @@ test('rotation and uniform scaling act around a common pivot without altering in
     );
     near(actual.angleTo(expected), 0);
     assert.equal(transformSelection([{ ...a, locked: true }, b], delta, false, 'Z'), null);
-    assert.equal(transformSelection([{ ...a, editorHidden: true }, b], delta, false, 'Z'), null);
+    assert.equal(transformSelection([{ ...a, visible: false }, b], delta, false, 'Z'), null);
     assert.equal(transformSelection([a], new Matrix4().makeScale(-1, -1, -1), false, 'XYZ'), null);
 });
 

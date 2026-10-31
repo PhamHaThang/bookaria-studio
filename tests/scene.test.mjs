@@ -40,6 +40,7 @@ test('all seven authoring object types use backend defaults and valid stable ids
             kinds[type] ? asset(kinds[type]) : undefined,
         );
         assert.equal(validatedScene(addObject(empty(), object)).objects[0].type, type);
+        assert.equal(object.visible, type !== 'audio');
         assert.equal(object.snapToPaper, false);
         assert.deepEqual(object.transform.position, [0, 0, 0]);
         if (type === 'model') assert.deepEqual(object.transform.rotation, [90, 0, 0]);

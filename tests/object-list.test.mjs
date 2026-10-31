@@ -36,7 +36,7 @@ test('select-all only includes editable visible results and reports mixed state'
     const objects = [
         text('a'),
         text('b', { locked: true }),
-        text('c', { editorHidden: true }),
+        text('c', { visible: false }),
         text('d'),
     ];
     assert.deepEqual(objectListSelection(objects, ['a', 'b']), {

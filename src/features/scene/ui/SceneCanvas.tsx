@@ -898,7 +898,7 @@ export function SceneCanvas(props: Props) {
                         node.root.scale.fromArray(spec.transform.scale);
                     }
                 }
-                node.root.visible = !spec.editorHidden;
+                node.root.visible = spec.visible;
                 node.billboard.update(
                     camera,
                     facesCamera(spec),
@@ -919,7 +919,7 @@ export function SceneCanvas(props: Props) {
                 selected.every(
                     (node) =>
                         node.status === 'ready' &&
-                        !node.spec.editorHidden &&
+                        node.spec.visible &&
                         !node.spec.locked &&
                         [
                             ...node.spec.transform.position,
@@ -1130,7 +1130,7 @@ export function SceneCanvas(props: Props) {
                 selected[0].status === 'ready' &&
                 facesCamera(selected[0].spec) &&
                 !selected[0].spec.locked &&
-                !selected[0].spec.editorHidden &&
+                selected[0].spec.visible &&
                 !latest.current.disabled
             );
         }
@@ -1363,7 +1363,7 @@ export function SceneCanvas(props: Props) {
                 !node?.textVisual ||
                 !spec ||
                 spec.locked ||
-                spec.editorHidden ||
+                !spec.visible ||
                 !(spec.type === 'label' || spec.type === 'text') ||
                 spec.presentation?.kind !== 'annotation'
             )
@@ -2045,6 +2045,17 @@ export function SceneCanvas(props: Props) {
                 editorGrid.update(settings, pageWidthMm, latest.current.aspect);
             },
             getPreviewView: () => ({
+                viewport: (() => {
+                    const { left, top, width, height } =
+                        renderer.domElement.getBoundingClientRect();
+                    return { left, top, width, height };
+                })(),
+                projection: {
+                    fov: camera.fov,
+                    zoom: camera.zoom,
+                    near: camera.near,
+                    far: camera.far,
+                },
                 position: camera.position.toArray(),
                 target: orbit.target.toArray(),
                 up: camera.up.toArray(),

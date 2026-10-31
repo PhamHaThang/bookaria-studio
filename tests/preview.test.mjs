@@ -137,3 +137,58 @@ test('draft preview refuses dangling rules and pending resources; aborted reads 
         ),
     );
 });
+
+test('preview preserves shared hiding and the hidden audio default without dropping its resource', async () => {
+    const scene = SceneSchema.parse({
+        schemaVersion: 1,
+        objects: [
+            {
+                id: 'text',
+                type: 'text',
+                text: 'Ẩn',
+                transform: {},
+                visible: true,
+                editorHidden: true,
+            },
+            { id: 'audio', type: 'audio', assetId, transform: {} },
+        ],
+    });
+    const payload = await makePreviewPayload(
+        page,
+        book,
+        scene,
+        async () => ({
+            id: assetId,
+            status: 'READY',
+            name: 'Nhạc',
+            type: 'AUDIO',
+            url: 'https://example.com/audio.mp3',
+            sizeBytes: 123,
+            meta: {},
+        }),
+        new AbortController().signal,
+    );
+    assert.deepEqual(
+        payload.page.scene.objects.map((o) => o.visible),
+        [false, false],
+    );
+    assert.ok(payload.page.scene.objects.every((o) => !('editorHidden' in o)));
+    assert.equal(payload.assets[assetId].type, 'AUDIO');
+    const shown = { ...scene, objects: scene.objects.map((o) => ({ ...o, visible: true })) };
+    const next = await makePreviewPayload(
+        page,
+        book,
+        shown,
+        async () => ({
+            id: assetId,
+            status: 'READY',
+            name: 'Nhạc',
+            type: 'AUDIO',
+            url: 'https://example.com/audio.mp3',
+            sizeBytes: 123,
+            meta: {},
+        }),
+        new AbortController().signal,
+    );
+    assert.ok(next.page.scene.objects.every((o) => o.visible));
+});

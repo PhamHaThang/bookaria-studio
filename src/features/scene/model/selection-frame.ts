@@ -10,7 +10,7 @@ export function isPlanarObject(spec: SceneObject) {
 
 /** A flat selection is expressed in its visible plane, including the whole annotation callout. */
 export function planarSelectionFrame(spec: SceneObject, content: THREE.Object3D) {
-    if (!spec.visible || spec.editorHidden || !isPlanarObject(spec)) return;
+    if (!spec.visible || !isPlanarObject(spec)) return;
     content.updateWorldMatrix(true, true);
     if (
         spec.type === 'label' ||

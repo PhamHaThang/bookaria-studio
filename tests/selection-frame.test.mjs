@@ -51,7 +51,7 @@ test('flat text, cards, bubbles, images, videos, hotspots and legacy labels use 
         spec('text', { kind: 'bubble' }),
         spec('image'),
         spec('video'),
-        spec('audio'),
+        { ...spec('audio'), visible: true },
         spec('hotspot'),
         spec('label'),
     ]) {
@@ -73,7 +73,6 @@ test('model, extruded text and hidden objects keep the generic selection path', 
         spec('model'),
         spec('text', { kind: 'extruded' }),
         { ...spec('image'), visible: false },
-        { ...spec('image'), editorHidden: true },
     ]) {
         const content = new Group();
         content.add(mesh('content'));

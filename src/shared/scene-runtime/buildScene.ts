@@ -7,6 +7,7 @@ import type { Action, SceneObject } from '../contracts/scene.schema';
 import { createAudioCard, observeAudio } from '../scene/audio-card';
 import { facesCamera } from '../scene/audio-kind';
 import { createBillboard } from '../scene/billboard';
+import { pageImageSize } from '../scene/page-image-fit';
 import { createTextVisual } from '../scene/text-renderer';
 import { fetchBytes } from './fetchBytes';
 import { InteractionRunner, sleep } from './InteractionRunner';
@@ -349,11 +350,27 @@ export async function buildScene(
         const paper = plane(
             1,
             page.aspect,
-            new THREE.MeshBasicMaterial({ map: background, side: THREE.DoubleSide }),
+            new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                side: THREE.DoubleSide,
+                polygonOffset: true,
+                polygonOffsetFactor: 1,
+                polygonOffsetUnits: 1,
+            }),
         );
-        paper.position.z = -0.002;
+        paper.position.z = -0.003;
         paper.name = 'page-background';
         group.add(paper);
+        const bitmap = background.image as ImageBitmap;
+        const size = pageImageSize(bitmap.width, bitmap.height, page.aspect);
+        const paperImage = plane(
+            size.width,
+            size.height,
+            new THREE.MeshBasicMaterial({ map: background, side: THREE.DoubleSide }),
+        );
+        paperImage.position.copy(paper.position);
+        paperImage.name = 'page-background-image';
+        group.add(paperImage);
         // Sequential loading bounds peak memory and makes cancellation deterministic.
         for (const spec of page.scene.objects) {
             signal.throwIfAborted();

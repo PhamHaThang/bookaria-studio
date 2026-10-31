@@ -297,9 +297,8 @@ export function ObjectEditor({
                             <div className="scene-flags grid gap-3 max-[1200px]:col-[1_/_-1]">
                                 {(
                                     [
-                                        ['visible', 'Hiện khi mở trang'],
+                                        ['visible', 'Hiển thị đối tượng'],
                                         ['billboard', 'Luôn hướng về camera'],
-                                        ['editorHidden', 'Ẩn trong editor'],
                                     ] as const
                                 ).map(([key, label]) => (
                                     <Field

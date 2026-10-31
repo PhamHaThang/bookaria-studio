@@ -5,8 +5,16 @@ import { configureSceneOrbit, stopSceneOrbit } from '@/shared/scene/camera-navig
 import { createPageLighting } from '@/shared/scene/page-lighting';
 import type { PageRuntime } from '@/shared/scene-runtime/buildScene';
 import { beginDolly, type DollyStart, dragDolly } from '../../scene/model/dolly';
+import {
+    framePreviewViewport,
+    type PreviewInsets,
+    type PreviewViewport,
+    previewInsets,
+} from './preview-viewport';
 
 export type PreviewView = {
+    viewport?: PreviewViewport;
+    projection?: { fov: number; zoom: number; near: number; far: number };
     position: [number, number, number];
     target: [number, number, number];
     up: [number, number, number];
@@ -38,10 +46,13 @@ export class LocalPreviewStage {
     private zoomDrag: { id: number; y: number; start: DollyStart } | null = null;
     private initial: PreviewView | undefined;
     private aspect = 1.4;
+    private frameInsets?: PreviewInsets;
+    private viewport?: PreviewViewport;
     private container: HTMLElement;
     constructor(container: HTMLElement, view?: PreviewView, renderer?: THREE.WebGLRenderer) {
         this.container = container;
         this.initial = view;
+        if (view?.projection) Object.assign(this.camera, view.projection);
         this.ownsRenderer = !renderer;
         this.renderer = renderer || new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -89,8 +100,10 @@ export class LocalPreviewStage {
             height = this.container.clientHeight;
         if (!width || !height) return;
         this.renderer.setSize(width, height, false);
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
+        const { left, top } = this.container.getBoundingClientRect();
+        const target = { left, top, width, height };
+        this.frameInsets ??= previewInsets(this.initial?.viewport, target);
+        this.viewport = framePreviewViewport(this.camera, target, this.frameInsets);
         if (!this.active && this.runtime) this.draw(0);
     };
     private contextLost = (event: Event) => {
@@ -297,6 +310,13 @@ export class LocalPreviewStage {
     }
     getView(): PreviewView {
         return {
+            viewport: this.viewport,
+            projection: {
+                fov: this.camera.fov,
+                zoom: this.camera.zoom,
+                near: this.camera.near,
+                far: this.camera.far,
+            },
             position: this.camera.position.toArray(),
             target: this.controls.target.toArray(),
             up: this.camera.up.toArray(),

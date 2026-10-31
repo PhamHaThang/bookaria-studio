@@ -24,7 +24,7 @@ export function transformSelection(
 ): SceneObject[] | null {
     if (
         !delta.elements.every(Number.isFinite) ||
-        before.some((object) => object.locked || object.editorHidden)
+        before.some((object) => object.locked || !object.visible)
     )
         return null;
     const result: SceneObject[] = [];
