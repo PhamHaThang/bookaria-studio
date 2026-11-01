@@ -64,6 +64,7 @@ export class LocalPreviewStage {
         canvas.setAttribute('aria-label', 'Xem trước trang sách 3D');
         canvas.setAttribute('role', 'img');
         canvas.tabIndex = 0;
+        canvas.classList.add('outline-none');
         canvas.style.cssText = 'display:block;width:100%;height:100%;touch-action:none';
         container.append(canvas);
         // OrbitControls caches the up-axis rotation during construction.

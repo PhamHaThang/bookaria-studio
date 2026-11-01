@@ -76,10 +76,10 @@ function ActivePreview({
     const host = useRef<HTMLDivElement>(null);
     const stage = useRef<LocalPreviewStage | null>(null),
         runtime = useRef<PageRuntime | null>(null);
-    const [previewPageId, setPreviewPageId] = useState(page.id);
-    const loadedPageId = useRef(page.id);
     const pages = [...book.pages].sort((a, b) => a.orderIndex - b.orderIndex);
-    const view = useRef(initialView),
+    const [previewPageId, setPreviewPageId] = useState(() => pages[0]?.id || page.id);
+    const loadedPageId = useRef(previewPageId);
+    const view = useRef(previewPageId === page.id ? initialView : undefined),
         muted = useRef(false),
         autoStart = useRef(false);
     const [revision, setRevision] = useState(0),
