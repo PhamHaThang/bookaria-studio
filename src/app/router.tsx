@@ -82,12 +82,6 @@ const AdminCategoryEditPage = lazy(() =>
 const AdminMarkersPage = lazy(() =>
     import('../pages/AdminMarkersPage').then((module) => ({ default: module.AdminMarkersPage })),
 );
-const AdminMarkerCreatePage = lazy(() =>
-    import('../pages/AdminMarkersPage').then((module) => ({
-        default: module.AdminMarkerCreatePage,
-    })),
-);
-
 const HomePage = lazy(() =>
     import('../pages/HomePage').then((module) => ({ default: module.HomePage })),
 );
@@ -231,7 +225,10 @@ const router = createBrowserRouter(
                         <Route path="categories/new" element={<AdminCategoryEditPage />} />
                         <Route path="categories/:categoryId" element={<AdminCategoryEditPage />} />
                         <Route path="markers" element={<AdminMarkersPage />} />
-                        <Route path="markers/new" element={<AdminMarkerCreatePage />} />
+                        <Route
+                            path="markers/new"
+                            element={<Navigate to="/admin/markers?register=1" replace />}
+                        />
                         <Route path="users" element={<AdminUsersPage />} />
                         <Route path="users/new" element={<AdminUserCreatePage />} />
                         <Route path="users/:userId" element={<AdminUserDetailPage />} />

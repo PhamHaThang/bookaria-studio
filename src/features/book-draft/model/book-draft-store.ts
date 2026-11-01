@@ -816,6 +816,38 @@ export class BookDraftStore {
                     : null;
                 this.basePages = current ? { [current.id]: current } : {};
                 this.lastValid = this.basePages;
+                if (current) {
+                    // Marker changes are saved outside scene history. Undo must not restore
+                    // the old marker metadata after the server has acknowledged a change.
+                    const marker = {
+                        markerMode: current.markerMode,
+                        markerNumber: current.markerNumber,
+                        markerScore: current.markerScore,
+                        markerWarnings: current.markerWarnings,
+                        markerReport: current.markerReport,
+                        bookariaMarker: current.bookariaMarker,
+                    };
+                    const updateHistory = (entry: Entry): Entry => ({
+                        ...entry,
+                        working: {
+                            ...entry.working,
+                            pages: entry.working.pages.map((page) =>
+                                page.id === current.id ? { ...page, ...marker } : page,
+                            ),
+                            overrides: entry.working.overrides[current.id]
+                                ? {
+                                      ...entry.working.overrides,
+                                      [current.id]: {
+                                          ...entry.working.overrides[current.id],
+                                          ...marker,
+                                      },
+                                  }
+                                : entry.working.overrides,
+                        },
+                    });
+                    this.past = this.past.map(updateHistory);
+                    this.future = this.future.map(updateHistory);
+                }
                 this.publish({ base: snapshot, working: freshWorking(snapshot), conflict: false });
             } else if (snapshot.revision !== this.state.base?.revision)
                 this.publish({ conflict: true });

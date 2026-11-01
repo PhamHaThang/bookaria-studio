@@ -2,9 +2,11 @@ import axios from 'axios';
 import type { UploadSignature } from '../../../shared/contracts/api/assets.schema';
 
 // A separate transport: never attach the Studio bearer token or API cookies to Cloudinary.
+type UploadTarget = Pick<UploadSignature, 'uploadUrl' | 'fields'>;
+
 const uploadHttp = axios.create({ withCredentials: false, timeout: 300_000 });
 
-export function uploadFormData(signature: UploadSignature, file: File) {
+export function uploadFormData(signature: UploadTarget, file: File) {
     const form = new FormData();
     for (const [key, value] of Object.entries(signature.fields)) {
         if (typeof value !== 'string' && typeof value !== 'number') {
@@ -17,7 +19,7 @@ export function uploadFormData(signature: UploadSignature, file: File) {
 }
 
 export async function uploadFile(
-    signature: UploadSignature,
+    signature: UploadTarget,
     file: File,
     signal: AbortSignal,
     onProgress: (percent: number) => void,

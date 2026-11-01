@@ -152,7 +152,17 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
                     job={job.data}
                     jobError={job.error ? errorMessage(job.error) : null}
                     onCheckJob={() => void job.refetch()}
-                    onRefresh={() => void refresh()}
+                    onPrepare={async () => {
+                        if (!(await store.save()))
+                            throw new Error(
+                                store.getSnapshot().error ||
+                                    'Chưa lưu được bản nháp. Hãy thử lại trước khi áp dụng marker.',
+                            );
+                        const current = store.getPage(page.id);
+                        if (!current) throw new Error('Trang không còn trong bản nháp.');
+                        return current;
+                    }}
+                    onRefresh={refresh}
                     onJob={setJobId}
                     onBusyChange={setMarkerBusy}
                     onClose={() => setMarkerOpen(false)}

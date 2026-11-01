@@ -1,13 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Move, Printer, RefreshCw, RotateCcw } from 'lucide-react';
+import { ExternalLink, Move, Printer, RefreshCw, RotateCcw, ScanLine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '@/shared/api/client';
 import { errorMessage } from '@/shared/api/errors';
 import type { PrintPdfBody } from '@/shared/contracts/api/publish.schema';
+import { layoutMarkerStickerSheets, MARKER_STICKER_SHEET } from '@/shared/contracts/marker.schema';
 import { Alert } from '@/shared/ui/Alert';
 import { Button } from '@/shared/ui/Button';
 import { FormSelect } from '@/shared/ui/FormSelect';
+import {
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { Spinner } from '@/shared/ui/primitives/spinner';
@@ -112,13 +120,36 @@ function Layout({
     useEffect(() => {
         draftRef.current = { versionId: data.versionId, kind, index, placements };
     }, [draftRef, data.versionId, kind, index, placements]);
+    const [setupPageId, setSetupPageId] = useState(data.pages[0]?.pageId ?? '');
     const [error, setError] = useState<string | null>(null);
     const [failedImages, setFailedImages] = useState<string[]>([]);
     const svg = useRef<SVGSVGElement>(null);
     const drag = useRef<{ id: number; x: number; y: number; placement: Placement } | null>(null);
     const sticker = kind === 'MARKER_SHEET';
-    const pages = sticker ? data.pages.filter((p) => p.marker) : data.pages;
-    const page = pages[index];
+    const pages = data.pages;
+    const stickerPages = data.pages.flatMap((p, i) =>
+        p.marker
+            ? [
+                  {
+                      pageId: p.pageId,
+                      pageNumber: i + 1,
+                      markerNumber: p.marker.number,
+                      sizeMm: p.marker.sizeMm,
+                      imageUrl: p.marker.imageUrl,
+                  },
+              ]
+            : [],
+    );
+    const stickerError = stickerPages.some(
+        (p) => !Number.isFinite(p.sizeMm) || p.sizeMm < 34.97 || p.sizeMm > 150,
+    )
+        ? 'Tờ tem hỗ trợ marker có cạnh từ 35 đến 150 mm. Chỉnh kích thước trong editor rồi xuất bản lại.'
+        : null;
+    const sheets = stickerError ? [] : layoutMarkerStickerSheets(stickerPages);
+    const sheetIndex = Math.max(0, Math.min(index, sheets.length - 1));
+    const sheet = sheets[sheetIndex];
+    const sheetStyle = MARKER_STICKER_SHEET;
+    const page = sticker ? undefined : pages[index];
     const width = sticker ? 210 : data.widthMm,
         height = sticker ? 297 : data.heightMm;
     const finiteMargin = sticker ? 0 : 4;
@@ -147,8 +178,9 @@ function Layout({
     const activePlacements = placements.cover ? [placements.cover] : [];
     const problems = sticker ? [] : activePlacements.map(issue).filter(Boolean);
     const currentIssue = qr ? issue(qr) : null;
-    const unavailable = sticker && !pages.length;
-    const invalid = unavailable || problems.length > 0 || Boolean(currentIssue);
+    const unavailable = sticker && !stickerPages.length;
+    const sheetBlocked = unavailable || (sticker && Boolean(stickerError));
+    const invalid = sheetBlocked || problems.length > 0 || Boolean(currentIssue);
     function changeQr(next: Placement) {
         setPlacements((p) => ({ ...p, [key]: next }));
         setError(null);
@@ -184,8 +216,9 @@ function Layout({
     }
     const previewBroken =
         Boolean(!page && !sticker && data.coverUrl && failedImages.includes(data.coverUrl)) ||
-        Boolean(page && failedImages.includes(page.imageUrl)) ||
-        Boolean(marker && failedImages.includes(marker.imageUrl));
+        Boolean(!sticker && page && failedImages.includes(page.imageUrl)) ||
+        Boolean(marker && failedImages.includes(marker.imageUrl)) ||
+        Boolean(sticker && sheet?.items.some((item) => failedImages.includes(item.imageUrl)));
     return (
         <div className="grid grid-cols-[minmax(0,1fr)_300px] gap-5">
             <div className="flex min-w-0 flex-col gap-3">
@@ -193,9 +226,13 @@ function Layout({
                     <div className="flex flex-col gap-1">
                         <h3 className="font-semibold">Bố cục in - Phiên bản {data.versionNo}</h3>
                         <span className="text-muted-foreground text-xs">
-                            {!page
-                                ? 'Bìa - '
-                                : `Trang ${data.pages.findIndex((p) => p.pageId === page.pageId) + 1} -`}
+                            {sticker
+                                ? sheet
+                                    ? `Tờ ${sheetIndex + 1}/${sheets.length} - ${sheet.items.length} tem - `
+                                    : ''
+                                : !page
+                                  ? 'Bìa - '
+                                  : `Trang ${data.pages.findIndex((p) => p.pageId === page.pageId) + 1} - `}
                             {width} × {Number(height.toFixed(1))} mm -{' '}
                             {sticker ? 'Tờ marker A4' : 'Khổ thành phẩm'}
                         </span>
@@ -224,12 +261,44 @@ function Layout({
                         </Tooltip>
                     </div>
                 </div>
-                <div className="flex h-72 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface p-3 [@media(min-height:900px)]:h-96">
+                <div
+                    data-sticker={sticker}
+                    className="flex h-72 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface p-3 data-[sticker=true]:h-[min(42dvh,420px)] [@media(min-height:900px)]:h-96"
+                >
+                    {sheetBlocked && (
+                        <Empty className="h-full">
+                            <EmptyHeader>
+                                <EmptyMedia>
+                                    <ScanLine className="size-8" />
+                                </EmptyMedia>
+                                <EmptyTitle>
+                                    {unavailable ? 'Chưa có tem để in' : 'Chưa thể xếp tem'}
+                                </EmptyTitle>
+                                <EmptyDescription>
+                                    {unavailable ? (
+                                        <>
+                                            Phiên bản {data.versionNo} chưa có trang dùng marker
+                                            Bookaria. Trang dùng ảnh nhận diện riêng không tạo tem
+                                            rời.
+                                        </>
+                                    ) : (
+                                        stickerError
+                                    )}
+                                </EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
+                    )}
                     <svg
                         ref={svg}
+                        data-empty={sheetBlocked}
+                        aria-hidden={sheetBlocked}
                         viewBox={`${-finiteMargin} ${-finiteMargin} ${width + finiteMargin * 2} ${height + finiteMargin * 2}`}
-                        className="size-full select-none"
-                        aria-label={`Bản xem trước bố cục ${page ? `trang ${index + 1}` : 'bìa'}`}
+                        className="size-full select-none data-[empty=true]:hidden"
+                        aria-label={
+                            sticker
+                                ? `Bản xem trước tờ tem ${sheetIndex + 1}`
+                                : `Bản xem trước bố cục ${page ? `trang ${data.pages.findIndex((p) => p.pageId === page.pageId) + 1}` : 'bìa'}`
+                        }
                     >
                         <rect
                             x={-finiteMargin}
@@ -292,15 +361,15 @@ function Layout({
                             <>
                                 <image
                                     href={marker.imageUrl}
-                                    x={sticker ? 18 : marker.xMm}
-                                    y={sticker ? 67 : height - marker.yMm - marker.sizeMm}
+                                    x={marker.xMm}
+                                    y={height - marker.yMm - marker.sizeMm}
                                     width={marker.sizeMm}
                                     height={marker.sizeMm}
                                     onError={() => failImage(marker.imageUrl)}
                                 />
                                 <rect
-                                    x={sticker ? 18 : marker.xMm}
-                                    y={sticker ? 67 : height - marker.yMm - marker.sizeMm}
+                                    x={marker.xMm}
+                                    y={height - marker.yMm - marker.sizeMm}
                                     width={marker.sizeMm}
                                     height={marker.sizeMm}
                                     fill="none"
@@ -309,24 +378,118 @@ function Layout({
                                 />
                             </>
                         )}
-                        {sticker && page && (
-                            <g fill="#252525" fontFamily="sans-serif" fontSize={3.5}>
-                                <text x={18} y={18} fontSize={5}>
-                                    BOOKARIA / TỜ TEM MARKER
+                        {sticker && sheet && (
+                            <g fontFamily="sans-serif" fill="#252525">
+                                <image
+                                    href="/brand/bookaria-symbol.svg"
+                                    x={14}
+                                    y={15.5}
+                                    width={16}
+                                    height={8}
+                                />
+                                <text x={34} y={22} fontSize={6.35}>
+                                    Bookaria
                                 </text>
-                                <text x={18} y={30}>
-                                    {data.title.slice(0, 60)}
+                                <foreignObject x={14} y={31.5} width={130} height={15}>
+                                    <div
+                                        className="line-clamp-2 break-words text-left"
+                                        style={{ fontSize: '4.23px', lineHeight: 1.3 }}
+                                        title={data.title}
+                                    >
+                                        {data.title}
+                                    </div>
+                                </foreignObject>
+                                <text x={14} y={55} fontSize={3} fill="#626262">
+                                    Cắt theo nét đứt. Dán QR lên bìa, marker vào trang tương ứng.
                                 </text>
-                                <text x={18} y={46}>
-                                    Trang{' '}
-                                    {data.pages.findIndex((p) => p.pageId === page.pageId) + 1} |
-                                    Marker #{marker?.number} | Phiên bản {data.versionNo}
+                                <rect
+                                    x={sheetStyle.qrFrame.xMm}
+                                    y={sheetStyle.qrFrame.yMm}
+                                    width={sheetStyle.qrFrame.widthMm}
+                                    height={sheetStyle.qrFrame.heightMm}
+                                    fill="white"
+                                    stroke="#a8a8a8"
+                                    strokeWidth={0.18}
+                                    strokeDasharray="1.2 1"
+                                />
+                                {qrUrl && !failedImages.includes(qrUrl) ? (
+                                    <image
+                                        href={qrUrl}
+                                        x={sheetStyle.qr.xMm}
+                                        y={sheetStyle.qr.yMm}
+                                        width={sheetStyle.qr.sizeMm}
+                                        height={sheetStyle.qr.sizeMm}
+                                        onError={() => failImage(qrUrl)}
+                                    />
+                                ) : (
+                                    <text x={175} y={32} fontSize={3} textAnchor="middle">
+                                        QR sách trong PDF
+                                    </text>
+                                )}
+                                <text x={175} y={53} fontSize={2.8} textAnchor="middle">
+                                    Quét để mở sách
                                 </text>
-                                <text x={18} y={56}>
-                                    Cạnh marker: {marker?.sizeMm.toFixed(1)} mm | In 100%
+                                <text x={175} y={58} fontSize={2.5} textAnchor="middle">
+                                    Dán lên bìa sách
                                 </text>
-                                <text x={18} y={228}>
-                                    Sơ đồ dán và thước đo nằm trong PDF.
+                                {sheet.items.map((item) => (
+                                    <g key={item.pageId}>
+                                        <rect
+                                            x={item.imageXMm - sheetStyle.cutMarginMm}
+                                            y={item.imageYMm - sheetStyle.cutMarginMm}
+                                            width={item.sizeMm + 2 * sheetStyle.cutMarginMm}
+                                            height={item.sizeMm + 2 * sheetStyle.cutMarginMm}
+                                            fill="white"
+                                            stroke="#a8a8a8"
+                                            strokeWidth={0.18}
+                                            strokeDasharray="1.2 1"
+                                        />
+                                        <image
+                                            href={item.imageUrl}
+                                            x={item.imageXMm}
+                                            y={item.imageYMm}
+                                            width={item.sizeMm}
+                                            height={item.sizeMm}
+                                            onError={() => failImage(item.imageUrl)}
+                                        />
+                                        <text
+                                            x={item.xMm + item.widthMm / 2}
+                                            y={item.imageYMm + item.sizeMm + 5}
+                                            textAnchor="middle"
+                                            fontSize={3}
+                                        >
+                                            Trang {item.pageNumber}
+                                        </text>
+                                        <text
+                                            x={item.xMm + item.widthMm / 2}
+                                            y={item.imageYMm + item.sizeMm + 9}
+                                            textAnchor="middle"
+                                            fontSize={2.65}
+                                            fill="#626262"
+                                        >
+                                            Cạnh {Number(item.sizeMm.toFixed(1))} mm
+                                        </text>
+                                    </g>
+                                ))}
+                                <line
+                                    x1={14}
+                                    y1={280}
+                                    x2={196}
+                                    y2={280}
+                                    stroke="#626262"
+                                    strokeWidth={0.12}
+                                />
+                                <text x={14} y={287} fontSize={2.8} fill="#626262">
+                                    In 100% / Actual size. Không chọn Fit to page.
+                                </text>
+                                <text
+                                    x={196}
+                                    y={287}
+                                    fontSize={2.8}
+                                    fill="#626262"
+                                    textAnchor="end"
+                                >
+                                    Phiên bản {data.versionNo} | Tờ {sheetIndex + 1}/{sheets.length}
                                 </text>
                             </g>
                         )}
@@ -426,7 +589,11 @@ function Layout({
                             )}
                     </svg>
                 </div>
-                <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Chọn trang in">
+                <nav
+                    data-empty={sheetBlocked}
+                    className="flex gap-2 overflow-x-auto pb-1 data-[empty=true]:hidden"
+                    aria-label="Chọn trang in"
+                >
                     {!sticker && (
                         <Button
                             size="xs"
@@ -436,22 +603,36 @@ function Layout({
                             Bìa
                         </Button>
                     )}
-                    {pages.map((p, i) => (
-                        <Button
-                            key={p.pageId}
-                            size="xs"
-                            variant={index === i ? 'default' : 'outline'}
-                            aria-label={`Xem trang in ${data.pages.findIndex((x) => x.pageId === p.pageId) + 1}`}
-                            onClick={() => setIndex(i)}
-                        >
-                            {data.pages.findIndex((x) => x.pageId === p.pageId) + 1}
-                        </Button>
-                    ))}
+                    {sticker
+                        ? sheets.map((item, i) => (
+                              <Button
+                                  key={item.items[0]?.pageId || i}
+                                  size="xs"
+                                  variant={sheetIndex === i ? 'default' : 'outline'}
+                                  aria-label={`Xem tờ tem ${i + 1}`}
+                                  onClick={() => setIndex(i)}
+                              >
+                                  Tờ {i + 1} ({item.items.length} tem)
+                              </Button>
+                          ))
+                        : pages.map((p, i) => (
+                              <Button
+                                  key={p.pageId}
+                                  size="xs"
+                                  variant={index === i ? 'default' : 'outline'}
+                                  aria-label={`Xem trang in ${data.pages.findIndex((x) => x.pageId === p.pageId) + 1}`}
+                                  onClick={() => setIndex(i)}
+                              >
+                                  {data.pages.findIndex((x) => x.pageId === p.pageId) + 1}
+                              </Button>
+                          ))}
                 </nav>
-                <p className="text-muted-foreground text-xs">
-                    Xem bố cục thành phẩm. PDF có thêm dấu cắt và một trang trắng sau bìa để in hai
-                    mặt.
-                </p>
+                {!sticker && (
+                    <p className="text-muted-foreground text-xs">
+                        Xem bố cục thành phẩm. PDF có thêm dấu cắt và một trang trắng sau bìa để in
+                        hai mặt.
+                    </p>
+                )}
             </div>
             <div className="flex min-w-0 flex-col gap-4 border-border border-l pl-5">
                 <Button
@@ -574,7 +755,43 @@ function Layout({
                     </p>
                 )}
                 {unavailable && (
-                    <Alert tone="warning">Sách chưa có marker Bookaria để tạo tem.</Alert>
+                    <FieldGroup>
+                        <Field>
+                            <FieldLabel htmlFor="print-marker-setup-page">
+                                Trang cần gắn marker
+                            </FieldLabel>
+                            <FormSelect
+                                id="print-marker-setup-page"
+                                value={setupPageId}
+                                onValueChange={setSetupPageId}
+                                disabled={disabled}
+                                options={data.pages.map((p, i) => ({
+                                    value: p.pageId,
+                                    label: p.title
+                                        ? `Trang ${i + 1} - ${p.title}`
+                                        : `Trang ${i + 1}`,
+                                }))}
+                            />
+                        </Field>
+                        <Button asChild variant="outline" disabled={disabled || !setupPageId}>
+                            <Link
+                                to={`/books/${bookId}/pages/${setupPageId}`}
+                                aria-disabled={disabled || !setupPageId}
+                                tabIndex={disabled || !setupPageId ? -1 : undefined}
+                                onClick={(event) => {
+                                    if (disabled || !setupPageId) event.preventDefault();
+                                    else onClose();
+                                }}
+                            >
+                                <ScanLine data-icon="inline-start" />
+                                Mở trang để gắn marker
+                            </Link>
+                        </Button>
+                        <p className="text-muted-foreground text-xs leading-relaxed">
+                            Trong editor, mở AR Marker và chọn Marker Bookaria. Lưu rồi xuất bản lại
+                            sách để tạo tem. Thêm marker vào kho không tự gắn vào các trang cũ.
+                        </p>
+                    </FieldGroup>
                 )}
                 {(error || currentIssue || problems[0]) && (
                     <Alert tone="danger">{error || currentIssue || problems[0]}</Alert>
@@ -584,9 +801,19 @@ function Layout({
                         Chưa tải được ảnh xem trước. Kiểm tra kết nối và tải lại bố cục.
                     </Alert>
                 )}
-                <p className="text-muted-foreground text-xs">
-                    Thay đổi chỉ áp dụng cho tệp PDF này. In 100% / Actual size, không Fit to page.
-                </p>
+                {sticker && !sheetBlocked && (
+                    <p className="text-muted-foreground text-xs leading-relaxed">
+                        {stickerPages.length} tem trên {sheets.length} tờ A4, kèm QR mở sách để dán
+                        lên bìa. Marker giữ đúng kích thước đã thiết lập. Nội dung AR di chuyển theo
+                        vị trí dán marker.
+                    </p>
+                )}
+                {!sheetBlocked && (
+                    <p className="text-muted-foreground text-xs">
+                        Thay đổi chỉ áp dụng cho tệp PDF này. In 100% / Actual size, không Fit to
+                        page.
+                    </p>
+                )}
             </div>
             {pdf && (
                 <div className="col-span-2 flex items-center justify-between gap-4 rounded-lg border border-border p-4">

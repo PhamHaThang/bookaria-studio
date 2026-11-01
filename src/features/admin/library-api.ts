@@ -5,8 +5,11 @@ import {
     CreateBookariaMarkerBodySchema,
     CreateCategoryBodySchema,
     CreateLibraryAssetBodySchema,
+    ImportBookariaMarkerBodySchema,
     LibraryAssetsQuerySchema,
     MarkerTestResultSchema,
+    MarkerUploadBodySchema,
+    MarkerUploadResultSchema,
     UpdateBookariaMarkerBodySchema,
     UpdateCategoryBodySchema,
     UpdateLibraryAssetBodySchema,
@@ -28,6 +31,30 @@ export function createAdminLibraryApi(http: AxiosInstance) {
         return same(asset, id);
     };
     return {
+        async prepareMarkerUpload(
+            input: z.input<typeof MarkerUploadBodySchema>,
+            signal: AbortSignal,
+        ) {
+            const res = await http.post(
+                '/admin/bookaria-markers/upload-signature',
+                MarkerUploadBodySchema.parse(input),
+                { signal },
+            );
+            expectStatus(res, 200);
+            return readData(res, MarkerUploadResultSchema);
+        },
+        async importMarker(
+            input: z.input<typeof ImportBookariaMarkerBodySchema>,
+            signal: AbortSignal,
+        ) {
+            const res = await http.post(
+                '/admin/bookaria-markers/register',
+                ImportBookariaMarkerBodySchema.parse(input),
+                { signal, timeout: 60_000 },
+            );
+            expectStatus(res, 201);
+            return readData(res, BookariaMarkerSchema);
+        },
         async testMarker(file: File, signal: AbortSignal, onProgress: (percent: number) => void) {
             const res = await http.post('/admin/bookaria-markers/test', file, {
                 signal,

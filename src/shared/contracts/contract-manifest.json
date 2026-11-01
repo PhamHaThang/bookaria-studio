@@ -2,7 +2,7 @@
   "version": 1,
   "zod": "4.6.5",
   "files": {
-    "api/admin.schema.ts": "683ae2644de86c5f82593c832dd6456f5bb2135951c0dd77a386922d19b042b2",
+    "api/admin.schema.ts": "75fc01c3ba668a4aacbdd2fd6a64c972278b6200da95f2e263456a4af9e6a781",
     "api/assets.schema.ts": "675209bf6ba4485a9d2aeae773df88b8100dbf9a53f981865175793d08a4902a",
     "api/auth.schema.ts": "d1ed9f9265a39fcb10298bd76053ba6c405ad99b140c4032591952df8f4ce05e",
     "api/book-draft.schema.ts": "9735cf41f1337746e68ad2f7e4c0206a86a5921fba0b1440e68c434742ab719f",
@@ -17,8 +17,8 @@
     "enums.schema.ts": "735aab626ffdd48416de58e8e6a161683bb9a744a5f162e3b3351eff36640452",
     "error.schema.ts": "da9a1ab3c8a3a8de6ce67c5b23bb905b0011e6376d368085a7eabd15b9299c9e",
     "manifest.schema.ts": "faf3165b23dba2f6f20811191e2adfc1e55a9a4f9035640273cfc9a379ef5928",
-    "marker.schema.ts": "a3a4c6f08fc50c7894daef1155a68d6d7ee1e3f302d78925be5975f9edd7fa39",
-    "routes.schema.ts": "e0afae7b81dc422198ce01f46cbe4b0061e7ec1620643caf54da98e477a98fa9",
+    "marker.schema.ts": "3cbc07a8b53b5da890433e5f2fc7a3762a87799804e5ab46cfc428f09be4afd5",
+    "routes.schema.ts": "7a8f289172c116d04eed63046ec983be03905655c9e24c8fb545e97dd868b131",
     "scene.schema.ts": "dee65a2a2d2146e60d5db1f7c2e991156f3fae9e554c0849dab61b17b894cf1b"
   }
 }

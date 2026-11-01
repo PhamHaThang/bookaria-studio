@@ -31,7 +31,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives
 import { assetsApi } from '../../assets';
 import { uploadFile } from '../../assets/api/upload-file';
 import { auth, useAuth } from '../../auth';
-import { bookKeys } from '../../books';
 import { compileMarker } from '../api/compile-marker';
 import { type MindCheckpoint, prepareMarkerUpload } from '../model/marker-upload';
 import { pageKeys, pagesApi } from '../model/pages';
@@ -67,6 +66,7 @@ export function ArMarkerDialog({
     job,
     jobError,
     onCheckJob,
+    onPrepare,
     onRefresh,
     onJob,
     onBusyChange,
@@ -79,7 +79,8 @@ export function ArMarkerDialog({
     job?: Job;
     jobError?: string | null;
     onCheckJob: () => void;
-    onRefresh: () => void;
+    onPrepare: () => Promise<Page>;
+    onRefresh: () => Promise<void>;
     onJob: (id: string | null) => void;
     onBusyChange: (value: boolean) => void;
     onClose: () => void;
@@ -128,13 +129,7 @@ export function ArMarkerDialog({
         };
     }, []);
     const currentSession = () => alive.current && auth.store.getState().user?.id === user?.id;
-    async function refresh() {
-        await Promise.all([
-            cache.invalidateQueries({ queryKey: pageKeys.all }),
-            cache.invalidateQueries({ queryKey: bookKeys.all }),
-        ]);
-    }
-    async function run(action: (signal: AbortSignal) => Promise<boolean>) {
+    async function run(action: (signal: AbortSignal, currentPage: Page) => Promise<boolean>) {
         if (guard.current || disabled || scoring) return;
         guard.current = true;
         const active = new AbortController();
@@ -144,11 +139,21 @@ export function ArMarkerDialog({
         setNotice(null);
         setProgress(0);
         try {
-            const close = await action(active.signal);
+            setStage('Đang lưu bản nháp…');
+            const currentPage = await onPrepare();
             if (!currentSession() || active.signal.aborted) return;
-            await refresh();
+            const close = await action(active.signal, currentPage);
             if (!currentSession() || active.signal.aborted) return;
-            if (close) onClose();
+            await onRefresh();
+            if (!currentSession() || active.signal.aborted) return;
+            if (close) {
+                toast.success(
+                    mode === 'BOOKARIA_MARKER'
+                        ? 'Đã áp dụng marker Bookaria.'
+                        : 'Đã tắt nhận diện AR cho trang.',
+                );
+                onClose();
+            }
         } catch (cause) {
             if (currentSession() && !active.signal.aborted)
                 toast.error(errorMessage(cause), { id: errorToastId, duration: 6000 });
@@ -169,7 +174,7 @@ export function ArMarkerDialog({
     }
     async function apply() {
         if (!dirty) return;
-        await run(async (signal) => {
+        await run(async (signal, currentPage) => {
             if (mode === 'NONE') {
                 setStage('Đang tắt nhận diện AR…');
                 const result = await pagesApi.update(page.id, { noAr: true });
@@ -198,7 +203,7 @@ export function ArMarkerDialog({
                 return true;
             }
             const markerMindPublicId = await prepareMarkerUpload({
-                source: page.image.url,
+                source: currentPage.image.url,
                 signal,
                 checkpoint: checkpoint.current,
                 onCheckpoint: (value) => {

@@ -853,3 +853,36 @@ describe('autosave exit boundaries', () => {
         assert.equal(disk.size, 0);
     });
 });
+
+it('refreshes saved marker metadata without losing scene history or reverting markers on undo/redo', async () => {
+    const { store, remote, getSnapshot, setRemote } = await fixture();
+    store.setScene(p1, withText('First edit'));
+    store.setScene(p1, withText('Latest edit'));
+    assert.equal(await store.save(), true);
+    const marker = {
+        markerMode: 'BOOKARIA_MARKER',
+        markerNumber: 7,
+        markerScore: null,
+        markerWarnings: [],
+        markerReport: null,
+        bookariaMarker: { number: 7, transform: { x: 0.2, y: -0.4, size: 45 / 210 } },
+    };
+    remote.set(p1, { ...remote.get(p1), ...marker });
+    const snapshot = getSnapshot();
+    setRemote({
+        ...snapshot,
+        revision: 'd'.repeat(64),
+        pages: snapshot.pages.map((p) => (p.id === p1 ? { ...p, ...marker } : p)),
+    });
+    await store.readLatest(false);
+    assert.equal(store.getPage(p1).markerMode, 'BOOKARIA_MARKER');
+    assert.equal(store.getPage(p1).scene.objects[0].text, 'Latest edit');
+    assert.equal(store.getSnapshot().dirty, false);
+    store.undo();
+    assert.equal(store.getPage(p1).scene.objects[0].text, 'First edit');
+    assert.equal(store.getPage(p1).markerNumber, 7);
+    assert.deepEqual(store.getPage(p1).bookariaMarker, marker.bookariaMarker);
+    store.redo();
+    assert.equal(store.getPage(p1).scene.objects[0].text, 'Latest edit');
+    assert.equal(store.getPage(p1).markerMode, 'BOOKARIA_MARKER');
+});
