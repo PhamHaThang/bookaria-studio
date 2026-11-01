@@ -6,7 +6,13 @@ import { facesCamera } from '@/shared/scene/audio-kind';
 import { Disclosure, DisclosureGroup } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
-import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import {
+    Field,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+    FieldSet,
+} from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { Switch } from '@/shared/ui/primitives/switch';
 import { errorMessage } from '../../../shared/api/errors';
@@ -215,70 +221,66 @@ export function ObjectEditor({
                             variant="panel"
                             className="property-section"
                         >
-                            <div>
-                                {' '}
-                                {object.type === 'model' && (
-                                    <>
-                                        <Field orientation="contents">
-                                            <FieldLabel htmlFor={`${id}-animation`}>
-                                                Chuyển động
-                                                <FormSelect
-                                                    id={`${id}-animation`}
-                                                    value={object.animation?.clip || ''}
-                                                    onValueChange={(value) =>
-                                                        patch({
-                                                            animation: value
-                                                                ? {
-                                                                      clip: value,
-                                                                      loop: false,
-                                                                      autoplay: true,
-                                                                  }
-                                                                : undefined,
-                                                        })
-                                                    }
-                                                    options={[
-                                                        {
-                                                            value: '',
-                                                            label: 'Không chạy animation',
-                                                        },
-                                                        ...(clips.map((clip) => ({
-                                                            value: clip,
-                                                            label: clip,
-                                                        })) ?? []),
-                                                    ]}
+                            <FieldGroup className="gap-4">
+                                <Field className="gap-2">
+                                    <FieldLabel htmlFor={`${id}-animation`} className="m-0">
+                                        Chuyển động
+                                    </FieldLabel>
+                                    <FormSelect
+                                        id={`${id}-animation`}
+                                        value={object.animation?.clip || ''}
+                                        onValueChange={(value) =>
+                                            patch({
+                                                animation: value
+                                                    ? { clip: value, loop: false, autoplay: true }
+                                                    : undefined,
+                                            })
+                                        }
+                                        options={[
+                                            { value: '', label: 'Không chạy animation' },
+                                            ...clips.map((clip) => ({ value: clip, label: clip })),
+                                        ]}
+                                    />
+                                    {!clips.length && (
+                                        <FieldDescription className="m-0 text-xs">
+                                            Mô hình này chưa có clip animation trong metadata.
+                                        </FieldDescription>
+                                    )}
+                                </Field>
+                                {object.animation && (
+                                    <FieldSet className="gap-3" aria-label="Tùy chọn animation">
+                                        {(['autoplay', 'loop'] as const).map((key) => (
+                                            <Field
+                                                orientation="horizontal"
+                                                className="min-h-6 gap-2"
+                                                key={key}
+                                            >
+                                                <Checkbox
+                                                    id={`${id}-animation-${key}`}
+                                                    checked={object.animation?.[key]}
+                                                    onCheckedChange={(checked) => {
+                                                        if (object.animation)
+                                                            patch({
+                                                                animation: {
+                                                                    ...object.animation,
+                                                                    [key]: checked === true,
+                                                                },
+                                                            });
+                                                    }}
                                                 />
-                                            </FieldLabel>
-                                        </Field>
-                                        {!clips.length && (
-                                            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
-                                                Mô hình này chưa có clip animation trong metadata.
-                                            </p>
-                                        )}
-                                        {object.animation &&
-                                            (['autoplay', 'loop'] as const).map((key) => (
-                                                <Field orientation="contents" key={key}>
-                                                    <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                                        <Checkbox
-                                                            checked={object.animation?.[key]}
-                                                            onCheckedChange={(checked) => {
-                                                                if (object.animation)
-                                                                    patch({
-                                                                        animation: {
-                                                                            ...object.animation,
-                                                                            [key]: checked === true,
-                                                                        },
-                                                                    });
-                                                            }}
-                                                        />
-                                                        {key === 'loop'
-                                                            ? 'Lặp animation'
-                                                            : 'Tự chạy animation'}
-                                                    </FieldLabel>
-                                                </Field>
-                                            ))}
-                                    </>
+                                                <FieldLabel
+                                                    htmlFor={`${id}-animation-${key}`}
+                                                    className="m-0 font-normal leading-5"
+                                                >
+                                                    {key === 'loop'
+                                                        ? 'Lặp animation'
+                                                        : 'Tự chạy animation'}
+                                                </FieldLabel>
+                                            </Field>
+                                        ))}
+                                    </FieldSet>
                                 )}
-                            </div>
+                            </FieldGroup>
                         </Disclosure>
                     )}
                     <Disclosure
