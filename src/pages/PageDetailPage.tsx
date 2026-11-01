@@ -134,7 +134,7 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
 
     return (
         <div className="page-editor-screen" data-mode="content">
-            <Feedback success={createdNotice} warning={createdWarning} />
+            <Feedback success={createdNotice} warning={createdWarning} warningMode="toast" />
             <SceneEditor
                 page={page}
                 book={book}

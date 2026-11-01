@@ -1,7 +1,5 @@
 import {
-    Check,
     ChevronDown,
-    Circle,
     Download,
     FileText,
     Layers,
@@ -11,14 +9,12 @@ import {
     Save,
     Send,
     Share2,
-    TriangleAlert,
     Undo2,
     Upload,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { pageWidthMm } from '@/shared/contracts/marker.schema';
-import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { Disclosure } from '@/shared/ui/Disclosure';
@@ -79,6 +75,7 @@ import {
 import { useSceneAssets } from '../model/use-scene-assets';
 import { useSceneDraft } from '../model/use-scene-draft';
 import { AssetPicker } from './AssetPicker';
+import { EditorSaveStatus } from './EditorSaveStatus';
 import { InteractionEditor } from './InteractionEditor';
 import { NavigationGuard } from './NavigationGuard';
 import { ObjectEditor } from './ObjectEditor';
@@ -638,47 +635,20 @@ function SceneEditorContent({
                     disabled={blocked}
                 />
                 <div className="editor-save-actions flex min-w-0 items-center justify-end gap-3">
-                    <Tooltip delayDuration={250}>
-                        <TooltipTrigger asChild>
-                            <span
-                                role="status"
-                                tabIndex={validationMessage ? 0 : undefined}
-                                className={cn(
-                                    'flex w-32 shrink-0 items-center justify-end gap-1.5 whitespace-nowrap text-muted-foreground text-xs max-[1280px]:w-5',
-                                    validationMessage && 'text-destructive',
-                                )}
-                            >
-                                {validationMessage ? (
-                                    <TriangleAlert
-                                        className="size-3.5 shrink-0"
-                                        aria-hidden="true"
-                                    />
-                                ) : editor.saving || settingsBusy ? (
-                                    <Spinner className="size-3.5" aria-hidden="true" />
-                                ) : editor.dirty || settingsDirty ? (
-                                    <Circle className="size-2 fill-current" aria-hidden="true" />
-                                ) : (
-                                    <Check className="size-3.5" aria-hidden="true" />
-                                )}
-                                <span className="max-[1280px]:sr-only">
-                                    {validationMessage
-                                        ? 'Kiểm tra thông số'
-                                        : editor.saving || settingsBusy
-                                          ? editor.autosaving
-                                              ? 'Đang tự lưu…'
-                                              : 'Đang lưu…'
-                                          : editor.dirty || settingsDirty
-                                            ? 'Chưa lưu thay đổi'
-                                            : 'Đã lưu sách'}
-                                </span>
-                            </span>
-                        </TooltipTrigger>
-                        {validationMessage && (
-                            <TooltipContent side="bottom" sideOffset={8}>
-                                {validationMessage}
-                            </TooltipContent>
-                        )}
-                    </Tooltip>
+                    <EditorSaveStatus
+                        dirty={editor.dirty || settingsDirty}
+                        saving={editor.saving || settingsBusy}
+                        autosaving={editor.autosaving}
+                        conflict={editor.conflict}
+                        uncertain={editor.uncertain}
+                        error={editor.error}
+                        validationMessage={validationMessage}
+                        disabled={disabled || settingsBusy}
+                        backupDisabled={!validation.success}
+                        onCheck={() => void editor.readLatest(false)}
+                        onDownload={exportScene}
+                        onReload={() => setResetting(true)}
+                    />
                     <Tooltip delayDuration={250}>
                         <TooltipTrigger asChild>
                             <span className="inline-flex shrink-0">
@@ -781,6 +751,7 @@ function SceneEditorContent({
                             const file = event.currentTarget.files?.[0];
                             event.currentTarget.value = '';
                             if (!file) return;
+                            setError(null);
                             try {
                                 if (file.size > 1024 * 1024)
                                     throw new Error('Tệp JSON tối đa 1 MB.');
@@ -800,70 +771,12 @@ function SceneEditorContent({
                 </div>
             </header>
             <Feedback
-                error={error || editor.error}
+                error={error}
                 success={editor.notice}
                 warning={editor.warning}
+                errorMode="toast"
+                warningMode="toast"
             />
-            {(editor.conflict || editor.uncertain) && (
-                <Alert tone="warning" className="my-4">
-                    <p>
-                        {editor.uncertain
-                            ? 'Chưa xác nhận được kết quả lưu. Hãy kiểm tra trước khi tiếp tục chỉnh sửa hoặc gửi lại.'
-                            : 'Máy chủ có nội dung mới hơn. Bản đang sửa vẫn được giữ; tải bản sao trước khi chọn tải nội dung mới nhất.'}
-                    </p>
-                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                        {editor.uncertain && (
-                            <Button
-                                variant="secondary"
-                                aria-busy={editor.busy}
-                                disabled={disabled || settingsBusy || editor.busy}
-                                onClick={() => {
-                                    void editor.readLatest(false);
-                                }}
-                            >
-                                {editor.busy && (
-                                    <Spinner data-icon="inline-start" aria-hidden="true" />
-                                )}
-                                Kiểm tra kết quả lưu
-                            </Button>
-                        )}
-                        <Button
-                            variant="outline"
-                            disabled={!validation.success || editor.busy}
-                            onClick={() => {
-                                if (!validation.success) return;
-                                const blob = new Blob(
-                                    [
-                                        JSON.stringify(
-                                            { pageId: page.id, scene: validation.data },
-                                            null,
-                                            2,
-                                        ),
-                                    ],
-                                    { type: 'application/json' },
-                                );
-                                const url = URL.createObjectURL(blob),
-                                    link = document.createElement('a');
-                                link.href = url;
-                                link.download = `bookaria-scene-${page.id}.json`;
-                                link.click();
-                                setTimeout(() => URL.revokeObjectURL(url), 1000);
-                            }}
-                        >
-                            Tải bản đang sửa
-                        </Button>
-                        {editor.conflict && (
-                            <Button
-                                variant="secondary"
-                                disabled={editor.busy || disabled || settingsBusy}
-                                onClick={() => setResetting(true)}
-                            >
-                                Tải nội dung mới nhất
-                            </Button>
-                        )}
-                    </div>
-                </Alert>
-            )}
             <SceneWorkbench>
                 <div hidden={panel === 'preview'} className="[&[hidden]]:hidden">
                     <SceneEditorSidebar

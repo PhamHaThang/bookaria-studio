@@ -7,16 +7,36 @@ export function Feedback({
     success,
     warning,
     successMode = 'toast',
+    errorMode = 'inline',
+    warningMode = 'inline',
     className,
 }: {
     error?: string | null;
     success?: string | null;
     warning?: string | null;
     successMode?: 'toast' | 'inline';
+    errorMode?: 'toast' | 'inline';
+    warningMode?: 'toast' | 'inline';
     className?: string;
 }) {
     const id = useId();
     const shown = useRef<string | null>(null);
+    useEffect(() => {
+        const toastId = `${id}-error`;
+        if (errorMode !== 'toast' || !error) return;
+        toast.error(error, { id: toastId, duration: 6000 });
+        return () => {
+            toast.dismiss(toastId);
+        };
+    }, [error, errorMode, id]);
+    useEffect(() => {
+        const toastId = `${id}-warning`;
+        if (warningMode !== 'toast' || !warning) return;
+        toast.warning(warning, { id: toastId, duration: 6000 });
+        return () => {
+            toast.dismiss(toastId);
+        };
+    }, [warning, warningMode, id]);
     useEffect(() => {
         if (error) toast.dismiss(id);
         if (!success) {
@@ -29,12 +49,12 @@ export function Feedback({
     }, [success, error, successMode, id]);
     return (
         <>
-            {error && (
+            {error && errorMode === 'inline' && (
                 <Alert tone="danger" className={className}>
                     {error}
                 </Alert>
             )}
-            {warning && (
+            {warning && warningMode === 'inline' && (
                 <Alert tone="warning" className={className}>
                     {warning}
                 </Alert>

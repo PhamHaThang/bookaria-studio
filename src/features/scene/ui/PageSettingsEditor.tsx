@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Eye, ImagePlus, RotateCcw } from 'lucide-react';
 import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { Feedback } from '@/shared/ui/Feedback';
@@ -543,7 +544,7 @@ export function PageSettingsEditor({
                                     checkpoint.current = null;
                                     setError(null);
                                 } catch (cause) {
-                                    setError(errorMessage(cause));
+                                    toast.error(errorMessage(cause));
                                 }
                             }}
                         />
@@ -618,7 +619,7 @@ export function PageSettingsEditor({
                                                             }));
                                                             setError(null);
                                                         } catch (cause) {
-                                                            setError(errorMessage(cause));
+                                                            toast.error(errorMessage(cause));
                                                         }
                                                     }}
                                                     onReset={() => resetAudio(key)}
@@ -664,7 +665,7 @@ export function PageSettingsEditor({
                                 Áp dụng lên mô hình 3D. Đối tượng 2D không bị ảnh hưởng.
                             </FieldDescription>
                         </Field>
-                        <Feedback error={error} />
+                        <Feedback error={error} errorMode="toast" />
                     </FieldGroup>
                 </fieldset>
                 <footer className="flex shrink-0 flex-col gap-3 p-4">
@@ -740,7 +741,6 @@ export function PageSettingsEditor({
                     onClose={cancelLeave}
                     returnFocus={leaveOpener.current}
                 >
-                    <Feedback error={error} className="mb-0" />
                     <div className="flex flex-wrap justify-end gap-2">
                         <Button
                             variant="outline"

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, FileUp, RefreshCw, Upload } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { AUDIO_TAG_OPTIONS } from '@/shared/scene/audio-kind';
 import { Feedback } from '@/shared/ui/Feedback';
 import { FormSelect } from '@/shared/ui/FormSelect';
@@ -94,7 +95,7 @@ export function AssetUploadView({
             setFile(selected);
             setName(selected.name.replace(/\.[^.]+$/, '').slice(0, 150));
         } catch (cause) {
-            if (version.current === generation) setError(errorMessage(cause));
+            if (version.current === generation) toast.error(errorMessage(cause));
         } finally {
             if (version.current === generation) setReading(false);
         }
@@ -308,7 +309,7 @@ export function AssetUploadView({
                                 </FieldDescription>
                             )}
                         </Field>
-                        <Feedback error={error} />
+                        <Feedback error={error} errorMode="toast" />
                         {stage && (
                             <div role="status" className="flex flex-col gap-2 text-sm">
                                 <span className="flex items-center gap-2">

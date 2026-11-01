@@ -521,7 +521,6 @@ export function PageStrip({
                                             locked={locked}
                                             first={menuIndex <= 0}
                                             last={menuIndex >= (listing.data?.length || 0) - 1}
-                                            error={error}
                                             onRename={() =>
                                                 requestPageAction('Đổi tên trang', () => {
                                                     setMenu(menu);
@@ -596,9 +595,9 @@ export function PageStrip({
                     {stage || 'Đang cập nhật trang…'}
                 </p>
             )}
-            {!menu && <Feedback error={error} />}
+            <Feedback error={error} errorMode="toast" />
             {uncertain && (
-                <div className="page-strip-feedback m-0 px-2 py-2 text-[length:12px] text-muted-foreground">
+                <div className="page-strip-feedback absolute bottom-[calc(100%+12px)] left-1/2 w-80 max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-xl border border-border bg-surface p-4 text-muted-foreground text-xs shadow-lg">
                     <p>
                         Yêu cầu có thể đã được nhận. Tải lại danh sách và kiểm tra trang vừa thao
                         tác trước khi tạo tiếp.
@@ -636,7 +635,6 @@ export function PageStrip({
                         }
                     }}
                 >
-                    <Feedback error={error} />
                     <p>
                         Xóa “{menu.title || `Trang ${menu.orderIndex + 1}`}” và nội dung của trang
                         khỏi bản nháp?
@@ -767,7 +765,6 @@ export function PageStrip({
                                     />
                                 </Field>
                             </FieldGroup>
-                            <Feedback error={error} />
                             <DialogFooter className="mx-0 mb-0 flex-row justify-end gap-2 rounded-none border-0 bg-transparent p-0">
                                 <DialogClose asChild>
                                     <Button

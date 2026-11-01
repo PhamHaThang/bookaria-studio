@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/shared/ui/Button';
+import { Feedback } from '@/shared/ui/Feedback';
 import {
     AlertDialog,
     AlertDialogContent,
@@ -121,11 +122,7 @@ export function useSaveBeforeAction({
                         {intent.label}”.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
-                {error && (
-                    <p role="alert" className="m-0 text-destructive text-sm">
-                        {error}
-                    </p>
-                )}
+                <Feedback error={error} errorMode="toast" />
                 <div className="flex justify-end gap-2">
                     <Button variant="outline" disabled={busy} onClick={cancel}>
                         Hủy

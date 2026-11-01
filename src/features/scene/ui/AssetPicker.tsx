@@ -585,11 +585,7 @@ export function AssetPicker({
                             <X />
                         </Button>
                     </header>
-                    {error && (
-                        <div className="shrink-0 px-6 pt-4">
-                            <Feedback error={error} />
-                        </div>
-                    )}
+                    <Feedback error={error} errorMode="toast" />
                     {mode === 'upload' ? (
                         <AssetUploadView
                             type={type}

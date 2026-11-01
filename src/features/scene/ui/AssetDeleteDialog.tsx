@@ -83,7 +83,7 @@ export function AssetDeleteDialog({
             returnFocus={returnFocus}
             className="[&_[data-slot=alert]]:mb-0"
         >
-            <Feedback error={error} />
+            <Feedback error={error} errorMode="toast" />
             {usages.length > 0 && (
                 <div className="mt-3 text-muted-foreground text-sm">
                     <p>Đang được dùng tại:</p>

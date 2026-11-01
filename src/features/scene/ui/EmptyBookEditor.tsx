@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, BookOpen, Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { Feedback } from '@/shared/ui/Feedback';
 import type { BookDetail } from '../../../shared/contracts/dto.schema';
 import { Button } from '../../../shared/ui/Button';
@@ -10,6 +11,7 @@ import { useBookDraft } from '../../book-draft/ui/BookDraftProvider';
 import { bookKeys } from '../../books';
 import { BookInfoDialog } from '../../books/ui/BookInfoDialog';
 import { AddPagesDialog } from '../../pages/ui/AddPagesDialog';
+import { EditorSaveStatus } from './EditorSaveStatus';
 import { NavigationGuard } from './NavigationGuard';
 import { useSaveBeforeAction } from './use-save-before-action';
 
@@ -30,6 +32,7 @@ export function EmptyBookEditor({ book }: { book: BookDetail }) {
     const [infoBusy, setInfoBusy] = useState(false),
         [infoDirty, setInfoDirty] = useState(false);
     const [target, setTarget] = useState<string | null>(null);
+    const [resetting, setResetting] = useState(false);
     const addAnchor = useRef<HTMLButtonElement | null>(null),
         infoAnchor = useRef<HTMLButtonElement | null>(null);
     useEffect(() => {
@@ -85,6 +88,17 @@ export function EmptyBookEditor({ book }: { book: BookDetail }) {
                     {book.title}
                 </Button>
                 <div className="flex items-center gap-2">
+                    <EditorSaveStatus
+                        dirty={state.dirty}
+                        saving={state.saving}
+                        autosaving={state.autosaving}
+                        conflict={state.conflict}
+                        uncertain={state.uncertain}
+                        error={state.error}
+                        disabled={busy || infoBusy}
+                        onCheck={() => void store.readLatest(false)}
+                        onReload={() => setResetting(true)}
+                    />
                     <Button
                         variant="outline"
                         disabled={!state.canUndo || (state.saving && !state.autosaving)}
@@ -107,7 +121,34 @@ export function EmptyBookEditor({ book }: { book: BookDetail }) {
                     </Button>
                 </div>
             </header>
-            <Feedback error={state.error} success={state.notice} />
+            <Feedback success={state.notice} />
+            {resetting && (
+                <ConfirmationDialog
+                    title="Đọc lại sách đã lưu?"
+                    description="Bản nháp sách và thay đổi các trang sẽ được thay bằng nội dung đã lưu trên máy chủ."
+                    busy={state.saving}
+                    onClose={() => setResetting(false)}
+                >
+                    <div className="mt-6 flex justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            disabled={state.saving}
+                            onClick={() => setResetting(false)}
+                        >
+                            Giữ bản đang sửa
+                        </Button>
+                        <Button
+                            disabled={state.saving}
+                            onClick={async () => {
+                                await store.readLatest(true);
+                                setResetting(false);
+                            }}
+                        >
+                            Xác nhận tải nội dung
+                        </Button>
+                    </div>
+                </ConfirmationDialog>
+            )}
             {beforeInfo.dialog}
             <div className="m-auto flex max-w-140 flex-col items-center gap-5 px-8 py-20 text-center">
                 <BookOpen className="size-14 text-muted-foreground" aria-hidden="true" />

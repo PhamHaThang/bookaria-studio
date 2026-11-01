@@ -1,5 +1,4 @@
 import { ArrowLeft, ArrowRight, Copy, Pencil, Trash2 } from 'lucide-react';
-import { Feedback } from '@/shared/ui/Feedback';
 import {
     DropdownMenuContent,
     DropdownMenuGroup,
@@ -13,7 +12,6 @@ export function PageActionsMenu({
     locked,
     first,
     last,
-    error,
     onRename,
     onMove,
     onDuplicate,
@@ -23,7 +21,6 @@ export function PageActionsMenu({
     locked: boolean;
     first: boolean;
     last: boolean;
-    error: string | null;
     onRename: () => void;
     onMove: (direction: -1 | 1) => void;
     onDuplicate: () => void;
@@ -101,7 +98,6 @@ export function PageActionsMenu({
                     Xóa trang
                 </DropdownMenuItem>
             </DropdownMenuGroup>
-            <Feedback error={error} />
         </DropdownMenuContent>
     );
 }
