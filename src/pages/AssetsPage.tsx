@@ -203,7 +203,10 @@ export function AssetsPage() {
                     <h1>Tài nguyên</h1>
                     <p>Quản lý hình ảnh, mô hình 3D, âm thanh và video của bạn.</p>
                 </div>
-                <Link to="/assets/upload" className={buttonStyles()}>
+                <Link
+                    to={{ pathname: '/assets/upload', search: params.toString() }}
+                    className={buttonStyles()}
+                >
                     <Plus size={18} aria-hidden="true" />
                     Tải tài nguyên
                 </Link>
@@ -311,7 +314,13 @@ export function AssetsPage() {
                                     </Button>
                                 ) : (
                                     query.scope === 'mine' && (
-                                        <Link className={buttonStyles()} to="/assets/upload">
+                                        <Link
+                                            className={buttonStyles()}
+                                            to={{
+                                                pathname: '/assets/upload',
+                                                search: params.toString(),
+                                            }}
+                                        >
                                             Tải tài nguyên đầu tiên
                                         </Link>
                                     )

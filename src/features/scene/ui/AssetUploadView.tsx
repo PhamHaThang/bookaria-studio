@@ -33,13 +33,18 @@ export function AssetUploadView({
     onChoose,
     onBack,
     onBusyChange,
+    onDirtyChange,
+    onUploaded,
 }: {
     type: AssetType;
     pending: boolean;
     onChoose: (asset: Asset) => void;
     onBack: () => void;
     onBusyChange: (busy: boolean) => void;
+    onDirtyChange?: (dirty: boolean) => void;
+    onUploaded?: (processing: boolean) => void;
 }) {
+    const [dragging, setDragging] = useState(false);
     const [controlsTarget, setControlsTarget] = useState<HTMLDivElement | null>(null);
     const { user } = useAuth(),
         cache = useQueryClient();
@@ -58,9 +63,13 @@ export function AssetUploadView({
     const url = useFileUrl(file),
         busy = Boolean(stage) || pending;
     useEffect(() => {
-        onBusyChange(Boolean(stage));
+        onBusyChange(Boolean(stage) || reading);
         return () => onBusyChange(false);
-    }, [stage, onBusyChange]);
+    }, [stage, reading, onBusyChange]);
+    useEffect(() => {
+        onDirtyChange?.(Boolean(file) && !assetId);
+        return () => onDirtyChange?.(false);
+    }, [file, assetId, onDirtyChange]);
     useEffect(
         () => () => {
             active.current?.abort();
@@ -80,7 +89,7 @@ export function AssetUploadView({
             void cache.invalidateQueries({ queryKey: profileKey(user?.id || '') });
     }, [result.data?.status, cache, user?.id]);
     async function selectFile(selected: File | null) {
-        if (!selected || pending || active.current || assetId) return;
+        if (!selected || pending || active.current || assetId || checkpoint?.uploaded) return;
         const generation = ++version.current;
         setReading(true);
         setError(null);
@@ -138,9 +147,10 @@ export function AssetUploadView({
                     assetKeys.detail(user?.id || '', uploaded.asset.id),
                     uploaded.asset,
                 );
-            setAssetId(uploaded.asset.id);
+            if (!onUploaded) setAssetId(uploaded.asset.id);
             void cache.invalidateQueries({ queryKey: assetKeys.lists(user?.id || '') });
             void cache.invalidateQueries({ queryKey: profileKey(user?.id || '') });
+            onUploaded?.(uploaded.processing);
         } catch (cause) {
             if (!controller.signal.aborted) setError(errorMessage(cause));
         } finally {
@@ -178,7 +188,28 @@ export function AssetUploadView({
             />
             <div className="min-h-0 flex-1 px-6 py-4">
                 <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_280px] grid-rows-[minmax(0,1fr)] gap-6">
-                    <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background">
+                    <section
+                        aria-label="Xem trước tài nguyên"
+                        className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background data-[dragging=true]:border-primary"
+                        data-dragging={dragging}
+                        onDragOver={(event) => {
+                            event.preventDefault();
+                            if (!busy && !assetId && !checkpoint?.uploaded) setDragging(true);
+                        }}
+                        onDragLeave={(event) => {
+                            if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                                setDragging(false);
+                        }}
+                        onDrop={(event) => {
+                            event.preventDefault();
+                            setDragging(false);
+                            if (event.dataTransfer.files.length !== 1) {
+                                toast.error('Mỗi lần tải một tệp. Hãy chọn một tệp để tiếp tục.');
+                                return;
+                            }
+                            void selectFile(event.dataTransfer.files[0] || null);
+                        }}
+                    >
                         {url ? (
                             <AssetMediaPreview
                                 type={type}
@@ -192,12 +223,13 @@ export function AssetUploadView({
                                     aria-hidden="true"
                                 />
                                 <h3 className="font-semibold text-lg">
-                                    {type === 'MODEL'
-                                        ? 'Xem mô hình trước khi thêm'
-                                        : 'Chọn tệp của bạn'}
+                                    {type === 'MODEL' ? 'Xem trước mô hình 3D' : 'Chọn tệp của bạn'}
                                 </h3>
                                 <p className="max-w-80 text-muted-foreground text-sm">
                                     {importHint[type]}
+                                </p>
+                                <p className="m-0 text-muted-foreground text-xs">
+                                    Hoặc kéo thả một tệp vào đây.
                                 </p>
                                 <Button
                                     variant="secondary"
@@ -209,8 +241,8 @@ export function AssetUploadView({
                                 </Button>
                             </div>
                         )}
-                    </div>
-                    <FieldGroup className="min-h-0 gap-3 [&_[data-slot=alert]]:m-0 [&_[data-slot=alert]]:py-2 [&_[data-slot=input]]:min-h-10 [&_[data-slot=input]]:text-sm">
+                    </section>
+                    <FieldGroup className="min-h-0 gap-4 overflow-y-auto [&_[data-slot=alert]]:m-0 [&_[data-slot=alert]]:py-2 [&_[data-slot=field-label]]:m-0 [&_[data-slot=input]]:mt-0 [&_[data-slot=input]]:min-h-10 [&_[data-slot=input]]:text-sm [&_[data-slot=select-trigger]]:mt-0">
                         <Field>
                             <FieldLabel htmlFor="scene-import-name">Tên tài nguyên</FieldLabel>
                             <Input
@@ -226,15 +258,9 @@ export function AssetUploadView({
                                     Boolean(assetId) ||
                                     Boolean(checkpoint?.uploaded)
                                 }
-                                placeholder="Ví dụ: Khủng long nhỏ"
+                                placeholder="Tên tài nguyên"
                             />
                         </Field>
-                        {type === 'MODEL' && (
-                            <div
-                                ref={setControlsTarget}
-                                className="min-w-0 border-border border-y py-3"
-                            />
-                        )}
                         <Field
                             data-collapsed={Boolean(stage || assetId || checkpoint?.uploaded)}
                             className="data-[collapsed=true]:hidden"
@@ -368,7 +394,9 @@ export function AssetUploadView({
                 <p className="text-muted-foreground text-xs">
                     {assetId
                         ? 'Tài nguyên đã lưu trong thư viện của bạn.'
-                        : 'Tải lên trước, sau đó chọn thêm vào trang.'}
+                        : onUploaded
+                          ? 'Tệp được lưu vào tài nguyên cá nhân của bạn.'
+                          : 'Tải lên trước, sau đó chọn thêm vào trang.'}
                 </p>
                 <div className="flex items-center gap-3">
                     {stage && stage !== 'completing' && (
@@ -378,7 +406,7 @@ export function AssetUploadView({
                     )}
                     {!busy && (
                         <Button variant="ghost" onClick={onBack}>
-                            {assetId ? 'Về tài nguyên của tôi' : 'Về thư viện'}
+                            {onUploaded ? 'Hủy' : assetId ? 'Về tài nguyên của tôi' : 'Về thư viện'}
                         </Button>
                     )}
                     {assetId ? (
