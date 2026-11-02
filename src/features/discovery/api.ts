@@ -7,6 +7,7 @@ import {
     PublicBooksQuerySchema,
 } from '../../shared/contracts/api/public.schema';
 import { HttpUrlSchema, IdSchema, SlugSchema } from '../../shared/contracts/common.schema';
+import { PublicBookSchema } from '../../shared/contracts/dto.schema';
 
 export function createDiscoveryHttp(baseURL: string) {
     // XHR always includes same-origin cookies; the fetch adapter maps false to omit.
@@ -28,6 +29,11 @@ export function createDiscoveryApi(http: AxiosInstance) {
             });
             expectStatus(response, 200);
             return readPage(response, PublicBookCardSchema);
+        },
+        async book(slug: string, signal?: AbortSignal) {
+            const response = await http.get(`/public/books/${SlugSchema.parse(slug)}`, { signal });
+            expectStatus(response, 200);
+            return readData(response, PublicBookSchema);
         },
         async author(id: string, signal?: AbortSignal) {
             const response = await http.get(`/public/authors/${IdSchema.parse(id)}`, { signal });

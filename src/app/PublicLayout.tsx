@@ -1,5 +1,6 @@
 import { Suspense, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { PublicBookDialog } from '@/features/discovery/PublicBookDialog';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { PublicHeader } from './PublicHeader';
 import { SiteFooter } from './SiteFooter';
@@ -49,6 +50,7 @@ export function PublicLayout() {
                 </Suspense>
             </main>
             <SiteFooter />
+            <PublicBookDialog />
         </div>
     );
 }
