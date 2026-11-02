@@ -1,24 +1,21 @@
-import { Moon, Sun } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
 import { useTheme } from '@/shared/theme/ThemeProvider';
-import { Button } from './primitives/button';
+import { Spin } from './primitives/spin';
 
 export function ThemeSwitcher({ floating = false }: { floating?: boolean }) {
     const { theme, setPreference } = useTheme();
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     const label = nextTheme === 'dark' ? 'Chuyển sang giao diện tối' : 'Chuyển sang giao diện sáng';
-    const Icon = nextTheme === 'dark' ? Moon : Sun;
     return (
-        <Button
+        <Spin
             variant={floating ? 'outline' : 'ghost'}
             size={floating ? 'icon' : 'icon-sm'}
-            className={`${floating ? 'size-11 shadow-[var(--shadow-popover)]' : undefined} rounded-[9999px]`}
+            className={cn('rounded-[9999px]', floating && 'size-11 shadow-[var(--shadow-popover)]')}
             aria-label={label}
             title={label}
-            aria-pressed={theme === 'dark'}
+            toggled={theme === 'dark'}
             onClick={() => setPreference(nextTheme)}
-        >
-            <Icon aria-hidden="true" />
-        </Button>
+        />
     );
 }
 
