@@ -269,7 +269,7 @@ export function AssetsPage() {
                         {listing.isFetching ? ' · Đang cập nhật…' : ''}
                     </p>
                     {listing.data.data.length === 0 ? (
-                        <Empty className="empty-state border-border border-t px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
+                        <Empty className="empty-state px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
                             <EmptyHeader>
                                 <EmptyMedia>
                                     <FolderOpen size={38} aria-hidden="true" />

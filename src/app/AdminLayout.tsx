@@ -72,6 +72,9 @@ export function AdminLayout() {
                 </Link>
                 <div className="flex items-center gap-4">
                     <HomeLink />
+                    <Button variant="ghost" size="sm" asChild>
+                        <Link to="/books">Studio</Link>
+                    </Button>
                     <HeaderAccountActions />
                 </div>
             </header>

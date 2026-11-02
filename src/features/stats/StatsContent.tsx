@@ -61,7 +61,7 @@ export function StatsContent({ stats }: { stats: BookStats }) {
                 bản; bản xem trước không được tính.
             </p>
             {!hasEvents && (
-                <Empty className="empty-state border-border border-t px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
+                <Empty className="empty-state px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
                     <EmptyHeader>
                         <EmptyTitle>
                             <h2>Chưa có sự kiện đọc trong khoảng này</h2>

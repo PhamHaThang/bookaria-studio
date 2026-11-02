@@ -166,7 +166,7 @@ export function ExplorePage() {
                     {listing.data.data.length ? (
                         <PublicBooks books={listing.data.data} />
                     ) : (
-                        <Empty className="empty-state border-border border-t px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
+                        <Empty className="empty-state px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
                             <EmptyHeader>
                                 <EmptyTitle>
                                     <h2>

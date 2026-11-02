@@ -223,7 +223,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         {listing.isFetching && <span>Đang cập nhật…</span>}
                     </div>
                     {listing.data.data.length === 0 ? (
-                        <Empty className="empty-state border-border border-t px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
+                        <Empty className="empty-state px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
                             <EmptyHeader>
                                 <EmptyMedia>
                                     <BookOpen size={38} aria-hidden="true" />
@@ -269,8 +269,8 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         <ul
                             className={
                                 trash
-                                    ? 'book-list m-0 list-none border-t-[1px] border-t-border p-0 [border-top-style:solid]'
-                                    : 'book-list book-gallery m-0 mx-auto grid max-w-375 list-none grid-cols-[repeat(auto-fill,_minmax(240px,_1fr))] gap-[22px] border-0 border-[transparent] border-t-[1px] border-t-border border-solid p-0 [border-top-style:solid] max-[700px]:grid-cols-[repeat(auto-fill,_minmax(210px,_1fr))] max-[700px]:gap-[14px]'
+                                    ? 'book-list m-0 list-none p-0'
+                                    : 'book-list book-gallery m-0 mx-auto grid max-w-375 list-none grid-cols-[repeat(auto-fill,_minmax(240px,_1fr))] gap-[22px] p-0 max-[700px]:grid-cols-[repeat(auto-fill,_minmax(210px,_1fr))] max-[700px]:gap-[14px]'
                             }
                         >
                             {!trash && (

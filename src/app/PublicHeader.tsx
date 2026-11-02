@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { auth, useAuth } from '@/features/auth/model/session';
 import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
 import { BookariaLogo, bookariaLogoLinkStyles } from '@/shared/ui/BookariaLogo';
@@ -12,6 +12,7 @@ import {
 } from '@/shared/ui/primitives/navigation-menu';
 
 import { HeaderAccountActions } from './HeaderAccountActions';
+import { getStudioSection } from './studio-navigation';
 
 const destinations = [
     { to: '/', label: 'Trang chủ' },
@@ -23,6 +24,9 @@ export function PublicHeader() {
     const { pathname } = useLocation();
     const { user, status } = useAuth();
     const signedIn = status === 'authenticated' && user !== null;
+    const links = signedIn
+        ? [...destinations.slice(0, 2), { to: '/books', label: 'Studio' }, ...destinations.slice(2)]
+        : destinations;
 
     useEffect(() => {
         // Session recovery personalizes the header; public content never waits for it.
@@ -47,18 +51,21 @@ export function PublicHeader() {
                     className="justify-self-start max-sm:order-3 max-sm:col-span-full max-sm:w-full max-sm:pt-2"
                 >
                     <NavigationMenuList>
-                        {destinations.map(({ to, label }) => (
-                            <NavigationMenuItem key={to}>
-                                <NavigationMenuLink
-                                    active={pathname === to || pathname.startsWith(`${to}/`)}
-                                    asChild
-                                >
-                                    <NavLink to={to} end={to === '/'}>
-                                        {label}
-                                    </NavLink>
-                                </NavigationMenuLink>
-                            </NavigationMenuItem>
-                        ))}
+                        {links.map(({ to, label }) => {
+                            const active =
+                                to === '/books'
+                                    ? getStudioSection(pathname) !== null
+                                    : pathname === to || pathname.startsWith(`${to}/`);
+                            return (
+                                <NavigationMenuItem key={to}>
+                                    <NavigationMenuLink active={active} asChild>
+                                        <Link to={to} aria-current={active ? 'page' : undefined}>
+                                            {label}
+                                        </Link>
+                                    </NavigationMenuLink>
+                                </NavigationMenuItem>
+                            );
+                        })}
                     </NavigationMenuList>
                 </NavigationMenu>
                 <div className="flex items-center justify-end gap-3">

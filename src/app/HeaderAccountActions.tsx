@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Library, LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import { LogOut, ShieldCheck, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { auth, useAuth } from '@/features/auth/model/session';
@@ -175,12 +175,6 @@ function SignedInActions({
                     </DropdownMenuGroup>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
-                        <DropdownMenuItem asChild disabled={signingOut}>
-                            <Link to="/books" onClick={() => changePanel('account', false)}>
-                                <Library aria-hidden="true" />
-                                Sách của tôi
-                            </Link>
-                        </DropdownMenuItem>
                         <DropdownMenuItem asChild disabled={signingOut}>
                             <Link to="/profile" onClick={() => changePanel('account', false)}>
                                 <UserRound aria-hidden="true" />

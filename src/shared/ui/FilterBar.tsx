@@ -22,7 +22,7 @@ export function FilterBar({
             variant="line"
             spacing={4}
             aria-label={label}
-            className="mb-6 w-full justify-start border-border border-b"
+            className="mb-6 w-full justify-start"
         >
             {options.map((option) => (
                 <ToggleGroupItem key={option.value} value={option.value}>
