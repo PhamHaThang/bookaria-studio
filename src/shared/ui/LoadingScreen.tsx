@@ -32,7 +32,7 @@ export function LoadingScreen({
                     width={96}
                     height={49}
                     className={cn(
-                        'h-auto w-24 motion-safe:animate-[bookaria-loading-pulse_1.8s_ease-in-out_infinite]',
+                        'h-auto w-24 [filter:var(--logo-filter)] motion-safe:animate-[bookaria-loading-pulse_1.8s_ease-in-out_infinite]',
                         compact && 'w-30',
                     )}
                 />

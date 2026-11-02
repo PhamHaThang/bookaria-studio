@@ -18,7 +18,6 @@ import {
     FieldLabel,
 } from '../../../shared/ui/primitives/field';
 import { Input } from '../../../shared/ui/primitives/input';
-import { Separator } from '../../../shared/ui/primitives/separator';
 import { type ImportSource, selectedPages } from '../model/import-source';
 import { ImportPageCard } from './ImportPageCard';
 import { ImportPreviewDialog } from './ImportPreviewDialog';
@@ -160,7 +159,7 @@ export function PdfPagesDialog({
                             aria-label="Chọn trang PDF"
                             className="relative min-h-0 w-72 shrink-0 overflow-y-auto overscroll-contain border-border border-l p-6"
                         >
-                            <FieldGroup className="gap-5 [container-type:normal]">
+                            <FieldGroup className="gap-3 [container-type:normal]">
                                 <Field orientation="horizontal" className="min-h-6 gap-3">
                                     <Checkbox
                                         id="pdf-select-all"
@@ -180,7 +179,6 @@ export function PdfPagesDialog({
                                         Chọn tất cả
                                     </FieldLabel>
                                 </Field>
-                                <Separator />
                                 <Field className="min-w-0 gap-2" data-invalid={Boolean(error)}>
                                     <FieldLabel htmlFor="pdf-page-range" className="mb-0">
                                         Chọn theo số trang

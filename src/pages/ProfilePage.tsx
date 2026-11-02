@@ -106,7 +106,7 @@ function ProfileForm({
                     </Field>
                     <Field orientation="contents">
                         <FieldLabel htmlFor="profile-organization">
-                            Đơn vị / trường học
+                            Tổ chức
                             <Input
                                 id="profile-organization"
                                 autoComplete="organization"

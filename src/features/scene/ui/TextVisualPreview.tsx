@@ -7,6 +7,7 @@ import { annotationConnectorSide } from '@/shared/scene/annotation-connector';
 import { createBillboard } from '@/shared/scene/billboard';
 import type { TextVisualColors } from '@/shared/scene/text-renderer';
 import { createTextVisual, disposeTextVisual } from '@/shared/scene/text-renderer';
+import { observeTheme } from '@/shared/theme/observe-theme';
 import { Button } from '@/shared/ui/primitives/button';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import {
@@ -603,8 +604,23 @@ export function TextVisualPreview({
                     });
             },
         };
+        const stopTheme = observeTheme(() => {
+            const colors = getComputedStyle(element);
+            scene.background = new THREE.Color(colors.getPropertyValue('--editor-ground').trim());
+            const replacement = new THREE.GridHelper(
+                8,
+                80,
+                colors.getPropertyValue('--editor-grid').trim(),
+                colors.getPropertyValue('--editor-grid').trim(),
+            );
+            grid.geometry.dispose();
+            grid.geometry = replacement.geometry;
+            (replacement.material as THREE.Material).dispose();
+            invalidate();
+        });
         invalidate();
         return () => {
+            stopTheme();
             disposed = true;
             ++version;
             controller?.abort();

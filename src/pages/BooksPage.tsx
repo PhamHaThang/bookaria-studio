@@ -139,7 +139,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         ]}
                     />
                     <form
-                        className="books-toolbar mb-6 flex items-center gap-3 rounded-[8px] border border-border border-solid bg-surface p-2 max-[760px]:grid max-[760px]:grid-cols-[minmax(0,_1fr)_auto] max-[700px]:flex-wrap max-[760px]:gap-3 [&_label]:m-0 [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
+                        className="books-toolbar mb-8 flex items-center gap-3 bg-surface py-1 max-[760px]:grid max-[760px]:grid-cols-[minmax(0,_1fr)_auto] max-[700px]:flex-wrap max-[760px]:gap-3 [&_label]:m-0 [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
                         key={`${query.q}-${query.sort}`}
                         onSubmit={(event) => {
                             event.preventDefault();
@@ -187,7 +187,9 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                     />
                                 </FieldLabel>
                             </Field>
-                            <Button type="submit">Tìm sách</Button>
+                            <Button type="submit" className="min-h-11">
+                                Tìm sách
+                            </Button>
                         </FieldGroup>
                     </form>
                 </>
@@ -250,7 +252,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                     (query.q || query.status ? (
                                         <ActionButton
                                             variant="plain"
-                                            className="inline-flex min-h-11 items-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-primary [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px]"
+                                            className="inline-flex min-h-11 items-center gap-2 border-0 bg-transparent px-0 py-1 font-semibold text-primary [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1"
                                             type="button"
                                             onClick={() => setParams({})}
                                         >
@@ -354,7 +356,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                         {trash ? (
                                             <ActionButton
                                                 variant="plain"
-                                                className="row-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-primary max-[760px]:col-[3] max-[760px]:row-[2] max-[760px]:min-h-11 max-[760px]:text-[length:var(--text-xs)] [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_&]:col-[2] [.book-gallery_&]:row-[3] [.book-gallery_&]:self-end [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px] [.book-row_&]:whitespace-nowrap"
+                                                className="row-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-0 bg-transparent px-0 py-1 font-semibold text-primary max-[760px]:col-[3] max-[760px]:row-[2] max-[760px]:min-h-11 max-[760px]:text-[length:var(--text-xs)] [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.book-gallery_&]:col-[2] [.book-gallery_&]:row-[3] [.book-gallery_&]:self-end [.book-row_&]:whitespace-nowrap"
                                                 type="button"
                                                 disabled={restore.isPending}
                                                 aria-label={`Khôi phục ${book.title}`}
@@ -368,7 +370,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                         ) : (
                                             <ActionButton
                                                 variant="plain"
-                                                className="danger-text relative row-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-0 border-[transparent] border-solid bg-[transparent] px-0 py-1 font-semibold text-button text-destructive max-[760px]:col-[3] max-[760px]:row-[2] max-[760px]:min-h-11 max-[760px]:text-[length:var(--text-xs)] [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.account-actions_&]:text-[length:12px] max-[700px]:[.account-actions_>_&]:min-w-[30px] max-[700px]:[.account-actions_>_&]:flex-[0_0_30px] max-[700px]:[.account-actions_>_&]:gap-0 max-[700px]:[.account-actions_>_&]:p-[5px] max-[700px]:[.account-actions_>_&]:text-[length:0] max-[700px]:[.account-actions_>_&_svg]:w-[18px] [.book-gallery_&]:col-[2] [.book-gallery_&]:row-[3] [.book-gallery_&]:self-end [.book-gallery_.book-actions_&]:min-h-7 [.book-gallery_.book-actions_&]:p-[3px] [.book-row_&]:whitespace-nowrap"
+                                                className="danger-text relative row-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-0 bg-transparent px-0 py-1 font-semibold text-destructive max-[760px]:col-[3] max-[760px]:row-[2] max-[760px]:min-h-11 max-[760px]:text-[length:var(--text-xs)] [&:hover:not(:disabled)]:underline [&:hover:not(:disabled)]:underline-offset-1 [.book-gallery_&]:col-[2] [.book-gallery_&]:row-[3] [.book-gallery_&]:self-end [.book-row_&]:whitespace-nowrap"
                                                 type="button"
                                                 aria-label={`Chuyển ${book.title} vào thùng rác`}
                                                 onClick={() => {

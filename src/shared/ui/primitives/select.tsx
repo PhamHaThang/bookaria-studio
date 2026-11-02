@@ -36,7 +36,7 @@ function SelectTrigger({
             data-slot="select-trigger"
             data-size={size}
             className={cn(
-                "mt-2 flex w-full min-w-0 items-center justify-between gap-2 rounded-[var(--radius-md)] border border-input bg-surface px-3 py-2 text-left font-normal text-[length:var(--text-md)] text-foreground outline-none transition-colors hover:border-[var(--border-input-hover)] focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset disabled:cursor-not-allowed disabled:bg-surface disabled:text-muted-foreground aria-invalid:border-danger-foreground aria-invalid:focus-visible:ring-danger-foreground data-[size=default]:min-h-[var(--control-height)] data-[size=sm]:min-h-[var(--control-height-sm)] data-placeholder:text-muted-foreground [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:flex-1 [&_[data-slot=select-value]]:truncate [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+                "mt-2 flex w-full min-w-0 items-center justify-between gap-2 rounded-[var(--radius-control)] border border-input bg-surface px-4 py-2 text-left font-normal text-[length:var(--text-md)] text-foreground outline-none transition-colors hover:border-[var(--border-input-hover)] focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset disabled:cursor-not-allowed disabled:bg-surface disabled:text-muted-foreground aria-invalid:border-danger-foreground aria-invalid:focus-visible:ring-danger-foreground data-[size=default]:min-h-[var(--control-height)] data-[size=sm]:min-h-[var(--control-height-sm)] data-placeholder:text-muted-foreground [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:flex-1 [&_[data-slot=select-value]]:truncate [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
                 className,
             )}
             {...props}
@@ -65,7 +65,7 @@ function SelectContent({
                 data-slot="select-content"
                 data-align-trigger={position === 'item-aligned'}
                 className={cn(
-                    'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 relative z-50 max-h-[min(320px,var(--radix-select-content-available-height))] min-w-36 max-w-[calc(100vw-16px)] origin-(--radix-select-content-transform-origin) overflow-hidden rounded-[var(--radius-md)] bg-popover text-popover-foreground shadow-[var(--shadow-popover)] outline-none duration-100 data-[state=closed]:animate-out data-[state=open]:animate-in motion-reduce:animate-none',
+                    'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 relative z-50 max-h-[min(320px,var(--radix-select-content-available-height))] min-w-36 max-w-[calc(100vw-16px)] origin-(--radix-select-content-transform-origin) overflow-hidden rounded-[var(--radius-popover)] border border-border bg-popover text-popover-foreground shadow-[var(--shadow-popover)] outline-none duration-100 data-[state=closed]:animate-out data-[state=open]:animate-in motion-reduce:animate-none',
                     position === 'popper' &&
                         'data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1',
                     className,

@@ -30,7 +30,7 @@ const tabsListVariants = cva(
         variants: {
             variant: {
                 default: 'border border-border bg-surface',
-                line: 'gap-4 bg-transparent',
+                line: 'gap-6 bg-transparent',
                 navigation: 'w-full flex-col items-stretch gap-1 bg-transparent p-0',
             },
         },

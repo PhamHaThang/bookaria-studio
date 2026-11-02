@@ -79,7 +79,7 @@ function AssetMetadataForm({ asset, onSaved }: { asset: Asset; onSaved: () => Pr
     }
     return (
         <form
-            className="editor-form asset-metadata-form w-full max-w-180 rounded-[var(--radius-lg)] border border-border border-solid bg-surface p-6 p-8 max-[1100px]:max-w-180 max-[540px]:p-5 max-[760px]:px-5 max-[760px]:py-6 [&_.feedback]:mb-6"
+            className="editor-form asset-metadata-form w-full max-w-180 rounded-[var(--radius-lg)] border border-border border-solid bg-surface p-8 max-[540px]:p-5 max-[760px]:px-5 max-[760px]:py-6 [&_.feedback]:mb-6"
             onSubmit={submit}
             aria-busy={mutation.isPending}
         >
@@ -299,7 +299,7 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
             <div
                 className={
                     asset.scope === 'library'
-                        ? 'asset-detail-layout asset-detail-readonly grid grid-cols-[minmax(0,_1fr)_minmax(280px,_420px)] grid-cols-[minmax(0,_720px)] items-start gap-8 max-[1100px]:grid-cols-[minmax(0,_1fr)]'
+                        ? 'asset-detail-layout asset-detail-readonly grid grid-cols-[minmax(0,_720px)] items-start gap-8 max-[1100px]:grid-cols-[minmax(0,_1fr)]'
                         : 'asset-detail-layout grid grid-cols-[minmax(0,_1fr)_minmax(280px,_420px)] items-start gap-8 max-[1100px]:grid-cols-[minmax(0,_1fr)]'
                 }
             >

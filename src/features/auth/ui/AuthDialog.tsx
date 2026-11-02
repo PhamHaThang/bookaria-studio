@@ -92,7 +92,7 @@ export function AuthDialog() {
         >
             <DialogContent
                 showCloseButton={false}
-                className="max-h-[calc(100dvh-48px)] overflow-y-auto"
+                className="max-h-[calc(100dvh-48px)] max-w-[min(416px,calc(100vw-32px))] overflow-y-auto p-8 [--control-height:48px] [&_.button]:min-h-11"
                 onCloseAutoFocus={(event) => {
                     event.preventDefault();
                     if (origin.current?.isConnected) origin.current.focus({ preventScroll: true });

@@ -50,7 +50,7 @@ function AlertDialogContent({
                 data-slot="alert-dialog-content"
                 data-size={size}
                 className={cn(
-                    'group/alert-dialog-content data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 fixed top-1/2 left-1/2 z-50 grid w-full max-w-[min(480px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-[var(--radius-lg)] border border-border bg-popover p-8 text-popover-foreground outline-none duration-100 data-[state=closed]:animate-out data-[state=open]:animate-in motion-reduce:animate-none',
+                    'group/alert-dialog-content data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 fixed top-1/2 left-1/2 z-50 grid w-full max-w-[min(480px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-[var(--radius-dialog)] border border-border bg-popover p-6 text-popover-foreground outline-none duration-100 data-[state=closed]:animate-out data-[state=open]:animate-in motion-reduce:animate-none!',
                     className,
                 )}
                 {...props}
@@ -77,7 +77,7 @@ function AlertDialogFooter({ className, ...props }: React.ComponentProps<'div'>)
         <div
             data-slot="alert-dialog-footer"
             className={cn(
-                '-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end',
+                'mt-2 flex flex-col-reverse gap-2 border-border border-t pt-5 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end',
                 className,
             )}
             {...props}
@@ -106,7 +106,7 @@ function AlertDialogTitle({
         <AlertDialogPrimitive.Title
             data-slot="alert-dialog-title"
             className={cn(
-                'm-0 font-medium text-base sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2',
+                'm-0 font-semibold text-lg sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2',
                 className,
             )}
             {...props}

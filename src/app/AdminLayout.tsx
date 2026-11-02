@@ -13,7 +13,7 @@ import type { CSSProperties } from 'react';
 import { Suspense, useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { AdminAccess } from '@/features/admin/AdminAccess';
-import { BookariaLogo } from '@/shared/ui/BookariaLogo';
+import { BookariaLogo, bookariaLogoLinkStyles } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import {
@@ -57,11 +57,13 @@ export function AdminLayout() {
 
     return (
         <div className="admin-shell min-h-dvh bg-background">
-            <header className="admin-topbar sticky top-0 z-20 flex min-h-18 items-center justify-between gap-8 border-border border-b bg-surface px-8">
+            <header className="admin-topbar sticky top-0 z-20 flex min-h-16 items-center justify-between gap-8 border-border border-b bg-surface px-8">
                 <Link
                     to="/"
                     aria-label="Bookaria - Trang chủ"
-                    className="inline-flex items-center gap-4 rounded-md text-foreground no-underline [&_.bookaria-logo]:w-32"
+                    className={bookariaLogoLinkStyles(
+                        'inline-flex items-center gap-4 rounded-md text-foreground no-underline [&_.bookaria-logo]:w-32',
+                    )}
                 >
                     <BookariaLogo />
                     <span className="border-border border-l pl-4 text-muted-foreground text-sm">
@@ -75,12 +77,12 @@ export function AdminLayout() {
             </header>
             <AdminAccess>
                 <SidebarProvider
-                    className="admin-body min-h-[calc(100dvh-72px)]"
+                    className="admin-body min-h-[calc(100dvh-64px)]"
                     style={{ '--sidebar-width': '248px' } as CSSProperties}
                 >
                     <Sidebar
                         collapsible="none"
-                        className="h-auto shrink-0 border-border border-r px-3 py-6"
+                        className="sticky top-16 h-[calc(100dvh-64px)] shrink-0 self-start border-border border-r px-3 py-6"
                     >
                         <SidebarContent>
                             <SidebarGroup className="p-0">
@@ -110,7 +112,7 @@ export function AdminLayout() {
                             </SidebarGroup>
                         </SidebarContent>
                     </Sidebar>
-                    <main id="main" className="admin-main min-w-0 flex-1 px-8 pt-9 pb-15">
+                    <main id="main" className="admin-main min-w-0 flex-1 px-10 pt-10 pb-16">
                         <Suspense fallback={<LoadingScreen message="Đang mở trang quản trị…" />}>
                             <Outlet />
                         </Suspense>

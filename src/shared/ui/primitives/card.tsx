@@ -21,7 +21,7 @@ function Card({
             className={cn(
                 variant === 'collection'
                     ? 'group/card text-card-foreground [--card-spacing:1rem]'
-                    : 'group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card py-(--card-spacing) text-card-foreground text-sm [--card-spacing:--spacing(4)] has-[>img:first-child]:pt-0 has-data-[slot=card-footer]:pb-0 data-[size=sm]:has-data-[slot=card-footer]:pb-0 data-[size=sm]:[--card-spacing:--spacing(3)] *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl',
+                    : 'group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-[var(--radius-card)] border border-border bg-card py-(--card-spacing) text-card-foreground text-sm [--card-spacing:--spacing(6)] has-[>img:first-child]:pt-0 has-data-[slot=card-footer]:pb-0 data-[size=sm]:has-data-[slot=card-footer]:pb-0 data-[size=sm]:[--card-spacing:--spacing(3)] *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl',
                 className,
             )}
             {...props}
@@ -57,7 +57,7 @@ function CardTitle({
         <Comp
             data-slot="card-title"
             className={cn(
-                'font-medium text-base leading-snug group-data-[size=sm]/card:text-sm',
+                'font-semibold text-lg leading-snug group-data-[size=sm]/card:text-sm',
                 className,
             )}
             {...props}

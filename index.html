@@ -7,6 +7,15 @@
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
+    <script>
+      (() => {
+        let preference = 'system';
+        try { preference = localStorage.getItem('bookaria.theme') || 'system'; } catch {}
+        const dark = preference === 'dark' || (preference !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      })();
+    </script>
     <title>Bookaria Studio</title>
     <style>
       #root > .app-boot {
@@ -18,13 +27,15 @@
         justify-content: center;
         gap: 32px;
         padding: 48px 24px;
-        background: #fff;
-        color: #626262;
+        background: var(--bg-canvas, #fff);
+        color: var(--text-muted, #60646c);
         font: 14px/1.6 "Be Vietnam Pro", "Segoe UI", sans-serif;
         text-align: center;
       }
+      html.dark { background: #111113; color-scheme: dark; --bg-canvas: #111113; --text-muted: #b0b4ba; }
       .app-boot-brand { display: flex; flex-direction: column; align-items: center; gap: 24px; }
       .app-boot img { display: block; height: auto; }
+      html.dark .app-boot img { filter: invert(1); }
       .app-boot p { margin: 0; }
       @keyframes bookaria-loading-pulse {
         0%, 100% { opacity: 1; }

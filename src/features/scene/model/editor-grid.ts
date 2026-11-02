@@ -69,6 +69,20 @@ export function createEditorGrid(
     return {
         grid,
         update,
+        recolor(nextColors: { center: Color; line: Color }) {
+            if (disposed) return;
+            colors.center.copy(nextColors.center);
+            colors.line.copy(nextColors.line);
+            const replacement = new GridHelper(
+                layout.size,
+                layout.divisions,
+                colors.center,
+                colors.line,
+            );
+            grid.geometry.dispose();
+            grid.geometry = replacement.geometry;
+            (replacement.material as LineBasicMaterial).dispose();
+        },
         dispose() {
             if (disposed) return;
             disposed = true;

@@ -55,7 +55,7 @@ export function ExplorePage() {
                 </div>
             </div>
             <form
-                className="discovery-filters grid grid-cols-[repeat(4,_minmax(0,_1fr))] gap-4 border-b-[1px] border-b-border pb-6 [border-bottom-style:solid] max-[640px]:grid-cols-[minmax(0,_1fr)] [&_label]:flex [&_label]:min-w-0 [&_label]:flex-col [&_label]:gap-2"
+                className="discovery-filters grid grid-cols-[repeat(4,_minmax(0,_1fr))] gap-4 border-b-[1px] border-b-border pb-6 [border-bottom-style:solid] max-[640px]:grid-cols-[minmax(0,_1fr)] [&_label>[data-slot=select-trigger]]:mt-0 [&_label>input]:mt-0 [&_label]:mb-0 [&_label]:flex [&_label]:min-w-0 [&_label]:flex-col [&_label]:gap-2"
                 key={params.toString()}
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -136,8 +136,10 @@ export function ExplorePage() {
                         </FieldLabel>
                     </Field>
                     <div className="discovery-filter-actions col-[span_2] flex flex-wrap items-end gap-3 max-[640px]:col-[auto]">
-                        <Button type="submit">Tìm sách</Button>
-                        <Button variant="secondary" asChild>
+                        <Button type="submit" className="min-h-11">
+                            Tìm sách
+                        </Button>
+                        <Button variant="secondary" className="min-h-11" asChild>
                             <Link to="/explore">Xóa bộ lọc</Link>
                         </Button>
                     </div>

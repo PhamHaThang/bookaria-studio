@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { auth, useAuth } from '@/features/auth/model/session';
 import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
-import { BookariaLogo } from '@/shared/ui/BookariaLogo';
+import { BookariaLogo, bookariaLogoLinkStyles } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
 import {
     NavigationMenu,
@@ -30,15 +30,21 @@ export function PublicHeader() {
     }, []);
 
     return (
-        <header className="site-header sticky top-0 z-20 border-border border-b bg-surface">
-            <div className="mx-auto grid min-h-22 max-w-320 grid-cols-[auto_1fr_auto] items-center gap-10 px-8">
-                <Link to="/" aria-label="Bookaria - Trang chủ" className="inline-flex rounded-md">
+        <header className="site-header sticky top-0 z-20 bg-surface">
+            <div className="mx-auto grid min-h-17 max-w-[1328px] grid-cols-[auto_1fr_auto] items-center gap-6 px-6 max-sm:grid-cols-[1fr_auto] max-sm:gap-x-4 max-sm:gap-y-0 max-sm:py-3 sm:px-6">
+                <Link
+                    to="/"
+                    aria-label="Bookaria - Trang chủ"
+                    className={bookariaLogoLinkStyles(
+                        'inline-flex rounded-md [&_.bookaria-logo]:w-36',
+                    )}
+                >
                     <BookariaLogo />
                 </Link>
                 <NavigationMenu
                     viewport={false}
                     aria-label="Điều hướng chính"
-                    className="justify-self-center"
+                    className="justify-self-start max-sm:order-3 max-sm:col-span-full max-sm:w-full max-sm:pt-2"
                 >
                     <NavigationMenuList>
                         {destinations.map(({ to, label }) => (
@@ -59,9 +65,14 @@ export function PublicHeader() {
                     {signedIn ? (
                         <HeaderAccountActions />
                     ) : (
-                        <Button asChild>
-                            <AuthDialogLink mode="login">Đăng nhập</AuthDialogLink>
-                        </Button>
+                        <>
+                            <Button variant="outline" size="sm" asChild>
+                                <AuthDialogLink mode="login">Đăng nhập</AuthDialogLink>
+                            </Button>
+                            <Button variant="default" size="sm" asChild>
+                                <AuthDialogLink mode="register">Đăng ký</AuthDialogLink>
+                            </Button>
+                        </>
                     )}
                 </div>
             </div>

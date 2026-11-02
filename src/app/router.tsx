@@ -2,12 +2,14 @@ import { lazy, Suspense } from 'react';
 import {
     createBrowserRouter,
     createRoutesFromElements,
+    matchPath,
     Navigate,
     Outlet,
     Route,
     RouterProvider,
     useLocation,
 } from 'react-router-dom';
+import { FloatingThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
 import { RequireSession, SessionBoundary } from '../features/auth';
 import { AuthDialog, LegacyAuthRoute } from '../features/auth/ui/AuthDialog';
 import { AdminLayout, AdminNotFoundPage } from './AdminLayout';
@@ -150,6 +152,11 @@ const StyleGuidePage = import.meta.env.DEV
     : null;
 
 function RouterLayout() {
+    const { pathname } = useLocation();
+    const inEditor = Boolean(
+        matchPath('/books/:bookId/edit', pathname) ||
+            matchPath('/books/:bookId/pages/:pageId', pathname),
+    );
     return (
         <>
             <a
@@ -159,6 +166,7 @@ function RouterLayout() {
                 Đến nội dung chính
             </a>
             <Outlet />
+            {!inEditor && <FloatingThemeSwitcher />}
             <AuthDialog />
         </>
     );

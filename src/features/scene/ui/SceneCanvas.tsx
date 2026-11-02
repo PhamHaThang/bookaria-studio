@@ -25,8 +25,8 @@ import { createBillboard } from '@/shared/scene/billboard';
 import { configureSceneOrbit, stopSceneOrbit } from '@/shared/scene/camera-navigation';
 import { createPageLighting } from '@/shared/scene/page-lighting';
 import { createTextVisual, disposeTextVisual } from '@/shared/scene/text-renderer';
+import { observeTheme } from '@/shared/theme/observe-theme';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
-import { Separator } from '@/shared/ui/primitives/separator';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import type { Page } from '../../../shared/contracts/dto.schema';
 import type { Scene, SceneObject } from '../../../shared/contracts/scene.schema';
@@ -228,7 +228,8 @@ export function SceneCanvas(props: Props) {
             frame = 0;
         const scene = new THREE.Scene();
         const theme = getComputedStyle(element);
-        const themeColor = (token: string) => new THREE.Color(theme.getPropertyValue(token).trim());
+        const themeColor = (token: string) =>
+            new THREE.Color(getComputedStyle(element).getPropertyValue(token).trim());
         scene.background = themeColor('--editor-ground');
         const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100);
         // Paper is XY; height and the navigation up direction are +Z.
@@ -422,7 +423,10 @@ export function SceneCanvas(props: Props) {
                 },
             );
         }
-        const outline = new THREE.Box3Helper(new THREE.Box3(), themeColor('--action-primary'));
+        const outline = new THREE.Box3Helper(
+            new THREE.Box3(),
+            themeColor('--editor-selection-outline'),
+        );
         outline.visible = false;
         const outlineSpace = new THREE.Group();
         outlineSpace.name = 'bookaria-selection-outline';
@@ -732,7 +736,8 @@ export function SceneCanvas(props: Props) {
                             spec.size[0],
                             spec.size[1],
                             new THREE.MeshBasicMaterial({
-                                color: themeColor('--action-primary'),
+                                // This editor-only touch area sits on white paper in either theme.
+                                color: 0x333333,
                                 transparent: true,
                                 opacity: 0.28,
                                 side: THREE.DoubleSide,
@@ -2151,10 +2156,41 @@ export function SceneCanvas(props: Props) {
                 orbit.update();
             },
         };
+        const stopTheme = observeTheme(() => {
+            const colors = getComputedStyle(element);
+            scene.background = themeColor('--editor-ground');
+            editorGrid.recolor({
+                center: themeColor('--editor-grid-strong'),
+                line: themeColor('--editor-grid'),
+            });
+            (outline.material as THREE.LineBasicMaterial).color.copy(
+                themeColor('--editor-selection-outline'),
+            );
+            frontGuide?.recolor({
+                surface: colors.getPropertyValue('--bg-surface').trim(),
+                foreground: colors.getPropertyValue('--text-primary').trim(),
+                border: colors.getPropertyValue('--border-default').trim(),
+            });
+            controls.traverse((node) => {
+                if (
+                    !('tag' in node) ||
+                    node.tag !== 'helper' ||
+                    !(node instanceof THREE.Line || node instanceof THREE.Mesh)
+                )
+                    return;
+                for (const material of Array.isArray(node.material)
+                    ? node.material
+                    : [node.material]) {
+                    if (material instanceof THREE.LineBasicMaterial)
+                        material.color.copy(themeColor('--editor-transform-guide'));
+                }
+            });
+        });
         api.current.mode(mode, snap, space, snapSteps);
         sync();
         tick();
         return () => {
+            stopTheme();
             finishAudioPress();
             finishAnnotationDrag(true);
             disposed = true;
@@ -2346,68 +2382,61 @@ export function SceneCanvas(props: Props) {
                     role="toolbar"
                     aria-label="Công cụ canvas"
                 >
-                    <fieldset
-                        className="m-0 flex min-w-0 items-center gap-1 border-0 p-0"
-                        aria-label="Góc nhìn"
+                    <ActionButton
+                        variant="ghost"
+                        size="sm"
+                        title="Mặt trang · Đưa toàn bộ trang vào khung nhìn"
+                        disabled={transforming}
+                        onClick={() => api.current?.view('front')}
                     >
-                        <ActionButton
-                            variant="ghost"
-                            size="sm"
-                            title="Mặt trang · Đưa toàn bộ trang vào khung nhìn"
-                            disabled={transforming}
-                            onClick={() => api.current?.view('front')}
-                        >
-                            Mặt trang
-                        </ActionButton>
-                        <ActionButton
-                            variant="ghost"
-                            size="sm"
-                            disabled={transforming}
-                            onClick={() => api.current?.view('iso')}
-                        >
-                            Phối cảnh
-                        </ActionButton>
-                    </fieldset>
-                    <Separator orientation="vertical" className="h-6" />
-                    <div className="canvas-tool-group flex items-center gap-1">
-                        <ActionButton
-                            variant="ghost"
-                            size="sm"
-                            type="button"
-                            title={
-                                props.selectedIds.length > 1
-                                    ? 'Nhóm dùng trục thế giới'
-                                    : mode === 'scale'
-                                      ? 'Kích thước theo trục đối tượng'
-                                      : 'Đổi trục thế giới / cục bộ (L)'
-                            }
-                            aria-label={localAxes ? 'Trục cục bộ (L)' : 'Trục thế giới (L)'}
-                            aria-pressed={localAxes}
-                            disabled={
-                                props.disabled ||
-                                transforming ||
-                                props.selectedIds.length > 1 ||
-                                mode === 'scale'
-                            }
-                            onClick={() =>
-                                setSpace((current) => (current === 'world' ? 'local' : 'world'))
-                            }
-                        >
-                            {localAxes ? (
-                                <Box data-icon="inline-start" />
-                            ) : (
-                                <Globe2 data-icon="inline-start" />
-                            )}
-                            <span>{localAxes ? 'Cục bộ' : 'Thế giới'}</span>
-                        </ActionButton>
-                        <SceneSnapSettings
-                            steps={snapSteps}
-                            enabled={snap}
-                            disabled={props.disabled || transforming}
-                            onChange={setSnapSteps}
-                            onEnabledChange={setSnap}
-                        />
-                    </div>
+                        Mặt trang
+                    </ActionButton>
+                    <ActionButton
+                        variant="ghost"
+                        size="sm"
+                        title="Phối cảnh · Xem trang theo phối cảnh 3D"
+                        disabled={transforming}
+                        onClick={() => api.current?.view('iso')}
+                    >
+                        Phối cảnh
+                    </ActionButton>
+                    <ActionButton
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        title={
+                            props.selectedIds.length > 1
+                                ? 'Nhóm dùng trục thế giới'
+                                : mode === 'scale'
+                                  ? 'Kích thước theo trục đối tượng'
+                                  : 'Đổi trục thế giới / cục bộ (L)'
+                        }
+                        aria-label={localAxes ? 'Trục cục bộ (L)' : 'Trục thế giới (L)'}
+                        aria-pressed={localAxes}
+                        disabled={
+                            props.disabled ||
+                            transforming ||
+                            props.selectedIds.length > 1 ||
+                            mode === 'scale'
+                        }
+                        onClick={() =>
+                            setSpace((current) => (current === 'world' ? 'local' : 'world'))
+                        }
+                    >
+                        {localAxes ? (
+                            <Box data-icon="inline-start" />
+                        ) : (
+                            <Globe2 data-icon="inline-start" />
+                        )}
+                        <span>{localAxes ? 'Cục bộ' : 'Thế giới'}</span>
+                    </ActionButton>
+                    <SceneSnapSettings
+                        steps={snapSteps}
+                        enabled={snap}
+                        disabled={props.disabled || transforming}
+                        onChange={setSnapSteps}
+                        onEnabledChange={setSnap}
+                    />
                     <SceneGridSettings
                         value={gridSettings}
                         disabled={transforming || Boolean(failure)}

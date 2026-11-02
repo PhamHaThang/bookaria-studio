@@ -73,3 +73,21 @@ test('page size changes preserve millimetre cells and disposal releases the last
     assert.equal(geometryDisposals, 1);
     assert.equal(materialDisposals, 1);
 });
+
+test('theme changes recolor the grid without moving it or losing its physical spacing and visibility', () => {
+    const settings = { visible: false, spacingMm: 15, opacity: 0.4 };
+    const colors = { center: new Color('#111111'), line: new Color('#cccccc') };
+    const grid = createEditorGrid(210, 1.4, settings, colors);
+    const positions = Array.from(grid.grid.geometry.attributes.position.array);
+    const next = { center: new Color('#eeeeee'), line: new Color('#444444') };
+    grid.recolor(next);
+    assert.deepEqual(Array.from(grid.grid.geometry.attributes.position.array), positions);
+    assert.equal(grid.grid.visible, false);
+    assert.equal(grid.grid.material.opacity, 0.4);
+    const attribute = grid.grid.geometry.attributes.color;
+    assert.ok(Math.abs(attribute.getX(0) - next.line.r) < 1e-6);
+    grid.update({ ...settings, spacingMm: 30 }, 210, 1.4);
+    assert.ok(Math.abs(grid.grid.geometry.attributes.color.getX(0) - next.line.r) < 1e-6);
+    grid.dispose();
+    grid.recolor(next);
+});

@@ -4,6 +4,7 @@ import type { ManifestPage } from '@/shared/contracts/manifest.schema';
 import { configureSceneOrbit, stopSceneOrbit } from '@/shared/scene/camera-navigation';
 import { createPageLighting } from '@/shared/scene/page-lighting';
 import type { PageRuntime } from '@/shared/scene-runtime/buildScene';
+import { observeTheme } from '@/shared/theme/observe-theme';
 import { beginDolly, type DollyStart, dragDolly } from '../../scene/model/dolly';
 import {
     framePreviewViewport,
@@ -28,6 +29,7 @@ export class LocalPreviewStage {
     readonly scene = new THREE.Scene();
     readonly camera = new THREE.PerspectiveCamera(40, 1, 0.005, 10000);
     readonly controls: OrbitControls;
+    private stopTheme: () => void;
     private ownsRenderer: boolean;
     private lighting = createPageLighting();
     private runtime: PageRuntime | null = null;
@@ -57,9 +59,11 @@ export class LocalPreviewStage {
         this.renderer = renderer || new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-        this.scene.background = new THREE.Color(
-            getComputedStyle(container).getPropertyValue('--editor-ground').trim() || '#f5f5f5',
-        );
+        this.stopTheme = observeTheme(() => {
+            this.scene.background = new THREE.Color(
+                getComputedStyle(container).getPropertyValue('--editor-ground').trim() || '#fafafa',
+            );
+        });
         const canvas = this.renderer.domElement;
         canvas.setAttribute('aria-label', 'Xem trước trang sách 3D');
         canvas.setAttribute('role', 'img');
@@ -344,6 +348,7 @@ export class LocalPreviewStage {
         this.controls.update();
     }
     dispose() {
+        this.stopTheme();
         this.active = false;
         this.renderer.setAnimationLoop(null);
         this.observer.disconnect();

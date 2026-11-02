@@ -6,6 +6,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { cn } from '@/shared/lib/cn';
+import { observeTheme } from '@/shared/theme/observe-theme';
 import { Feedback } from '@/shared/ui/Feedback';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Button } from '@/shared/ui/primitives/button';
@@ -69,8 +70,10 @@ export default function ModelPreview({
         [error, setError] = useState<string | null>(null),
         [clip, setClip] = useState(''),
         [playing, setPlaying] = useState(false),
-        [background, setBackground] = useState('#f7f7f7'),
+        [background, setBackground] = useState(''),
         [placement, setPlacement] = useState({ scale: '100', x: '0', y: '0', z: '0' });
+    const backgroundRef = useRef(background);
+    backgroundRef.current = background;
     const validPlacement = useRef<PreviewPlacement>({ scale: 1, x: 0, y: 0, z: 0 });
     useEffect(() => {
         setInfo(null);
@@ -200,7 +203,12 @@ export default function ModelPreview({
                         if (action) action.paused = paused;
                     },
                     background(color) {
-                        scene.background = new THREE.Color(color);
+                        scene.background = new THREE.Color(
+                            color ||
+                                getComputedStyle(element)
+                                    .getPropertyValue('--editor-ground')
+                                    .trim(),
+                        );
                     },
                     play(name) {
                         mixer?.stopAllAction();
@@ -224,7 +232,21 @@ export default function ModelPreview({
                     );
             }
         })();
+        const stopTheme = observeTheme(() => {
+            const colors = getComputedStyle(element);
+            const replacement = new THREE.GridHelper(
+                8,
+                32,
+                colors.getPropertyValue('--editor-grid-strong').trim(),
+                colors.getPropertyValue('--editor-grid').trim(),
+            );
+            grid.geometry.dispose();
+            grid.geometry = replacement.geometry;
+            (replacement.material as THREE.Material).dispose();
+            runtime.current?.background(backgroundRef.current);
+        });
         return () => {
+            stopTheme();
             disposed = true;
             controller.abort();
             runtime.current = null;
@@ -430,6 +452,7 @@ export default function ModelPreview({
                     <fieldset className="flex items-center gap-2" aria-label="Nền xem trước">
                         <legend className="sr-only">Nền xem trước</legend>
                         {[
+                            { color: '', label: 'Theo giao diện' },
                             { color: '#ffffff', label: 'Trắng' },
                             { color: '#f7f7f7', label: 'Xám nhạt' },
                             { color: '#252525', label: 'Tối' },
@@ -441,7 +464,7 @@ export default function ModelPreview({
                                     'size-7 rounded-full border border-border',
                                     background === color && 'ring-2 ring-primary ring-offset-2',
                                 )}
-                                style={{ backgroundColor: color }}
+                                style={{ backgroundColor: color || 'var(--editor-ground)' }}
                                 aria-label={`Nền ${label.toLowerCase()}`}
                                 aria-pressed={background === color}
                                 onClick={() => setBackground(color)}

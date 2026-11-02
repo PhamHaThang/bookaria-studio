@@ -30,8 +30,12 @@
         -webkit-tap-highlight-color: transparent;
     }
     a {
-        color: var(--action-primary);
+        color: inherit;
         text-underline-offset: 4px;
+    }
+    p a,
+    dd a {
+        color: var(--text-link);
     }
     a:hover {
         text-decoration-thickness: 2px;
@@ -63,6 +67,7 @@
         font-family: var(--font-heading);
         font-weight: var(--weight-semibold);
         line-height: var(--leading-tight);
+        letter-spacing: -0.025em;
     }
     h1 {
         margin: 0 0 var(--space-3);
@@ -84,6 +89,10 @@
     strong {
         font-weight: var(--weight-semibold);
     }
+    pre,
+    kbd {
+        font-family: var(--font-code);
+    }
     code {
         font-family: var(--font-code);
         font-size: 0.9em;
@@ -98,7 +107,7 @@
     label {
         display: block;
         font-size: var(--text-sm);
-        font-weight: var(--weight-semibold);
+        font-weight: var(--weight-medium);
         margin-bottom: var(--space-5);
     }
     input:not([type="checkbox"]):not([data-slot]),
@@ -179,5 +188,11 @@
     50% {
         opacity: 0.55;
         transform: scale(0.97);
+    }
+}
+
+@keyframes bookaria-signal-orbit {
+    to {
+        transform: rotate(360deg);
     }
 }

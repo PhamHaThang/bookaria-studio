@@ -36,7 +36,11 @@ export function PublicLayout() {
             <main
                 id="main"
                 tabIndex={-1}
-                className="public-main mx-auto w-full max-w-320 flex-1 px-8 py-12"
+                className={
+                    pathname === '/'
+                        ? 'public-main min-w-0 flex-1'
+                        : 'public-main mx-auto w-full max-w-320 flex-1 px-6 py-12 sm:px-8'
+                }
             >
                 <Suspense fallback={<LoadingScreen message="Đang mở trang…" />}>
                     <Outlet />

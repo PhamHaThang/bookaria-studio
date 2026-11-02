@@ -33,6 +33,7 @@ import { Separator } from '@/shared/ui/primitives/separator';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Tabs, TabsContent } from '@/shared/ui/primitives/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/primitives/tooltip';
+import { ThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset, BookDetail, Page } from '../../../shared/contracts/dto.schema';
 import {
@@ -486,7 +487,7 @@ function SceneEditorContent({
     }
     return (
         <section
-            className="scene-editor m-0 min-h-[100dvh] bg-surface p-0 [--control-height:40px] [--text-md:0.8125rem] [--text-sm:0.75rem] [--text-xs:0.6875rem] [&_[data-slot=select-trigger]]:m-0 [&_audio]:my-3 [&_audio]:block [&_audio]:w-full [&_audio]:max-w-105 [&_input:not([type=checkbox])]:m-0 [&_label]:m-0 [&_textarea]:m-0 [.scene-editor_&_.button]:min-h-10 [.scene-editor_&_.button]:w-auto [.scene-editor_&_.button]:rounded-[10px] [.scene-editor_&_.button]:px-[13px] [.scene-editor_&_.button]:py-[9px] [.scene-editor_&_.button]:text-[length:12px]"
+            className="scene-editor m-0 min-h-[100dvh] bg-surface p-0 [--control-height:40px] [--text-md:0.8125rem] [--text-sm:0.8125rem] [--text-xs:0.75rem] [&_[data-slot=select-trigger]]:m-0 [&_audio]:my-3 [&_audio]:block [&_audio]:w-full [&_audio]:max-w-105 [&_input:not([type=checkbox])]:m-0 [&_label]:m-0 [&_textarea]:m-0 [.scene-editor_&_.button]:min-h-10 [.scene-editor_&_.button]:w-auto [.scene-editor_&_.button]:px-[13px] [.scene-editor_&_.button]:py-[9px] [.scene-editor_&_.button]:text-[length:13px]"
             data-panel={panel}
             data-layers={layersOpen}
             aria-labelledby="scene-heading"
@@ -521,12 +522,12 @@ function SceneEditorContent({
                 }}
                 saving={editor.busy || settingsBusy || publicationBusy || pagesBusy || infoBusy}
             />
-            <header className="scene-heading editor-header grid min-h-19 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-border border-b bg-surface px-5 py-3">
+            <header className="scene-heading editor-header grid h-16 min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-border border-b bg-surface px-5 py-0">
                 <div className="editor-project flex min-w-0 items-center gap-4">
                     <Link
                         to="/books"
                         aria-label="Bookaria - Về Studio"
-                        className="editor-brand inline-flex size-12 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-primary focus-visible:bg-primary focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 [&_img]:transition-[filter] hover:[&_img]:brightness-0 hover:[&_img]:invert focus-visible:[&_img]:brightness-0 focus-visible:[&_img]:invert"
+                        className="editor-brand inline-flex size-12 shrink-0 items-center justify-center rounded-lg outline-none transition-colors hover:bg-primary focus-visible:bg-primary [&_img]:transition-[filter] hover:[&_img]:[filter:var(--logo-on-primary-filter)] focus-visible:[&_img]:[filter:var(--logo-on-primary-filter)]"
                     >
                         <BookariaLogo symbol />
                     </Link>
@@ -564,9 +565,10 @@ function SceneEditorContent({
                                 : ''}
                         </p>
                     </div>
-                    <Separator orientation="vertical" className="h-7 w-px self-center" />
+                    <Separator orientation="vertical" className="my-auto h-7 w-px" />
                     <fieldset className="m-0 flex shrink-0 items-center gap-1 border-0 p-0">
                         <legend className="sr-only">Công cụ trang</legend>
+                        <ThemeSwitcher />
                         <Button
                             variant="ghost"
                             size="icon-sm"
@@ -810,7 +812,7 @@ function SceneEditorContent({
                 <div
                     ref={workspaceRef}
                     data-inspector-visible="false"
-                    className="scene-workspace relative m-0 grid h-[calc(100dvh_-_76px)] min-h-125 min-w-0 flex-1 grid-cols-[minmax(0,_1fr)] items-stretch gap-0 overflow-hidden [--inspector-offset:var(--inspector-width)] [--inspector-width:340px] [container-type:inline-size] data-[inspector-visible=false]:[--inspector-offset:0px] max-[1100px]:[--inspector-width:300px] min-[1600px]:[--inspector-width:380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:[--inspector-width:max(480px,45cqw)]"
+                    className="scene-workspace relative m-0 grid h-[calc(100dvh_-_64px)] min-h-125 min-w-0 flex-1 grid-cols-[minmax(0,_1fr)] items-stretch gap-0 overflow-hidden [--inspector-offset:var(--inspector-width)] [--inspector-width:340px] [container-type:inline-size] data-[inspector-visible=false]:[--inspector-offset:0px] max-[1100px]:[--inspector-width:300px] min-[1600px]:[--inspector-width:380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:[--inspector-width:max(480px,45cqw)]"
                 >
                     <SceneObjectsPanel
                         objects={editor.draft.objects}

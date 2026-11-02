@@ -1,6 +1,8 @@
 import { ToggleGroup } from '@animate-ui/react/primitives/radix-ui/toggle-group';
 import { Eye, Pencil, Zap } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { cn } from '@/shared/lib/cn';
+import { observeTheme } from '@/shared/theme/observe-theme';
 import { toggleVariants } from '@/shared/ui/primitives/toggle';
 
 const MODES = [
@@ -18,8 +20,22 @@ export function SceneModeSwitcher({
     disabled: boolean;
     onValueChange: (value: (typeof MODES)[number]['value']) => void;
 }) {
+    const root = useRef<HTMLDivElement>(null);
+    useEffect(
+        () =>
+            observeTheme(() => {
+                // Animate UI caches surface paint and observes its own classes. Reflect the
+                // resolved theme locally so it remeasures without remounting the controls.
+                root.current?.classList.toggle(
+                    'dark',
+                    document.documentElement.dataset.theme === 'dark',
+                );
+            }),
+        [],
+    );
     return (
         <ToggleGroup.Root
+            ref={root}
             type="single"
             value={value}
             onValueChange={(next) => {

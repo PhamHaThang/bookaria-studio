@@ -59,7 +59,7 @@ export function SceneAssetLoading({
                                 alt=""
                                 width={48}
                                 height={24}
-                                className="h-auto w-12 motion-safe:animate-[bookaria-loading-pulse_1.8s_ease-in-out_infinite]"
+                                className="h-auto w-12 [filter:var(--logo-filter)] motion-safe:animate-[bookaria-loading-pulse_1.8s_ease-in-out_infinite]"
                             />
                         )}
                         <p className="m-0 max-w-full truncate font-medium text-xs" title={name}>

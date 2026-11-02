@@ -30,7 +30,7 @@ function DialogOverlay({
         <DialogPrimitive.Overlay
             data-slot="dialog-overlay"
             className={cn(
-                'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 fixed inset-0 isolate z-50 bg-[var(--bg-overlay)] duration-100 data-[state=closed]:animate-out data-[state=open]:animate-in motion-reduce:animate-none',
+                'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 fixed inset-0 isolate z-50 bg-[var(--bg-overlay)] duration-100 data-[state=closed]:animate-out data-[state=open]:animate-in motion-reduce:animate-none!',
                 className,
             )}
             {...props}
@@ -52,7 +52,7 @@ function DialogContent({
             <DialogPrimitive.Content
                 data-slot="dialog-content"
                 className={cn(
-                    'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 [&_p]:wrap-anywhere fixed top-1/2 left-1/2 z-50 grid w-full max-w-[min(480px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 gap-0 rounded-[var(--radius-lg)] border border-border bg-popover p-8 text-popover-foreground outline-none duration-100 data-[state=closed]:animate-out data-[state=open]:animate-in motion-reduce:animate-none [&>h2]:mb-4',
+                    'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 [&_p]:wrap-anywhere fixed top-1/2 left-1/2 z-50 grid w-full max-w-[min(480px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 gap-0 rounded-[var(--radius-dialog)] border border-border bg-popover p-6 text-popover-foreground outline-none duration-100 data-[state=closed]:animate-out data-[state=open]:animate-in motion-reduce:animate-none! [&>h2]:mb-4',
                     className,
                 )}
                 {...props}
@@ -93,7 +93,7 @@ function DialogFooter({
         <div
             data-slot="dialog-footer"
             className={cn(
-                '-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end',
+                'mt-6 flex flex-col-reverse items-stretch gap-2 border-border border-t pt-5 sm:flex-row sm:items-center sm:justify-end',
                 className,
             )}
             {...props}
@@ -119,7 +119,7 @@ function DialogTitle({
             className={cn(
                 size === 'lg'
                     ? 'font-semibold text-2xl leading-tight'
-                    : 'font-medium text-base leading-none',
+                    : 'font-semibold text-lg leading-snug',
                 className,
             )}
             {...props}

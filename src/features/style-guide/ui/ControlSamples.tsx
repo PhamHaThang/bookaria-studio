@@ -22,6 +22,7 @@ import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
 import { SearchInput } from '@/shared/ui/SearchInput';
+import { ThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
 import { GuideSection, Sample } from './GuideSection';
 
 export function ButtonSamples() {
@@ -32,6 +33,15 @@ export function ButtonSamples() {
             description="Button Bookaria và primitive dùng cùng tên biến thể và kích thước. Chọn theo mục đích; icon-only luôn có nhãn đọc được."
         >
             <div className="flex flex-col gap-8">
+                <Sample title="Giao diện sáng / tối" source="@/shared/ui/ThemeSwitcher">
+                    <div className="flex items-center gap-3">
+                        <ThemeSwitcher />
+                        <span className="text-muted-foreground text-sm">
+                            Nhấn một lần để đổi giữa sáng và tối. Lựa chọn áp dụng cho toàn bộ giao
+                            diện.
+                        </span>
+                    </div>
+                </Sample>
                 <Sample title="Biến thể dùng chung" source="@/shared/ui/Button">
                     <div className="flex flex-wrap gap-4">
                         {(['default', 'secondary', 'outline', 'ghost', 'destructive'] as const).map(
@@ -43,8 +53,8 @@ export function ButtonSamples() {
                         )}
                     </div>
                     <p className="m-0 text-muted-foreground text-sm">
-                        default: hành động chính · secondary: viền đen · outline: viền nhẹ · ghost:
-                        không viền · destructive: xóa.
+                        default: hành động chính · secondary: nền xám nhẹ · outline: hành động phụ ·
+                        ghost: không viền · destructive: xóa.
                     </p>
                 </Sample>
                 <Sample
@@ -235,6 +245,10 @@ export function ControlSamples() {
                                 </Field>
                                 <Field className="block">
                                     <FieldLabel htmlFor="guide-format">Khổ sách</FieldLabel>
+                                    <FieldDescription>
+                                        Ô chọn dạng pill; danh sách mở ra bo 12px để không cắt nội
+                                        dung.
+                                    </FieldDescription>
                                     <FormSelect
                                         id="guide-format"
                                         name="format"

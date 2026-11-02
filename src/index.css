@@ -4,6 +4,8 @@
 @import "./shared/theme/tokens.css";
 @import "./shared/theme/base.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Product tokens are shared by utilities and shadcn primitives. */
 @theme inline {
     --font-sans: var(--font-body);
@@ -17,6 +19,11 @@
     --color-sidebar-primary-foreground: var(--text-on-primary);
     --color-sidebar-border: var(--border-default);
     --color-sidebar-ring: var(--focus-color);
+    --color-link: var(--text-link);
+    --color-surface-dark: var(--surface-dark);
+    --color-on-dark-danger: var(--text-on-dark-danger);
+    --color-on-dark: var(--text-on-dark);
+    --color-on-dark-soft: var(--text-on-dark-soft);
     --color-background: var(--bg-canvas);
     --color-canvas: var(--bg-canvas);
     --color-surface: var(--bg-surface);
@@ -39,7 +46,7 @@
     --color-hover: var(--bg-hover);
     --color-destructive: var(--action-danger);
     --color-destructive-hover: var(--action-danger-hover);
-    --color-destructive-foreground: var(--text-on-primary);
+    --color-destructive-foreground: var(--text-on-danger);
     --color-border: var(--border-default);
     --color-line: var(--border-default);
     --color-input: var(--border-input);

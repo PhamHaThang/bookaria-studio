@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { Feedback } from '@/shared/ui/Feedback';
+import { ThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
 import type { BookDetail } from '../../../shared/contracts/dto.schema';
 import { Button } from '../../../shared/ui/Button';
 import { assetKeys } from '../../assets';
@@ -88,6 +89,7 @@ export function EmptyBookEditor({ book }: { book: BookDetail }) {
                     {book.title}
                 </Button>
                 <div className="flex items-center gap-2">
+                    <ThemeSwitcher />
                     <EditorSaveStatus
                         dirty={state.dirty}
                         saving={state.saving}

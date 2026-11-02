@@ -43,7 +43,7 @@ export function OverlaySamples() {
         <GuideSection
             id="overlays"
             title="Modal, menu & trợ giúp"
-            description="Form dùng Dialog; hành động cần xác nhận dùng ConfirmationDialog. Menu và popover không làm mất ngữ cảnh trang. Đóng overlay sẽ trả focus về nút mở."
+            description="Form dùng Dialog; hành động cần xác nhận dùng ConfirmationDialog. Menu và popover bo 12px, từng mục chọn bo 6px; chỉ nút mở dùng dạng pill. Menu không làm mất ngữ cảnh trang. Đóng overlay sẽ trả focus về nút mở."
         >
             <div className="grid grid-cols-2 gap-8 max-[800px]:grid-cols-1">
                 <Sample

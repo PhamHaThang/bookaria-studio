@@ -2,18 +2,22 @@ import { ArrowUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
-import { BookariaLogo } from '@/shared/ui/BookariaLogo';
+import { BookariaLogo, bookariaLogoLinkStyles } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/primitives/button';
 
 export function SiteFooter() {
     const { user } = useAuth();
     return (
         <footer className="border-border border-t bg-surface">
-            <div className="mx-auto max-w-320 px-8">
-                <div className="grid gap-10 py-12 sm:grid-cols-[2fr_1fr_1fr] sm:gap-16">
+            <div className="mx-auto max-w-[1328px] px-6">
+                <div className="grid gap-10 py-16 sm:grid-cols-[2fr_1fr_1fr] sm:gap-16">
                     <div className="max-w-85">
-                        <Link to="/" aria-label="Bookaria - Trang chủ" className="inline-flex">
-                            <BookariaLogo />
+                        <Link
+                            to="/"
+                            aria-label="Bookaria - Trang chủ"
+                            className={bookariaLogoLinkStyles('inline-flex')}
+                        >
+                            <BookariaLogo className="w-36" />
                         </Link>
                         <p className="mt-5 mb-0 text-muted-foreground text-sm leading-relaxed">
                             Khám phá và sáng tạo sách tương tác AR. Mở một cuốn sách, bắt đầu một
@@ -25,13 +29,22 @@ export function SiteFooter() {
                         className="flex flex-col items-start gap-3 text-sm"
                     >
                         <h3 className="m-0 mb-2 font-semibold text-base">Khám phá</h3>
-                        <Link to="/" className="underline-offset-4 hover:underline">
+                        <Link
+                            to="/"
+                            className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                        >
                             Trang chủ
                         </Link>
-                        <Link to="/library" className="underline-offset-4 hover:underline">
+                        <Link
+                            to="/library"
+                            className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                        >
                             Thư viện sách
                         </Link>
-                        <Link to="/help" className="underline-offset-4 hover:underline">
+                        <Link
+                            to="/help"
+                            className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                        >
                             Hướng dẫn
                         </Link>
                     </nav>
@@ -44,10 +57,16 @@ export function SiteFooter() {
                         </h3>
                         {user ? (
                             <>
-                                <Link to="/books" className="underline-offset-4 hover:underline">
+                                <Link
+                                    to="/books"
+                                    className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                                >
                                     Sách của tôi
                                 </Link>
-                                <Link to="/profile" className="underline-offset-4 hover:underline">
+                                <Link
+                                    to="/profile"
+                                    className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                                >
                                     Hồ sơ cá nhân
                                 </Link>
                             </>
@@ -55,13 +74,13 @@ export function SiteFooter() {
                             <>
                                 <AuthDialogLink
                                     mode="register"
-                                    className="underline-offset-4 hover:underline"
+                                    className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                                 >
                                     Tạo tài khoản
                                 </AuthDialogLink>
                                 <AuthDialogLink
                                     mode="login"
-                                    className="underline-offset-4 hover:underline"
+                                    className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                                 >
                                     Đăng nhập
                                 </AuthDialogLink>

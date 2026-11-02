@@ -66,6 +66,12 @@ export function createFrontGuide(
         .catch(() => undefined);
     return {
         mesh,
+        recolor(next: Pick<typeof style, 'surface' | 'foreground' | 'border'>) {
+            if (disposed) return;
+            Object.assign(style, next);
+            paint();
+            texture.needsUpdate = true;
+        },
         dispose() {
             if (disposed) return;
             disposed = true;

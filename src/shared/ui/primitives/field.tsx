@@ -98,7 +98,7 @@ function FieldLabel({ className, ...props }: React.ComponentProps<typeof Label>)
         <Label
             data-slot="field-label"
             className={cn(
-                'group/field-label mb-5 block items-stretch font-semibold text-[length:var(--text-sm)] data-[disabled=true]:opacity-50',
+                'group/field-label mb-5 block items-stretch font-medium text-[length:var(--text-sm)] data-[disabled=true]:opacity-50',
                 'has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col',
                 className,
             )}
@@ -125,7 +125,7 @@ function FieldDescription({ className, ...props }: React.ComponentProps<'p'>) {
         <p
             data-slot="field-description"
             className={cn(
-                'text-left font-normal text-muted-foreground text-sm leading-normal group-has-data-horizontal/field:text-balance [[data-variant=legend]+&]:-mt-1.5',
+                'text-left font-normal text-muted-foreground text-sm leading-normal group-data-[orientation=horizontal]/field:text-balance [[data-variant=legend]+&]:-mt-1.5',
                 'nth-last-2:-mt-1 last:mt-0',
                 '[&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4',
                 className,

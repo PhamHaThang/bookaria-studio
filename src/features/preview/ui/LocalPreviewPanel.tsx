@@ -261,7 +261,7 @@ function ActivePreview({
                     </Button>
                 </fieldset>
                 {state !== 'playing' && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-surface/40 p-6 backdrop-blur-md">
+                    <div className="absolute inset-0 flex items-center justify-center bg-surface p-6">
                         <div className="flex max-w-96 flex-col items-center gap-8 text-center">
                             {state === 'loading' ? (
                                 <LoadingScreen compact message="Đang chuẩn bị bản xem trước…" />

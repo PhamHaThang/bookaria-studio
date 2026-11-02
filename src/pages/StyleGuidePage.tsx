@@ -48,6 +48,10 @@ const swatches = [
     ['Cảnh báo', '--status-warning-text'],
     ['Lỗi', '--status-danger-text'],
     ['Focus', '--focus-color'],
+    ['Liên kết nội dung', '--text-link'],
+    ['Bề mặt tối', '--surface-dark'],
+    ['Sky light — chỉ hero', '--gradient-sky-light'],
+    ['Sky mid — chỉ hero', '--gradient-sky-mid'],
 ] as const;
 
 export function StyleGuidePage() {
@@ -134,14 +138,15 @@ export function StyleGuidePage() {
                             tại chỗ.
                         </p>
                         <p className="mt-3 mb-0 text-muted-foreground text-sm">
-                            Màu chính đen #252525 · Be Vietnam Pro + Bricolage Grotesque · Tailwind
-                            + shadcn/Radix + Lucide + Sonner.
+                            Nút chính #000000 / Chữ #1c2024 / Inter + JetBrains Mono / Tailwind +
+                            shadcn/Radix + Lucide + Sonner.
                         </p>
                     </div>
                     <p className="mb-10 max-w-[70ch] text-muted-foreground text-sm">
-                        Control ưu tiên nền trắng; hover hoặc chọn dùng đen–trắng. Button bị khóa
-                        dùng nền trắng, chữ và viền dịu thay cho khối xám. Radio/checkbox chưa chọn
-                        có viền đen, nền trắng; đã chọn có nền đen. Tabs dạng line giữ gạch dưới.
+                        Theo Expo đang chạy: nút và ô nhập bo tròn; nút chính đen, secondary nền
+                        nhạt, outline nền trắng. Control bị khóa giữ trạng thái rõ ràng và không
+                        phản hồi hover. Radio/checkbox chưa chọn có viền đen, nền trắng; đã chọn có
+                        nền đen. Tabs dạng line giữ gạch dưới.
                     </p>
                     <GuideSection
                         id="colors"
@@ -187,9 +192,9 @@ export function StyleGuidePage() {
                                 </div>
                             </div>
                             <div>
-                                <h3 className="mt-0 text-base">Bo góc & control</h3>
+                                <h3 className="mt-0 text-base">Hình dạng & control</h3>
                                 <div className="flex flex-wrap gap-3">
-                                    {['sm', 'md', 'lg', 'xl'].map((size) => (
+                                    {['sm', 'md', 'card', 'dialog', 'control'].map((size) => (
                                         <div
                                             key={size}
                                             className="border border-input bg-surface p-4"
@@ -200,7 +205,7 @@ export function StyleGuidePage() {
                                     ))}
                                 </div>
                                 <p className="text-muted-foreground text-sm">
-                                    Control thường 48px, nút nhỏ 40px. Editor có công cụ compact
+                                    Ô nhập 44px, nút 40px, nút nhỏ 36px. Editor có công cụ compact
                                     riêng. Viền focus ô nhập nằm bên trong; nút có focus bàn phím rõ
                                     ràng.
                                 </p>
@@ -210,7 +215,7 @@ export function StyleGuidePage() {
                     <GuideSection
                         id="typography"
                         title="Kiểu chữ tiếng Việt"
-                        description="Bricolage Grotesque dành cho tiêu đề; Be Vietnam Pro dành cho nội dung và control. Cả hai font được lưu cùng ứng dụng."
+                        description="Inter dùng cho toàn bộ giao diện; JetBrains Mono dành cho mã và thông số kỹ thuật. Font được tự host, có hỗ trợ tiếng Việt."
                     >
                         <div className="flex flex-col gap-5">
                             <p className="m-0 font-display font-semibold text-3xl">
