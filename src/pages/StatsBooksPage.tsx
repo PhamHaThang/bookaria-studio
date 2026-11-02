@@ -2,10 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { SearchFilter } from '@/shared/ui/LiveFilters';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { SearchInput } from '@/shared/ui/SearchInput';
 import { useAuth } from '../features/auth';
 import { bookKeys, booksApi, readBookSearch } from '../features/books';
 import { errorMessage } from '../shared/api/errors';
@@ -51,27 +51,21 @@ export function StatsBooksPage() {
             </div>
             <form
                 className="insights-search mb-6 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_input]:w-full [&_label]:m-0 [&_label]:min-w-50 [&_label]:flex-[1] max-[640px]:[&_label]:min-w-0"
-                key={query.q || ''}
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    const q = String(new FormData(event.currentTarget).get('q') || '').trim();
-                    setParams(q ? { q } : {});
-                }}
+                onSubmit={(event) => event.preventDefault()}
             >
                 <FieldGroup className="contents">
                     <Field className="block w-auto min-w-50 flex-1 max-[640px]:min-w-0">
                         <FieldLabel htmlFor="stats-book-search" className="m-0">
                             Tìm sách của tôi
                         </FieldLabel>
-                        <SearchInput
+                        <SearchFilter
                             className="mt-2"
                             id="stats-book-search"
                             name="q"
                             maxLength={100}
-                            defaultValue={query.q || ''}
+                            value={query.q || ''}
                         />
                     </Field>
-                    <Button type="submit">Tìm sách</Button>
                 </FieldGroup>
             </form>
             {list.isPending && <LoadingState layout="rows">Đang tải sách…</LoadingState>}

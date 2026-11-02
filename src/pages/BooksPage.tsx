@@ -7,7 +7,7 @@ import { BookCoverImage } from '@/shared/ui/BookCoverImage';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { FilterBar } from '@/shared/ui/FilterBar';
-import { FormSelect } from '@/shared/ui/FormSelect';
+import { SearchFilter, SelectFilter } from '@/shared/ui/LiveFilters';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Pagination } from '@/shared/ui/Pagination';
 import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
@@ -28,7 +28,6 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { SearchInput } from '@/shared/ui/SearchInput';
 import { useAuth } from '../features/auth';
 import {
     bookKeys,
@@ -140,25 +139,17 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                     />
                     <form
                         className="books-toolbar mb-8 flex items-center gap-3 bg-surface py-1 max-[760px]:grid max-[760px]:grid-cols-[minmax(0,_1fr)_auto] max-[700px]:flex-wrap max-[760px]:gap-3 [&_label]:m-0 [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
-                        key={`${query.q}-${query.sort}`}
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            const data = new FormData(event.currentTarget);
-                            change({
-                                q: String(data.get('q') || '').trim(),
-                                sort: String(data.get('sort') || '-updatedAt'),
-                            });
-                        }}
+                        onSubmit={(event) => event.preventDefault()}
                     >
                         <FieldGroup className="contents">
                             <Field className="block min-w-0 flex-1 max-[760px]:col-span-full">
                                 <FieldLabel htmlFor="book-search" className="sr-only">
                                     Tìm sách
                                 </FieldLabel>
-                                <SearchInput
+                                <SearchFilter
                                     id="book-search"
                                     name="q"
-                                    defaultValue={query.q}
+                                    value={query.q}
                                     maxLength={100}
                                     placeholder="Tìm theo tên sách"
                                 />
@@ -171,11 +162,10 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                     <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
                                         Sắp xếp sách
                                     </span>
-                                    <FormSelect
+                                    <SelectFilter
                                         id="book-sort"
                                         name="sort"
-                                        defaultValue={query.sort}
-                                        submitOnChange
+                                        value={query.sort}
                                         options={[
                                             { value: '-updatedAt', label: 'Cập nhật gần nhất' },
                                             { value: 'updatedAt', label: 'Cập nhật cũ nhất' },
@@ -187,9 +177,6 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                                     />
                                 </FieldLabel>
                             </Field>
-                            <Button type="submit" className="min-h-11">
-                                Tìm sách
-                            </Button>
                         </FieldGroup>
                     </form>
                 </>

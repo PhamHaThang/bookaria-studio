@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
+import { updateFilterSearch } from '@/shared/lib/filter-search';
 import { Button } from '@/shared/ui/Button';
-import { FormSelect } from '@/shared/ui/FormSelect';
+import { SearchFilter, SelectFilter } from '@/shared/ui/LiveFilters';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { SearchInput } from '@/shared/ui/SearchInput';
 import { libraryKeys, readLibrarySearch } from '../features/admin/library-model';
 import { CategorySelect, libraryApi } from '../features/admin/library-ui';
 import { AdminPager, AdminReload } from '../features/admin/ui';
@@ -39,35 +39,28 @@ export function AdminLibraryPage() {
             </div>
             <form
                 className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_[data-slot=select-trigger]]:w-full [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto]"
-                key={params.toString() + categories.isSuccess}
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    const data = new FormData(event.currentTarget),
-                        next = new URLSearchParams();
-                    for (const [key, value] of data) if (value) next.set(key, String(value).trim());
-                    setParams(next);
-                }}
+                onSubmit={(event) => event.preventDefault()}
             >
                 <FieldGroup className="contents">
                     <Field className="block w-auto min-w-0 flex-[1_1_150px] max-[640px]:w-full max-[640px]:flex-auto">
                         <FieldLabel htmlFor="library-q" className="m-0">
                             Tên tài nguyên
                         </FieldLabel>
-                        <SearchInput
+                        <SearchFilter
                             className="mt-2"
                             id="library-q"
                             name="q"
                             maxLength={100}
-                            defaultValue={query.q}
+                            value={query.q}
                         />
                     </Field>
                     <Field orientation="contents">
                         <FieldLabel htmlFor="library-type">
                             Loại
-                            <FormSelect
+                            <SelectFilter
                                 id="library-type"
                                 name="type"
-                                defaultValue={query.type || ''}
+                                value={query.type || ''}
                                 options={[
                                     { value: '', label: 'Tất cả' },
                                     ...(Object.entries(assetTypeLabels).map(([value, label]) => ({
@@ -81,13 +74,19 @@ export function AdminLibraryPage() {
                     {categories.isSuccess && (
                         <CategorySelect
                             emptyLabel="Tất cả danh mục"
+                            onValueChange={(value) =>
+                                setParams((current) =>
+                                    updateFilterSearch(current, { categoryId: value }),
+                                )
+                            }
                             label="Lọc danh mục"
                             categories={categories.data}
                             value={query.categoryId || ''}
                         />
                     )}
-                    <Button type="submit">Lọc thư viện</Button>
-                    <Link to="/admin/library">Xóa bộ lọc</Link>
+                    <Link to="/admin/library" state={{ resetFilters: true }}>
+                        Xóa bộ lọc
+                    </Link>
                 </FieldGroup>
             </form>
             {categories.isError && <Feedback error={errorMessage(categories.error)} />}

@@ -1,18 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Button } from '@/shared/ui/Button';
-import { FormSelect } from '@/shared/ui/FormSelect';
+import { SelectFilter, TextFilter } from '@/shared/ui/LiveFilters';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
 import { adminDate, adminOperationsApi, auditLabel } from '../features/admin';
-import {
-    formSearch,
-    operationsKeys,
-    readAuditSearch,
-    targetLabel,
-} from '../features/admin/operations-model';
+import { operationsKeys, readAuditSearch, targetLabel } from '../features/admin/operations-model';
 import { AdminActor } from '../features/admin/operations-ui';
 import { AdminPager, AdminReload } from '../features/admin/ui';
 import { useAuth } from '../features/auth';
@@ -22,7 +15,7 @@ import { Feedback } from '../shared/ui/Feedback';
 
 export function AdminAuditPage() {
     const { user } = useAuth(),
-        [params, setParams] = useSearchParams();
+        [params] = useSearchParams();
     const parsed = readAuditSearch(params),
         query = parsed.success ? parsed.data : null;
     const list = useQuery({
@@ -42,27 +35,16 @@ export function AdminAuditPage() {
             </div>
             <form
                 className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_[data-slot=select-trigger]]:w-full [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto]"
-                key={params.toString()}
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    setParams(
-                        formSearch(new FormData(event.currentTarget), [
-                            'action',
-                            'actorId',
-                            'targetType',
-                            'targetId',
-                        ]),
-                    );
-                }}
+                onSubmit={(event) => event.preventDefault()}
             >
                 <FieldGroup className="contents">
                     <Field orientation="contents">
                         <FieldLabel htmlFor="audit-action">
                             Thao tác
-                            <FormSelect
+                            <SelectFilter
                                 id="audit-action"
                                 name="action"
-                                defaultValue={params.get('action') || ''}
+                                value={params.get('action') || ''}
                                 options={[
                                     { value: '', label: 'Tất cả thao tác' },
                                     ...(AuditActionSchema.options.map((value) => ({
@@ -76,10 +58,11 @@ export function AdminAuditPage() {
                     <Field orientation="contents">
                         <FieldLabel htmlFor="audit-actor">
                             Mã người thực hiện (UUID)
-                            <Input
+                            <TextFilter
                                 id="audit-actor"
                                 name="actorId"
-                                defaultValue={params.get('actorId') || ''}
+                                pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+                                value={params.get('actorId') || ''}
                                 spellCheck={false}
                                 autoCapitalize="none"
                             />
@@ -88,10 +71,10 @@ export function AdminAuditPage() {
                     <Field orientation="contents">
                         <FieldLabel htmlFor="audit-target-type">
                             Loại đối tượng
-                            <FormSelect
+                            <SelectFilter
                                 id="audit-target-type"
                                 name="targetType"
-                                defaultValue={params.get('targetType') || ''}
+                                value={params.get('targetType') || ''}
                                 options={[
                                     { value: '', label: 'Tất cả đối tượng' },
                                     ...(AuditTargetTypeSchema.options.map((value) => ({
@@ -105,17 +88,19 @@ export function AdminAuditPage() {
                     <Field orientation="contents">
                         <FieldLabel htmlFor="audit-target">
                             Mã đối tượng (UUID)
-                            <Input
+                            <TextFilter
                                 id="audit-target"
                                 name="targetId"
-                                defaultValue={params.get('targetId') || ''}
+                                pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+                                value={params.get('targetId') || ''}
                                 spellCheck={false}
                                 autoCapitalize="none"
                             />
                         </FieldLabel>
                     </Field>
-                    <Button type="submit">Lọc nhật ký</Button>
-                    <Link to="/admin/audit-logs">Xóa bộ lọc</Link>
+                    <Link to="/admin/audit-logs" state={{ resetFilters: true }}>
+                        Xóa bộ lọc
+                    </Link>
                 </FieldGroup>
             </form>
             {!parsed.success && (

@@ -1,8 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import { FolderOpen, Library } from 'lucide-react';
 import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { AssetCatalog } from '@/features/assets/ui/AssetCatalog';
+import { useAuth } from '@/features/auth';
+import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
 import { Button } from '@/shared/ui/Button';
-import { FormSelect } from '@/shared/ui/FormSelect';
+import { SearchFilter, SelectFilter, TextFilter } from '@/shared/ui/LiveFilters';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Pagination } from '@/shared/ui/Pagination';
 import {
@@ -10,11 +14,11 @@ import {
     EmptyContent,
     EmptyDescription,
     EmptyHeader,
+    EmptyMedia,
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
-import { SearchInput } from '@/shared/ui/SearchInput';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
 import { discoveryApi } from '../features/discovery';
 import { PublicBooks } from '../features/discovery/PublicBooks';
 import { readDiscoverySearch, updateDiscoverySearch } from '../features/discovery/search';
@@ -24,6 +28,85 @@ import { Feedback } from '../shared/ui/Feedback';
 const ages = Array.from({ length: 19 }, (_, value) => String(value));
 
 export function ExplorePage() {
+    const [params, setParams] = useSearchParams();
+    const { user } = useAuth();
+    const view = params.get('view') === 'assets' ? 'assets' : 'books';
+    return (
+        <Tabs
+            value={view}
+            onValueChange={(value) =>
+                setParams((current) => {
+                    const next = new URLSearchParams();
+                    if (value === 'assets') next.set('view', 'assets');
+                    for (const key of ['auth', 'next', 'token']) {
+                        const item = current.get(key);
+                        if (item) next.set(key, item);
+                    }
+                    return next;
+                })
+            }
+            className="gap-8"
+        >
+            <div
+                data-slot="explore-section-navigation"
+                className="flex min-h-13 items-center justify-between gap-6"
+            >
+                <TabsList aria-label="Khám phá">
+                    <TabsTrigger value="books">
+                        <Library aria-hidden="true" />
+                        Sách
+                    </TabsTrigger>
+                    <TabsTrigger value="assets">
+                        <FolderOpen aria-hidden="true" />
+                        Tài nguyên
+                    </TabsTrigger>
+                </TabsList>
+            </div>
+            <TabsContent value="books">
+                <div className="mb-7">
+                    <h1 className="font-semibold text-[28px] tracking-tight">Khám phá sách</h1>
+                    <p className="mt-2 text-muted-foreground text-sm">
+                        Tìm sách tương tác và đọc cùng Bookaria.
+                    </p>
+                </div>
+                <ExploreBooks />
+            </TabsContent>
+            <TabsContent value="assets">
+                <div className="mb-7">
+                    <h1 className="font-semibold text-[28px] tracking-tight">
+                        Tài nguyên dùng chung
+                    </h1>
+                    <p className="mt-2 text-muted-foreground text-sm">
+                        Khám phá hình ảnh, âm thanh, video và mô hình 3D cho sách của bạn.
+                    </p>
+                </div>
+                {user ? (
+                    <AssetCatalog scope="library" />
+                ) : (
+                    <Empty className="py-16">
+                        <EmptyHeader>
+                            <EmptyMedia>
+                                <FolderOpen size={38} aria-hidden="true" />
+                            </EmptyMedia>
+                            <EmptyTitle>Thư viện tài nguyên Bookaria</EmptyTitle>
+                            <EmptyDescription>
+                                Đăng nhập để xem trước hình ảnh, âm thanh, video và mô hình 3D dùng
+                                chung cho sách của bạn.
+                            </EmptyDescription>
+                        </EmptyHeader>
+                        <EmptyContent>
+                            <Button asChild>
+                                <AuthDialogLink mode="login">Đăng nhập</AuthDialogLink>
+                            </Button>
+                        </EmptyContent>
+                    </Empty>
+                )}
+            </TabsContent>
+        </Tabs>
+    );
+}
+
+function ExploreBooks() {
     const [params, setParams] = useSearchParams();
     const query = readDiscoverySearch(params);
     const listing = useQuery({
@@ -48,47 +131,30 @@ export function ExplorePage() {
     const filtered = Boolean(query.q || query.age !== undefined || query.topic || query.language);
     return (
         <>
-            <div className="page-heading [&_h1]:wrap-anywhere mx-0 mt-0 mb-7 flex items-center justify-between gap-6 max-[760px]:mb-6 max-[700px]:flex-wrap max-[700px]:items-start max-[760px]:items-start max-[700px]:gap-3 max-[760px]:gap-4 max-[700px]:[&_>_.button]:max-w-full max-[700px]:[&_>_.button]:flex-[0_0_auto] [&_>_div]:min-w-0 max-[700px]:[&_>_div]:flex-[1_1_180px] [&_h1]:font-semibold [&_h1]:text-[length:28px] [&_h1]:tracking-[-0.025em] max-[700px]:[&_h1]:text-[length:25px] max-[760px]:[&_h1]:text-[length:var(--text-2xl)] [&_p]:mx-0 [&_p]:mt-2 [&_p]:mb-0 [&_p]:max-w-[64ch] [&_p]:text-[length:13px] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-sm)] [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-2 [.studio-editing_&_h1]:ml-4 [.studio-editing_&_h1]:inline [.studio-editing_&_h1]:text-[length:21px] max-[700px]:[.studio-editing_&_h1]:mx-0 max-[700px]:[.studio-editing_&_h1]:mt-[6px] max-[700px]:[.studio-editing_&_h1]:mb-0 max-[700px]:[.studio-editing_&_h1]:block [.studio-editing_&_p]:ml-[14px] [.studio-editing_&_p]:inline [.studio-editing_&_p]:text-[length:11px] max-[700px]:[.studio-editing_&_p]:mx-0 max-[700px]:[.studio-editing_&_p]:my-1 max-[700px]:[.studio-editing_&_p]:block [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375">
-                <div>
-                    <h1>Thư viện sách công khai</h1>
-                    <p>Tìm sách tương tác và đọc cùng Bookaria.</p>
-                </div>
-            </div>
             <form
                 className="discovery-filters grid grid-cols-[repeat(4,_minmax(0,_1fr))] gap-4 border-b-[1px] border-b-border pb-6 [border-bottom-style:solid] max-[640px]:grid-cols-[minmax(0,_1fr)] [&_label>[data-slot=select-trigger]]:mt-0 [&_label>input]:mt-0 [&_label]:mb-0 [&_label]:flex [&_label]:min-w-0 [&_label]:flex-col [&_label]:gap-2"
-                key={params.toString()}
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    const data = new FormData(event.currentTarget);
-                    const changes = Object.fromEntries(
-                        ['q', 'age', 'topic', 'language', 'sort'].map((key) => [
-                            key,
-                            String(data.get(key) || '').trim(),
-                        ]),
-                    );
-                    setParams((current) => updateDiscoverySearch(current, changes));
-                }}
+                onSubmit={(event) => event.preventDefault()}
             >
                 <FieldGroup className="contents">
                     <Field className="col-span-2 block min-w-0 max-[640px]:col-auto">
                         <FieldLabel htmlFor="explore-book-search" className="m-0">
                             Tên sách
                         </FieldLabel>
-                        <SearchInput
+                        <SearchFilter
                             className="mt-2"
                             id="explore-book-search"
                             name="q"
                             maxLength={100}
-                            defaultValue={query.q || ''}
+                            value={query.q || ''}
                             placeholder="Tìm theo tên sách"
                         />
                     </Field>
                     <Field orientation="contents">
                         <FieldLabel>
                             Độ tuổi
-                            <FormSelect
+                            <SelectFilter
                                 name="age"
-                                defaultValue={query.age ?? ''}
+                                value={query.age ?? ''}
                                 options={[
                                     { value: '', label: 'Tất cả độ tuổi' },
                                     ...(ages.map((age) => ({
@@ -102,10 +168,10 @@ export function ExplorePage() {
                     <Field orientation="contents">
                         <FieldLabel>
                             Chủ đề
-                            <Input
+                            <TextFilter
                                 name="topic"
                                 maxLength={50}
-                                defaultValue={query.topic || ''}
+                                value={query.topic || ''}
                                 placeholder="Nhập chủ đề"
                             />
                         </FieldLabel>
@@ -113,11 +179,11 @@ export function ExplorePage() {
                     <Field orientation="contents">
                         <FieldLabel>
                             Ngôn ngữ
-                            <Input
+                            <TextFilter
                                 name="language"
                                 pattern="[a-z]{2}(-[A-Z]{2})?"
                                 title="Mã ngôn ngữ, ví dụ vi, en hoặc en-US"
-                                defaultValue={query.language || ''}
+                                value={query.language || ''}
                                 placeholder="vi, en, en-US"
                             />
                         </FieldLabel>
@@ -125,9 +191,9 @@ export function ExplorePage() {
                     <Field orientation="contents">
                         <FieldLabel>
                             Sắp xếp
-                            <FormSelect
+                            <SelectFilter
                                 name="sort"
-                                defaultValue={query.sort}
+                                value={query.sort}
                                 options={[
                                     { value: 'newest', label: 'Mới xuất bản' },
                                     { value: 'popular', label: 'Đọc nhiều' },
@@ -136,11 +202,10 @@ export function ExplorePage() {
                         </FieldLabel>
                     </Field>
                     <div className="discovery-filter-actions col-[span_2] flex flex-wrap items-end gap-3 max-[640px]:col-[auto]">
-                        <Button type="submit" className="min-h-11">
-                            Tìm sách
-                        </Button>
                         <Button variant="secondary" className="min-h-11" asChild>
-                            <Link to="/explore">Xóa bộ lọc</Link>
+                            <Link to="/library" state={{ resetFilters: true }}>
+                                Xóa bộ lọc
+                            </Link>
                         </Button>
                     </div>
                 </FieldGroup>
@@ -184,7 +249,11 @@ export function ExplorePage() {
                                 </EmptyDescription>
                             </EmptyHeader>
                             <EmptyContent>
-                                {filtered && <Link to="/explore">Xóa bộ lọc</Link>}
+                                {filtered && (
+                                    <Link to="/library" state={{ resetFilters: true }}>
+                                        Xóa bộ lọc
+                                    </Link>
+                                )}
                             </EmptyContent>
                         </Empty>
                     )}

@@ -246,9 +246,13 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
                 <div>
                     <Link
                         className="back-link mb-4 inline-block text-[length:var(--text-sm)] [.studio-editing_&]:inline [.studio-editing_&]:text-[length:12px]"
-                        to="/assets"
+                        to={
+                            asset.scope === 'library'
+                                ? `/library?view=assets&type=${asset.type}`
+                                : '/assets'
+                        }
                     >
-                        Tài nguyên
+                        {asset.scope === 'library' ? 'Khám phá tài nguyên' : 'Tài nguyên'}
                     </Link>
                     <h1>{asset.name}</h1>
                     <p>

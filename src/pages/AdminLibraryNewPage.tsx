@@ -2,10 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { SearchFilter } from '@/shared/ui/LiveFilters';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { SearchInput } from '@/shared/ui/SearchInput';
 import { libraryFields, readLibrarySearch } from '../features/admin/library-model';
 import {
     LibraryConfirm,
@@ -133,27 +133,21 @@ export function AdminLibraryNewPage() {
             </div>
             <form
                 className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto] [&_select]:w-full"
-                key={query.q || ''}
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    const q = String(new FormData(event.currentTarget).get('q') || '').trim();
-                    setParams(q ? { q } : {});
-                }}
+                onSubmit={(event) => event.preventDefault()}
             >
                 <FieldGroup className="contents">
                     <Field className="block w-auto min-w-0 flex-[1_1_150px] max-[640px]:w-full max-[640px]:flex-auto">
                         <FieldLabel htmlFor="promote-q" className="m-0">
                             Tìm tài nguyên cá nhân
                         </FieldLabel>
-                        <SearchInput
+                        <SearchFilter
                             className="mt-2"
                             name="q"
                             id="promote-q"
                             maxLength={100}
-                            defaultValue={query.q}
+                            value={query.q}
                         />
                     </Field>
-                    <Button type="submit">Tìm tài nguyên</Button>
                 </FieldGroup>
             </form>
             <AdminReload

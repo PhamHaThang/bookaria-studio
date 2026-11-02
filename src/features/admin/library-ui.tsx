@@ -116,6 +116,7 @@ export function LibraryConfirm({
 }
 export function CategorySelect({
     categories,
+    onValueChange,
     value = '',
     exclude = new Set<string>(),
     label = 'Danh mục',
@@ -123,6 +124,7 @@ export function CategorySelect({
     emptyLabel = 'Không có',
 }: {
     categories: AssetCategory[];
+    onValueChange?: (value: string) => void;
     value?: string;
     exclude?: Set<string>;
     label?: string;
@@ -137,6 +139,8 @@ export function CategorySelect({
                     id={`library-${name}`}
                     name={name}
                     defaultValue={value}
+                    value={onValueChange ? value || '' : undefined}
+                    onValueChange={onValueChange}
                     options={[
                         { value: '', label: emptyLabel },
                         ...(categories

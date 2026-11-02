@@ -9,7 +9,11 @@ import {
     updateAssetForm,
     uploadRequest,
 } from '../src/features/assets/model/form.ts';
-import { readAssetSearch, updateAssetSearch } from '../src/features/assets/model/search.ts';
+import {
+    libraryAssetLocation,
+    readAssetSearch,
+    updateAssetSearch,
+} from '../src/features/assets/model/search.ts';
 import { runAssetUpload } from '../src/features/assets/model/upload.ts';
 import { ContractError } from '../src/shared/api/contract.ts';
 
@@ -329,4 +333,96 @@ test('asset in use details expose only validated book/page links', () => {
     error.response.data.error.details.usages[0].pageId = 'bad';
     assert.deepEqual(assetInUse(error), []);
     assert.deepEqual(assetInUse(new Error('other')), []);
+});
+
+test('asset filters ignore unsupported categories and retired tag filters', () => {
+    const mine = readAssetSearch(new URLSearchParams(`categoryId=${id}&tag=mèo`));
+    assert.equal(mine.categoryId, undefined);
+    assert.equal(mine.tag, undefined);
+    assert.equal(
+        updateAssetSearch(new URLSearchParams('tag=mèo&q=xe'), { page: '2' }).has('tag'),
+        false,
+    );
+    const library = readAssetSearch(new URLSearchParams(`scope=library&categoryId=${id}&tag=mèo`));
+    assert.equal(library.categoryId, id);
+    assert.equal(library.tag, undefined);
+});
+
+test('switching asset source clears hidden filters and pagination while preserving name and type', () => {
+    const current = new URLSearchParams(
+        `scope=library&categoryId=${id}&tag=mèo&q=xe&type=MODEL&page=4`,
+    );
+    const mine = updateAssetSearch(current, { scope: undefined });
+    assert.equal(mine.has('categoryId'), false);
+    assert.equal(mine.has('tag'), false);
+    assert.equal(mine.has('page'), false);
+    assert.equal(mine.has('scope'), false);
+    assert.equal(mine.get('q'), 'xe');
+    assert.equal(mine.get('type'), 'MODEL');
+    const library = updateAssetSearch(current, { scope: 'library' });
+    assert.equal(library.get('scope'), 'library');
+    assert.equal(library.has('tag'), false);
+    assert.equal(library.has('categoryId'), false);
+    assert.equal(current.get('page'), '4');
+});
+
+test('animation filter only applies to models and is cleared when changing asset type', () => {
+    for (const type of ['', 'IMAGE', 'AUDIO', 'VIDEO', 'bad']) {
+        const params = new URLSearchParams({ type, hasAnimation: 'true' });
+        assert.equal(readAssetSearch(params).hasAnimation, undefined);
+        assert.equal(updateAssetSearch(params, { q: 'test' }).has('hasAnimation'), false);
+    }
+    assert.equal(
+        updateAssetSearch(new URLSearchParams('type=IMAGE&hasAnimation=true'), {
+            type: 'MODEL',
+        }).has('hasAnimation'),
+        false,
+    );
+    const model = new URLSearchParams('type=MODEL&hasAnimation=true');
+    assert.equal(readAssetSearch(model).hasAnimation, true);
+    assert.equal(updateAssetSearch(model, { q: 'xe' }).get('hasAnimation'), 'true');
+    assert.equal(updateAssetSearch(model, { type: 'IMAGE' }).has('hasAnimation'), false);
+    assert.equal(updateAssetSearch(model, { type: undefined }).has('hasAnimation'), false);
+});
+
+test('old shared-library links move into Explore with valid filters and pagination', () => {
+    const target = new URL(
+        libraryAssetLocation(
+            new URLSearchParams({
+                scope: 'library',
+                type: 'MODEL',
+                q: ' mèo ',
+                categoryId: id,
+                hasAnimation: 'true',
+                page: '3',
+                tag: 'retired',
+                ignored: 'value',
+            }),
+        ),
+        'https://bookaria.example',
+    );
+    assert.equal(target.pathname, '/library');
+    assert.deepEqual(Object.fromEntries(target.searchParams), {
+        view: 'assets',
+        type: 'MODEL',
+        q: 'mèo',
+        categoryId: id,
+        hasAnimation: 'true',
+        page: '3',
+    });
+});
+
+test('old shared-library links do not carry stale animation or invalid filters', () => {
+    assert.equal(
+        libraryAssetLocation(
+            new URLSearchParams(
+                'scope=library&type=IMAGE&hasAnimation=true&page=bad&categoryId=invalid',
+            ),
+        ),
+        '/library?view=assets&type=IMAGE',
+    );
+    assert.equal(
+        libraryAssetLocation(new URLSearchParams('type=UNKNOWN&tag=hidden')),
+        '/library?view=assets',
+    );
 });

@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { Disclosure } from '@/shared/ui/Disclosure';
-import { FormSelect } from '@/shared/ui/FormSelect';
+import { SelectFilter } from '@/shared/ui/LiveFilters';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
@@ -14,7 +14,6 @@ import { adminDate, adminOperationsApi } from '../features/admin';
 import {
     auditTargetLink,
     canRetryJob,
-    formSearch,
     jobStatusLabel,
     jobTypeLabel,
     operationsKeys,
@@ -32,7 +31,7 @@ import { Feedback } from '../shared/ui/Feedback';
 
 export function AdminJobsPage() {
     const { user } = useAuth(),
-        [params, setParams] = useSearchParams(),
+        [params] = useSearchParams(),
         cache = useQueryClient();
     const parsed = readJobsSearch(params),
         query = parsed.success ? parsed.data : null;
@@ -59,20 +58,16 @@ export function AdminJobsPage() {
             </div>
             <form
                 className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_[data-slot=select-trigger]]:w-full [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto]"
-                key={params.toString()}
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    setParams(formSearch(new FormData(event.currentTarget), ['status', 'type']));
-                }}
+                onSubmit={(event) => event.preventDefault()}
             >
                 <FieldGroup className="contents">
                     <Field orientation="contents">
                         <FieldLabel htmlFor="jobs-status">
                             Trạng thái
-                            <FormSelect
+                            <SelectFilter
                                 id="jobs-status"
                                 name="status"
-                                defaultValue={params.get('status') || ''}
+                                value={params.get('status') || ''}
                                 options={[
                                     { value: '', label: 'Tất cả trạng thái' },
                                     ...(JobStatusSchema.options.map((value) => ({
@@ -86,10 +81,10 @@ export function AdminJobsPage() {
                     <Field orientation="contents">
                         <FieldLabel htmlFor="jobs-type">
                             Loại tác vụ
-                            <FormSelect
+                            <SelectFilter
                                 id="jobs-type"
                                 name="type"
-                                defaultValue={params.get('type') || ''}
+                                value={params.get('type') || ''}
                                 options={[
                                     { value: '', label: 'Tất cả loại' },
                                     ...(JobTypeSchema.options.map((value) => ({
@@ -100,8 +95,9 @@ export function AdminJobsPage() {
                             />
                         </FieldLabel>
                     </Field>
-                    <Button type="submit">Lọc tác vụ</Button>
-                    <Link to="/admin/jobs">Xóa bộ lọc</Link>
+                    <Link to="/admin/jobs" state={{ resetFilters: true }}>
+                        Xóa bộ lọc
+                    </Link>
                 </FieldGroup>
             </form>
             <Field orientation="contents">

@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
-import { FormSelect } from '@/shared/ui/FormSelect';
+import { SearchFilter, SelectFilter } from '@/shared/ui/LiveFilters';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { SearchInput } from '@/shared/ui/SearchInput';
 import {
     adminApi,
     adminDate,
@@ -97,7 +96,7 @@ export function AdminModerationPage() {
 }
 export function AdminBooksPage() {
     const { user } = useAuth(),
-        [params, setParams] = useSearchParams(),
+        [params] = useSearchParams(),
         query = readAdminBooksSearch(params);
     const list = useQuery({
         queryKey: adminKeys.books(user?.id || '', query),
@@ -115,35 +114,28 @@ export function AdminBooksPage() {
             </div>
             <form
                 className="admin-filters mb-5 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_[data-slot=select-trigger]]:w-full [&_input]:w-full [&_label]:m-0 [&_label]:flex-[1_1_150px] max-[640px]:[&_label]:w-full max-[640px]:[&_label]:flex-[auto]"
-                key={params.toString()}
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    const data = new FormData(event.currentTarget);
-                    const q = String(data.get('q') || '').trim(),
-                        visibility = String(data.get('visibility') || 'PUBLIC');
-                    setParams({ ...(q ? { q } : {}), visibility });
-                }}
+                onSubmit={(event) => event.preventDefault()}
             >
                 <FieldGroup className="contents">
                     <Field className="block w-auto min-w-0 flex-[1_1_150px] max-[640px]:w-full max-[640px]:flex-auto">
                         <FieldLabel htmlFor="admin-book-q" className="m-0">
                             Tên sách
                         </FieldLabel>
-                        <SearchInput
+                        <SearchFilter
                             className="mt-2"
                             id="admin-book-q"
                             name="q"
-                            defaultValue={query.q}
+                            value={query.q}
                             maxLength={100}
                         />
                     </Field>
                     <Field orientation="contents">
                         <FieldLabel htmlFor="admin-book-visibility">
                             Quyền hiển thị
-                            <FormSelect
+                            <SelectFilter
                                 id="admin-book-visibility"
                                 name="visibility"
-                                defaultValue={query.visibility}
+                                value={query.visibility}
                                 options={[
                                     { value: 'PUBLIC', label: 'Công khai' },
                                     { value: 'UNLISTED', label: 'Qua liên kết' },
@@ -152,7 +144,6 @@ export function AdminBooksPage() {
                             />
                         </FieldLabel>
                     </Field>
-                    <Button type="submit">Tìm sách</Button>
                 </FieldGroup>
             </form>
             <p className="stats-note max-w-[75ch] text-[length:var(--text-sm)] text-muted-foreground [.admin-form_&]:mb-4">
