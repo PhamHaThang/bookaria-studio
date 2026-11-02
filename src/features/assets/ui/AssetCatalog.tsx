@@ -2,23 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { FolderOpen, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, type NavigateOptions, useSearchParams } from 'react-router-dom';
-import {
-    AssetThumbnail,
-    assetKeys,
-    assetStatusLabels,
-    assetsApi,
-    assetTypeLabels,
-    readAssetSearch,
-    updateAssetSearch,
-} from '@/features/assets';
+import { assetKeys, assetsApi, readAssetSearch, updateAssetSearch } from '@/features/assets';
 import { AssetTypeTabs } from '@/features/assets/ui/AssetTypeTabs';
 import { LibraryAssetPreview } from '@/features/assets/ui/LibraryAssetPreview';
 import { useAuth } from '@/features/auth';
 import { errorMessage } from '@/shared/api/errors';
 import type { ListAssetsQuery } from '@/shared/contracts/api/assets.schema';
 import type { Asset, AssetCategory } from '@/shared/contracts/dto.schema';
-import { formatBytes } from '@/shared/lib/format';
-import { Badge } from '@/shared/ui/Badge';
 import { Button, buttonStyles } from '@/shared/ui/Button';
 import { Feedback } from '@/shared/ui/Feedback';
 import { FormSelect } from '@/shared/ui/FormSelect';
@@ -35,6 +25,8 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { AssetCatalogRow } from './AssetCatalogRow';
+import { PersonalAssetDialog } from './PersonalAssetDialog';
 
 function AssetFilters({
     query,
@@ -277,54 +269,11 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                         ) : (
                             <ul className="asset-list m-0 list-none border-t-[1px] border-t-border p-0 [border-top-style:solid]">
                                 {listing.data.data.map((asset) => (
-                                    <li
+                                    <AssetCatalogRow
                                         key={asset.id}
-                                        className="asset-row grid grid-cols-[64px_minmax(0,_1fr)_auto] items-center gap-5 border-b-[1px] border-b-border px-0 py-5 [border-bottom-style:solid] max-[540px]:grid-cols-[48px_minmax(0,_1fr)] max-[540px]:gap-[var(--space-2)_var(--space-4)] [&:hover]:bg-muted max-[540px]:[&_>_.badge]:col-[2]"
-                                    >
-                                        <AssetThumbnail asset={asset} />
-                                        <div className="asset-row-info [&_h2]:wrap-anywhere min-w-0 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-1 [&_h2]:text-[length:var(--text-md)] max-[540px]:[&_h2]:text-[length:var(--text-sm)] [&_h2_a:hover]:text-primary [&_h2_a:hover]:underline [&_h2_a]:text-[inherit] [&_h2_a]:no-underline [&_p]:m-0 [&_p]:text-[length:var(--text-xs)] [&_p]:text-muted-foreground">
-                                            <h2>
-                                                {scope === 'library' ? (
-                                                    <button
-                                                        type="button"
-                                                        className="text-left underline-offset-4 hover:underline"
-                                                        onClick={() => setPreview(asset)}
-                                                    >
-                                                        {asset.name}
-                                                    </button>
-                                                ) : (
-                                                    <Link to={`/assets/${asset.id}`}>
-                                                        {asset.name}
-                                                    </Link>
-                                                )}
-                                            </h2>
-                                            <p>
-                                                {assetTypeLabels[asset.type]} ·{' '}
-                                                {formatBytes(asset.sizeBytes)}
-                                                {asset.meta.animations?.length
-                                                    ? ` · ${asset.meta.animations.length} hoạt ảnh`
-                                                    : ''}
-                                            </p>
-                                            {asset.tags.length > 0 && (
-                                                <p className="asset-tag-list wrap-anywhere flex flex-wrap gap-2">
-                                                    {asset.tags.slice(0, 4).map((tag) => (
-                                                        <span key={tag}>#{tag}</span>
-                                                    ))}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <Badge
-                                            tone={
-                                                asset.status === 'READY'
-                                                    ? 'success'
-                                                    : asset.status === 'FAILED'
-                                                      ? 'danger'
-                                                      : 'warning'
-                                            }
-                                        >
-                                            {assetStatusLabels[asset.status]}
-                                        </Badge>
-                                    </li>
+                                        asset={asset}
+                                        onPreview={() => setPreview(asset)}
+                                    />
                                 ))}
                             </ul>
                         )}
@@ -340,7 +289,12 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                     </>
                 )}
             </AssetTypeTabs>
-            {preview && <LibraryAssetPreview asset={preview} onClose={() => setPreview(null)} />}
+            {preview &&
+                (scope === 'mine' ? (
+                    <PersonalAssetDialog asset={preview} onClose={() => setPreview(null)} />
+                ) : (
+                    <LibraryAssetPreview asset={preview} onClose={() => setPreview(null)} />
+                ))}
         </>
     );
 }

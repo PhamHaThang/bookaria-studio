@@ -1,16 +1,77 @@
-import { AssetMediaPreview } from '@/features/scene/ui/AssetMediaPreview';
+import { useQuery } from '@tanstack/react-query';
+import { Box, Copy, ExternalLink, FileImage, Film, Music2, X } from 'lucide-react';
+import { useRef } from 'react';
+import { toast } from 'sonner';
+import { useAuth } from '@/features/auth';
+import { errorMessage } from '@/shared/api/errors';
 import type { Asset } from '@/shared/contracts/dto.schema';
 import { formatBytes } from '@/shared/lib/format';
+import { Badge } from '@/shared/ui/Badge';
+import { Button } from '@/shared/ui/Button';
+import { Badge as TagBadge } from '@/shared/ui/primitives/badge';
 import {
     Dialog,
+    DialogClose,
     DialogContent,
     DialogDescription,
     DialogHeader,
     DialogTitle,
 } from '@/shared/ui/primitives/dialog';
-import { assetStatusLabels, assetTypeLabels } from '../model/assets';
+import { Separator } from '@/shared/ui/primitives/separator';
+import { assetKeys, assetStatusLabels, assetsApi, assetTypeLabels } from '../model/assets';
 
-export function LibraryAssetPreview({ asset, onClose }: { asset: Asset; onClose: () => void }) {
+import { AssetFilePreview, AssetPreviewState, assetDuration } from './AssetPreviewMedia';
+
+const icons = { MODEL: Box, IMAGE: FileImage, AUDIO: Music2, VIDEO: Film };
+
+export function LibraryAssetPreview({
+    asset: initial,
+    onClose,
+}: {
+    asset: Asset;
+    onClose: () => void;
+}) {
+    const { user } = useAuth();
+    const opener = useRef(document.activeElement as HTMLElement | null);
+    const detail = useQuery({
+        queryKey: assetKeys.detail(user?.id || '', initial.id),
+        queryFn: ({ signal }) => assetsApi.detail(initial.id, signal),
+        initialData: initial,
+        staleTime: 0,
+        refetchInterval: (query) =>
+            !query.state.error && query.state.data?.status === 'PROCESSING' ? 3000 : false,
+        retry: false,
+    });
+    const asset = detail.isFetchedAfterMount ? detail.data : initial;
+    const Icon = icons[asset.type];
+    const available = asset.status === 'READY' && !detail.isError;
+    const credit = [asset.authorName, asset.license, asset.sourceUrl].filter(Boolean).join('\n');
+    async function copyCredit() {
+        try {
+            await navigator.clipboard.writeText(credit);
+            toast.success('Đã sao chép thông tin ghi nguồn.');
+        } catch {
+            toast.error('Chưa sao chép được thông tin. Vui lòng thử lại.');
+        }
+    }
+    const facts = [
+        { label: 'Định dạng', value: asset.format.toUpperCase() },
+        { label: 'Dung lượng', value: formatBytes(asset.sizeBytes) },
+        ...(asset.meta.width && asset.meta.height
+            ? [
+                  {
+                      label: 'Kích thước',
+                      value: `${asset.meta.width.toLocaleString('vi-VN')} × ${asset.meta.height.toLocaleString('vi-VN')} px`,
+                  },
+              ]
+            : []),
+        ...(asset.meta.durationSec !== undefined
+            ? [{ label: 'Thời lượng', value: assetDuration(asset.meta.durationSec) }]
+            : []),
+        ...(asset.type === 'MODEL' && asset.meta.animations?.length
+            ? [{ label: 'Hoạt ảnh', value: `${asset.meta.animations.length} chuyển động` }]
+            : []),
+    ];
     return (
         <Dialog
             open
@@ -18,54 +79,171 @@ export function LibraryAssetPreview({ asset, onClose }: { asset: Asset; onClose:
                 if (!open) onClose();
             }}
         >
-            <DialogContent className="max-h-[calc(100dvh-32px)] max-w-[min(960px,calc(100vw-32px))] gap-5 overflow-y-auto">
-                <DialogHeader className="pr-8">
-                    <DialogTitle>{asset.name}</DialogTitle>
-                    <DialogDescription>
-                        {assetTypeLabels[asset.type]} — {formatBytes(asset.sizeBytes)} —{' '}
+            <DialogContent
+                showCloseButton={false}
+                onCloseAutoFocus={(event) => {
+                    event.preventDefault();
+                    if (opener.current?.isConnected) opener.current.focus({ preventScroll: true });
+                }}
+                className="flex h-[min(760px,calc(100dvh-32px))] max-w-[min(1120px,calc(100vw-32px))] flex-col overflow-hidden p-0"
+            >
+                <header className="flex shrink-0 items-center gap-4 border-border border-b px-5 py-4 sm:px-6">
+                    <Icon className="size-6 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+                    <DialogHeader className="min-w-0 flex-1 gap-1">
+                        <DialogTitle className="m-0 line-clamp-2 break-words">
+                            {asset.name}
+                        </DialogTitle>
+                        <DialogDescription>{assetTypeLabels[asset.type]}</DialogDescription>
+                    </DialogHeader>
+                    <Badge
+                        className="max-sm:hidden"
+                        tone={
+                            asset.status === 'READY'
+                                ? 'success'
+                                : asset.status === 'FAILED'
+                                  ? 'danger'
+                                  : 'warning'
+                        }
+                    >
                         {assetStatusLabels[asset.status]}
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="h-[min(55dvh,480px)] min-h-40 overflow-hidden rounded-xl border border-border bg-background">
-                    {asset.status === 'READY' ? (
-                        <AssetMediaPreview key={asset.id} type={asset.type} url={asset.url} />
-                    ) : (
-                        <p className="grid h-full place-items-center p-6 text-muted-foreground text-sm">
-                            Tài nguyên chưa sẵn sàng để xem trước.
-                        </p>
-                    )}
-                </div>
-                {(asset.authorName || asset.license || asset.sourceUrl) && (
-                    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-3 text-sm">
-                        {asset.authorName && (
-                            <>
-                                <dt className="text-muted-foreground">Tác giả</dt>
-                                <dd>{asset.authorName}</dd>
-                            </>
+                    </Badge>
+                    <DialogClose asChild>
+                        <Button variant="ghost" size="icon" aria-label="Đóng">
+                            <X />
+                        </Button>
+                    </DialogClose>
+                </header>
+                <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(220px,1fr)_minmax(0,0.8fr)] md:grid-cols-[minmax(0,1fr)_300px] md:grid-rows-[minmax(0,1fr)]">
+                    <section
+                        aria-label="Xem trước tài nguyên"
+                        className="min-h-0 min-w-0 overflow-hidden bg-background"
+                    >
+                        {detail.isError ? (
+                            <AssetPreviewState
+                                title="Chưa tải được tài nguyên"
+                                description={errorMessage(detail.error)}
+                                retry={() => void detail.refetch()}
+                            />
+                        ) : asset.status === 'PROCESSING' ? (
+                            <AssetPreviewState
+                                title="Tài nguyên đang được xử lý"
+                                description="Phần xem trước sẽ tự cập nhật khi tài nguyên sẵn sàng."
+                                processing
+                            />
+                        ) : asset.status === 'FAILED' ? (
+                            <AssetPreviewState
+                                title="Chưa xử lý được tài nguyên"
+                                description={
+                                    asset.error ||
+                                    'Tệp này hiện chưa sẵn sàng. Vui lòng chọn tài nguyên khác.'
+                                }
+                            />
+                        ) : (
+                            <AssetFilePreview key={`${asset.id}:${asset.url}`} asset={asset} />
                         )}
-                        {asset.license && (
+                    </section>
+                    <aside
+                        aria-label="Thông tin tài nguyên"
+                        className="flex min-h-0 flex-col gap-6 overflow-y-auto border-border border-t p-5 md:border-t-0 md:border-l md:p-6"
+                    >
+                        <section className="flex flex-col gap-4">
+                            <h2 className="m-0 font-semibold text-sm">Thông tin tài nguyên</h2>
+                            <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-3 text-sm">
+                                {facts.map(({ label, value }) => (
+                                    <div key={label} className="contents">
+                                        <dt className="text-muted-foreground">{label}</dt>
+                                        <dd className="break-words text-right tabular-nums">
+                                            {value}
+                                        </dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        </section>
+                        {credit && (
                             <>
-                                <dt className="text-muted-foreground">Giấy phép</dt>
-                                <dd>{asset.license}</dd>
-                            </>
-                        )}
-                        {asset.sourceUrl && (
-                            <>
-                                <dt className="text-muted-foreground">Nguồn</dt>
-                                <dd>
-                                    <a
-                                        className="break-all underline underline-offset-4"
-                                        href={asset.sourceUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                <Separator />
+                                <section className="flex flex-col gap-4">
+                                    <h2 className="m-0 font-semibold text-sm">
+                                        Nguồn và giấy phép
+                                    </h2>
+                                    <dl className="flex flex-col gap-4 text-sm">
+                                        {asset.authorName && (
+                                            <div className="flex flex-col gap-1">
+                                                <dt className="text-muted-foreground">Tác giả</dt>
+                                                <dd className="break-words">{asset.authorName}</dd>
+                                            </div>
+                                        )}
+                                        {asset.license && (
+                                            <div className="flex flex-col gap-1">
+                                                <dt className="text-muted-foreground">Giấy phép</dt>
+                                                <dd className="break-words">{asset.license}</dd>
+                                            </div>
+                                        )}
+                                    </dl>
+                                    {asset.sourceUrl && (
+                                        <Button
+                                            variant="link"
+                                            className="h-auto justify-start p-0"
+                                            asChild
+                                        >
+                                            <a
+                                                href={asset.sourceUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                Xem nguồn tài nguyên
+                                                <ExternalLink data-icon="inline-end" />
+                                            </a>
+                                        </Button>
+                                    )}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full"
+                                        onClick={() => void copyCredit()}
                                     >
-                                        Xem nguồn tài nguyên
-                                    </a>
-                                </dd>
+                                        <Copy data-icon="inline-start" />
+                                        Sao chép ghi nguồn
+                                    </Button>
+                                </section>
                             </>
                         )}
-                    </dl>
-                )}
+                        {asset.tags.length > 0 && (
+                            <section className="flex flex-col gap-3">
+                                <h2 className="m-0 font-semibold text-sm">Nhãn</h2>
+                                <div className="flex flex-wrap gap-2">
+                                    {asset.tags.map((tag) => (
+                                        <TagBadge
+                                            key={tag}
+                                            variant="outline"
+                                            className="max-w-full whitespace-normal break-words"
+                                        >
+                                            {tag}
+                                        </TagBadge>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+                    </aside>
+                </div>
+                <footer className="flex shrink-0 items-center justify-end gap-3 border-border border-t px-5 py-4 sm:px-6">
+                    <DialogClose asChild>
+                        <Button variant="outline">Đóng</Button>
+                    </DialogClose>
+                    {available ? (
+                        <Button asChild>
+                            <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink data-icon="inline-start" />
+                                Mở tệp gốc
+                            </a>
+                        </Button>
+                    ) : (
+                        <Button disabled>
+                            <ExternalLink data-icon="inline-start" />
+                            Mở tệp gốc
+                        </Button>
+                    )}
+                </footer>
             </DialogContent>
         </Dialog>
     );

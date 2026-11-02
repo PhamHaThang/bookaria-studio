@@ -23,7 +23,7 @@ export function ConfirmationDialog({
     busy: boolean;
     onClose: () => void;
     className?: string;
-    returnFocus?: HTMLElement | null;
+    returnFocus?: HTMLElement | null | (() => HTMLElement | null);
 }) {
     const descriptionId = useId();
     const content = useRef<HTMLDivElement>(null);
@@ -54,7 +54,9 @@ export function ConfirmationDialog({
                 }}
                 onCloseAutoFocus={(event) => {
                     event.preventDefault();
-                    const target = returnFocus ?? opener.current;
+                    const target =
+                        (typeof returnFocus === 'function' ? returnFocus() : returnFocus) ??
+                        opener.current;
                     if (target?.isConnected && target !== document.body)
                         target.focus({ preventScroll: true });
                     else
