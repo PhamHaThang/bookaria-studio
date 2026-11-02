@@ -68,7 +68,7 @@ export function PageStrip({
         [adding, setAdding] = useState(false);
     const [target, setTarget] = useState<string | null>(null);
     const currentPageLink = useRef<HTMLAnchorElement>(null);
-    const pageScroll = useRef<HTMLFieldSetElement>(null);
+    const pageScroll = useRef<HTMLElement>(null);
     const dragSession = useRef<{ id: string; ids: string[] } | null>(null);
     const dragX = useRef<number | null>(null);
     const suppressClickUntil = useRef(0);
@@ -344,10 +344,10 @@ export function PageStrip({
                 className="editor-page-dock flex min-w-0 max-w-full items-start gap-1"
                 aria-label="Các trang trong sách"
             >
-                <fieldset
-                    className="m-0 flex min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain border-0 p-1 [scrollbar-width:thin]"
-                    data-page-scroll
+                <section
+                    className="m-0 flex min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain border-0 p-1 [scrollbar-width:thin]"
                     aria-label="Sắp xếp các trang"
+                    data-page-scroll
                     ref={pageScroll}
                     onDragEnter={dragOver}
                     onDragOver={dragOver}
@@ -403,7 +403,7 @@ export function PageStrip({
                             )}
                             <div className="relative" data-page-visual>
                                 <Link
-                                    className="relative grid size-14 place-items-center rounded-xl border border-border bg-surface p-1 no-underline transition-[transform,border-color,box-shadow] duration-200 ease-out hover:border-input focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-[current=page]:border-primary aria-[current=page]:ring-1 aria-[current=page]:ring-primary data-[reorderable=true]:cursor-grab data-[reorderable=true]:active:cursor-grabbing group-data-[dragging=true]:scale-95 motion-reduce:transform-none motion-reduce:transition-none"
+                                    className="relative grid size-14 grid-rows-[minmax(0,1fr)] place-items-center overflow-hidden rounded-xl border border-border bg-surface p-1 no-underline transition-[transform,border-color,box-shadow] duration-200 ease-out hover:border-input focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-[current=page]:border-primary aria-[current=page]:ring-1 aria-[current=page]:ring-primary data-[reorderable=true]:cursor-grab data-[reorderable=true]:active:cursor-grabbing group-data-[dragging=true]:scale-95 motion-reduce:transform-none motion-reduce:transition-none"
                                     draggable={!dragLocked}
                                     data-reorderable={!dragLocked}
                                     onDragStart={(event) => {
@@ -464,7 +464,7 @@ export function PageStrip({
                                     title={`${page.title || `Trang ${page.orderIndex + 1}`}${!dragLocked ? ' · Kéo để đổi thứ tự' : ''}`}
                                 >
                                     <img
-                                        className="size-full rounded-lg object-contain"
+                                        className="size-full min-h-0 min-w-0 rounded-lg object-contain"
                                         src={page.thumbnailUrl}
                                         alt=""
                                         loading="lazy"
@@ -562,7 +562,7 @@ export function PageStrip({
                             </div>
                         </div>
                     ))}
-                </fieldset>
+                </section>
                 <Tooltip delayDuration={250}>
                     <TooltipTrigger asChild>
                         <span className="mt-2 inline-flex shrink-0 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2">
