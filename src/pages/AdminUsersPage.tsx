@@ -45,7 +45,7 @@ export function AdminUsersPage() {
                 onSubmit={(event) => event.preventDefault()}
             >
                 <FieldGroup className="contents">
-                    <Field className="block w-auto min-w-0 flex-[1_1_150px] max-[640px]:w-full max-[640px]:flex-auto">
+                    <Field className="w-auto min-w-0 flex-[1_1_150px] max-[640px]:w-full max-[640px]:flex-auto">
                         <FieldLabel htmlFor="admin-user-q" className="m-0">
                             Tên hoặc email
                         </FieldLabel>

@@ -50,7 +50,7 @@ export function ObjectSpecificProperties({
                     </Button>
                     {(object.presentation?.kind === 'screen' ||
                         object.presentation?.kind === 'bubble') && (
-                        <Field orientation="contents">
+                        <Field>
                             <FieldLabel htmlFor={`${id}-title`}>Tiêu đề</FieldLabel>
                             <Input
                                 id={`${id}-title`}
@@ -71,7 +71,7 @@ export function ObjectSpecificProperties({
                             />
                         </Field>
                     )}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor={`${id}-text`}>
                             {object.presentation?.kind === 'screen'
                                 ? 'Nội dung thẻ'
@@ -91,7 +91,7 @@ export function ObjectSpecificProperties({
                         />
                     </Field>
                     {object.presentation?.kind === 'annotation' && (
-                        <Field orientation="contents">
+                        <Field>
                             <FieldLabel htmlFor={`${id}-description`}>Mô tả</FieldLabel>
                             <Textarea
                                 id={`${id}-description`}
@@ -122,7 +122,7 @@ export function ObjectSpecificProperties({
                             }}
                         />
                     )}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor={`${id}-color`}>Màu chữ</FieldLabel>
                         <ColorInput
                             id={`${id}-color`}

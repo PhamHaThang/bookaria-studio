@@ -74,7 +74,13 @@ function Field({
         <div
             data-slot="field"
             data-orientation={orientation}
-            className={cn(fieldVariants({ orientation }), className)}
+            className={cn(
+                fieldVariants({ orientation }),
+                // Field owns spacing; controls also support legacy labels that wrap inputs.
+                orientation !== 'contents' &&
+                    '[&>[data-slot=field-label]]:mb-0 [&>[data-slot=input-group]]:mt-0 [&>[data-slot=input]]:mt-0 [&>[data-slot=select-trigger]]:mt-0 [&>[data-slot=textarea]]:mt-0 [&>div>[data-slot=field-label]]:mb-0',
+                className,
+            )}
             {...props}
         />
     );

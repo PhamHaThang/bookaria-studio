@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { AssetType } from '@/shared/contracts/enums.schema';
+import { FilterBar } from '@/shared/ui/FilterBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
 
 const types = [
@@ -21,6 +22,20 @@ export function AssetTypeTabs({
     onValueChange: (value: AssetType | undefined) => void;
     children: ReactNode;
 }) {
+    if (variant === 'line')
+        return (
+            <>
+                <FilterBar
+                    value={value || 'all'}
+                    onValueChange={(next) =>
+                        onValueChange(next === 'all' ? undefined : (next as AssetType))
+                    }
+                    options={types.map((type) => ({ ...type }))}
+                    label="Loại tài nguyên"
+                />
+                {children}
+            </>
+        );
     return (
         <Tabs
             value={value || 'all'}

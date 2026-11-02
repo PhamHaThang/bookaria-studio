@@ -68,7 +68,7 @@ export function OverlaySamples() {
                                     toast.success(`Đã lưu tên mẫu “${name.trim()}”.`);
                                 }}
                             >
-                                <Field className="block">
+                                <Field>
                                     <FieldLabel htmlFor="guide-dialog-name" className="mb-0">
                                         Tên sách mẫu
                                     </FieldLabel>

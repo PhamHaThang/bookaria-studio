@@ -149,32 +149,26 @@ export function ControlSamples() {
                     source="@/shared/ui/SearchInput · onValueChange; loading; disabled"
                 >
                     <FieldGroup className="grid grid-cols-2 gap-6 max-[800px]:grid-cols-1">
-                        <Field className="block">
-                            <FieldLabel className="mb-2" htmlFor="guide-search">
-                                Nhập và xóa từ khóa
-                            </FieldLabel>
+                        <Field>
+                            <FieldLabel htmlFor="guide-search">Nhập và xóa từ khóa</FieldLabel>
                             <SearchInput
                                 id="guide-search"
                                 value={search}
                                 onValueChange={setSearch}
                                 placeholder="Tìm theo tên sách"
                             />
-                            <FieldDescription className="mt-2 last:mt-2">
-                                Từ khóa mẫu: {search || '(trống)'}
-                            </FieldDescription>
+                            <FieldDescription>Từ khóa mẫu: {search || '(trống)'}</FieldDescription>
                         </Field>
-                        <Field className="block">
-                            <FieldLabel className="mb-2" htmlFor="guide-search-loading">
-                                Đang tìm kiếm
-                            </FieldLabel>
+                        <Field>
+                            <FieldLabel htmlFor="guide-search-loading">Đang tìm kiếm</FieldLabel>
                             <SearchInput
                                 id="guide-search-loading"
                                 defaultValue="Mô hình 3D"
                                 loading
                             />
                         </Field>
-                        <Field className="block" data-disabled>
-                            <FieldLabel className="mb-2" htmlFor="guide-search-disabled">
+                        <Field data-disabled>
+                            <FieldLabel htmlFor="guide-search-disabled">
                                 Tìm kiếm bị khóa
                             </FieldLabel>
                             <SearchInput
@@ -183,10 +177,8 @@ export function ControlSamples() {
                                 disabled
                             />
                         </Field>
-                        <Field className="block">
-                            <FieldLabel className="mb-2" htmlFor="guide-password">
-                                Mật khẩu
-                            </FieldLabel>
+                        <Field>
+                            <FieldLabel htmlFor="guide-password">Mật khẩu</FieldLabel>
                             <PasswordInput
                                 id="guide-password"
                                 autoComplete="new-password"
@@ -212,9 +204,9 @@ export function ControlSamples() {
                             setSaved(`Đã lưu bản mẫu “${title.trim()}”.`);
                         }}
                     >
-                        <FieldGroup className="gap-5 [&_[data-slot=field-label]]:mb-0">
+                        <FieldGroup>
                             <FieldGroup className="grid grid-cols-2 gap-6 max-[800px]:grid-cols-1">
-                                <Field className="block" data-invalid={Boolean(error)}>
+                                <Field data-invalid={Boolean(error)}>
                                     <FieldLabel htmlFor="guide-title">Tên sách</FieldLabel>
                                     <Input
                                         id="guide-title"
@@ -231,19 +223,14 @@ export function ControlSamples() {
                                         placeholder="Nhập tên sách"
                                     />
                                     {error ? (
-                                        <FieldError className="mt-2" id="guide-title-error">
-                                            {error}
-                                        </FieldError>
+                                        <FieldError id="guide-title-error">{error}</FieldError>
                                     ) : (
-                                        <FieldDescription
-                                            className="mt-2 last:mt-2"
-                                            id="guide-title-help"
-                                        >
+                                        <FieldDescription id="guide-title-help">
                                             Dữ liệu mẫu chỉ nằm trong trang này.
                                         </FieldDescription>
                                     )}
                                 </Field>
-                                <Field className="block">
+                                <Field>
                                     <FieldLabel htmlFor="guide-format">Khổ sách</FieldLabel>
                                     <FieldDescription>
                                         Ô chọn dạng pill; danh sách mở ra bo 12px để không cắt nội
@@ -266,16 +253,16 @@ export function ControlSamples() {
                                         ]}
                                     />
                                 </Field>
-                                <Field className="block">
+                                <Field>
                                     <FieldLabel htmlFor="guide-readonly">Chỉ đọc</FieldLabel>
                                     <Input id="guide-readonly" value="Bookaria Studio" readOnly />
                                 </Field>
-                                <Field className="block" data-disabled>
+                                <Field data-disabled>
                                     <FieldLabel htmlFor="guide-disabled">Tạm khóa</FieldLabel>
                                     <Input id="guide-disabled" value="Đang chờ xử lý" disabled />
                                 </Field>
                             </FieldGroup>
-                            <Field className="block">
+                            <Field>
                                 <FieldLabel htmlFor="guide-description">Mô tả</FieldLabel>
                                 <Textarea
                                     id="guide-description"

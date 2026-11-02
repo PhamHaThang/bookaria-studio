@@ -54,7 +54,7 @@ export function StatsBooksPage() {
                 onSubmit={(event) => event.preventDefault()}
             >
                 <FieldGroup className="contents">
-                    <Field className="block w-auto min-w-50 flex-1 max-[640px]:min-w-0">
+                    <Field className="w-auto min-w-50 flex-1 max-[640px]:min-w-0">
                         <FieldLabel htmlFor="stats-book-search" className="m-0">
                             Tìm sách của tôi
                         </FieldLabel>

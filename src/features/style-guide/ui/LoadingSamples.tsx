@@ -96,7 +96,7 @@ export function LoadingSamples() {
                         title="Skeleton theo nội dung thực tế"
                         source="LoadingState layout → ContentSkeleton (13 bố cục)"
                     >
-                        <Field className="block max-w-80">
+                        <Field className="max-w-80">
                             <FieldLabel htmlFor="guide-skeleton" className="mb-0">
                                 Chọn bố cục Skeleton
                             </FieldLabel>

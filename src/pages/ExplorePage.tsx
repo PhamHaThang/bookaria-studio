@@ -136,7 +136,7 @@ function ExploreBooks() {
                 onSubmit={(event) => event.preventDefault()}
             >
                 <FieldGroup className="contents">
-                    <Field className="col-span-2 block min-w-0 max-[640px]:col-auto">
+                    <Field className="col-span-2 min-w-0 max-[640px]:col-auto">
                         <FieldLabel htmlFor="explore-book-search" className="m-0">
                             Tên sách
                         </FieldLabel>

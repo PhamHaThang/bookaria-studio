@@ -142,7 +142,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         onSubmit={(event) => event.preventDefault()}
                     >
                         <FieldGroup className="contents">
-                            <Field className="block min-w-0 flex-1 max-[760px]:col-span-full">
+                            <Field className="min-w-0 flex-1 max-[760px]:col-span-full">
                                 <FieldLabel htmlFor="book-search" className="sr-only">
                                     Tìm sách
                                 </FieldLabel>

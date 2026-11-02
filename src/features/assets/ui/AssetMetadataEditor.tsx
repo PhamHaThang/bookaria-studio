@@ -88,7 +88,7 @@ export function AssetMetadataEditor({
             aria-busy={saving}
         >
             <fieldset disabled={saving} className="m-0 min-w-0 border-0 p-0">
-                <FieldGroup className="gap-5 [&_[data-slot=field-label]]:mb-0 [&_[data-slot=input]]:mt-0">
+                <FieldGroup>
                     <Field>
                         <FieldLabel htmlFor={`${formId}-name`}>
                             Tên tài nguyên <span aria-hidden="true">*</span>
