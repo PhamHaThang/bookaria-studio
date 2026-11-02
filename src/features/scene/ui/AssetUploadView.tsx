@@ -45,7 +45,7 @@ export function AssetUploadView({
     onUploaded?: (processing: boolean) => void;
 }) {
     const [dragging, setDragging] = useState(false);
-    const [controlsTarget, setControlsTarget] = useState<HTMLDivElement | null>(null);
+    const [controlsTarget] = useState<HTMLDivElement | null>(null);
     const { user } = useAuth(),
         cache = useQueryClient();
     const [file, setFile] = useState<File | null>(null),

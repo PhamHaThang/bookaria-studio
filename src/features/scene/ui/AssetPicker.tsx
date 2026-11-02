@@ -79,6 +79,7 @@ export function AssetPicker({
         libraryScroll = useRef<HTMLDivElement>(null),
         scrollPosition = useRef(0),
         scrollFilter = useRef('');
+    const pendingSearch = search.trim() !== query;
     const blocked = busy || uploadBusy || Boolean(removing);
     useEffect(() => () => controller.current?.abort(), []);
     useEffect(() => {
@@ -90,6 +91,11 @@ export function AssetPicker({
         const timer = setTimeout(() => setQuery(next), 300);
         return () => clearTimeout(timer);
     }, [search, query]);
+    function changeScope(value: 'mine' | 'library') {
+        setScope(value);
+        setCategoryId('');
+        setError(null);
+    }
     function clearSearch() {
         setSearch('');
         setQuery('');
@@ -97,12 +103,13 @@ export function AssetPicker({
     const categories = useQuery({
         queryKey: assetKeys.categories(user?.id || ''),
         queryFn: ({ signal }) => assetsApi.categories(signal),
+        enabled: mode === 'library' && scope === 'library',
     });
     const input = {
         scope,
         type,
         q: query || undefined,
-        categoryId: categoryId || undefined,
+        categoryId: scope === 'library' ? categoryId || undefined : undefined,
         hasAnimation: type === 'MODEL' && hasAnimation ? true : undefined,
         limit: 12,
     };
@@ -133,7 +140,7 @@ export function AssetPicker({
         if (libraryScroll.current) libraryScroll.current.scrollTop = 0;
     }, [filterKey]);
     async function loadMore() {
-        if (blocked || search.trim() !== query || list.isFetching || !list.hasNextPage) return;
+        if (blocked || pendingSearch || list.isFetching || !list.hasNextPage) return;
         await list.fetchNextPage({ cancelRefetch: false });
     }
     async function choose(asset: Asset) {
@@ -201,9 +208,7 @@ export function AssetPicker({
                         maxLength={100}
                         value={search}
                         disabled={blocked}
-                        loading={
-                            search.trim() !== query || (list.isFetching && !list.isFetchingNextPage)
-                        }
+                        loading={pendingSearch || (list.isFetching && !list.isFetchingNextPage)}
                         onValueChange={setSearch}
                         onClear={clearSearch}
                         onKeyDown={(event) => {
@@ -214,27 +219,29 @@ export function AssetPicker({
                         }}
                     />
                 </Field>
-                <Field className="w-60 shrink-0">
-                    <FieldLabel className="sr-only" htmlFor="scene-asset-category">
-                        Danh mục
-                    </FieldLabel>
-                    <FormSelect
-                        id="scene-asset-category"
-                        className="m-0"
-                        value={categoryId}
-                        disabled={blocked}
-                        onValueChange={(value) => {
-                            setCategoryId(value);
-                        }}
-                        options={[
-                            { value: '', label: 'Tất cả danh mục' },
-                            ...(categories.data?.map((category) => ({
-                                value: category.id,
-                                label: category.name,
-                            })) ?? []),
-                        ]}
-                    />
-                </Field>
+                {scope === 'library' && (
+                    <Field className="w-60 shrink-0">
+                        <FieldLabel className="sr-only" htmlFor="scene-asset-category">
+                            Danh mục
+                        </FieldLabel>
+                        <FormSelect
+                            id="scene-asset-category"
+                            className="m-0"
+                            value={categoryId}
+                            disabled={blocked}
+                            onValueChange={(value) => {
+                                setCategoryId(value);
+                            }}
+                            options={[
+                                { value: '', label: 'Tất cả danh mục' },
+                                ...(categories.data?.map((category) => ({
+                                    value: category.id,
+                                    label: category.name,
+                                })) ?? []),
+                            ]}
+                        />
+                    </Field>
+                )}
                 <div className="ml-auto flex shrink-0 items-center gap-4">
                     {type === 'MODEL' && (
                         <Field orientation="horizontal">
@@ -277,7 +284,7 @@ export function AssetPicker({
                     )}
                 </div>
             </div>
-            {categories.isError && (
+            {scope === 'library' && categories.isError && (
                 <p className="mb-4 text-muted-foreground text-xs">
                     Chưa tải được danh mục. Bạn vẫn có thể chọn tài nguyên trong danh sách.
                 </p>
@@ -327,7 +334,7 @@ export function AssetPicker({
                             {query || categoryId || hasAnimation
                                 ? query
                                     ? `Không có kết quả cho “${query}”. Thử từ khóa khác hoặc điều chỉnh bộ lọc.`
-                                    : 'Chọn danh mục khác hoặc xóa bộ lọc để xem thêm.'
+                                    : 'Điều chỉnh hoặc xóa bộ lọc để xem thêm.'
                                 : scope === 'mine'
                                   ? 'Tải tệp của bạn để bắt đầu thêm nội dung vào trang sách.'
                                   : 'Thử lại sau hoặc mở Tài nguyên của tôi để dùng tệp của bạn.'}
@@ -356,7 +363,7 @@ export function AssetPicker({
                             <Button
                                 variant="secondary"
                                 onClick={() => {
-                                    setScope('mine');
+                                    changeScope('mine');
                                 }}
                             >
                                 Xem tài nguyên của tôi
@@ -523,7 +530,7 @@ export function AssetPicker({
                     {list.hasNextPage && (
                         <Button
                             variant="secondary"
-                            disabled={blocked || search.trim() !== query || list.isFetching}
+                            disabled={blocked || pendingSearch || list.isFetching}
                             aria-busy={list.isFetchingNextPage}
                             onClick={() => void loadMore()}
                         >
@@ -595,7 +602,7 @@ export function AssetPicker({
                             onBack={() => {
                                 scrollPosition.current = 0;
                                 clearSearch();
-                                setScope('mine');
+                                changeScope('mine');
 
                                 setCategoryId('');
                                 setHasAnimation(false);
@@ -697,9 +704,7 @@ export function AssetPicker({
                             <Tabs
                                 value={scope}
                                 onValueChange={(value) => {
-                                    setScope(value as 'mine' | 'library');
-
-                                    setError(null);
+                                    changeScope(value as 'mine' | 'library');
                                 }}
                                 className="min-h-0 flex-1 gap-0"
                             >

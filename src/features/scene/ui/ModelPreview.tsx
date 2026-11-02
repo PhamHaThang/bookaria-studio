@@ -372,10 +372,13 @@ export default function ModelPreview({
     );
     const animationControls = (
         <fieldset className="flex min-w-0 flex-col gap-2">
-            <legend className="mb-2 font-semibold text-sm">Animation</legend>
+            <legend className={controlsTarget ? 'mb-2 font-semibold text-sm' : 'sr-only'}>
+                Animation
+            </legend>
             {info?.clips.length ? (
                 <div className="flex min-w-0 items-center gap-2">
                     <FormSelect
+                        className="m-0 w-44"
                         aria-label="Xem thử animation"
                         value={clip}
                         onValueChange={(value) => {
@@ -391,6 +394,7 @@ export default function ModelPreview({
                     <Button
                         variant="secondary"
                         size="icon"
+                        className="size-[var(--control-height)]"
                         disabled={!clip}
                         aria-label={playing ? 'Tạm dừng animation' : 'Phát animation'}
                         onClick={() => {
