@@ -12,7 +12,7 @@ const check = process.argv.includes('--check');
 const hash = (content) => createHash('sha256').update(content).digest('hex');
 const normalize = (content) => content.replace(/\r\n/g, '\n');
 const outputs = {};
-for (const name of ['buildScene.ts', 'InteractionRunner.ts']) {
+for (const name of ['buildScene.ts', 'InteractionRunner.ts', 'asset-cache.ts']) {
     const original = normalize(await readFile(path.join(viewer, 'src/scene-core', name), 'utf8'));
     let content = original
         .replaceAll("'../shared/contracts/", "'../contracts/")
@@ -42,6 +42,20 @@ for (const name of ['buildScene.ts', 'InteractionRunner.ts']) {
         this.execute = execute;
         this.onError = onError;
         this.delay = delay;
+    }`,
+        );
+    }
+    if (name === 'asset-cache.ts') {
+        content = content.replace(
+            `    constructor(
+        private download: Download = fetchBytes,
+        private limits: { totalBytes: number; fileBytes: number } = ASSET_CACHE_LIMITS,
+    ) {}`,
+            `    private download: Download;
+    private limits: { totalBytes: number; fileBytes: number };
+    constructor(download: Download = fetchBytes, limits: { totalBytes: number; fileBytes: number } = ASSET_CACHE_LIMITS) {
+        this.download = download;
+        this.limits = limits;
     }`,
         );
     }
