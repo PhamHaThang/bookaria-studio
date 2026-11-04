@@ -11,12 +11,13 @@ const page = (params: URLSearchParams) => {
     return parsed.success ? parsed.data : 1;
 };
 export function readAdminUsersSearch(params: URLSearchParams) {
+    const limit = PaginationQuerySchema.shape.limit.safeParse(params.get('limit') || '12');
     const role = AdminUsersQuerySchema.shape.role.safeParse(params.get('role') || undefined);
     const status = AdminUsersQuerySchema.shape.status.safeParse(params.get('status') || undefined);
     const sort = AdminUsersQuerySchema.shape.sort.safeParse(params.get('sort') || '-createdAt');
     return AdminUsersQuerySchema.parse({
         page: page(params),
-        limit: 12,
+        limit: limit.success ? limit.data : 12,
         q: (params.get('q') || '').trim().slice(0, 100) || undefined,
         role: role.success ? role.data : undefined,
         status: status.success ? status.data : undefined,
