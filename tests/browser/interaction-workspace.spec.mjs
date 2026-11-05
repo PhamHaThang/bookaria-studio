@@ -1091,7 +1091,7 @@ async function openQuestion(page, long = false) {
 }
 
 for (const theme of ['light', 'dark']) {
-    test(`question prompt ${theme}: choosing either answer resolves immediately without confirmation`, async ({
+    test(`question prompt ${theme}: shows answer feedback and waits for the reader to close`, async ({
         page,
     }, info) => {
         await page.setViewportSize({ width: 1366, height: 900 });
@@ -1124,6 +1124,26 @@ for (const theme of ['light', 'dark']) {
                     path: info.outputPath(`question-prompt-${theme}.png`),
                 });
             await dialog.getByRole('button', { name: label, exact: true }).click();
+            await expect(dialog).toBeVisible();
+            await expect(dialog.getByRole('status')).toContainText(
+                value === 'yes' ? 'Bạn đã trả lời đúng.' : 'Bạn đã trả lời sai.',
+            );
+            await expect(dialog.locator('[data-question-choice="yes"]')).toBeDisabled();
+            await expect(dialog.locator('[data-question-choice="no"]')).toBeDisabled();
+            await expect(dialog.locator('[data-question-result="correct"]')).toHaveCount(1);
+            expect(await page.evaluate(() => window.__question.result)).toBe('pending');
+            expect(await page.evaluate(() => window.__question.count)).toBe(0);
+            await dialog
+                .locator('[data-question-choice="yes"]')
+                .evaluate((button) => button.click());
+            await expect(dialog.getByRole('status')).toContainText(
+                value === 'yes' ? 'Bạn đã trả lời đúng.' : 'Bạn đã trả lời sai.',
+            );
+            await page.screenshot({
+                animations: 'disabled',
+                path: info.outputPath(`question-feedback-${value}-${theme}.png`),
+            });
+            await dialog.getByRole('button', { name: 'Đóng', exact: true }).click();
             await expect(dialog).toHaveCount(0);
             await expect
                 .poll(() => page.evaluate(() => window.__question.result))
@@ -1147,7 +1167,7 @@ for (const theme of ['light', 'dark']) {
         expect(bounds.y + bounds.height).toBeLessThanOrEqual(635);
         expect(
             await dialog
-                .locator('fieldset')
+                .locator('[data-question-choices]')
                 .evaluate((element) => element.scrollHeight > element.clientHeight),
         ).toBe(true);
         await expect(
@@ -1160,6 +1180,14 @@ for (const theme of ['light', 'dark']) {
         const last = dialog.locator('[data-question-choice="choice-5"]');
         await last.scrollIntoViewIfNeeded();
         await last.click();
+        await expect(dialog.getByRole('status')).toContainText('Bạn đã trả lời sai.');
+        expect(await page.evaluate(() => window.__question.result)).toBe('pending');
+        await expect(dialog.getByRole('button', { name: 'Đóng', exact: true })).toBeInViewport();
+        await page.screenshot({
+            animations: 'disabled',
+            path: info.outputPath(`question-mobile-feedback-${theme}.png`),
+        });
+        await dialog.getByRole('button', { name: 'Đóng', exact: true }).click();
         await expect
             .poll(() => page.evaluate(() => window.__question.result))
             .toEqual({ answer: 'choice-5' });
@@ -1176,6 +1204,10 @@ test('question prompt supports keyboard answers, closing, Escape and abort witho
     await page.keyboard.press('ArrowDown');
     expect(await page.evaluate(() => window.__question.result)).toBe('pending');
     await page.keyboard.press('Enter');
+    await expect(dialog.getByRole('status')).toBeFocused();
+    await expect(dialog.getByRole('status')).toContainText('Bạn đã trả lời sai.');
+    expect(await page.evaluate(() => window.__question.result)).toBe('pending');
+    await page.keyboard.press('Escape');
     await expect
         .poll(() => page.evaluate(() => window.__question.result))
         .toEqual({ answer: 'no' });
@@ -1194,6 +1226,25 @@ test('question prompt supports keyboard answers, closing, Escape and abort witho
     await page.evaluate(() => window.__questionController.abort('Rời trang'));
     await expect(dialog).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => window.__question.result)).toBe('aborted');
+});
+
+test('question prompt preserves an answer on close and cancels pending feedback on abort', async ({
+    page,
+}) => {
+    await open(page);
+    let dialog = await openQuestion(page);
+    await dialog.locator('[data-question-choice="yes"]').click();
+    await dialog.getByRole('button', { name: 'Đóng câu hỏi', exact: true }).click();
+    await expect
+        .poll(() => page.evaluate(() => window.__question.result))
+        .toEqual({ answer: 'yes' });
+    expect(await page.evaluate(() => window.__question.count)).toBe(1);
+    dialog = await openQuestion(page);
+    await dialog.locator('[data-question-choice="no"]').click();
+    await page.evaluate(() => window.__questionController.abort('Rời trang'));
+    await expect(dialog).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => window.__question.result)).toBe('aborted');
+    expect(await page.evaluate(() => window.__question.count)).toBe(0);
 });
 
 test('visibility operation stays in sync between node and inspector and survives undo/reload', async ({
