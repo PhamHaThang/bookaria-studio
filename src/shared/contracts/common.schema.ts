@@ -5,7 +5,10 @@ import { z } from 'zod';
  */
 
 /** Database id (uuid). Also accepts the nil uuid used by seed data. */
-export const IdSchema = z.uuid();
+export const IdSchema = z.string().regex(
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
+    { message: 'Mã định danh không đúng định dạng UUID' },
+);
 
 /** ISO 8601 timestamp in UTC, e.g. `2026-10-04T07:30:00Z`. */
 export const IsoDateTimeSchema = z.iso.datetime();

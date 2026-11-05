@@ -241,6 +241,10 @@ const router = createBrowserRouter(
                         <Route path="users/new" element={<AdminUserCreatePage />} />
                         <Route path="users/:userId" element={<AdminUserDetailPage />} />
                         <Route path="moderation" element={<AdminModerationPage />} />
+                        <Route
+                            path="moderator"
+                            element={<Navigate to="/admin/moderation" replace />}
+                        />
                         <Route path="books" element={<AdminBooksPage />} />
                         <Route path="books/:bookId" element={<AdminBookDetailPage />} />
                         <Route path="*" element={<AdminNotFoundPage />} />

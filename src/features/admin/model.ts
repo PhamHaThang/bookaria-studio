@@ -28,17 +28,25 @@ export function readAdminBooksSearch(params: URLSearchParams) {
     const visibility = AdminBooksQuerySchema.shape.visibility.safeParse(
         params.get('visibility') || 'PUBLIC',
     );
+    const rawLimit = Number(params.get('limit'));
+    const limit = [5, 10, 12, 20].includes(rawLimit) ? rawLimit : 12;
     return AdminBooksQuerySchema.parse({
         page: page(params),
-        limit: 12,
+        limit,
         q: (params.get('q') || '').trim().slice(0, 100) || undefined,
         visibility: visibility.success ? visibility.data : 'PUBLIC',
     });
 }
-export const readAdminQueueSearch = (params: URLSearchParams) => ({
-    page: page(params),
-    limit: 12,
-});
+export const readAdminQueueSearch = (params: URLSearchParams) => {
+    const rawLimit = Number(params.get('limit'));
+    const limit = [5, 10, 12, 20].includes(rawLimit) ? rawLimit : 12;
+    return {
+        page: page(params),
+        limit,
+        q: (params.get('q') || '').trim().slice(0, 100) || undefined,
+        reason: (params.get('reason') || '').trim() || undefined,
+    };
+};
 export const adminKeys = {
     all: (user: string) => ['admin', user] as const,
     dashboard: (user: string) => ['admin', user, 'dashboard'] as const,
