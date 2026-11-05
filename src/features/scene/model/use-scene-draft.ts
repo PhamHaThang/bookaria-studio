@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Page } from '@/shared/contracts/dto.schema';
 import type { Scene, SceneWarning } from '@/shared/contracts/scene.schema';
+import { historyFeedback } from '../../book-draft/model/history-description';
 import { useBookDraft } from '../../book-draft/ui/BookDraftProvider';
 export function useSceneDraft(page: Page) {
     const { store, state } = useBookDraft(),
@@ -18,8 +19,19 @@ export function useSceneDraft(page: Page) {
         },
         [navigate, page.id, page.bookId],
     );
-    const undo = useCallback(() => move(store.undo()), [store, move]);
-    const redo = useCallback(() => move(store.redo()), [store, move]);
+    const step = useCallback(
+        (redo = false) => {
+            const before = store.getSnapshot();
+            const change = redo ? before.redoChange : before.undoChange;
+            move(redo ? store.redo() : store.undo());
+            return change && before.editVersion !== store.getSnapshot().editVersion
+                ? historyFeedback(change, redo)
+                : null;
+        },
+        [store, move],
+    );
+    const undo = useCallback(() => step(), [step]);
+    const redo = useCallback(() => step(true), [step]);
     const save = useCallback(() => store.save(), [store]);
     const readLatest = useCallback((replace: boolean) => store.readLatest(replace), [store]);
     return {
@@ -32,6 +44,8 @@ export function useSceneDraft(page: Page) {
         reset: setDraft,
         canUndo: state.canUndo,
         canRedo: state.canRedo,
+        undoChange: state.undoChange,
+        redoChange: state.redoChange,
         save,
         readLatest,
         busy: state.saving && !state.autosaving,

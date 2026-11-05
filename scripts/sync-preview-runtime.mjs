@@ -12,7 +12,13 @@ const check = process.argv.includes('--check');
 const hash = (content) => createHash('sha256').update(content).digest('hex');
 const normalize = (content) => content.replace(/\r\n/g, '\n');
 const outputs = {};
-for (const name of ['buildScene.ts', 'InteractionRunner.ts', 'asset-cache.ts']) {
+for (const name of [
+    'buildScene.ts',
+    'InteractionRunner.ts',
+    'WorkflowState.ts',
+    'WorkflowPrompt.ts',
+    'asset-cache.ts',
+]) {
     const original = normalize(await readFile(path.join(viewer, 'src/scene-core', name), 'utf8'));
     let content = original
         .replaceAll("'../shared/contracts/", "'../contracts/")
@@ -22,8 +28,8 @@ for (const name of ['buildScene.ts', 'InteractionRunner.ts', 'asset-cache.ts']) 
         content = content
             .replace("import { fetchBytes } from './fetchBytes';\n", '')
             .replace(
-                'import { InteractionRunner, sleep }',
-                "import { fetchBytes } from './fetchBytes';\nimport { InteractionRunner, sleep }",
+                "import type { AssetCache } from './asset-cache';",
+                "import type { AssetCache } from './asset-cache';\nimport { fetchBytes } from './fetchBytes';",
             );
     if (name === 'InteractionRunner.ts') {
         content = content.replace(

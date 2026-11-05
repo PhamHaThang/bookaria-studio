@@ -2,6 +2,7 @@ import type {
     Action,
     ActionType,
     InteractionRule,
+    Scene,
     SceneObject,
     Trigger,
 } from '../../../shared/contracts/scene.schema';
@@ -11,23 +12,31 @@ export const triggerLabels: Record<Trigger['type'], string> = {
     onPageEnter: 'Khi vào trang',
     onPageLeave: 'Khi rời trang',
     onTap: 'Khi chạm đối tượng',
+    onMarkerFound: 'Khi nhận diện trang AR',
+    onMarkerLost: 'Khi mất dấu trang AR',
+    onAnimationEnd: 'Khi hoạt ảnh kết thúc',
+    onAnswer: 'Khi trả lời câu hỏi',
 };
 export const actionLabels: Record<ActionType, string> = {
     playAudio: 'Phát âm thanh',
     stopAudio: 'Dừng âm thanh',
-    playAnimation: 'Chạy animation',
-    setVisible: 'Đặt trạng thái hiển thị',
-    toggleVisible: 'Đảo trạng thái hiển thị',
+    playAnimation: 'Chạy hoạt cảnh 3D',
+    setVisible: 'Hiện hoặc ẩn đối tượng',
+    toggleVisible: 'Đổi hiện / ẩn mỗi lần chạm',
     playVideo: 'Phát video',
     openUrl: 'Mở liên kết',
     wait: 'Chờ',
-    transformTo: 'Di chuyển, xoay, đổi tỉ lệ',
+    transformTo: 'Di chuyển, xoay hoặc đổi kích thước',
+    condition: 'Nếu điều kiện đúng',
+    setState: 'Ghi nhớ',
+    askQuestion: 'Hiển thị câu hỏi',
+    navigate: 'Chuyển trang / kết thúc',
 };
 export function targetObjects(objects: SceneObject[], type: Trigger['type'] | ActionType) {
     return objects.filter((object) =>
         type === 'onTap'
             ? object.type !== 'audio'
-            : type === 'playAnimation'
+            : type === 'playAnimation' || type === 'onAnimationEnd'
               ? object.type === 'model'
               : type === 'playVideo'
                 ? object.type === 'video'
@@ -38,6 +47,30 @@ export function targetObjects(objects: SceneObject[], type: Trigger['type'] | Ac
 export function newAction(type: ActionType): Action {
     const delayMsSchema = 0;
     switch (type) {
+        case 'condition':
+            return {
+                type,
+                test: { type: 'variable', key: 'score', operator: 'gte', value: 1 },
+                delayMsSchema,
+            };
+        case 'setState':
+            return { type, key: 'score', operation: 'increment', value: 1, delayMsSchema };
+        case 'askQuestion':
+            return {
+                type,
+                question: {
+                    questionId: `q-${crypto.randomUUID().slice(0, 12)}`,
+                    title: 'Bạn đã tìm thấy chi tiết được đánh dấu chưa?',
+                    choices: [
+                        { id: 'yes', text: 'Đã tìm thấy' },
+                        { id: 'no', text: 'Chưa tìm thấy' },
+                    ],
+                    correctChoiceId: 'yes',
+                },
+                delayMsSchema,
+            };
+        case 'navigate':
+            return { type, navigation: { target: 'next' }, delayMsSchema };
         case 'playAudio':
             return { type, assetId: '', volume: 1, loop: false, delayMsSchema };
         case 'stopAudio':
@@ -84,8 +117,42 @@ export function appendRule(rules: InteractionRule[], rule: InteractionRule) {
 export function copyRule(rules: InteractionRule[], id: string, newId: string) {
     const rule = rules.find((item) => item.id === id);
     if (!rule) throw new Error('Không tìm thấy quy tắc.');
+    const copied = structuredClone(rule);
+    const questionIds = new Map(
+        copied.actions.flatMap((action) =>
+            action.type === 'askQuestion'
+                ? [[action.question.questionId, `q-${crypto.randomUUID().slice(0, 12)}`] as const]
+                : [],
+        ),
+    );
+    copied.actions = copied.actions.map((action) =>
+        action.type === 'askQuestion'
+            ? {
+                  ...action,
+                  question: {
+                      ...action.question,
+                      questionId:
+                          questionIds.get(action.question.questionId) || action.question.questionId,
+                  },
+              }
+            : action.type === 'condition' && action.test.type === 'answer'
+              ? {
+                    ...action,
+                    test: {
+                        ...action.test,
+                        questionId:
+                            questionIds.get(action.test.questionId) || action.test.questionId,
+                    },
+                }
+              : action,
+    );
+    if (copied.trigger.type === 'onAnswer')
+        copied.trigger = {
+            ...copied.trigger,
+            questionId: questionIds.get(copied.trigger.questionId) || copied.trigger.questionId,
+        };
     return appendRule(rules, {
-        ...structuredClone(rule),
+        ...copied,
         id: newId,
         name: `${rule.name || 'Quy tắc'} (bản sao)`.slice(0, 100),
     });
@@ -106,4 +173,27 @@ export function removeAction(actions: Action[], index: number) {
     if (index < 0 || index >= actions.length) return actions;
     if (actions.length === 1) throw new Error('Quy tắc cần ít nhất một hành động.');
     return actions.filter((_, i) => i !== index);
+}
+
+/** A copied question is a new prompt; references outside the copied step stay unchanged. */
+export function copyStepAction<T extends Action>(action: T): T {
+    const copy = structuredClone(action);
+    if (copy.type === 'askQuestion')
+        copy.question.questionId = `q-${crypto.randomUUID().slice(0, 12)}`;
+    return copy;
+}
+
+export function defaultWorkflowTrigger(type: Trigger['type'], scene: Scene): Trigger {
+    if (type === 'onTap' || type === 'onAnimationEnd')
+        return { type, objectId: targetObjects(scene.objects, type)[0]?.id || '' };
+    if (type === 'onAnswer')
+        return {
+            type,
+            questionId:
+                scene.interactions
+                    .flatMap((rule) => rule.actions)
+                    .find((action) => action.type === 'askQuestion')?.question.questionId || '',
+            answer: 'any',
+        };
+    return { type };
 }

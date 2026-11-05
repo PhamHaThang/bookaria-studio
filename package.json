@@ -19,7 +19,8 @@
         "contract:verify": "node scripts/sync-contract.mjs --verify",
         "pdf:assets": "node scripts/sync-pdf-assets.mjs",
         "preview:sync": "node scripts/sync-preview-runtime.mjs",
-        "preview:check": "node scripts/sync-preview-runtime.mjs --check"
+        "preview:check": "node scripts/sync-preview-runtime.mjs --check",
+        "test:interaction-ui": "playwright test --config=playwright.interactions.config.mjs"
     },
     "dependencies": {
         "@animate-ui/react": "2.4.1",
@@ -29,6 +30,7 @@
         "@fontsource/jetbrains-mono": "5.3.0",
         "@fontsource/noto-serif": "5.3.0",
         "@tanstack/react-query": "5.104.5",
+        "@xyflow/react": "12.12.0",
         "axios": "1.20.0",
         "class-variance-authority": "0.7.1",
         "clsx": "2.1.1",
@@ -51,6 +53,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.15",
+        "@playwright/test": "1.64.1",
         "@tailwindcss/vite": "4.3.3",
         "@types/node": "^24.19.2",
         "@types/qrcode": "1.5.5",

@@ -36,6 +36,7 @@ export class LocalPreviewStage {
     private observer: ResizeObserver;
     private last = 0;
     private active = false;
+    private interactive = true;
     private down: {
         x: number;
         y: number;
@@ -252,6 +253,7 @@ export class LocalPreviewStage {
         }
         if (
             !this.active ||
+            !this.interactive ||
             !this.runtime ||
             !down.tap ||
             down.moved ||
@@ -306,11 +308,12 @@ export class LocalPreviewStage {
         this.resetView();
         if (runtime) this.draw(0);
     }
-    start() {
+    start({ startRuntime = true, interactive = true } = {}) {
         if (!this.runtime || this.active) return;
+        this.interactive = interactive;
         this.active = true;
         this.last = 0;
-        this.runtime.start();
+        if (startRuntime) this.runtime.start();
         this.renderer.setAnimationLoop(this.tick);
     }
     getView(): PreviewView {

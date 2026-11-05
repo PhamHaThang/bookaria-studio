@@ -1,10 +1,11 @@
 import { Focus, RotateCcw, Smartphone, Volume2, VolumeX } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { BookDetail, Page } from '@/shared/contracts/dto.schema';
 import type { Scene } from '@/shared/contracts/scene.schema';
 import { cn } from '@/shared/lib/cn';
 import { buildScene, type PageRuntime } from '@/shared/scene-runtime/buildScene';
+import { WorkflowState } from '@/shared/scene-runtime/WorkflowState';
 import { BookariaLogo } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
@@ -54,7 +55,11 @@ export function LocalPreviewPanel(props: {
     const [rendererCache] = useState(() => new PreviewRendererCache());
     useEffect(() => () => rendererCache.dispose(), [rendererCache]);
     return props.active ? (
-        <ActivePreview key={props.page.id} {...props} rendererCache={rendererCache} />
+        <ActivePreview
+            key={`${props.page.id}:${JSON.stringify(props.book.workflowVariables || [])}`}
+            {...props}
+            rendererCache={rendererCache}
+        />
     ) : null;
 }
 function ActivePreview({
@@ -76,9 +81,15 @@ function ActivePreview({
     const host = useRef<HTMLDivElement>(null);
     const stage = useRef<LocalPreviewStage | null>(null),
         runtime = useRef<PageRuntime | null>(null);
-    const pages = [...book.pages].sort((a, b) => a.orderIndex - b.orderIndex);
+    const pages = useMemo(
+        () => [...book.pages].sort((a, b) => a.orderIndex - b.orderIndex),
+        [book.pages],
+    );
     const [previewPageId, setPreviewPageId] = useState(() => pages[0]?.id || page.id);
     const loadedPageId = useRef(previewPageId);
+    const progress = useRef(new WorkflowState(undefined, book.workflowVariables || []));
+    const retiring = useRef<Promise<void>>(Promise.resolve());
+    const automaticHops = useRef(0);
     const view = useRef(previewPageId === page.id ? initialView : undefined),
         muted = useRef(false),
         autoStart = useRef(false);
@@ -112,6 +123,8 @@ function ActivePreview({
                         : previewPageId === page.id
                           ? initialView
                           : undefined;
+                await retiring.current;
+                controller.signal.throwIfAborted();
                 await afterPreviewPaint(controller.signal);
                 controller.signal.throwIfAborted();
                 loadedPageId.current = previewPageId;
@@ -141,6 +154,42 @@ function ActivePreview({
                             toast.warning(message, { id: 'local-preview-media' });
                     },
                     log: () => {},
+                    state: progress.current,
+                    tap: () => {
+                        automaticHops.current = 0;
+                    },
+                    navigate: (navigation) =>
+                        queueMicrotask(() => {
+                            if (controller.signal.aborted) return;
+                            if (++automaticHops.current > 8) {
+                                toast.error(
+                                    'Luồng đang chuyển trang liên tục. Kiểm tra sự kiện vào trang.',
+                                );
+                                return;
+                            }
+                            if (navigation.target === 'end') {
+                                currentRuntime?.runner.cancelAll();
+                                currentRuntime?.stopMedia();
+                                autoStart.current = false;
+                                setState('ready');
+                                toast.success(navigation.message || 'Đã hoàn thành trải nghiệm.');
+                                return;
+                            }
+                            const index = pages.findIndex((item) => item.id === previewPageId);
+                            const next =
+                                navigation.target === 'next'
+                                    ? pages[index + 1]
+                                    : navigation.target === 'previous'
+                                      ? pages[index - 1]
+                                      : pages.find((item) => item.id === navigation.pageId);
+                            if (!next || next.id === previewPageId) {
+                                toast.info('Không có trang tiếp theo ở hướng này.');
+                                return;
+                            }
+                            autoStart.current = true;
+                            view.current = undefined;
+                            setPreviewPageId(next.id);
+                        }),
                     link: (url) => {
                         if (!controller.signal.aborted && /^https?:\/\//i.test(url))
                             window.open(url, '_blank', 'noopener,noreferrer');
@@ -168,8 +217,16 @@ function ActivePreview({
         })();
         return () => {
             view.current = currentStage?.getView() || view.current;
-            currentRuntime?.dispose();
-            controller.abort();
+            if (currentRuntime) {
+                const previous = currentRuntime;
+                const leaving = previous.leave().finally(() => {
+                    previous.dispose();
+                    controller.abort();
+                });
+                retiring.current = Promise.all([retiring.current, leaving])
+                    .then(() => undefined)
+                    .catch(() => undefined);
+            } else controller.abort();
             currentStage?.dispose();
             if (currentStage) rendererCache.release(currentStage.renderer);
             if (runtime.current === currentRuntime) runtime.current = null;
@@ -177,7 +234,7 @@ function ActivePreview({
             element.removeEventListener('preview-error', contextError);
             toast.dismiss('local-preview-media');
         };
-    }, [page, book, scene, revision, previewPageId, initialView, rendererCache, bookDraft]);
+    }, [page, book, scene, revision, previewPageId, initialView, rendererCache, bookDraft, pages]);
     const start = () => {
         if (state !== 'ready') return;
         autoStart.current = true;

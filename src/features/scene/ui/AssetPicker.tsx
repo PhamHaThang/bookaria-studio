@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Box, Info, Plus, RefreshCw, Trash2, Upload, X } from 'lucide-react';
+import { Box, Check, Info, Plus, RefreshCw, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { cn } from '@/shared/lib/cn';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Badge } from '@/shared/ui/primitives/badge';
 import { Button } from '@/shared/ui/primitives/button';
@@ -52,22 +53,32 @@ export function AssetPicker({
     onChoose,
     onClose,
     usedAssetIds = [],
+    selectedAssetId,
+    selectedAsset,
+    chooseLabel,
+    onClear,
 }: {
     type: AssetType;
     usedAssetIds?: string[];
+    selectedAssetId?: string;
+    selectedAsset?: Asset;
+    chooseLabel?: string;
+    onClear?: () => void;
     onChoose: (asset: Asset, signal: AbortSignal) => void | Promise<void>;
     onClose: () => void;
 }) {
     const { user } = useAuth();
     const [removing, setRemoving] = useState<Asset | null>(null),
         [addingId, setAddingId] = useState<string | null>(null);
-    const [scope, setScope] = useState<'mine' | 'library'>('library');
+    const [scope, setScope] = useState<'mine' | 'library'>(selectedAsset?.scope || 'library');
     const [search, setSearch] = useState(''),
         [query, setQuery] = useState('');
     const [categoryId, setCategoryId] = useState(''),
         [hasAnimation, setHasAnimation] = useState(false);
     const [mode, setMode] = useState<'library' | 'upload'>('library'),
-        [preview, setPreview] = useState<Asset | null>(null);
+        [preview, setPreview] = useState<Asset | null>(
+            selectedAsset?.status === 'READY' ? selectedAsset : null,
+        );
     const [busy, setBusy] = useState(false),
         [uploadBusy, setUploadBusy] = useState(false),
         [error, setError] = useState<string | null>(null);
@@ -378,8 +389,20 @@ export function AssetPicker({
                     aria-label="Danh sách tài nguyên"
                 >
                     {assets.map((asset) => (
-                        <Card key={asset.id} asChild size="sm" className="min-w-0 gap-0 py-0">
-                            <li data-asset-id={asset.id} className="min-w-0">
+                        <Card
+                            key={asset.id}
+                            asChild
+                            size="sm"
+                            className={cn(
+                                'min-w-0 gap-0 py-0',
+                                selectedAssetId === asset.id && 'border-primary',
+                            )}
+                        >
+                            <li
+                                data-asset-id={asset.id}
+                                data-asset-selected={selectedAssetId === asset.id || undefined}
+                                className="min-w-0"
+                            >
                                 <Button
                                     variant="plain"
                                     className="group flex w-full flex-col gap-0 text-left disabled:opacity-100"
@@ -396,6 +419,12 @@ export function AssetPicker({
                                     <CardContent asChild className="w-full px-0">
                                         <span className="relative block h-[clamp(64px,14dvh,126px)] w-full overflow-hidden rounded-t-xl [&_img]:transition-transform motion-safe:group-hover:[&_img]:scale-[1.03]">
                                             <AssetThumbnail asset={asset} variant="card" />
+                                            {selectedAssetId === asset.id && (
+                                                <Badge className="absolute top-2 right-2">
+                                                    <Check aria-hidden="true" />
+                                                    Đang chọn
+                                                </Badge>
+                                            )}
                                             {asset.status === 'READY' &&
                                             asset.meta.animations?.length ? (
                                                 <Badge
@@ -482,16 +511,34 @@ export function AssetPicker({
                                     <Button
                                         variant="ghost"
                                         size="icon-xs"
-                                        aria-label={`Thêm ${asset.name} vào trang`}
+                                        aria-label={
+                                            selectedAssetId === asset.id
+                                                ? `Đang chọn ${asset.name}`
+                                                : chooseLabel
+                                                  ? `${chooseLabel}: ${asset.name}`
+                                                  : `Thêm ${asset.name} vào trang`
+                                        }
                                         title={
                                             asset.status === 'READY'
-                                                ? 'Thêm vào trang'
+                                                ? selectedAssetId === asset.id
+                                                    ? 'Đang chọn'
+                                                    : chooseLabel || 'Thêm vào trang'
                                                 : assetStatusLabels[asset.status]
                                         }
-                                        disabled={blocked || asset.status !== 'READY'}
+                                        disabled={
+                                            blocked ||
+                                            asset.status !== 'READY' ||
+                                            (Boolean(chooseLabel) && selectedAssetId === asset.id)
+                                        }
                                         onClick={() => void choose(asset)}
                                     >
-                                        {busy && addingId === asset.id ? <Spinner /> : <Plus />}
+                                        {busy && addingId === asset.id ? (
+                                            <Spinner />
+                                        ) : selectedAssetId === asset.id ? (
+                                            <Check />
+                                        ) : (
+                                            <Plus />
+                                        )}
                                     </Button>
                                     {scope === 'mine' && asset.scope === 'mine' && (
                                         <Button
@@ -621,6 +668,12 @@ export function AssetPicker({
                                         <h3 className="break-words font-semibold text-lg">
                                             {preview.name}
                                         </h3>
+                                        {selectedAssetId === preview.id && (
+                                            <Badge>
+                                                <Check aria-hidden="true" />
+                                                Đang chọn
+                                            </Badge>
+                                        )}
                                         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
                                             <dt className="text-muted-foreground">Định dạng</dt>
                                             <dd>{preview.format.toUpperCase()}</dd>
@@ -668,6 +721,16 @@ export function AssetPicker({
                                     Quay lại
                                 </Button>
                                 <div className="ml-auto flex items-center gap-3">
+                                    {onClear && selectedAssetId === preview.id && (
+                                        <Button
+                                            variant="outline"
+                                            disabled={blocked}
+                                            onClick={onClear}
+                                        >
+                                            <X data-icon="inline-start" />
+                                            Bỏ chọn
+                                        </Button>
+                                    )}
                                     {scope === 'mine' && preview.scope === 'mine' && (
                                         <Button
                                             variant="ghost"
@@ -690,11 +753,23 @@ export function AssetPicker({
                                         </Button>
                                     )}
                                     <Button
-                                        disabled={blocked || preview.status !== 'READY'}
+                                        disabled={
+                                            blocked ||
+                                            preview.status !== 'READY' ||
+                                            (Boolean(chooseLabel) && selectedAssetId === preview.id)
+                                        }
                                         onClick={() => void choose(preview)}
                                     >
-                                        {busy ? <Spinner /> : <Plus data-icon="inline-start" />}Thêm
-                                        vào trang
+                                        {busy ? (
+                                            <Spinner />
+                                        ) : selectedAssetId === preview.id ? (
+                                            <Check data-icon="inline-start" />
+                                        ) : (
+                                            <Plus data-icon="inline-start" />
+                                        )}
+                                        {chooseLabel && selectedAssetId === preview.id
+                                            ? 'Đang chọn'
+                                            : chooseLabel || 'Thêm vào trang'}
                                     </Button>
                                 </div>
                             </footer>
@@ -741,7 +816,20 @@ export function AssetPicker({
                                     ))}
                                 </div>
                             </Tabs>
-                            <footer className="flex shrink-0 items-center justify-center border-border border-t px-6 py-3">
+                            <footer
+                                className={cn(
+                                    'flex shrink-0 items-center gap-4 border-border border-t px-6 py-3',
+                                    onClear && selectedAssetId
+                                        ? 'justify-between'
+                                        : 'justify-center',
+                                )}
+                            >
+                                {onClear && selectedAssetId && (
+                                    <Button variant="outline" disabled={blocked} onClick={onClear}>
+                                        <X data-icon="inline-start" />
+                                        Bỏ chọn
+                                    </Button>
+                                )}
                                 <p
                                     role="status"
                                     aria-live="polite"

@@ -11,9 +11,17 @@ import { pageImageSize } from '../scene/page-image-fit';
 import { createTextVisual } from '../scene/text-renderer';
 import type { AssetCache } from './asset-cache';
 import { fetchBytes } from './fetchBytes';
-import { InteractionRunner, sleep } from './InteractionRunner';
+import {
+    InteractionRunner,
+    type InteractionStepEvent,
+    sleep,
+    type WorkflowEnvironment,
+} from './InteractionRunner';
 
-type Hooks = {
+import { askWorkflowQuestion } from './WorkflowPrompt';
+
+type Hooks = WorkflowEnvironment & {
+    step?: (event: InteractionStepEvent) => void;
     tap?: (id: string) => void;
     notice: (message: string) => void;
     link: (url: string) => void;
@@ -69,12 +77,20 @@ export async function buildScene(
         { opacity: number; transparent: boolean }
     >();
     const visibilityGeneration = new Map<string, number>();
+    const animationListeners = new Map<string, () => void>();
     const visibilityProgress = new Map<string, number>();
-    const runner = new InteractionRunner(page.scene.interactions, execute, hooks.notice);
+    const runner = new InteractionRunner(page.scene.interactions, execute, hooks.notice, sleep, {
+        ...hooks,
+        pageId: page.pageId,
+        visible: (id) => nodes.get(id)?.root.visible || false,
+        question: hooks.question || askWorkflowQuestion,
+    });
+    runner.onStep = hooks.step;
     function dispose() {
         if (disposed) return;
         disposed = true;
         runner.dispose();
+        for (const cleanup of animationListeners.values()) cleanup();
         for (const tween of activeTweens.values()) tween.abort();
         for (const item of media) {
             item.pause();
@@ -277,11 +293,13 @@ export async function buildScene(
             hooks.link(action.url);
             return;
         }
+        if (!('objectId' in action)) return;
         const node = nodes.get(action.objectId);
         if (!node) throw new Error('Không tìm thấy đối tượng của hành động.');
         if (action.type === 'playAnimation') {
             const clip = node.clips?.find((clip) => clip.name === action.clip);
             if (!clip || !node.mixer) throw new Error(`Mô hình không có clip “${action.clip}”.`);
+            animationListeners.get(action.objectId)?.();
             node.mixer.stopAllAction();
             const animation = node.mixer.clipAction(clip);
             animation.reset();
@@ -291,6 +309,22 @@ export async function buildScene(
             );
             animation.clampWhenFinished = !action.loop;
             animation.play();
+            if (!action.loop) {
+                const mixer = node.mixer;
+                const finished = (event: { action: THREE.AnimationAction }) => {
+                    if (event.action !== animation) return;
+                    mixer.removeEventListener('finished', finished);
+                    if (!disposed && !suspended)
+                        void runner.fire({
+                            type: 'onAnimationEnd',
+                            objectId: action.objectId,
+                            clip: action.clip,
+                        });
+                };
+                const cleanup = () => mixer.removeEventListener('finished', finished);
+                animationListeners.set(action.objectId, cleanup);
+                mixer.addEventListener('finished', finished);
+            }
             return;
         }
         if (action.type === 'playVideo') {
@@ -569,6 +603,12 @@ export async function buildScene(
             group,
             runner,
             nodes,
+            markerFound() {
+                if (!disposed) void runner.fire({ type: 'onMarkerFound' });
+            },
+            markerLost() {
+                if (!disposed) void runner.fire({ type: 'onMarkerLost' });
+            },
             update(delta: number, camera: THREE.Camera) {
                 for (const node of nodes.values()) {
                     if (!suspended) node.mixer?.update(delta);

@@ -21,7 +21,13 @@ export function useSceneSidebarHover() {
     return context;
 }
 
-export function SceneWorkbench({ children }: { children: ReactNode }) {
+export function SceneWorkbench({
+    children,
+    hintsVisible = true,
+}: {
+    children: ReactNode;
+    hintsVisible?: boolean;
+}) {
     const [hovered, setHovered] = useState(false);
     const [focused, setFocused] = useState(false);
     useEffect(() => {
@@ -54,7 +60,8 @@ export function SceneWorkbench({ children }: { children: ReactNode }) {
                 {children}
                 <div
                     data-canvas-hints-host
-                    className="absolute inset-x-0 bottom-0 z-20 min-h-10 bg-surface [.scene-editor[data-panel=preview]_&]:hidden"
+                    hidden={!hintsVisible}
+                    className="absolute inset-x-0 bottom-0 z-20 min-h-10 bg-surface [&[hidden]]:hidden"
                 />
             </SidebarProvider>
         </HoverContext.Provider>
