@@ -134,8 +134,8 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
             }}
         >
             <DialogContent className="max-h-[92dvh] max-w-xl overflow-y-auto p-6 sm:p-7">
-                <DialogHeader className="pb-1">
-                    <DialogTitle className="flex items-center gap-2 text-xl">
+                <DialogHeader className="gap-1.5 pb-1">
+                    <DialogTitle className="m-0 flex items-center gap-2 text-xl leading-tight">
                         <Plus className="h-5 w-5 text-primary" />
                         Tạo tài khoản người dùng mới
                     </DialogTitle>
@@ -257,7 +257,7 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
                                 </SelectContent>
                             </Select>
                             {role === 'ADMIN' && (
-                                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                                <p className="text-[11px] text-warning-foreground">
                                     Tài khoản Quản trị viên sẽ có toàn quyền can thiệp vào tài
                                     nguyên và hệ thống.
                                 </p>
@@ -332,7 +332,7 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
                         </Field>
                     </FieldGroup>
 
-                    <DialogFooter className="mt-6 flex items-center justify-end gap-3 pt-3">
+                    <DialogFooter className="mt-6 flex items-center justify-end gap-3 border-border/60 border-t pt-4">
                         <Button
                             type="button"
                             variant="secondary"

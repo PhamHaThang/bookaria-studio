@@ -95,7 +95,7 @@ function AdminUserItem({
                         {/* Chấm trạng thái */}
                         <span
                             className={cn(
-                                'absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full border-2 border-surface shadow-xs',
+                                'absolute right-0 bottom-0 h-3 w-3 rounded-full border-2 border-surface shadow-xs',
                                 isLocked ? 'bg-destructive' : 'bg-emerald-500',
                             )}
                             title={isLocked ? 'Tài khoản đã khóa' : 'Tài khoản đang hoạt động'}
@@ -122,16 +122,16 @@ function AdminUserItem({
 
                             <Badge
                                 tone={isLocked ? 'danger' : 'success'}
-                                className="px-2.5 py-0.5 font-medium text-xs"
+                                className="px-2 py-0.5 font-medium text-xs"
                             >
                                 {isLocked ? (
                                     <>
-                                        <Lock className="mr-1 h-3 w-3" />
+                                        <Lock className="mr-0.5 h-2 w-2" />
                                         {statusLabel[user.status]}
                                     </>
                                 ) : (
                                     <>
-                                        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                        <span className="mr-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />
                                         {statusLabel[user.status]}
                                     </>
                                 )}
@@ -152,46 +152,46 @@ function AdminUserItem({
                     </div>
                 </div>
 
-                {/* Cụm nút hành động tinh tế, phân cấp rõ ràng */}
-                <div className="flex shrink-0 items-center gap-2">
-                    {/* Xem tài khoản */}
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="gap-1.5 font-medium"
-                        onClick={() => onViewDetails(user.id)}
-                        title="Xem chi tiết tài khoản"
-                    >
-                        <Eye className="h-4 w-4" data-icon="inline-start" />
-                        <span>Xem tài khoản</span>
-                    </Button>
-
-                    {/* Cập nhật */}
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="gap-1.5 font-medium"
-                        onClick={() => onUpdate(user)}
-                        title="Cập nhật tài khoản"
-                    >
-                        <Pencil className="h-4 w-4" data-icon="inline-start" />
-                        <span>Cập nhật</span>
-                    </Button>
-
-                    {/* Khóa / Mở khóa */}
+                {/* Cụm nút hành động tinh tế, tối ưu UX với icon buttons chuẩn A11y */}
+                <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+                    {/* 1. Xem chi tiết tài khoản */}
                     <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon-sm"
+                        className="text-muted-foreground transition-colors hover:bg-hover hover:text-foreground active:bg-selected"
+                        onClick={() => onViewDetails(user.id)}
+                        title="Xem chi tiết tài khoản"
+                        aria-label="Xem chi tiết tài khoản"
+                    >
+                        <Eye className="size-4" />
+                    </Button>
+
+                    {/* 2. Cập nhật thông tin */}
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground transition-colors hover:bg-hover hover:text-foreground active:bg-selected"
+                        onClick={() => onUpdate(user)}
+                        title="Cập nhật tài khoản"
+                        aria-label="Cập nhật tài khoản"
+                    >
+                        <Pencil className="size-4" />
+                    </Button>
+
+                    {/* 3. Khóa / Mở khóa tài khoản */}
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
                         disabled={isSelf}
                         className={cn(
-                            'gap-1.5 font-medium transition-colors',
+                            'transition-colors',
                             isLocked
-                                ? 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/30'
-                                : 'text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/30',
-                            isSelf && 'cursor-not-allowed opacity-40',
+                                ? 'text-success-foreground hover:bg-success hover:text-success-foreground'
+                                : 'text-warning-foreground hover:bg-warning hover:text-warning-foreground',
+                            isSelf && 'cursor-not-allowed opacity-40 hover:bg-transparent',
                         )}
                         onClick={() => onToggleLock(user)}
                         title={
@@ -201,24 +201,26 @@ function AdminUserItem({
                                   ? 'Mở khóa tài khoản'
                                   : 'Khóa tài khoản'
                         }
+                        aria-label={
+                            isSelf
+                                ? 'Không thể tự khóa tài khoản của chính mình'
+                                : isLocked
+                                  ? 'Mở khóa tài khoản'
+                                  : 'Khóa tài khoản'
+                        }
                     >
-                        {isLocked ? (
-                            <Unlock className="h-4 w-4" data-icon="inline-start" />
-                        ) : (
-                            <Lock className="h-4 w-4" data-icon="inline-start" />
-                        )}
-                        <span>{isLocked ? 'Mở khóa' : 'Khóa'}</span>
+                        {isLocked ? <Unlock className="size-4" /> : <Lock className="size-4" />}
                     </Button>
 
-                    {/* Xóa */}
+                    {/* 4. Xóa tài khoản */}
                     <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon-sm"
                         disabled={isSelf}
                         className={cn(
-                            'gap-1.5 font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive',
-                            isSelf && 'cursor-not-allowed opacity-40',
+                            'text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive',
+                            isSelf && 'cursor-not-allowed opacity-40 hover:bg-transparent',
                         )}
                         onClick={() => onDelete(user)}
                         title={
@@ -226,9 +228,13 @@ function AdminUserItem({
                                 ? 'Không thể tự xóa tài khoản của chính mình'
                                 : 'Xóa tài khoản người dùng'
                         }
+                        aria-label={
+                            isSelf
+                                ? 'Không thể tự xóa tài khoản của chính mình'
+                                : 'Xóa tài khoản người dùng'
+                        }
                     >
-                        <Trash2 className="h-4 w-4" data-icon="inline-start" />
-                        <span>Xóa</span>
+                        <Trash2 className="size-4" />
                     </Button>
                 </div>
             </div>

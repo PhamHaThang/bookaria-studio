@@ -11,7 +11,9 @@ import {
 import { LIMITS } from '@/shared/contracts/common.schema';
 import type { AdminUser } from '@/shared/contracts/dto.schema';
 import type { UserRole, UserStatus } from '@/shared/contracts/enums.schema';
+import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
+import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/primitives/avatar';
 import {
@@ -33,7 +35,7 @@ import {
 } from '@/shared/ui/primitives/select';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import { adminApi } from '../client';
-import { adminKeys, bytesLabel, userChanges } from '../model';
+import { adminKeys, bytesLabel, roleLabel, statusLabel, userChanges } from '../model';
 
 interface UserUpdateModalProps {
     user: AdminUser | null;
@@ -153,8 +155,8 @@ export function UserUpdateModal({ user, isOpen, onClose, onSuccess }: UserUpdate
             }}
         >
             <DialogContent className="max-h-[92dvh] max-w-xl overflow-y-auto p-6 sm:p-7">
-                <DialogHeader className="pb-1">
-                    <DialogTitle className="flex items-center gap-2 text-xl">
+                <DialogHeader className="gap-1.5 pb-1">
+                    <DialogTitle className="m-0 flex items-center gap-2 text-xl leading-tight">
                         <Pencil className="h-5 w-5 text-primary" />
                         Cập nhật tài khoản người dùng
                     </DialogTitle>
@@ -164,23 +166,56 @@ export function UserUpdateModal({ user, isOpen, onClose, onSuccess }: UserUpdate
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* Banner tóm tắt người dùng */}
-                <div className="flex items-center gap-3.5 rounded-[var(--radius-lg)] border border-border bg-muted/20 p-4">
-                    <Avatar className="h-12 w-12 border border-border shadow-xs">
-                        {user.avatarUrl && (
-                            <AvatarImage src={user.avatarUrl} alt={user.displayName} />
-                        )}
-                        <AvatarFallback className="bg-primary/10 font-bold text-base text-primary">
-                            {initials}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1 space-y-0.5">
-                        <p className="truncate font-semibold text-base text-foreground">
-                            {user.displayName}
-                        </p>
-                        <p className="truncate font-mono text-muted-foreground text-xs">
-                            {user.email}
-                        </p>
+                {/* Banner tóm tắt người dùng chuẩn hóa đồng bộ */}
+                <div className="flex items-center gap-3.5 rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-xs">
+                    <div className="relative shrink-0">
+                        <Avatar className="h-12 w-12 border border-border shadow-xs">
+                            {user.avatarUrl && (
+                                <AvatarImage src={user.avatarUrl} alt={user.displayName} />
+                            )}
+                            <AvatarFallback className="bg-primary/10 font-bold text-base text-primary">
+                                {initials}
+                            </AvatarFallback>
+                        </Avatar>
+                        <span
+                            className={cn(
+                                'absolute right-0 bottom-0 h-3 w-3 rounded-full border-2 border-surface shadow-xs',
+                                user.status === 'LOCKED' ? 'bg-destructive' : 'bg-emerald-500',
+                            )}
+                            title={user.status === 'LOCKED' ? 'Đã khóa' : 'Hoạt động'}
+                        />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                            <p className="m-0 truncate font-semibold text-base text-foreground leading-tight">
+                                {user.displayName}
+                            </p>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                                <Badge
+                                    tone={user.role === 'ADMIN' ? 'info' : 'neutral'}
+                                    className="h-5 justify-center gap-1 px-2 text-center font-normal text-[11px] leading-none"
+                                >
+                                    {roleLabel[user.role]}
+                                </Badge>
+                                <Badge
+                                    tone={user.status === 'LOCKED' ? 'danger' : 'success'}
+                                    className="h-5 justify-center gap-1 px-2 text-center font-normal text-[11px] leading-none"
+                                >
+                                    {statusLabel[user.status]}
+                                </Badge>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-muted-foreground">
+                            <span className="font-mono">{user.email}</span>
+                            {user.organization && (
+                                <>
+                                    <span>•</span>
+                                    <span className="truncate font-medium font-sans text-foreground/80">
+                                        {user.organization}
+                                    </span>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -227,7 +262,7 @@ export function UserUpdateModal({ user, isOpen, onClose, onSuccess }: UserUpdate
                                 </SelectContent>
                             </Select>
                             {role !== user.role && (
-                                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                                <p className="text-[11px] text-warning-foreground">
                                     Thay đổi vai trò yêu cầu bắt buộc phải nhập lý do bên dưới.
                                 </p>
                             )}
@@ -240,7 +275,7 @@ export function UserUpdateModal({ user, isOpen, onClose, onSuccess }: UserUpdate
                                     {status === 'LOCKED' ? (
                                         <Lock className="h-3.5 w-3.5 text-destructive" />
                                     ) : (
-                                        <UserCheck className="h-3.5 w-3.5 text-emerald-500" />
+                                        <UserCheck className="h-3.5 w-3.5 text-success-foreground" />
                                     )}
                                     Trạng thái hoạt động
                                 </span>
@@ -370,7 +405,7 @@ export function UserUpdateModal({ user, isOpen, onClose, onSuccess }: UserUpdate
                         </Field>
                     </FieldGroup>
 
-                    <DialogFooter className="mt-6 flex items-center justify-end gap-3 pt-3">
+                    <DialogFooter className="mt-6 flex items-center justify-end gap-3 border-border/60 border-t pt-4">
                         <Button
                             type="button"
                             variant="secondary"

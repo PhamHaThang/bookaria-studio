@@ -90,8 +90,10 @@ export function UserDetailModal({
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-h-[92dvh] max-w-2xl overflow-y-auto p-6 sm:p-7">
-                <DialogHeader className="pb-2">
-                    <DialogTitle className="text-xl">Chi tiết người dùng</DialogTitle>
+                <DialogHeader className="gap-1.5 pb-2">
+                    <DialogTitle className="m-0 text-xl leading-tight">
+                        Chi tiết người dùng
+                    </DialogTitle>
                     <DialogDescription className="text-sm">
                         Xem thông tin tài khoản, hạn mức lưu trữ và các đầu sách của tác giả.
                     </DialogDescription>
@@ -111,78 +113,93 @@ export function UserDetailModal({
 
                 {userDetails && (
                     <div className="space-y-6 pt-1">
-                        {/* Khối hồ sơ chính - Rộng rãi, phân cấp rõ ràng */}
-                        <div className="flex items-start gap-4.5 rounded-[var(--radius-lg)] border border-border bg-muted/20 p-5">
-                            <div className="relative shrink-0">
-                                <Avatar className="h-16 w-16 border-2 border-border shadow-xs">
-                                    {userDetails.avatarUrl && (
-                                        <AvatarImage
-                                            src={userDetails.avatarUrl}
-                                            alt={userDetails.displayName}
-                                        />
-                                    )}
-                                    <AvatarFallback className="bg-primary/10 font-bold text-lg text-primary">
-                                        {initials}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <span
-                                    className={cn(
-                                        'absolute right-0.5 bottom-0.5 h-4 w-4 rounded-full border-2 border-surface shadow-xs',
-                                        isLocked ? 'bg-destructive' : 'bg-emerald-500',
-                                    )}
-                                    title={isLocked ? 'Đã khóa' : 'Hoạt động'}
-                                />
-                            </div>
-
-                            <div className="min-w-0 flex-1 space-y-1.5">
-                                <div className="flex flex-wrap items-center gap-2.5">
-                                    <h3 className="truncate font-bold text-foreground text-xl tracking-tight">
-                                        {userDetails.displayName}
-                                    </h3>
-                                    <Badge
-                                        tone={isAdmin ? 'info' : 'neutral'}
-                                        className="px-2.5 py-0.5 text-xs"
-                                    >
-                                        {isAdmin && <ShieldCheck className="mr-1 h-3.5 w-3.5" />}
-                                        {roleLabel[userDetails.role]}
-                                    </Badge>
-                                    <Badge
-                                        tone={isLocked ? 'danger' : 'success'}
-                                        className="px-2.5 py-0.5 text-xs"
-                                    >
-                                        {isLocked ? (
-                                            <>
-                                                <Lock className="mr-1 h-3.5 w-3.5" />
-                                                {statusLabel[userDetails.status]}
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                                {statusLabel[userDetails.status]}
-                                            </>
+                        {/* Khối hồ sơ chính - Tối ưu spacing, căn lề cân đối và khắc phục khoảng hụt thị giác */}
+                        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5 shadow-xs sm:p-6">
+                            {/* Hàng trên: Căn giữa Avatar theo trục dọc với khối thông tin nhận diện */}
+                            <div className="flex items-center gap-4 sm:gap-5">
+                                <div className="relative shrink-0">
+                                    <Avatar className="h-16 w-16 border-2 border-border shadow-xs">
+                                        {userDetails.avatarUrl && (
+                                            <AvatarImage
+                                                src={userDetails.avatarUrl}
+                                                alt={userDetails.displayName}
+                                            />
                                         )}
-                                    </Badge>
+                                        <AvatarFallback className="bg-primary/10 font-bold text-lg text-primary">
+                                            {initials}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <span
+                                        className={cn(
+                                            'absolute right-0.5 bottom-0.5 h-4 w-4 rounded-full border-2 border-surface shadow-xs',
+                                            isLocked ? 'bg-destructive' : 'bg-emerald-500',
+                                        )}
+                                        title={isLocked ? 'Đã khóa' : 'Hoạt động'}
+                                    />
                                 </div>
 
-                                <p className="font-mono text-muted-foreground text-xs">
-                                    {userDetails.email}
-                                </p>
-
-                                {userDetails.organization && (
-                                    <p className="font-medium text-foreground text-xs">
-                                        Đơn vị công tác:{' '}
-                                        <span className="font-semibold">
-                                            {userDetails.organization}
-                                        </span>
-                                    </p>
-                                )}
-
-                                {userDetails.bio && (
-                                    <div className="mt-2.5 rounded-[var(--radius-md)] border border-border/60 bg-surface p-3 text-muted-foreground text-xs leading-relaxed">
-                                        {userDetails.bio}
+                                <div className="min-w-0 flex-1 space-y-2">
+                                    {/* Hàng 1: Tên người dùng và các chip badge nhỏ gọn, cân đối */}
+                                    <div className="flex items-center gap-2.5">
+                                        <h3 className="m-0 truncate font-bold text-foreground text-l leading-tight tracking-tight">
+                                            {userDetails.displayName}
+                                        </h3>
+                                        <div className="flex shrink-0 items-center gap-1.5">
+                                            <Badge
+                                                tone={isAdmin ? 'info' : 'neutral'}
+                                                className="h-5 justify-center gap-1 px-2 text-center font-normal text-[11px] leading-none"
+                                            >
+                                                {isAdmin && (
+                                                    <ShieldCheck className="size-3 shrink-0" />
+                                                )}
+                                                <span>{roleLabel[userDetails.role]}</span>
+                                            </Badge>
+                                            <Badge
+                                                tone={isLocked ? 'danger' : 'success'}
+                                                className="h-5 justify-center gap-1 px-2 text-center font-normal text-[11px] leading-none"
+                                            >
+                                                {isLocked ? (
+                                                    <>
+                                                        <Lock className="size-3 shrink-0" />
+                                                        <span>
+                                                            {statusLabel[userDetails.status]}
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
+                                                        <span>
+                                                            {statusLabel[userDetails.status]}
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </Badge>
+                                        </div>
                                     </div>
-                                )}
+
+                                    {/* Hàng 2: Email (giảm font size xuống 11px tinh tế) */}
+                                    <p className="m-0 font-mono text-[12px] text-muted-foreground leading-normal">
+                                        {userDetails.email}
+                                    </p>
+
+                                    {/* Hàng 3: Đơn vị công tác (giảm font size xuống 11px) */}
+                                    {userDetails.organization && (
+                                        <p className="m-0 text-[12px] text-muted-foreground leading-normal">
+                                            Đơn vị công tác:{' '}
+                                            <span className="font-medium text-foreground">
+                                                {userDetails.organization}
+                                            </span>
+                                        </p>
+                                    )}
+                                </div>
                             </div>
+
+                            {/* Hàng dưới: Hộp ghi chú / Tiểu sử (Bio) trải đều toàn bộ chiều ngang card */}
+                            {userDetails.bio && (
+                                <div className="mt-4.5 rounded-[var(--radius-md)] border border-border/70 bg-muted/40 p-3.5 text-muted-foreground text-xs leading-relaxed sm:mt-5">
+                                    <p className="font-normal">{userDetails.bio}</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Thống kê tài nguyên & Hoạt động - 2 Card thoáng đãng */}
@@ -350,8 +367,8 @@ export function UserDetailModal({
                                     className={cn(
                                         'transition-colors',
                                         isLocked
-                                            ? 'text-emerald-600 hover:text-emerald-700'
-                                            : 'text-amber-600 hover:text-amber-700',
+                                            ? 'text-success-foreground hover:bg-success hover:text-success-foreground'
+                                            : 'text-warning-foreground hover:bg-warning hover:text-warning-foreground',
                                     )}
                                     onClick={() => {
                                         onClose();
@@ -359,15 +376,9 @@ export function UserDetailModal({
                                     }}
                                 >
                                     {isLocked ? (
-                                        <Unlock
-                                            className="h-4 w-4 text-emerald-500"
-                                            data-icon="inline-start"
-                                        />
+                                        <Unlock className="h-4 w-4" data-icon="inline-start" />
                                     ) : (
-                                        <Lock
-                                            className="h-4 w-4 text-amber-500"
-                                            data-icon="inline-start"
-                                        />
+                                        <Lock className="h-4 w-4" data-icon="inline-start" />
                                     )}
                                     <span>{isLocked ? 'Mở khóa' : 'Khóa'}</span>
                                 </Button>

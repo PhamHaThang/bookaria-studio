@@ -5,7 +5,9 @@ import { toast } from 'sonner';
 import { useAuth } from '@/features/auth';
 import { errorMessage } from '@/shared/api/errors';
 import type { AdminUser } from '@/shared/contracts/dto.schema';
+import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
+import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import {
     AlertDialog,
@@ -20,7 +22,7 @@ import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import { adminApi } from '../client';
-import { adminKeys } from '../model';
+import { adminKeys, roleLabel, statusLabel } from '../model';
 
 interface UserDeleteModalProps {
     user: AdminUser | null;
@@ -108,43 +110,76 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                 }
             }}
         >
-            <AlertDialogContent className="max-w-lg p-6 sm:p-7">
-                <AlertDialogHeader className="pb-1">
-                    <AlertDialogTitle className="flex items-center gap-2 text-destructive text-xl">
-                        <AlertTriangle className="h-5 w-5" />
+            <AlertDialogContent className="max-h-[88dvh] max-w-md overflow-y-auto p-5 sm:p-6">
+                <AlertDialogHeader className="gap-1 pb-0.5">
+                    <AlertDialogTitle className="m-0 flex items-center gap-2 text-destructive text-lg leading-tight sm:text-xl">
+                        <AlertTriangle className="h-5 w-5 shrink-0" />
                         Xác nhận xóa tài khoản người dùng
                     </AlertDialogTitle>
-                    <AlertDialogDescription className="text-sm">
+                    <AlertDialogDescription className="text-sm leading-relaxed sm:text-sm">
                         Thao tác này mang tính phá hủy. Tài khoản sẽ bị đóng băng vĩnh viễn, mọi
                         phiên đăng nhập sẽ bị thu hồi và các đầu sách công khai sẽ được chuyển về
                         chế độ riêng tư.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
 
-                {/* Banner tóm tắt người dùng */}
-                <div className="flex items-center gap-3.5 rounded-[var(--radius-lg)] border border-border bg-muted/20 p-4">
-                    <Avatar className="h-12 w-12 border border-border shadow-xs">
-                        {user.avatarUrl && (
-                            <AvatarImage src={user.avatarUrl} alt={user.displayName} />
-                        )}
-                        <AvatarFallback className="bg-primary/10 font-bold text-base text-primary">
-                            {initials}
-                        </AvatarFallback>
-                    </Avatar>
+                {/* Banner tóm tắt người dùng nhỏ gọn, chống tràn viền */}
+                <div className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-border bg-surface p-3 shadow-xs">
+                    <div className="relative shrink-0">
+                        <Avatar className="h-10 w-10 border border-border shadow-xs">
+                            {user.avatarUrl && (
+                                <AvatarImage src={user.avatarUrl} alt={user.displayName} />
+                            )}
+                            <AvatarFallback className="bg-primary/10 font-bold text-primary text-sm">
+                                {initials}
+                            </AvatarFallback>
+                        </Avatar>
+                        <span
+                            className={cn(
+                                'absolute right-0 bottom-0 h-2.5 w-2.5 rounded-full border-2 border-surface shadow-xs',
+                                user.status === 'LOCKED' ? 'bg-destructive' : 'bg-emerald-500',
+                            )}
+                            title={user.status === 'LOCKED' ? 'Đã khóa' : 'Hoạt động'}
+                        />
+                    </div>
                     <div className="min-w-0 flex-1 space-y-0.5">
-                        <p className="truncate font-semibold text-base text-foreground">
-                            {user.displayName}
-                        </p>
-                        <p className="truncate font-mono text-muted-foreground text-xs">
-                            {user.email}
-                        </p>
+                        <div className="flex items-center gap-2">
+                            <p className="m-0 truncate font-semibold text-foreground text-sm leading-tight">
+                                {user.displayName}
+                            </p>
+                            <div className="flex shrink-0 items-center gap-1">
+                                <Badge
+                                    tone={user.role === 'ADMIN' ? 'info' : 'neutral'}
+                                    className="h-5 justify-center gap-1 px-1.5 text-center font-normal text-[10px] leading-none"
+                                >
+                                    {roleLabel[user.role]}
+                                </Badge>
+                                <Badge
+                                    tone={user.status === 'LOCKED' ? 'danger' : 'success'}
+                                    className="h-5 justify-center gap-1 px-1.5 text-center font-normal text-[10px] leading-none"
+                                >
+                                    {statusLabel[user.status]}
+                                </Badge>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px] text-muted-foreground">
+                            <span className="truncate">{user.email}</span>
+                            {user.organization && (
+                                <>
+                                    <span>•</span>
+                                    <span className="truncate font-medium font-sans text-foreground/80">
+                                        {user.organization}
+                                    </span>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 {isSelf ? (
-                    <Alert tone="danger" className="text-xs">
+                    <Alert tone="danger" className="py-1.5 text-xs">
                         <span className="flex items-center gap-1.5 font-medium">
-                            <ShieldAlert className="h-4 w-4" />
+                            <ShieldAlert className="h-4 w-4 shrink-0" />
                             Không thể xóa tài khoản của chính mình
                         </span>
                         <p className="mt-1">
@@ -152,7 +187,7 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                         </p>
                     </Alert>
                 ) : (
-                    <Alert tone="danger" className="text-xs">
+                    <Alert tone="danger" className="-mb-2 py-2.5 text-xs">
                         <span>
                             Hành động này không thể hoàn tác trực tiếp trên giao diện. Xin vui lòng
                             kiểm tra kỹ lưỡng trước khi xác nhận.
@@ -161,17 +196,17 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                 )}
 
                 {apiError && (
-                    <Alert tone="danger" className="text-xs">
+                    <Alert tone="danger" className="py-2 text-xs">
                         {apiError}
                     </Alert>
                 )}
 
                 {!isSelf && (
-                    <form onSubmit={handleSubmit} className="space-y-4 pt-1">
-                        <FieldGroup className="gap-4">
+                    <form onSubmit={handleSubmit} className="space-y-3.5 pt-0.5">
+                        <FieldGroup className="gap-2">
                             {/* Lý do xóa */}
                             <Field>
-                                <FieldLabel htmlFor="delete-reason">
+                                <FieldLabel htmlFor="delete-reason" className="text-xs">
                                     <span>
                                         Lý do xóa tài khoản{' '}
                                         <span className="text-destructive">*</span>
@@ -190,7 +225,7 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                                         }
                                     }}
                                     placeholder="Ví dụ: Theo yêu cầu của người dùng hoặc vi phạm nghiêm trọng chính sách cộng đồng…"
-                                    rows={3}
+                                    rows={2}
                                     maxLength={500}
                                     disabled={deleteMutation.isPending}
                                     className={fieldErrors.reason ? 'border-destructive' : ''}
@@ -202,7 +237,7 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
 
                             {/* Tích chọn xác nhận an toàn */}
                             <Field>
-                                <div className="flex items-start gap-3 rounded-[var(--radius-md)] border border-border/80 bg-muted/20 p-3.5 transition-colors">
+                                <div className="flex items-start gap-2 rounded-[var(--radius-md)] border border-destructive/20 bg-destructive/5 p-3 transition-colors">
                                     <Checkbox
                                         id="confirm-delete-checkbox"
                                         checked={isConfirmed}
@@ -220,7 +255,7 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                                     />
                                     <label
                                         htmlFor="confirm-delete-checkbox"
-                                        className="cursor-pointer select-none text-foreground text-xs leading-relaxed"
+                                        className="cursor-pointer select-none text-foreground text-xs leading-normal"
                                     >
                                         Tôi đã đọc cảnh báo và xác nhận muốn vô hiệu hóa vĩnh viễn
                                         tài khoản của{' '}
@@ -236,10 +271,11 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                             </Field>
                         </FieldGroup>
 
-                        <AlertDialogFooter className="mt-6 flex items-center justify-end gap-3 pt-2">
+                        <AlertDialogFooter className="mt-5 flex items-center justify-end gap-2.5 border-border/60 border-t pt-3.5">
                             <Button
                                 type="button"
                                 variant="secondary"
+                                size="sm"
                                 onClick={onClose}
                                 disabled={deleteMutation.isPending}
                             >
@@ -248,6 +284,7 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                             <Button
                                 type="submit"
                                 variant="destructive"
+                                size="sm"
                                 disabled={deleteMutation.isPending}
                             >
                                 <Trash2 className="h-4 w-4" data-icon="inline-start" />
@@ -258,8 +295,8 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                 )}
 
                 {isSelf && (
-                    <AlertDialogFooter className="mt-4">
-                        <Button type="button" variant="secondary" onClick={onClose}>
+                    <AlertDialogFooter className="mt-4 border-border/60 border-t pt-3">
+                        <Button type="button" variant="secondary" size="sm" onClick={onClose}>
                             Đóng
                         </Button>
                     </AlertDialogFooter>
