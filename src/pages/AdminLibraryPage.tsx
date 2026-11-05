@@ -18,6 +18,7 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
     adminDate,
+    LibraryAssetCreateModal,
     LibraryAssetDeleteModal,
     LibraryAssetDetailModal,
     LibraryAssetEditModal,
@@ -266,7 +267,7 @@ function AdminLibraryItem({
     );
 }
 
-type ModalType = 'none' | 'detail' | 'edit' | 'delete';
+type ModalType = 'none' | 'create' | 'detail' | 'edit' | 'delete';
 
 export function AdminLibraryPage() {
     const { user } = useAuth();
@@ -321,11 +322,13 @@ export function AdminLibraryPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button asChild className="gap-2">
-                        <Link to="/admin/library/new">
-                            <Plus className="h-4 w-4" data-icon="inline-start" />
-                            Thêm vào thư viện
-                        </Link>
+                    <Button
+                        type="button"
+                        onClick={() => setModalState({ type: 'create' })}
+                        className="gap-2"
+                    >
+                        <Plus className="h-4 w-4" data-icon="inline-start" />
+                        Thêm vào thư viện
                     </Button>
                 </div>
             </div>
@@ -422,24 +425,29 @@ export function AdminLibraryPage() {
                 </div>
             </form>
 
+            {/* Trạng thái tải & Báo lỗi */}
             {categories.isError && <Feedback error={errorMessage(categories.error)} />}
-
-            <AdminReload
-                retry={() => {
-                    void list.refetch();
-                    void categories.refetch();
-                }}
-                busy={list.isFetching || categories.isFetching}
-            />
-
             {list.isPending && <LoadingState layout="rows">Đang tải thư viện…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
 
+            {/* Danh sách tài nguyên */}
             {list.isSuccess && (
                 <div className="space-y-4">
-                    <p role="status" className="font-medium text-muted-foreground text-xs">
-                        {list.data.meta.total} tài nguyên
-                    </p>
+                    <div className="flex items-center justify-between text-muted-foreground text-xs">
+                        <span>
+                            Hiển thị{' '}
+                            <strong className="text-foreground">{list.data.data.length}</strong>{' '}
+                            trên <strong className="text-foreground">{list.data.meta.total}</strong>{' '}
+                            tài nguyên
+                        </span>
+                        <AdminReload
+                            retry={() => {
+                                void list.refetch();
+                                void categories.refetch();
+                            }}
+                            busy={list.isFetching || categories.isFetching}
+                        />
+                    </div>
 
                     {list.data.data.length ? (
                         <ul className="list-none space-y-3 p-0">
@@ -483,6 +491,13 @@ export function AdminLibraryPage() {
                     </div>
                 </div>
             )}
+
+            {/* Modal thêm tài nguyên mới vào thư viện */}
+            <LibraryAssetCreateModal
+                isOpen={modalState.type === 'create'}
+                onClose={closeModal}
+                onSuccess={() => void list.refetch()}
+            />
 
             {/* Modal xem chi tiết tài nguyên */}
             <LibraryAssetDetailModal

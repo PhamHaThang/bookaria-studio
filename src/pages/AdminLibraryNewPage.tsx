@@ -197,26 +197,31 @@ export function AdminLibraryNewPage() {
                 </FieldGroup>
             </form>
 
-            <AdminReload
-                retry={() => {
-                    void mine.refetch();
-                    void categories.refetch();
-                    if (valid) void detail.refetch();
-                }}
-                busy={mine.isFetching || categories.isFetching || detail.isFetching}
-            />
-
+            {/* Trạng thái tải & Báo lỗi */}
             {mine.isPending && (
                 <LoadingState layout="assets">Đang tải tài nguyên cá nhân…</LoadingState>
             )}
-
             {mine.isError && <Feedback error={errorMessage(mine.error)} />}
 
+            {/* Danh sách tài nguyên cá nhân */}
             {mine.isSuccess && (
                 <div className="space-y-4">
-                    <p className="font-medium text-muted-foreground text-xs">
-                        {mine.data.meta.total} tài nguyên cá nhân
-                    </p>
+                    <div className="flex items-center justify-between text-muted-foreground text-xs">
+                        <span>
+                            Hiển thị{' '}
+                            <strong className="text-foreground">{mine.data.data.length}</strong>{' '}
+                            trên <strong className="text-foreground">{mine.data.meta.total}</strong>{' '}
+                            tài nguyên cá nhân
+                        </span>
+                        <AdminReload
+                            retry={() => {
+                                void mine.refetch();
+                                void categories.refetch();
+                                if (valid) void detail.refetch();
+                            }}
+                            busy={mine.isFetching || categories.isFetching || detail.isFetching}
+                        />
+                    </div>
 
                     {mine.data.data.length ? (
                         <ul className="list-none space-y-2.5 p-0">
