@@ -4,20 +4,16 @@ import {
     FileText,
     Layers,
     MoreHorizontal,
-    Redo2,
     RefreshCw,
     Save,
     Send,
     Share2,
-    Undo2,
     Upload,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { pageWidthMm } from '@/shared/contracts/marker.schema';
-import { Alert } from '@/shared/ui/Alert';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
-import { Disclosure } from '@/shared/ui/Disclosure';
 import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import {
@@ -37,7 +33,6 @@ import { ThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset, BookDetail, Page } from '../../../shared/contracts/dto.schema';
 import {
-    getSceneWarnings,
     SCENE_LIMITS,
     type SceneObject,
     type SceneObjectType,
@@ -77,7 +72,7 @@ import { useSceneAssets } from '../model/use-scene-assets';
 import { useSceneDraft } from '../model/use-scene-draft';
 import { AssetPicker } from './AssetPicker';
 import { EditorSaveStatus } from './EditorSaveStatus';
-import { InteractionEditor } from './InteractionEditor';
+import type { InteractionEditorHandle } from './InteractionEditor';
 import { NavigationGuard } from './NavigationGuard';
 import { ObjectEditor } from './ObjectEditor';
 import {
@@ -88,6 +83,7 @@ import {
 import { PageStrip } from './PageStrip';
 import { SceneCanvas, type SceneCanvasHandle } from './SceneCanvas';
 import { SceneEditorSidebar } from './SceneEditorSidebar';
+import { notifyHistoryFeedback, SceneHistoryControls } from './SceneHistoryControls';
 import { SceneInspectorContent } from './SceneInspectorContent';
 import { SceneInspectorEmpty } from './SceneInspectorEmpty';
 import { SceneInspectorHeader } from './SceneInspectorHeader';
@@ -99,6 +95,10 @@ import { SceneWorkbench } from './SceneWorkbench';
 import { SelectionEditor } from './SelectionEditor';
 import { TextComposer, type TextMode, type TextualObject } from './TextComposer';
 import { useSaveBeforeAction } from './use-save-before-action';
+
+const InteractionEditor = lazy(() =>
+    import('./InteractionEditor').then((module) => ({ default: module.InteractionEditor })),
+);
 
 export function SceneEditor(props: Parameters<typeof SceneEditorContent>[0]) {
     return (
@@ -124,7 +124,15 @@ function SceneEditorContent({
     onReplacePageImage: (asset: Asset, context: ImageAttachmentContext) => Promise<void>;
 }) {
     const editor = useSceneDraft(page);
-    const { store: bookDraft } = useBookDraft();
+    const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [requestedRule, setRequestedRule] = useState<{ id: string; request: number }>();
+    const { store: bookDraft, state: bookDraftState } = useBookDraft();
+    const memoryBook = {
+        ...book,
+        workflowVariables:
+            bookDraftState.working?.workflowVariables || book.workflowVariables || [],
+    };
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [transforming, setTransforming] = useState(false);
     function setSelectedId(id: string) {
@@ -145,6 +153,8 @@ function SceneEditorContent({
     const [panel, setPanel] = useState<'properties' | 'interactions' | 'settings' | 'preview'>(
         'properties',
     );
+    const interactionEditor = useRef<InteractionEditorHandle>(null);
+    const [workflowInvalid, setWorkflowInvalid] = useState(false);
     const [layersOpen, setLayersOpen] = useState(false),
         [helpOpen, setHelpOpen] = useState(false),
         [publishOpen, setPublishOpen] = useState(false),
@@ -193,10 +203,15 @@ function SceneEditorContent({
         const key = `editor:${page.id}`;
         bookDraft.setAutosavePaused(
             key,
-            blocked || panel === 'preview' || settingsDirty || pagesDirty || infoDirty,
+            blocked ||
+                workflowInvalid ||
+                panel === 'preview' ||
+                settingsDirty ||
+                pagesDirty ||
+                infoDirty,
         );
         return () => bookDraft.setAutosavePaused(key, false);
-    }, [bookDraft, page.id, blocked, panel, settingsDirty, pagesDirty, infoDirty]);
+    }, [bookDraft, page.id, blocked, workflowInvalid, panel, settingsDirty, pagesDirty, infoDirty]);
     const selection = selectedIds.flatMap((id) => {
         const object = editor.draft.objects.find((item) => item.id === id);
         return object ? [object] : [];
@@ -204,7 +219,9 @@ function SceneEditorContent({
     const activeIds = selection.map((object) => object.id);
     const selected = selection.at(-1);
     const inspectorVisible =
-        panel !== 'preview' && (panel !== 'properties' || selection.length > 0);
+        panel !== 'preview' &&
+        panel !== 'interactions' &&
+        (panel !== 'properties' || selection.length > 0);
     const workspaceRef = useRef<HTMLDivElement>(null);
     const saveBeforeAction = useSaveBeforeAction({
         dirty: editor.dirty || settingsDirty,
@@ -247,7 +264,10 @@ function SceneEditorContent({
         return () => cancelAnimationFrame(frame);
     }, [inspectorVisible]);
     function runOutsideSettings(action: () => void) {
-        if (panel === 'settings' && settingsDirty) settingsEditor.current?.confirmLeave(action);
+        if (panel === 'interactions' && interactionEditor.current)
+            interactionEditor.current.confirmLeave(action);
+        else if (panel === 'settings' && settingsDirty)
+            settingsEditor.current?.confirmLeave(action);
         else action();
     }
     const previewView = useRef<PreviewView | undefined>(undefined);
@@ -258,6 +278,30 @@ function SceneEditorContent({
                     previewView.current = commands.current.canvas?.getPreviewView();
                 setPanel(next);
             });
+    }
+    useEffect(() => {
+        const id = searchParams.get('flow');
+        if (!id) return;
+        if (editor.draft.interactions.some((rule) => rule.id === id)) {
+            setRequestedRule({ id, request: Date.now() });
+            setPanel('interactions');
+        }
+        const next = new URLSearchParams(searchParams);
+        next.delete('flow');
+        setSearchParams(next, { replace: true });
+    }, [searchParams, setSearchParams, editor.draft.interactions]);
+    function historyStep(redo = false) {
+        const feedback = redo ? editor.redo() : editor.undo();
+        notifyHistoryFeedback(feedback, panel === 'interactions', (target) => {
+            commands.current.openHistoryFlow(target);
+        });
+    }
+    function openHistoryFlow(target: { pageId: string; ruleId: string }) {
+        runOutsideSettings(() =>
+            navigate(
+                `/books/${page.bookId}/pages/${target.pageId}?flow=${encodeURIComponent(target.ruleId)}`,
+            ),
+        );
     }
     function selectMany(ids: string[], mode: SelectionMode = 'replace') {
         const select = () => {
@@ -293,10 +337,11 @@ function SceneEditorContent({
         invalidField !== 'Thông số' && typeof validationIssue?.path.at(-1) === 'number'
             ? ['X', 'Y', 'Z'][Number(validationIssue.path.at(-1))]
             : undefined;
-    const validationMessage = validationIssue
-        ? `${invalidObject?.name ? `${invalidObject.name}: ` : ''}${invalidField}${invalidAxis ? ` ${invalidAxis}` : ''} chưa hợp lệ. ${validationIssue.code === 'invalid_type' ? 'Vui lòng nhập một số hợp lệ.' : validationIssue.code === 'too_small' && invalidField === 'Tỉ lệ' ? 'Tỉ lệ phải lớn hơn 0.' : 'Kiểm tra giá trị trước khi lưu.'}`
-        : null;
-    const warnings = getSceneWarnings(editor.draft, { pageAspect: book.pageAspect });
+    const validationMessage = workflowInvalid
+        ? 'Hoàn thiện luồng tương tác trước khi lưu sách.'
+        : validationIssue
+          ? `${invalidObject?.name ? `${invalidObject.name}: ` : ''}${invalidField}${invalidAxis ? ` ${invalidAxis}` : ''} chưa hợp lệ. ${validationIssue.code === 'invalid_type' ? 'Vui lòng nhập một số hợp lệ.' : validationIssue.code === 'too_small' && invalidField === 'Tỉ lệ' ? 'Tỉ lệ phải lớn hơn 0.' : 'Kiểm tra giá trị trước khi lưu.'}`
+          : null;
     function changeMany(objects: SceneObject[]) {
         const replacements = new Map(objects.map((object) => [object.id, object]));
         editor.setDraft((current) => ({
@@ -364,6 +409,7 @@ function SceneEditorContent({
     async function savePage() {
         if (
             blocked ||
+            workflowInvalid ||
             !SceneSchema.safeParse(editor.draft).success ||
             editor.conflict ||
             editor.uncertain
@@ -378,6 +424,10 @@ function SceneEditorContent({
     const commands = useRef({
         editor,
         previewing: panel === 'preview',
+        interacting: panel === 'interactions',
+        workflowInvalid,
+        historyStep,
+        openHistoryFlow,
         blocked,
         selection,
         duplicateChosen,
@@ -391,6 +441,10 @@ function SceneEditorContent({
     commands.current = {
         editor,
         previewing: panel === 'preview',
+        interacting: panel === 'interactions',
+        workflowInvalid,
+        historyStep,
+        openHistoryFlow,
         blocked,
         selection,
         duplicateChosen,
@@ -412,6 +466,14 @@ function SceneEditorContent({
                 return;
             if (document.getElementById('scene-heading')?.closest('[hidden]')) return;
             const state = commands.current;
+            if (
+                state.interacting &&
+                !(
+                    (event.ctrlKey || event.metaKey) &&
+                    ['s', 'z', 'y'].includes(event.key.toLowerCase())
+                )
+            )
+                return;
             if (state.previewing) {
                 if (event.key === 'Escape') {
                     event.preventDefault();
@@ -431,15 +493,15 @@ function SceneEditorContent({
                     void state.savePage();
                 return;
             }
-            if (typing || state.blocked) return;
+            if (typing || state.blocked || (state.interacting && state.workflowInvalid)) return;
             if (modifier && event.key.toLowerCase() === 'z') {
                 event.preventDefault();
-                if (event.shiftKey) state.editor.redo();
-                else state.editor.undo();
+                if (event.shiftKey) state.historyStep(true);
+                else state.historyStep();
             }
             if (modifier && event.key.toLowerCase() === 'y') {
                 event.preventDefault();
-                state.editor.redo();
+                state.historyStep(true);
             }
             if (modifier && event.key.toLowerCase() === 'a') {
                 event.preventDefault();
@@ -488,13 +550,14 @@ function SceneEditorContent({
     return (
         <section
             className="scene-editor m-0 min-h-[100dvh] bg-surface p-0 [--control-height:40px] [--text-md:0.8125rem] [--text-sm:0.8125rem] [--text-xs:0.75rem] [&_[data-slot=select-trigger]]:m-0 [&_audio]:my-3 [&_audio]:block [&_audio]:w-full [&_audio]:max-w-105 [&_input:not([type=checkbox])]:m-0 [&_label]:m-0 [&_textarea]:m-0 [.scene-editor_&_.button]:min-h-10 [.scene-editor_&_.button]:w-auto [.scene-editor_&_.button]:px-[13px] [.scene-editor_&_.button]:py-[9px] [.scene-editor_&_.button]:text-[length:13px]"
-            data-panel={panel}
+            data-panel={panel === 'interactions' ? 'properties' : panel}
             data-layers={layersOpen}
             aria-labelledby="scene-heading"
         >
             <NavigationGuard
                 dirty={
                     editor.dirty ||
+                    workflowInvalid ||
                     settingsDirty ||
                     editor.uncertain ||
                     pagesDirty ||
@@ -509,7 +572,12 @@ function SceneEditorContent({
                           : undefined
                 }
                 allowBookNavigation={
-                    !settingsDirty && !pagesDirty && !infoDirty && !annotationPlacement && !blocked
+                    !settingsDirty &&
+                    !workflowInvalid &&
+                    !pagesDirty &&
+                    !infoDirty &&
+                    !annotationPlacement &&
+                    !blocked
                 }
                 onSave={async () => {
                     if (infoDirty)
@@ -569,26 +637,15 @@ function SceneEditorContent({
                     <fieldset className="m-0 flex shrink-0 items-center gap-1 border-0 p-0">
                         <legend className="sr-only">Công cụ trang</legend>
                         <ThemeSwitcher />
-                        <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label="Hoàn tác (Ctrl Z)"
-                            title="Hoàn tác (Ctrl Z)"
-                            disabled={blocked || !editor.canUndo}
-                            onClick={editor.undo}
-                        >
-                            <Undo2 />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label="Làm lại (Ctrl Shift Z)"
-                            title="Làm lại (Ctrl Shift Z)"
-                            disabled={blocked || !editor.canRedo}
-                            onClick={editor.redo}
-                        >
-                            <Redo2 />
-                        </Button>
+                        <SceneHistoryControls
+                            undoChange={editor.undoChange}
+                            redoChange={editor.redoChange}
+                            canUndo={editor.canUndo}
+                            canRedo={editor.canRedo}
+                            disabled={blocked || workflowInvalid}
+                            onUndo={() => historyStep()}
+                            onRedo={() => historyStep(true)}
+                        />
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon-sm" aria-label="Tác vụ trang">
@@ -638,7 +695,7 @@ function SceneEditorContent({
                 />
                 <div className="editor-save-actions flex min-w-0 items-center justify-end gap-3">
                     <EditorSaveStatus
-                        dirty={editor.dirty || settingsDirty}
+                        dirty={editor.dirty || workflowInvalid || settingsDirty}
                         saving={editor.saving || settingsBusy}
                         autosaving={editor.autosaving}
                         conflict={editor.conflict}
@@ -666,13 +723,14 @@ function SceneEditorContent({
                                         Boolean(annotationPlacement) ||
                                         (!editor.dirty && !settingsDirty) ||
                                         !validation.success ||
+                                        workflowInvalid ||
                                         editor.conflict ||
                                         editor.uncertain ||
                                         editor.saving
                                     }
                                     onClick={() => void savePage()}
                                 >
-                                    <Save data-icon="inline-start" /> Lưu sách
+                                    <Save data-icon="inline-start" /> Lưu
                                 </Button>
                             </span>
                         </TooltipTrigger>
@@ -779,8 +837,11 @@ function SceneEditorContent({
                 errorMode="toast"
                 warningMode="toast"
             />
-            <SceneWorkbench>
-                <div hidden={panel === 'preview'} className="[&[hidden]]:hidden">
+            <SceneWorkbench hintsVisible={panel !== 'interactions' && panel !== 'preview'}>
+                <div
+                    hidden={panel === 'preview' || panel === 'interactions'}
+                    className="[&[hidden]]:hidden"
+                >
                     <SceneEditorSidebar
                         activeObjectType={picker?.type || (textDialog ? 'text' : undefined)}
                         activePanel={panel}
@@ -812,7 +873,7 @@ function SceneEditorContent({
                 <div
                     ref={workspaceRef}
                     data-inspector-visible="false"
-                    className="scene-workspace relative m-0 grid h-[calc(100dvh_-_64px)] min-h-125 min-w-0 flex-1 grid-cols-[minmax(0,_1fr)] items-stretch gap-0 overflow-hidden [--inspector-offset:var(--inspector-width)] [--inspector-width:340px] [container-type:inline-size] data-[inspector-visible=false]:[--inspector-offset:0px] max-[1100px]:[--inspector-width:300px] min-[1600px]:[--inspector-width:380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:[--inspector-width:max(480px,45cqw)]"
+                    className="scene-workspace relative m-0 grid h-[calc(100dvh_-_64px)] min-h-125 min-w-0 flex-1 grid-cols-[minmax(0,_1fr)] items-stretch gap-0 overflow-hidden [--inspector-offset:var(--inspector-width)] [--inspector-width:340px] [container-type:inline-size] data-[inspector-visible=false]:[--inspector-offset:0px] max-[1100px]:[--inspector-width:300px] min-[1600px]:[--inspector-width:380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)]"
                 >
                     <SceneObjectsPanel
                         objects={editor.draft.objects}
@@ -863,7 +924,9 @@ function SceneEditorContent({
                             commands.current.canvas = handle;
                         }}
                         suspended={
-                            panel === 'preview' || Boolean(textDialog && !annotationPlacement)
+                            panel === 'preview' ||
+                            panel === 'interactions' ||
+                            Boolean(textDialog && !annotationPlacement)
                         }
                         annotationToPlace={annotationPlacement}
                         onCancelAnnotationPlacement={() => setTextDialog(null)}
@@ -954,7 +1017,7 @@ function SceneEditorContent({
                             </Button>
                         }
                     />
-                    <div className="inspector-slot pointer-events-none absolute top-0 right-0 bottom-[var(--canvas-hints-height)] z-10 min-h-0 w-[var(--inspector-width)] min-w-0 [.scene-editor[data-panel=preview]_&]:hidden">
+                    <div className="inspector-slot pointer-events-none absolute top-0 right-0 bottom-[var(--canvas-hints-height)] z-10 min-h-0 w-[var(--inspector-width)] min-w-0 [.scene-editor[data-panel=interactions]_&]:hidden [.scene-editor[data-panel=preview]_&]:hidden">
                         <Tabs
                             className="gap-0"
                             value={panel}
@@ -973,7 +1036,7 @@ function SceneEditorContent({
                                         className="[&[hidden]]:hidden"
                                     >
                                         <SceneInspectorHeader
-                                            panel={panel}
+                                            panel={panel === 'interactions' ? 'properties' : panel}
                                             selected={selected}
                                             count={selection.length}
                                             pageNumber={page.orderIndex + 1}
@@ -1103,56 +1166,6 @@ function SceneEditorContent({
                                             )}
                                         </section>
                                     </TabsContent>
-                                    <TabsContent value="interactions" forceMount asChild>
-                                        <section
-                                            id="panel-interactions"
-                                            hidden={panel !== 'interactions'}
-                                            aria-labelledby="inspector-heading"
-                                            className="inspector-panel min-h-0 flex-1 overflow-y-auto p-4"
-                                        >
-                                            {panel === 'interactions' &&
-                                                (warnings.length > 0 ||
-                                                    (!editor.dirty &&
-                                                        editor.warnings.length > 0)) && (
-                                                    <Disclosure
-                                                        title="Gợi ý trước khi xuất bản"
-                                                        className="mb-4"
-                                                    >
-                                                        <Alert tone="warning" className="mb-4">
-                                                            <h3>Gợi ý trước khi xuất bản</h3>
-                                                            <ul>
-                                                                {[
-                                                                    ...new Map(
-                                                                        [
-                                                                            ...warnings,
-                                                                            ...(!editor.dirty
-                                                                                ? editor.warnings
-                                                                                : []),
-                                                                        ].map((warning) => [
-                                                                            `${warning.code}-${warning.objectId || ''}`,
-                                                                            warning,
-                                                                        ]),
-                                                                    ).values(),
-                                                                ].map((warning) => (
-                                                                    <li
-                                                                        key={`${warning.code}-${warning.objectId || ''}`}
-                                                                    >
-                                                                        {warning.message}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        </Alert>
-                                                    </Disclosure>
-                                                )}
-                                            <InteractionEditor
-                                                onShowPageRules={() => setPanel('interactions')}
-                                                scene={editor.draft}
-                                                assets={sceneAssets}
-                                                disabled={blocked}
-                                                onChange={(scene) => editor.setDraft(scene)}
-                                            />
-                                        </section>
-                                    </TabsContent>
                                 </SceneInspectorContent>
                                 <TabsContent value="settings" forceMount asChild>
                                     <section
@@ -1184,6 +1197,47 @@ function SceneEditorContent({
                             </aside>
                         </Tabs>
                     </div>
+                    {panel === 'interactions' && (
+                        <section
+                            aria-label="Trình biên soạn tương tác"
+                            className="absolute inset-0 z-20 min-h-0 min-w-0 overflow-hidden bg-surface"
+                        >
+                            <Suspense
+                                fallback={
+                                    <div
+                                        role="status"
+                                        className="flex h-full items-center justify-center gap-3 text-muted-foreground text-sm"
+                                    >
+                                        <Spinner className="size-5" />
+                                        Đang mở trình biên soạn tương tác…
+                                    </div>
+                                }
+                            >
+                                <InteractionEditor
+                                    ref={interactionEditor}
+                                    scene={editor.draft}
+                                    assets={sceneAssets}
+                                    disabled={sceneBlocked}
+                                    page={page}
+                                    book={memoryBook}
+                                    onWorkflowVariablesChange={(definitions) =>
+                                        bookDraft.setWorkflowVariables(definitions)
+                                    }
+                                    loadMemoryPages={() =>
+                                        Promise.all(
+                                            (bookDraftState.working?.pages || book.pages).map(
+                                                (item) => bookDraft.loadPage(item.id),
+                                            ),
+                                        )
+                                    }
+                                    preferredObject={selected}
+                                    requestedRule={requestedRule}
+                                    onChange={(scene) => editor.setDraft(scene)}
+                                    onDirtyChange={setWorkflowInvalid}
+                                />
+                            </Suspense>
+                        </section>
+                    )}
                     <section
                         id="panel-preview"
                         hidden={panel !== 'preview'}
@@ -1194,13 +1248,13 @@ function SceneEditorContent({
                             active={panel === 'preview'}
                             initialView={previewView.current}
                             page={page}
-                            book={book}
+                            book={memoryBook}
                             scene={editor.draft}
                             unsaved={editor.dirty || settingsDirty}
                         />
                     </section>
                     <div
-                        className="pointer-events-none absolute inset-x-0 bottom-12 z-5 grid [grid-template-columns:inherit] [.scene-editor[data-panel=preview]_&]:hidden"
+                        className="pointer-events-none absolute inset-x-0 bottom-12 z-5 grid [grid-template-columns:inherit] [.scene-editor[data-panel=interactions]_&]:hidden [.scene-editor[data-panel=preview]_&]:hidden"
                         data-page-dock
                     >
                         <div className="col-start-1 flex min-w-0 -translate-x-[calc(var(--inspector-offset)/2)] justify-center px-4 transition-[translate] duration-200 ease-out motion-reduce:transition-none [.scene-editor[data-panel=preview]_&]:translate-x-0">
@@ -1208,7 +1262,7 @@ function SceneEditorContent({
                                 requestAction={pageAction.request}
                                 book={book}
                                 pageId={page.id}
-                                dirty={editor.dirty || settingsDirty}
+                                dirty={editor.dirty || workflowInvalid || settingsDirty}
                                 disabled={blocked}
                                 onBusyChange={setPagesBusy}
                                 onDraftChange={setPagesDirty}

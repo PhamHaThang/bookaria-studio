@@ -1,39 +1,41 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { X } from 'lucide-react';
 import { useState } from 'react';
+import type { AssetRef } from '@/shared/contracts/asset.schema';
+import type { BookDetail } from '@/shared/contracts/dto.schema';
+import type { Action, Easing, Scene, SceneObject } from '@/shared/contracts/scene.schema';
+import { facesCamera } from '@/shared/scene/audio-kind';
+import { Button } from '@/shared/ui/Button';
+import { Disclosure } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
-import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import { Field, FieldGroup, FieldLabel, FieldSet } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { errorMessage } from '../../../shared/api/errors';
-import type { AssetRef } from '../../../shared/contracts/asset.schema';
-import {
-    type Action,
-    type ActionType,
-    type Easing,
-    EasingSchema,
-    type SceneObject,
-} from '../../../shared/contracts/scene.schema';
-import { Button } from '../../../shared/ui/Button';
-import { Feedback } from '../../../shared/ui/Feedback';
 import { assetKeys, assetsApi } from '../../assets';
 import { useAuth } from '../../auth';
-import { scopedAction } from '../model/interaction-scope';
-import { actionLabels, targetObjects } from '../model/interactions';
+import { actionOperationChoices, changeActionOperation } from '../model/interaction-blocks';
+import { audioActionChoices } from '../model/interaction-targets';
+import { objectName } from '../model/interaction-templates';
+import { targetObjects } from '../model/interactions';
+import { AssetMediaPreview } from './AssetMediaPreview';
 import { AssetPicker } from './AssetPicker';
-import { InteractionTarget } from './InteractionTarget';
 import { NumericField, VectorFields } from './NumericField';
 import { useSceneWidthMm } from './SceneUnits';
+import { WorkflowActionFields } from './WorkflowFields';
 
 export function InteractionActionEditor({
     action,
+    scene,
+    pages = [],
     objects,
     assets,
     id,
     disabled,
-    defaultTarget,
     onChange,
 }: {
     action: Action;
+    scene?: Scene;
+    pages?: BookDetail['pages'];
     objects: SceneObject[];
     assets: Record<string, AssetRef>;
     id: string;
@@ -41,11 +43,12 @@ export function InteractionActionEditor({
     defaultTarget?: SceneObject;
     onChange: (action: Action) => void;
 }) {
-    const widthMm = useSceneWidthMm();
     const { user } = useAuth();
+    const queryClient = useQueryClient();
+    const widthMm = useSceneWidthMm();
     const [picking, setPicking] = useState(false);
-    const target =
-        'objectId' in action ? objects.find((object) => object.id === action.objectId) : undefined;
+    const target = 'objectId' in action ? objects.find((o) => o.id === action.objectId) : undefined;
+    const rotationLocked = Boolean(target && facesCamera(target));
     const assetId =
         action.type === 'playAudio' || action.type === 'stopAudio'
             ? action.assetId
@@ -55,266 +58,317 @@ export function InteractionActionEditor({
     const detail = useQuery({
         queryKey: assetKeys.detail(user?.id || '', assetId || ''),
         queryFn: ({ signal }) => assetsApi.detail(assetId || '', signal),
-        enabled: Boolean(assetId),
+        enabled:
+            Boolean(assetId) &&
+            (action.type === 'playAudio' || action.type === 'stopAudio' || !assets[assetId || '']),
+        staleTime: 60_000,
         refetchOnWindowFocus: false,
     });
     const asset = detail.data || (assetId ? assets[assetId] : undefined);
     const clips = [
-        ...new Set(
-            (asset?.meta.animations || []).filter((clip) => clip.length > 0 && clip.length <= 100),
-        ),
+        ...new Set((asset?.meta.animations || []).filter((c) => c.length > 0 && c.length <= 100)),
     ];
+    const audioObject = objects.find(
+        (object) => object.type === 'audio' && object.assetId === assetId,
+    );
+    const audioName =
+        detail.data?.name || (audioObject ? objectName(audioObject) : 'Âm thanh đang chọn');
+    const operation = actionOperationChoices(action);
     const patch = (value: Partial<Action>) => onChange({ ...action, ...value } as Action);
+    if (['condition', 'setState', 'askQuestion', 'navigate'].includes(action.type))
+        return (
+            <WorkflowActionFields
+                key={id}
+                action={action}
+                scene={scene || { schemaVersion: 1, objects, interactions: [] }}
+                pages={pages}
+                disabled={disabled}
+                onChange={onChange}
+            />
+        );
     return (
         <>
-            <fieldset
-                disabled={disabled}
-                className="interaction-fields m-0 grid min-w-0 grid-cols-[repeat(2,_minmax(0,_1fr))] gap-4 border-0 border-[transparent] border-solid p-0 max-[600px]:grid-cols-[1fr] min-[1100px]:[.scene-editor[data-panel=interactions]_&]:grid-cols-[repeat(2,_minmax(0,_1fr))] [.workbench-panel_&]:grid-cols-[minmax(0,_1fr)] [.workbench-panel_&]:gap-3"
-            >
-                <Field orientation="contents">
-                    <FieldLabel htmlFor={`${id}-type`}>
-                        Loại hành động
-                        <FormSelect
-                            id={`${id}-type`}
-                            value={action.type}
-                            onValueChange={(value) =>
-                                onChange(scopedAction(value as ActionType, defaultTarget))
-                            }
-                            options={[
-                                ...(Object.entries(actionLabels).map(([value, label]) => ({
-                                    value: value,
-                                    label: label,
-                                })) ?? []),
-                            ]}
-                        />
-                    </FieldLabel>
-                </Field>
-                {'objectId' in action && (
-                    <InteractionTarget
-                        id={`${id}-object`}
-                        value={action.objectId}
-                        objects={targetObjects(objects, action.type)}
-                        onChange={(objectId) => patch({ objectId })}
-                    />
-                )}
-                {(action.type === 'playAudio' || action.type === 'stopAudio') && (
-                    <div className="interaction-audio col-[1_/_-1]">
-                        <p>
-                            {assetId
-                                ? `Âm thanh: ${detail.data?.name || assetId}`
-                                : action.type === 'stopAudio'
-                                  ? 'Dừng tất cả âm thanh của trang.'
-                                  : 'Chưa chọn âm thanh.'}
-                        </p>
-                        <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                            <Button variant="secondary" onClick={() => setPicking(true)}>
-                                {assetId ? 'Đổi âm thanh' : 'Chọn âm thanh'}
-                            </Button>
-                            {action.type === 'stopAudio' && assetId && (
-                                <Button
-                                    variant="outline"
-                                    onClick={() =>
-                                        onChange({
-                                            type: 'stopAudio',
-                                            delayMsSchema: action.delayMsSchema,
-                                        })
+            <FieldSet disabled={disabled} className="m-0 min-w-0 shrink-0 border-0 p-0">
+                <FieldGroup className="shrink-0 gap-4">
+                    {operation && (
+                        <Field>
+                            <FieldLabel htmlFor={`${id}-operation`}>Thao tác</FieldLabel>
+                            <FormSelect
+                                size="sm"
+                                id={`${id}-operation`}
+                                value={operation.value}
+                                options={operation.options}
+                                onValueChange={(value) =>
+                                    onChange(changeActionOperation(action, value))
+                                }
+                            />
+                        </Field>
+                    )}
+                    {'objectId' in action && (
+                        <Field>
+                            <FieldLabel htmlFor={`${id}-target`}>Áp dụng cho</FieldLabel>
+                            <FormSelect
+                                size="sm"
+                                id={`${id}-target`}
+                                value={action.objectId}
+                                options={[
+                                    { value: '', label: 'Chọn đối tượng' },
+                                    ...(!objects.some((o) => o.id === action.objectId) &&
+                                    action.objectId
+                                        ? [
+                                              {
+                                                  value: action.objectId,
+                                                  label: 'Đối tượng đã xóa — hãy chọn lại',
+                                              },
+                                          ]
+                                        : []),
+                                    ...targetObjects(objects, action.type).map((o) => ({
+                                        value: o.id,
+                                        label: objectName(o),
+                                    })),
+                                ]}
+                                onValueChange={(objectId) => {
+                                    const next = objects.find((o) => o.id === objectId);
+                                    patch({
+                                        objectId,
+                                        ...(action.type === 'playAnimation'
+                                            ? {
+                                                  clip:
+                                                      next?.type === 'model'
+                                                          ? assets[next.assetId]?.meta
+                                                                .animations?.[0] || ''
+                                                          : '',
+                                              }
+                                            : {}),
+                                        ...(action.type === 'transformTo'
+                                            ? {
+                                                  ...(action.position
+                                                      ? {
+                                                            position: next?.transform.position || [
+                                                                0, 0, 0,
+                                                            ],
+                                                        }
+                                                      : {}),
+                                                  ...(action.rotation
+                                                      ? {
+                                                            rotation: next?.transform.rotation || [
+                                                                0, 0, 0,
+                                                            ],
+                                                        }
+                                                      : {}),
+                                                  ...(action.scale
+                                                      ? {
+                                                            scale: next?.transform.scale || [
+                                                                1, 1, 1,
+                                                            ],
+                                                        }
+                                                      : {}),
+                                              }
+                                            : {}),
+                                    });
+                                }}
+                            />
+                        </Field>
+                    )}
+                    {(action.type === 'playAudio' || action.type === 'stopAudio') && (
+                        <FieldGroup className="gap-3">
+                            <Field>
+                                <div className="flex items-center justify-between gap-2">
+                                    <FieldLabel htmlFor={`${id}-audio`}>Âm thanh</FieldLabel>
+                                    {assetId && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            aria-label="Bỏ chọn âm thanh"
+                                            disabled={disabled}
+                                            onClick={() => patch({ assetId: '' })}
+                                        >
+                                            <X data-icon="inline-start" />
+                                            Bỏ chọn
+                                        </Button>
+                                    )}
+                                </div>
+                                <FormSelect
+                                    size="sm"
+                                    id={`${id}-audio`}
+                                    value={
+                                        audioActionChoices(
+                                            action,
+                                            objects,
+                                            assets,
+                                            detail.data?.name,
+                                        ).value
                                     }
-                                >
-                                    Dừng tất cả thay thế
-                                </Button>
-                            )}
-                        </div>
-                        <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
-                            Chọn tài nguyên AUDIO đã sẵn sàng; không cần thêm đối tượng âm thanh lên
-                            trang.
-                        </p>
-                    </div>
-                )}
-                {detail.isError && (
-                    <div className="interaction-wide col-[1_/_-1]">
-                        <Feedback error={errorMessage(detail.error)} />
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                void detail.refetch();
-                            }}
-                        >
-                            Đọc lại tài nguyên hành động
-                        </Button>
-                    </div>
-                )}
-                {action.type === 'playAnimation' && (
-                    <>
-                        <Field orientation="contents">
-                            <FieldLabel htmlFor={`${id}-clip`}>
-                                Tên clip animation
-                                <Input
-                                    id={`${id}-clip`}
-                                    aria-label="Tên clip animation"
-                                    aria-describedby={`${id}-clip-hint`}
-                                    list={`${id}-clips`}
-                                    maxLength={100}
-                                    value={action.clip}
-                                    onChange={(event) => patch({ clip: event.currentTarget.value })}
+                                    options={
+                                        audioActionChoices(
+                                            action,
+                                            objects,
+                                            assets,
+                                            detail.data?.name,
+                                        ).options
+                                    }
+                                    onValueChange={(assetId) =>
+                                        patch({
+                                            assetId: assetId === 'all-audio' ? undefined : assetId,
+                                        } as Partial<Action>)
+                                    }
                                 />
-                                <datalist id={`${id}-clips`}>
-                                    {clips.map((clip) => (
-                                        <option key={clip} value={clip} />
-                                    ))}
-                                </datalist>
-                                <span
-                                    id={`${id}-clip-hint`}
-                                    className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]"
+                            </Field>
+                            <Button variant="outline" size="sm" onClick={() => setPicking(true)}>
+                                Chọn từ tài nguyên âm thanh
+                            </Button>
+                            {assetId && asset?.url && (
+                                <section
+                                    aria-label="Âm thanh đang chọn"
+                                    className="flex min-w-0 flex-col gap-2"
                                 >
-                                    {clips.length
-                                        ? `Clip trong mô hình: ${clips.join(', ')}`
-                                        : 'Chọn mô hình rồi nhập đúng tên clip từ tài nguyên.'}
-                                </span>
+                                    <div className="min-h-12 min-w-0">
+                                        {!picking && (
+                                            <AssetMediaPreview
+                                                type="AUDIO"
+                                                url={asset.url}
+                                                audioLabel={`Nghe thử ${audioName}`}
+                                            />
+                                        )}
+                                    </div>
+                                </section>
+                            )}
+                            {detail.isError && (
+                                <p className="m-0 text-danger-foreground text-xs">
+                                    Không tải được thông tin âm thanh.{' '}
+                                    <button
+                                        type="button"
+                                        className="underline"
+                                        onClick={() => {
+                                            void detail.refetch();
+                                        }}
+                                    >
+                                        Thử lại
+                                    </button>
+                                </p>
+                            )}
+                        </FieldGroup>
+                    )}
+                    {action.type === 'playAnimation' && (
+                        <Field>
+                            <FieldLabel htmlFor={`${id}-clip`}>Hoạt cảnh có sẵn</FieldLabel>
+                            <FormSelect
+                                size="sm"
+                                id={`${id}-clip`}
+                                value={action.clip}
+                                options={[
+                                    {
+                                        value: '',
+                                        label: detail.isFetching
+                                            ? 'Đang đọc hoạt cảnh…'
+                                            : 'Chọn hoạt cảnh',
+                                    },
+                                    ...clips.map((value) => ({ value, label: value })),
+                                    ...(action.clip && !clips.includes(action.clip)
+                                        ? [
+                                              {
+                                                  value: action.clip,
+                                                  label: `${action.clip} · cần kiểm tra lại`,
+                                              },
+                                          ]
+                                        : []),
+                                ]}
+                                onValueChange={(clip) => patch({ clip })}
+                            />
+                            {!detail.isFetching && !clips.length && (
+                                <p className="m-0 text-muted-foreground text-xs">
+                                    Mô hình này chưa có hoạt cảnh. Chọn mô hình khác hoặc dùng mẫu
+                                    di chuyển / phóng to.
+                                </p>
+                            )}
+                        </Field>
+                    )}
+                    {(action.type === 'playAudio' || action.type === 'playAnimation') && (
+                        <Field orientation="horizontal">
+                            <Checkbox
+                                id={`${id}-loop`}
+                                checked={action.loop}
+                                onCheckedChange={(v) => patch({ loop: v === true })}
+                            />
+                            <FieldLabel htmlFor={`${id}-loop`} className="font-normal">
+                                Phát lặp
                             </FieldLabel>
                         </Field>
-                        {asset && action.clip && !clips.includes(action.clip) && (
-                            <p className="scene-reference-error text-danger-foreground">
-                                Clip đang nhập không có trong metadata mô hình. Kiểm tra trước khi
-                                chạy thử.
-                            </p>
-                        )}
-                    </>
-                )}
-                {(action.type === 'playAudio' || action.type === 'playAnimation') && (
-                    <Field orientation="contents">
-                        <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                            <Checkbox
-                                checked={action.loop}
-                                onCheckedChange={(checked) => patch({ loop: checked === true })}
-                            />
-                            Phát lặp hành động
-                        </FieldLabel>
-                    </Field>
-                )}
-                {action.type === 'playAudio' && (
-                    <NumericField
-                        id={`${id}-volume`}
-                        label="Âm lượng hành động (0–1)"
-                        value={action.volume}
-                        onChange={(volume) => patch({ volume })}
-                    />
-                )}
-                {action.type === 'setVisible' && (
-                    <Field orientation="contents">
-                        <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                            <Checkbox
-                                checked={action.value}
-                                onCheckedChange={(checked) => patch({ value: checked === true })}
-                            />
-                            Hiện đối tượng
-                        </FieldLabel>
-                    </Field>
-                )}
-                {action.type === 'openUrl' && (
-                    <Field orientation="contents">
-                        <FieldLabel htmlFor={`${id}-url`}>
-                            Liên kết HTTP hoặc HTTPS
+                    )}
+                    {action.type === 'playAudio' && (
+                        <NumericField
+                            id={`${id}-volume`}
+                            label="Âm lượng (%)"
+                            value={action.volume * 100}
+                            onChange={(v) => patch({ volume: v / 100 })}
+                        />
+                    )}
+                    {action.type === 'openUrl' && (
+                        <Field>
+                            <FieldLabel htmlFor={`${id}-url`}>Địa chỉ liên kết</FieldLabel>
                             <Input
                                 id={`${id}-url`}
-                                aria-label="Liên kết HTTP hoặc HTTPS"
-                                aria-describedby={`${id}-url-hint`}
                                 type="url"
                                 value={action.url}
-                                onChange={(event) => patch({ url: event.currentTarget.value })}
+                                placeholder="https://..."
+                                onChange={(e) => patch({ url: e.currentTarget.value })}
                             />
-                            <span
-                                id={`${id}-url-hint`}
-                                className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]"
-                            >
-                                Trình đọc sẽ xử lý liên kết khi chạy tương tác. Kiểm tra địa chỉ
-                                trước khi xuất bản.
-                            </span>
-                        </FieldLabel>
-                    </Field>
-                )}
-                {action.type === 'wait' ? (
-                    <NumericField
-                        id={`${id}-wait`}
-                        label="Thời gian chờ (ms, 0–60000)"
-                        value={action.ms}
-                        onChange={(ms) => patch({ ms })}
-                    />
-                ) : (
-                    <NumericField
-                        id={`${id}-delay`}
-                        label="Độ trễ (ms, 0–60000)"
-                        value={action.delayMsSchema}
-                        onChange={(delayMsSchema) => patch({ delayMsSchema })}
-                    />
-                )}
-                {'durationMs' in action && (
-                    <NumericField
-                        id={`${id}-duration`}
-                        label="Thời lượng chuyển đổi (ms, 0–10000)"
-                        value={action.durationMs}
-                        onChange={(durationMs) => patch({ durationMs })}
-                    />
-                )}
-                {action.type === 'transformTo' && (
-                    <>
-                        <Field orientation="contents">
-                            <FieldLabel htmlFor={`${id}-easing`}>
-                                Kiểu chuyển động
-                                <FormSelect
-                                    id={`${id}-easing`}
-                                    value={action.easing}
-                                    onValueChange={(value) => patch({ easing: value as Easing })}
-                                    options={[
-                                        ...(EasingSchema.options.map((value) => ({
-                                            value: value,
-                                            label: {
-                                                linear: 'Đều',
-                                                easeIn: 'Chậm rồi nhanh',
-                                                easeOut: 'Nhanh rồi chậm',
-                                                easeInOut: 'Chậm ở hai đầu',
-                                            }[value],
-                                        })) ?? []),
-                                    ]}
-                                />
-                            </FieldLabel>
                         </Field>
-                        <p className="field-hint interaction-wide col-[1_/_-1] mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
-                            Bật ít nhất một thuộc tính đích. Vị trí dùng mm; góc xoay dùng độ; tỉ lệ
-                            dùng hệ số lớn hơn 0.
-                        </p>
-                        {(['position', 'rotation', 'scale'] as const).map((key) => {
-                            const label = {
-                                position: 'Vị trí đích',
-                                rotation: 'Góc xoay đích',
-                                scale: 'Tỉ lệ đích',
-                            }[key];
-                            return (
-                                <div key={key} className="interaction-wide col-[1_/_-1]">
-                                    <Field orientation="contents">
-                                        <FieldLabel className="checkbox m-0 flex items-center gap-2 font-normal [.asset-filter-actions_&]:mr-auto [.scene-inspector_>_&]:my-3 [.scene-object-fields_label:not(&)]:grid [.scene-object-fields_label:not(&)]:gap-2 [.scene-object-fields_label:not(&)]:font-medium [.scene-settings-fields_label:not(&)]:grid [.scene-settings-fields_label:not(&)]:gap-2 [.scene-settings-fields_label:not(&)]:font-medium">
-                                            <Checkbox
-                                                checked={action[key] !== undefined}
-                                                onCheckedChange={(checked) =>
-                                                    patch({
-                                                        [key]:
-                                                            checked === true
-                                                                ? [
-                                                                      ...(target?.transform[key] ||
-                                                                          (key === 'scale'
-                                                                              ? [1, 1, 1]
-                                                                              : [0, 0, 0])),
-                                                                  ]
-                                                                : undefined,
-                                                    })
-                                                }
-                                            />
-                                            Thay đổi {label.toLowerCase()}
+                    )}
+                    {action.type === 'wait' && (
+                        <NumericField
+                            id={`${id}-wait`}
+                            label="Chờ bao lâu? (giây, 0–60)"
+                            value={action.ms / 1000}
+                            onChange={(v) => patch({ ms: Math.round(v * 1000) })}
+                        />
+                    )}
+                    {action.type === 'transformTo' && (
+                        <FieldGroup className="gap-4">
+                            {(['position', 'rotation', 'scale'] as const).map((key) => (
+                                <FieldGroup key={key} className="gap-2">
+                                    <Field orientation="horizontal">
+                                        <Checkbox
+                                            disabled={key === 'rotation' && rotationLocked}
+                                            id={`${id}-${key}-use`}
+                                            checked={action[key] !== undefined}
+                                            onCheckedChange={(v) =>
+                                                patch({
+                                                    [key]:
+                                                        v === true
+                                                            ? [
+                                                                  ...(target?.transform[key] ||
+                                                                      (key === 'scale'
+                                                                          ? [1, 1, 1]
+                                                                          : [0, 0, 0])),
+                                                              ]
+                                                            : undefined,
+                                                })
+                                            }
+                                        />
+                                        <FieldLabel
+                                            htmlFor={`${id}-${key}-use`}
+                                            className="font-normal"
+                                        >
+                                            {
+                                                {
+                                                    position: 'Thay đổi vị trí',
+                                                    rotation: 'Thay đổi góc xoay',
+                                                    scale: 'Thay đổi kích thước',
+                                                }[key]
+                                            }
                                         </FieldLabel>
                                     </Field>
-                                    {action[key] !== undefined && (
+                                    {action[key] && (
                                         <VectorFields
                                             id={`${id}-${key}`}
-                                            label={label}
+                                            label={
+                                                {
+                                                    position: 'Vị trí cuối',
+                                                    rotation: 'Góc cuối',
+                                                    scale: 'Tỉ lệ cuối',
+                                                }[key]
+                                            }
                                             unit={
                                                 key === 'position'
                                                     ? 'mm'
@@ -324,22 +378,94 @@ export function InteractionActionEditor({
                                             }
                                             displayFactor={key === 'position' ? widthMm : 1}
                                             values={action[key]}
-                                            onChange={(value) => patch({ [key]: value })}
+                                            positive={key === 'scale'}
+                                            disabled={
+                                                disabled || (key === 'rotation' && rotationLocked)
+                                            }
+                                            onChange={(v) => patch({ [key]: v })}
                                         />
                                     )}
-                                </div>
-                            );
-                        })}
-                    </>
-                )}
-            </fieldset>
+                                </FieldGroup>
+                            ))}
+                            {rotationLocked && (
+                                <p className="m-0 text-muted-foreground text-xs leading-5">
+                                    {target?.type === 'audio'
+                                        ? 'Thẻ âm thanh luôn hướng về camera nên góc xoay được khóa.'
+                                        : 'Tắt “Luôn hướng về camera” của đối tượng để chỉnh góc xoay.'}
+                                </p>
+                            )}
+                        </FieldGroup>
+                    )}
+                    {action.type !== 'wait' && (
+                        <Disclosure
+                            title={
+                                action.type === 'transformTo'
+                                    ? 'Thời gian và cách chuyển động'
+                                    : 'durationMs' in action
+                                      ? 'Thời gian chuyển đổi'
+                                      : 'Thời gian bắt đầu'
+                            }
+                        >
+                            <FieldGroup className="gap-4">
+                                <NumericField
+                                    id={`${id}-delay`}
+                                    label="Chờ trước khi bắt đầu (giây, 0–60)"
+                                    value={action.delayMsSchema / 1000}
+                                    onChange={(v) => patch({ delayMsSchema: Math.round(v * 1000) })}
+                                />
+                                {'durationMs' in action && (
+                                    <NumericField
+                                        id={`${id}-duration`}
+                                        label="Thời gian chuyển đổi (giây, 0–10)"
+                                        value={action.durationMs / 1000}
+                                        onChange={(v) =>
+                                            patch({ durationMs: Math.round(v * 1000) })
+                                        }
+                                    />
+                                )}{' '}
+                                {action.type === 'transformTo' && (
+                                    <Field>
+                                        <FieldLabel htmlFor={`${id}-easing`}>
+                                            Cách chuyển động
+                                        </FieldLabel>
+                                        <FormSelect
+                                            size="sm"
+                                            id={`${id}-easing`}
+                                            value={action.easing}
+                                            options={[
+                                                { value: 'linear', label: 'Tốc độ đều' },
+                                                { value: 'easeIn', label: 'Bắt đầu chậm' },
+                                                { value: 'easeOut', label: 'Kết thúc chậm' },
+                                                { value: 'easeInOut', label: 'Mượt ở đầu và cuối' },
+                                            ]}
+                                            onValueChange={(v) => patch({ easing: v as Easing })}
+                                        />
+                                    </Field>
+                                )}
+                            </FieldGroup>
+                        </Disclosure>
+                    )}
+                </FieldGroup>
+            </FieldSet>
             {picking &&
                 !disabled &&
                 (action.type === 'playAudio' || action.type === 'stopAudio') && (
                     <AssetPicker
                         type="AUDIO"
+                        selectedAssetId={action.assetId}
+                        selectedAsset={detail.data?.type === 'AUDIO' ? detail.data : undefined}
+                        usedAssetIds={action.assetId ? [action.assetId] : []}
+                        chooseLabel="Chọn âm thanh"
+                        onClear={() => {
+                            patch({ assetId: '' });
+                            setPicking(false);
+                        }}
                         onClose={() => setPicking(false)}
                         onChoose={(chosen) => {
+                            queryClient.setQueryData(
+                                assetKeys.detail(user?.id || '', chosen.id),
+                                chosen,
+                            );
                             patch({ assetId: chosen.id });
                             setPicking(false);
                         }}

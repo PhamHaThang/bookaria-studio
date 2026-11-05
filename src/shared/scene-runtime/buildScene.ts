@@ -9,10 +9,19 @@ import { facesCamera } from '../scene/audio-kind';
 import { createBillboard } from '../scene/billboard';
 import { pageImageSize } from '../scene/page-image-fit';
 import { createTextVisual } from '../scene/text-renderer';
+import type { AssetCache } from './asset-cache';
 import { fetchBytes } from './fetchBytes';
-import { InteractionRunner, sleep } from './InteractionRunner';
+import {
+    InteractionRunner,
+    type InteractionStepEvent,
+    sleep,
+    type WorkflowEnvironment,
+} from './InteractionRunner';
 
-type Hooks = {
+import { askWorkflowQuestion } from './WorkflowPrompt';
+
+type Hooks = WorkflowEnvironment & {
+    step?: (event: InteractionStepEvent) => void;
     tap?: (id: string) => void;
     notice: (message: string) => void;
     link: (url: string) => void;
@@ -44,6 +53,7 @@ export async function buildScene(
     assets: Record<string, ManifestAsset>,
     signal: AbortSignal,
     hooks: Hooks,
+    options: { background?: boolean; bytes?: AssetCache } = {},
 ) {
     const group = new THREE.Group();
     const nodes = new Map<string, Node>(),
@@ -53,6 +63,8 @@ export async function buildScene(
     const audioAssets = new Map<HTMLAudioElement, string>();
     const playAttempts = new WeakMap<HTMLMediaElement, number>();
     const blockedMedia = new Set<HTMLMediaElement>();
+    const suspendedMedia = new Set<HTMLMediaElement>();
+    let suspended = false;
     let lifecycle = 0;
     const blobUrls: string[] = [];
     const draco = new DRACOLoader().setDecoderPath('/vendor/draco-0.161.0/');
@@ -65,12 +77,20 @@ export async function buildScene(
         { opacity: number; transparent: boolean }
     >();
     const visibilityGeneration = new Map<string, number>();
+    const animationListeners = new Map<string, () => void>();
     const visibilityProgress = new Map<string, number>();
-    const runner = new InteractionRunner(page.scene.interactions, execute, hooks.notice);
+    const runner = new InteractionRunner(page.scene.interactions, execute, hooks.notice, sleep, {
+        ...hooks,
+        pageId: page.pageId,
+        visible: (id) => nodes.get(id)?.root.visible || false,
+        question: hooks.question || askWorkflowQuestion,
+    });
+    runner.onStep = hooks.step;
     function dispose() {
         if (disposed) return;
         disposed = true;
         runner.dispose();
+        for (const cleanup of animationListeners.values()) cleanup();
         for (const tween of activeTweens.values()) tween.abort();
         for (const item of media) {
             item.pause();
@@ -102,11 +122,23 @@ export async function buildScene(
         draco.dispose();
         group.clear();
     }
-    async function texture(url: string) {
-        const bytes = await fetchBytes(url, signal, 20 * 1024 * 1024);
+    const readBytes = (url: string, limit?: number) =>
+        options.bytes ? options.bytes.get(url, signal, limit) : fetchBytes(url, signal, limit);
+    async function imageBitmap(url: string, flipY = false) {
+        const bytes = await readBytes(url, 20 * 1024 * 1024);
         signal.throwIfAborted();
-        const blob = new Blob([bytes]);
-        const bitmap = await createImageBitmap(blob, { imageOrientation: 'flipY' });
+        try {
+            return await createImageBitmap(new Blob([bytes]), {
+                imageOrientation: flipY ? 'flipY' : 'from-image',
+            });
+        } catch (error) {
+            if (!signal.aborted) options.bytes?.delete(url);
+            throw error;
+        }
+    }
+    async function texture(url: string) {
+        signal.throwIfAborted();
+        const bitmap = await imageBitmap(url, true);
         if (signal.aborted || disposed) {
             bitmap.close();
             signal.throwIfAborted();
@@ -117,6 +149,22 @@ export async function buildScene(
         result.needsUpdate = true;
         textures.add(result);
         return result;
+    }
+    async function textImage(url: string) {
+        const bitmap = await imageBitmap(url);
+        try {
+            signal.throwIfAborted();
+            const scale = Math.min(1, 1024 / bitmap.width, 640 / bitmap.height);
+            const image = document.createElement('canvas');
+            image.width = Math.max(1, Math.ceil(bitmap.width * scale));
+            image.height = Math.max(1, Math.ceil(bitmap.height * scale));
+            const context = image.getContext('2d');
+            if (!context) throw new Error('Không tạo được ảnh xem trước.');
+            context.drawImage(bitmap, 0, 0, image.width, image.height);
+            return image;
+        } finally {
+            bitmap.close();
+        }
     }
     const plane = (width: number, height: number, material: THREE.Material) =>
         new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
@@ -129,8 +177,13 @@ export async function buildScene(
         const playing = element.play();
         playing
             ?.then(() => {
-                if (!disposed && playAttempts.get(element) === attempt)
+                if (!disposed && playAttempts.get(element) === attempt) {
                     blockedMedia.delete(element);
+                    if (suspended) {
+                        suspendedMedia.add(element);
+                        element.pause();
+                    }
+                }
             })
             .catch(() => {
                 if (disposed || playAttempts.get(element) !== attempt) return;
@@ -146,7 +199,7 @@ export async function buildScene(
                         });
                 if (!disposed)
                     hooks.notice(
-                        'Trình duyệt chưa phát được âm thanh/video. Chạm “Thử phát media” hoặc kiểm tra tệp.',
+                        'Trình duyệt chưa phát được âm thanh/video. Chọn “Chạm để bật âm thanh” hoặc kiểm tra tệp.',
                     );
             });
     }
@@ -170,6 +223,7 @@ export async function buildScene(
         return element;
     }
     function stopMedia() {
+        suspendedMedia.clear();
         blockedMedia.clear();
         for (const element of media) {
             playAttempts.set(element, (playAttempts.get(element) || 0) + 1);
@@ -239,11 +293,13 @@ export async function buildScene(
             hooks.link(action.url);
             return;
         }
+        if (!('objectId' in action)) return;
         const node = nodes.get(action.objectId);
         if (!node) throw new Error('Không tìm thấy đối tượng của hành động.');
         if (action.type === 'playAnimation') {
             const clip = node.clips?.find((clip) => clip.name === action.clip);
             if (!clip || !node.mixer) throw new Error(`Mô hình không có clip “${action.clip}”.`);
+            animationListeners.get(action.objectId)?.();
             node.mixer.stopAllAction();
             const animation = node.mixer.clipAction(clip);
             animation.reset();
@@ -253,6 +309,22 @@ export async function buildScene(
             );
             animation.clampWhenFinished = !action.loop;
             animation.play();
+            if (!action.loop) {
+                const mixer = node.mixer;
+                const finished = (event: { action: THREE.AnimationAction }) => {
+                    if (event.action !== animation) return;
+                    mixer.removeEventListener('finished', finished);
+                    if (!disposed && !suspended)
+                        void runner.fire({
+                            type: 'onAnimationEnd',
+                            objectId: action.objectId,
+                            clip: action.clip,
+                        });
+                };
+                const cleanup = () => mixer.removeEventListener('finished', finished);
+                animationListeners.set(action.objectId, cleanup);
+                mixer.addEventListener('finished', finished);
+            }
             return;
         }
         if (action.type === 'playVideo') {
@@ -345,32 +417,34 @@ export async function buildScene(
         }
     }
     try {
-        const background = await texture(page.imageUrl);
-        signal.throwIfAborted();
-        const paper = plane(
-            1,
-            page.aspect,
-            new THREE.MeshBasicMaterial({
-                color: 0xffffff,
-                side: THREE.DoubleSide,
-                polygonOffset: true,
-                polygonOffsetFactor: 1,
-                polygonOffsetUnits: 1,
-            }),
-        );
-        paper.position.z = -0.003;
-        paper.name = 'page-background';
-        group.add(paper);
-        const bitmap = background.image as ImageBitmap;
-        const size = pageImageSize(bitmap.width, bitmap.height, page.aspect);
-        const paperImage = plane(
-            size.width,
-            size.height,
-            new THREE.MeshBasicMaterial({ map: background, side: THREE.DoubleSide }),
-        );
-        paperImage.position.copy(paper.position);
-        paperImage.name = 'page-background-image';
-        group.add(paperImage);
+        if (options.background !== false) {
+            const background = await texture(page.imageUrl);
+            signal.throwIfAborted();
+            const paper = plane(
+                1,
+                page.aspect,
+                new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    side: THREE.DoubleSide,
+                    polygonOffset: true,
+                    polygonOffsetFactor: 1,
+                    polygonOffsetUnits: 1,
+                }),
+            );
+            paper.position.z = -0.003;
+            paper.name = 'page-background';
+            group.add(paper);
+            const bitmap = background.image as ImageBitmap;
+            const size = pageImageSize(bitmap.width, bitmap.height, page.aspect);
+            const paperImage = plane(
+                size.width,
+                size.height,
+                new THREE.MeshBasicMaterial({ map: background, side: THREE.DoubleSide }),
+            );
+            paperImage.position.copy(paper.position);
+            paperImage.name = 'page-background-image';
+            group.add(paperImage);
+        }
         // Sequential loading bounds peak memory and makes cancellation deterministic.
         for (const spec of page.scene.objects) {
             signal.throwIfAborted();
@@ -389,8 +463,15 @@ export async function buildScene(
             if (spec.type === 'model') {
                 const asset = assets[spec.assetId];
                 if (asset?.type !== 'MODEL') throw new Error('Thiếu tài nguyên mô hình.');
-                const bytes = await fetchBytes(asset.url, signal);
-                const gltf = await loader.parseAsync(bytes, new URL('.', asset.url).href);
+                const bytes = await readBytes(asset.url);
+                // GLTFLoader r161 slices GLB chunks/bufferViews before Draco transfers them.
+                // The original cached buffer remains read-only and reusable by later pages.
+                const gltf = await loader
+                    .parseAsync(bytes, new URL('.', asset.url).href)
+                    .catch((error) => {
+                        if (!signal.aborted) options.bytes?.delete(asset.url);
+                        throw error;
+                    });
                 node.billboard.content.add(gltf.scene);
                 node.mixer = new THREE.AnimationMixer(gltf.scene);
                 node.clips = gltf.animations;
@@ -410,6 +491,7 @@ export async function buildScene(
                             ? assets[presentation.imageAssetId]?.url
                             : undefined,
                     signal,
+                    loadImage: options.bytes ? textImage : undefined,
                 });
                 node.billboard.content.add(visual.group);
                 node.textTap = visual.tap ?? visual.next;
@@ -521,9 +603,15 @@ export async function buildScene(
             group,
             runner,
             nodes,
+            markerFound() {
+                if (!disposed) void runner.fire({ type: 'onMarkerFound' });
+            },
+            markerLost() {
+                if (!disposed) void runner.fire({ type: 'onMarkerLost' });
+            },
             update(delta: number, camera: THREE.Camera) {
                 for (const node of nodes.values()) {
-                    node.mixer?.update(delta);
+                    if (!suspended) node.mixer?.update(delta);
                     const spec = node.spec;
                     node.billboard.update(
                         camera,
@@ -534,6 +622,8 @@ export async function buildScene(
                 }
             },
             start() {
+                suspended = false;
+                suspendedMedia.clear();
                 lifecycle++;
                 runner.cancelAll();
                 for (const node of nodes.values()) {
@@ -561,6 +651,23 @@ export async function buildScene(
                 if (page.settings.narrationAssetId)
                     safePlay(getAudio(page.settings.narrationAssetId, 'narration'));
                 void runner.fire({ type: 'onPageEnter' });
+            },
+            suspend() {
+                if (disposed || suspended) return;
+                suspended = true;
+                for (const element of media) {
+                    if (!element.paused) {
+                        suspendedMedia.add(element);
+                        playAttempts.set(element, (playAttempts.get(element) || 0) + 1);
+                        element.pause();
+                    }
+                }
+            },
+            resume() {
+                if (disposed || !suspended) return;
+                suspended = false;
+                for (const element of suspendedMedia) safePlay(element);
+                suspendedMedia.clear();
             },
             async leave() {
                 const current = ++lifecycle;

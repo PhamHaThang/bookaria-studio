@@ -17,8 +17,8 @@ export function rulesInScope(rules: InteractionRule[], scope: InteractionScope) 
         (rule) =>
             scope.type === 'all' ||
             (scope.type === 'page'
-                ? rule.trigger.type !== 'onTap'
-                : rule.trigger.type === 'onTap' && rule.trigger.objectId === scope.objectId),
+                ? !('objectId' in rule.trigger)
+                : 'objectId' in rule.trigger && rule.trigger.objectId === scope.objectId),
     );
 }
 
@@ -65,8 +65,8 @@ export function moveScopedRule(
 }
 
 export function ruleTriggerLabel(rule: InteractionRule, objects: SceneObject[]) {
-    if (rule.trigger.type !== 'onTap') return triggerLabels[rule.trigger.type];
+    if (!('objectId' in rule.trigger)) return triggerLabels[rule.trigger.type];
     const id = rule.trigger.objectId,
         object = objects.find((item) => item.id === id);
-    return `Khi chạm ${object ? object.name || objectLabels[object.type] : id ? 'đối tượng đã xóa' : 'đối tượng chưa chọn'}`;
+    return `${rule.trigger.type === 'onAnimationEnd' ? 'Khi hoạt ảnh kết thúc ở' : 'Khi chạm'} ${object ? object.name || objectLabels[object.type] : id ? 'đối tượng đã xóa' : 'đối tượng chưa chọn'}`;
 }

@@ -261,7 +261,7 @@ function BookInformation({ book }: { book: PublicBook }) {
             </div>
             <aside
                 aria-label="Đọc sách bằng mã QR"
-                className="flex hidden min-w-0 flex-col justify-center self-center lg:block"
+                className="hidden min-w-0 border-border border-l pl-6 lg:block"
             >
                 <PublicBookQr slug={book.slug} />
             </aside>

@@ -2,12 +2,24 @@
     "source": "bookaria-viewer/src/scene-core",
     "files": {
         "buildScene.ts": {
-            "source": "82dc8375aa853ddbdd408fc6e4b795d5dc11c5401311bece2906a7a227b294e2",
-            "snapshot": "b1c4520532343dbdb2dbd7fe8ba09cda99f9d573a2e8282c008e3ce606af5808"
+            "source": "6891bf66b30cff8fa7edd60ea48923f67f70ccc4804b7dd904aaee89407ef016",
+            "snapshot": "0aa552caf95e585cc023d99f607d123cde32c2c73c122cf3f2e9367e210e2cb6"
         },
         "InteractionRunner.ts": {
-            "source": "fce070c493449250c996cee5aa17349760de5e73fd93c15f1224ff8dc788306a",
-            "snapshot": "97f12aa0e6f00bfedd390cc0926199913531b2744077944c9343aac921780902"
+            "source": "d0f1793df2790e1391cebf7526bb05af0c9a0bcd827e918d30d9f2a0cafc83ec",
+            "snapshot": "219e2dbb94cdef110cd4dcea4024e7eac3d18b08c89c3d505961ceb55dfa8bc2"
+        },
+        "WorkflowState.ts": {
+            "source": "2fedc34bc8306eee33eb50d4929b198b57f727714edfabb65a6f2d4e6694f4d5",
+            "snapshot": "9b24bf4e40eea9ec1701e2116c1fcb3fd0fa9e7e6c715d5d01aed748dd05e798"
+        },
+        "WorkflowPrompt.ts": {
+            "source": "5f0d9bc761c1a7120cdd44dcff7ad72f2ac7818fdbcb919edeb01ff012d3144b",
+            "snapshot": "8833134d767498ea3b414772e40250e8ebdc8b3393f3832f99dd03622a807e78"
+        },
+        "asset-cache.ts": {
+            "source": "4e3ff45058669168177b3714794100f191133aa844bef0f1f4cd50089cf19ac2",
+            "snapshot": "73f9b6d9bc0ce4ec304c621cc5b66cf19254c75de198b5ebda28886ffa2eb1e5"
         },
         "fetchBytes.ts": {
             "source": "a89e8d77b030e9e979a63d43f04fa19fb18791304e0ac3e35e126ecebcc22890",

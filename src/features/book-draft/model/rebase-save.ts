@@ -59,6 +59,15 @@ export function rebaseSavedBook(
         })
         .map((page, orderIndex) => ({ ...page, orderIndex }));
     return {
+        ...(current.workflowVariables || sent.workflowVariables || snapshot.workflowVariables
+            ? {
+                  workflowVariables:
+                      fingerprint(current.workflowVariables || []) ===
+                      fingerprint(sent.workflowVariables || [])
+                          ? snapshot.workflowVariables || []
+                          : current.workflowVariables || [],
+              }
+            : {}),
         pages,
         overrides,
         minds: Object.fromEntries(

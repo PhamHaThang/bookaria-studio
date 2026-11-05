@@ -54,6 +54,7 @@ export async function makePreviewPayload(
         bookId: book.id,
         version: 1,
         title: book.title,
+        workflowVariables: book.workflowVariables || [],
         trackerEngine: 'mindar',
         generatedAt: new Date().toISOString(),
         targetGroups: [],
@@ -72,6 +73,11 @@ export async function makePreviewPayload(
         assets,
         credits: [],
     });
-    return { title: manifest.title, page: manifest.pages[0], assets: manifest.assets };
+    return {
+        title: manifest.title,
+        page: manifest.pages[0],
+        assets: manifest.assets,
+        workflowVariables: manifest.workflowVariables || [],
+    };
 }
 export type PreviewPayload = Awaited<ReturnType<typeof makePreviewPayload>>;
