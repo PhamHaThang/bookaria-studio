@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Copy, Eye, Info, Move, Play, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { Copy, Eye, Gamepad2, Info, Move, Play, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import { facesCamera } from '@/shared/scene/audio-kind';
@@ -27,6 +27,7 @@ import type { SceneAudioStore } from '../model/scene-audio-store';
 import type { SceneLoadStore } from '../model/scene-load-store';
 import { isPlanarObject } from '../model/selection-frame';
 import { withObjectPosition } from '../model/transforms';
+import { ModelControlProperties } from './ModelControlProperties';
 import { VectorFields } from './NumericField';
 import { ObjectSpecificProperties } from './ObjectSpecificProperties';
 import { useSceneWidthMm } from './SceneUnits';
@@ -281,6 +282,27 @@ export function ObjectEditor({
                                     </FieldSet>
                                 )}
                             </FieldGroup>
+                        </Disclosure>
+                    )}
+                    {object.type === 'model' && (
+                        <Disclosure
+                            value="controls"
+                            title={
+                                <>
+                                    <Gamepad2 size={17} />
+                                    Điều khiển
+                                </>
+                            }
+                            variant="panel"
+                            className="property-section"
+                        >
+                            <ModelControlProperties
+                                object={object}
+                                clips={clips}
+                                id={id}
+                                disabled={disabled || object.locked}
+                                onChange={(controls) => patch({ controls })}
+                            />
                         </Disclosure>
                     )}
                     <Disclosure

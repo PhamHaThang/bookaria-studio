@@ -17,7 +17,8 @@ import {
     sleep,
     type WorkflowEnvironment,
 } from './InteractionRunner';
-
+import { ModelControlAnimations } from './ModelControlAnimations';
+import { ModelControls } from './ModelControls';
 import { askWorkflowQuestion } from './WorkflowPrompt';
 
 type Hooks = WorkflowEnvironment & {
@@ -65,6 +66,8 @@ export async function buildScene(
     const blockedMedia = new Set<HTMLMediaElement>();
     const suspendedMedia = new Set<HTMLMediaElement>();
     let suspended = false;
+    let modelControls: ModelControls | undefined;
+    let controlAnimations: ModelControlAnimations | undefined;
     let lifecycle = 0;
     const blobUrls: string[] = [];
     const draco = new DRACOLoader().setDecoderPath('/vendor/draco-0.161.0/');
@@ -90,6 +93,8 @@ export async function buildScene(
         if (disposed) return;
         disposed = true;
         runner.dispose();
+        modelControls?.dispose();
+        controlAnimations?.dispose();
         for (const cleanup of animationListeners.values()) cleanup();
         for (const tween of activeTweens.values()) tween.abort();
         for (const item of media) {
@@ -267,6 +272,15 @@ export async function buildScene(
     }
     async function execute(action: Exclude<Action, { type: 'wait' }>, actionSignal: AbortSignal) {
         hooks.log(action.type);
+        if (action.type === 'controlModel') {
+            if (action.operation === 'reset') {
+                const key = `${action.objectId}:transform`;
+                activeTweens.get(key)?.abort();
+                activeTweens.delete(key);
+            }
+            modelControls?.command(action.objectId, action.operation);
+            return;
+        }
         if (action.type === 'playAudio') {
             const element = getAudio(action.assetId);
             element.loop = action.loop;
@@ -297,6 +311,7 @@ export async function buildScene(
         const node = nodes.get(action.objectId);
         if (!node) throw new Error('Không tìm thấy đối tượng của hành động.');
         if (action.type === 'playAnimation') {
+            controlAnimations?.release(action.objectId);
             const clip = node.clips?.find((clip) => clip.name === action.clip);
             if (!clip || !node.mixer) throw new Error(`Mô hình không có clip “${action.clip}”.`);
             animationListeners.get(action.objectId)?.();
@@ -599,17 +614,38 @@ export async function buildScene(
             getAudio(page.settings.backgroundAudioAssetId, 'background');
         if (page.settings.narrationAssetId) getAudio(page.settings.narrationAssetId, 'narration');
         signal.throwIfAborted();
+        controlAnimations = new ModelControlAnimations(nodes, (id) => {
+            animationListeners.get(id)?.();
+            animationListeners.delete(id);
+        });
+        modelControls = new ModelControls(
+            nodes,
+            page.aspect,
+            (id) => activeTweens.has(`${id}:transform`),
+            (id, motion) => controlAnimations?.set(id, motion),
+        );
         return {
             group,
             runner,
             nodes,
+            modelControls,
+            attachControls(host: HTMLElement, keyboardTarget: HTMLElement) {
+                modelControls?.attach(host, keyboardTarget);
+            },
+            startControls() {
+                modelControls?.activate();
+            },
             markerFound() {
+                modelControls?.pause(false);
                 if (!disposed) void runner.fire({ type: 'onMarkerFound' });
             },
             markerLost() {
+                modelControls?.pause(true);
                 if (!disposed) void runner.fire({ type: 'onMarkerLost' });
             },
             update(delta: number, camera: THREE.Camera) {
+                modelControls?.update(delta);
+                if (!suspended) controlAnimations?.update(delta);
                 for (const node of nodes.values()) {
                     if (!suspended) node.mixer?.update(delta);
                     const spec = node.spec;
@@ -622,6 +658,7 @@ export async function buildScene(
                 }
             },
             start() {
+                modelControls?.start();
                 suspended = false;
                 suspendedMedia.clear();
                 lifecycle++;
@@ -631,7 +668,14 @@ export async function buildScene(
                         safePlay(node.audio);
                     if (node.spec.type === 'video' && node.spec.autoplay && node.video)
                         safePlay(node.video);
-                    if (node.spec.type === 'model' && node.spec.animation?.autoplay)
+                    if (
+                        node.spec.type === 'model' &&
+                        node.spec.animation?.autoplay &&
+                        !(
+                            node.spec.controls?.enabled &&
+                            (node.spec.controls.idleClip || node.spec.controls.moveClip)
+                        )
+                    )
                         void execute(
                             {
                                 type: 'playAnimation',
@@ -654,6 +698,7 @@ export async function buildScene(
             },
             suspend() {
                 if (disposed || suspended) return;
+                modelControls?.pause(true);
                 suspended = true;
                 for (const element of media) {
                     if (!element.paused) {
@@ -665,11 +710,13 @@ export async function buildScene(
             },
             resume() {
                 if (disposed || !suspended) return;
+                modelControls?.pause(false);
                 suspended = false;
                 for (const element of suspendedMedia) safePlay(element);
                 suspendedMedia.clear();
             },
             async leave() {
+                modelControls?.pause(true);
                 const current = ++lifecycle;
                 runner.cancelAll();
                 stopMedia();

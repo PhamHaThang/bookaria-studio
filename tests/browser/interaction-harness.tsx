@@ -22,6 +22,7 @@ import { BookDetailSchema, PageSchema } from '../../src/shared/contracts/dto.sch
 import {
     PageSettingsSchema,
     type Scene,
+    SceneObjectSchema,
     type WorkflowVariable,
 } from '../../src/shared/contracts/scene.schema';
 import { ThemeProvider } from '../../src/shared/theme/ThemeProvider';
@@ -67,6 +68,17 @@ const initial: Scene = {
         },
     ],
 };
+if (new URLSearchParams(location.search).has('model-controls')) {
+    initial.objects.push(
+        SceneObjectSchema.parse({
+            id: 'car',
+            name: 'Xe thử nghiệm',
+            type: 'model',
+            assetId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            transform: {},
+        }),
+    );
+}
 const id = '11111111-1111-4111-8111-111111111111',
     bookId = '22222222-2222-4222-8222-222222222222';
 const page = PageSchema.parse({

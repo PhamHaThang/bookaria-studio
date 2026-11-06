@@ -300,7 +300,13 @@ export class LocalPreviewStage {
         this.runtime = runtime;
         this.active = false;
         this.renderer.setAnimationLoop(null);
-        if (runtime) this.scene.add(runtime.group);
+        if (runtime) {
+            this.scene.add(runtime.group);
+            runtime.attachControls(
+                this.renderer.domElement.parentElement || document.body,
+                this.renderer.domElement,
+            );
+        }
         if (page) {
             this.aspect = page.aspect;
             this.lighting.setPreset(page.settings.lighting);
@@ -313,6 +319,7 @@ export class LocalPreviewStage {
         this.interactive = interactive;
         this.active = true;
         this.last = 0;
+        if (interactive) this.runtime.startControls();
         if (startRuntime) this.runtime.start();
         this.renderer.setAnimationLoop(this.tick);
     }

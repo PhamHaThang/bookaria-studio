@@ -48,6 +48,12 @@ export const actionPalette = [
     },
     { id: 'wait', type: 'wait', label: 'Chờ', group: 'Hành động — Action' },
     { id: 'openUrl', type: 'openUrl', label: 'Mở liên kết', group: 'Điều hướng — Navigation' },
+    {
+        id: 'controlModel',
+        type: 'controlModel',
+        label: 'Điều khiển mô hình',
+        group: 'Hành động — Action',
+    },
 ] as const;
 export type PaletteId = (typeof actionPalette)[number]['id'];
 export function isPaletteId(value: string): value is PaletteId {
@@ -58,6 +64,8 @@ export function paletteUnavailable(
     objects: SceneObject[],
     assets: Record<string, AssetRef>,
 ) {
+    if (id === 'controlModel' && !objects.some((o) => o.type === 'model'))
+        return 'Thêm mô hình 3D vào trang trước.';
     if (id === 'playVideo' && !objects.some((o) => o.type === 'video'))
         return 'Thêm video vào trang trước.';
     if (
@@ -140,6 +148,10 @@ export function paletteAction(
     return action;
 }
 export function actionTitle(action: Action) {
+    if (action.type === 'controlModel')
+        return { enable: 'Bật điều khiển', disable: 'Tắt điều khiển', reset: 'Đặt lại vị trí' }[
+            action.operation
+        ];
     if (action.type === 'setVisible') return action.value ? 'Hiện đối tượng' : 'Ẩn đối tượng';
     if (action.type === 'transformTo')
         return (
