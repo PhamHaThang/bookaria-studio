@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Copy, Eye, Gamepad2, Info, Move, Play, SlidersHorizontal, Trash2 } from 'lucide-react';
-import { useSyncExternalStore } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useSyncExternalStore } from 'react';
+import { AssetPreviewDialog } from '@/features/assets/ui/LibraryAssetPreview';
 import { facesCamera } from '@/shared/scene/audio-kind';
 import { Disclosure, DisclosureGroup } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
@@ -69,6 +69,7 @@ export function ObjectEditor({
     );
     const { user } = useAuth();
     const assetId = 'assetId' in object ? object.assetId : null;
+    const [previewAssetId, setPreviewAssetId] = useState<string | null>(null);
     const detail = useQuery({
         queryKey: assetKeys.detail(user?.id || '', assetId || ''),
         queryFn: ({ signal }) => assetsApi.detail(assetId || '', signal),
@@ -87,6 +88,14 @@ export function ObjectEditor({
     const id = `object-${object.id}`;
     return (
         <section className="scene-inspector min-w-0" aria-labelledby="inspector-heading">
+            {previewAssetId && previewAssetId === assetId && (
+                <AssetPreviewDialog
+                    key={previewAssetId}
+                    assetId={previewAssetId}
+                    asset={detail.data}
+                    onClose={() => setPreviewAssetId(null)}
+                />
+            )}
             <Field
                 orientation="horizontal"
                 className="mb-4 items-center justify-between gap-3 rounded-lg border border-border px-3 py-3"
@@ -146,7 +155,13 @@ export function ObjectEditor({
                                         <Button variant="secondary" onClick={onChooseAsset}>
                                             Đổi tài nguyên
                                         </Button>
-                                        <Link to={`/assets/${assetId}`}>Xem tài nguyên</Link>
+                                        <Button
+                                            variant="link"
+                                            aria-haspopup="dialog"
+                                            onClick={() => setPreviewAssetId(assetId)}
+                                        >
+                                            Xem tài nguyên
+                                        </Button>
                                     </div>
                                     {detail.isError && (
                                         <>
