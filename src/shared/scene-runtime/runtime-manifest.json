@@ -2,8 +2,8 @@
     "source": "bookaria-viewer/src/scene-core",
     "files": {
         "buildScene.ts": {
-            "source": "6891bf66b30cff8fa7edd60ea48923f67f70ccc4804b7dd904aaee89407ef016",
-            "snapshot": "0aa552caf95e585cc023d99f607d123cde32c2c73c122cf3f2e9367e210e2cb6"
+            "source": "723c2d461f35759835a920ecef1c05e13e2be24511dff002ac0562498ed1df1f",
+            "snapshot": "6eb6d3e77c9398219030784e77767787d9397034139b32efdc9cab49a199d00c"
         },
         "InteractionRunner.ts": {
             "source": "d0f1793df2790e1391cebf7526bb05af0c9a0bcd827e918d30d9f2a0cafc83ec",
@@ -16,6 +16,14 @@
         "WorkflowPrompt.ts": {
             "source": "5f0d9bc761c1a7120cdd44dcff7ad72f2ac7818fdbcb919edeb01ff012d3144b",
             "snapshot": "8833134d767498ea3b414772e40250e8ebdc8b3393f3832f99dd03622a807e78"
+        },
+        "ModelControls.ts": {
+            "source": "83f80b00c02b4ed48be2f15cb3204893e8079fc8a5d76518dea1fd0c4cdcad9a",
+            "snapshot": "1e4a48aba676bab04fd1a18edcb8e299d75ad41243383b9766f306b6c73170aa"
+        },
+        "ModelControlAnimations.ts": {
+            "source": "c8aae7c0c01657b7aae940c2f6c25df307de221861a9107ed8134eda2abb552c",
+            "snapshot": "b63c3307ad4bd3089366b124ba0f316664eeebdf4f7a856042b547ebd318542d"
         },
         "asset-cache.ts": {
             "source": "4e3ff45058669168177b3714794100f191133aa844bef0f1f4cd50089cf19ac2",

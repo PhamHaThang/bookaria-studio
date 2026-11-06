@@ -479,6 +479,8 @@ export function actionSummary(action: Action, objects: SceneObject[]) {
     const target =
         'objectId' in action ? objectName(objects.find((o) => o.id === action.objectId)) : '';
     switch (action.type) {
+        case 'controlModel':
+            return `${action.operation === 'enable' ? 'Cho phép điều khiển' : action.operation === 'disable' ? 'Dừng điều khiển' : 'Đưa về vị trí đầu'} “${target}”`;
         case 'condition': {
             const test = action.test;
             if (test.type === 'variable')

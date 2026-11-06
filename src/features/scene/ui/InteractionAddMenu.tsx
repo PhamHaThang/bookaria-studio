@@ -4,6 +4,7 @@ import {
     Clock3,
     Database,
     Eye,
+    Gamepad2,
     GitBranch,
     LayoutTemplate,
     Link2,
@@ -33,6 +34,7 @@ import type { InteractionTemplateId } from '../model/interaction-templates';
 import { InteractionTemplateDialog } from './InteractionTemplateDialog';
 
 export const actionIcons: Record<ActionType, typeof Eye> = {
+    controlModel: Gamepad2,
     condition: GitBranch,
     setState: Database,
     askQuestion: CircleHelp,

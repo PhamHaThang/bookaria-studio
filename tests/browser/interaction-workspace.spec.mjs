@@ -287,6 +287,8 @@ test('quiz template asks, reports correct answer and runs only its chosen branch
     await expect(question).toBeVisible();
     await expect(question.getByRole('button', { name: 'Trả lời', exact: true })).toHaveCount(0);
     await question.getByRole('button', { name: 'Đã tìm thấy', exact: true }).click();
+    await expect(question.getByRole('status')).toContainText('Bạn đã trả lời đúng.');
+    await question.getByRole('button', { name: 'Đóng', exact: true }).click();
     await expect(question).toHaveCount(0);
     await expect(
         page.locator('[data-workflow-step="step-4"][data-step-state="done"]'),
@@ -447,7 +449,10 @@ test('five grouped blocks choose their function inside the node without moving i
     );
     await first.getByRole('combobox', { name: /^Chức năng khối/ }).click();
     await expect(page.getByRole('option', { name: 'Phát video', exact: true })).toBeDisabled();
-    await expect(page.getByRole('option')).toHaveCount(7);
+    await expect(
+        page.getByRole('option', { name: 'Điều khiển mô hình', exact: true }),
+    ).toBeDisabled();
+    await expect(page.getByRole('option')).toHaveCount(8);
     await page.keyboard.press('Escape');
     await first.getByRole('combobox', { name: /^Thao tác khối/ }).click();
     await page.getByRole('option', { name: 'Ẩn', exact: true }).click();

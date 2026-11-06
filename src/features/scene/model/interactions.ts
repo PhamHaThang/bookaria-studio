@@ -18,6 +18,7 @@ export const triggerLabels: Record<Trigger['type'], string> = {
     onAnswer: 'Khi trả lời câu hỏi',
 };
 export const actionLabels: Record<ActionType, string> = {
+    controlModel: 'Điều khiển mô hình',
     playAudio: 'Phát âm thanh',
     stopAudio: 'Dừng âm thanh',
     playAnimation: 'Chạy hoạt cảnh 3D',
@@ -36,7 +37,7 @@ export function targetObjects(objects: SceneObject[], type: Trigger['type'] | Ac
     return objects.filter((object) =>
         type === 'onTap'
             ? object.type !== 'audio'
-            : type === 'playAnimation' || type === 'onAnimationEnd'
+            : type === 'controlModel' || type === 'playAnimation' || type === 'onAnimationEnd'
               ? object.type === 'model'
               : type === 'playVideo'
                 ? object.type === 'video'
@@ -47,6 +48,8 @@ export function targetObjects(objects: SceneObject[], type: Trigger['type'] | Ac
 export function newAction(type: ActionType): Action {
     const delayMsSchema = 0;
     switch (type) {
+        case 'controlModel':
+            return { type, objectId: '', operation: 'enable', delayMsSchema };
         case 'condition':
             return {
                 type,

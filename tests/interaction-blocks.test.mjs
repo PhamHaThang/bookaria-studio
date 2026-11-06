@@ -120,7 +120,7 @@ test('object highlights include trigger, action, condition and audio references 
     assert.equal(canAssignStepObject(undefined, audio, {}), false);
 });
 
-test('action functions are seven families and legacy variants retain their operation', () => {
+test('action functions are eight families and legacy variants retain their operation', () => {
     const options = blockChoices({ type: 'wait', ms: 0 }, trigger, scene, {}).options;
     assert.deepEqual(
         options.map((option) => option.value).sort(),
@@ -130,6 +130,7 @@ test('action functions are seven families and legacy variants retain their opera
             'transform',
             'playVideo',
             'playAnimation',
+            'controlModel',
             'askQuestion',
             'wait',
         ].sort(),
@@ -221,4 +222,29 @@ test('combined movement retains every enabled transform and timing when choosing
     assert.equal(next.objectId, text.id);
     assert.equal(next.delayMsSchema, 200);
     assert.ok(ActionSchema.safeParse(next).success);
+});
+
+test('model control family restricts targets, supports all operations and retains delay', () => {
+    const model = {
+        id: 'car',
+        type: 'model',
+        name: 'Xe',
+        assetId: '11111111-1111-4111-8111-111111111111',
+        transform: { position: [0, 0, 0], rotation: [90, 0, 0], scale: [1, 1, 1] },
+    };
+    const withModel = { ...scene, objects: [text, model] };
+    const control = changeBlockAction({ type: 'wait', ms: 0 }, 'controlModel', withModel, {}, []);
+    assert.equal(control.objectId, 'car');
+    assert.equal(control.operation, 'enable');
+    for (const operation of ['enable', 'disable', 'reset']) {
+        const changed = changeActionOperation({ ...control, delayMsSchema: 230 }, operation);
+        assert.equal(changed.operation, operation);
+        assert.equal(changed.objectId, 'car');
+        assert.equal(changed.delayMsSchema, 230);
+        assert.ok(ActionSchema.safeParse(changed).success);
+    }
+    const option = blockChoices({ type: 'wait', ms: 0 }, trigger, scene, {}).options.find(
+        (option) => option.value === 'controlModel',
+    );
+    assert.equal(option.disabled, true);
 });

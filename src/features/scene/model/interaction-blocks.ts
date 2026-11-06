@@ -113,6 +113,7 @@ export function blockChoices(
         { value: 'audio', label: 'Âm thanh', initial: 'playAudio' },
         { value: 'transform', label: 'Chuyển động', initial: 'move' },
         { value: 'playVideo', label: 'Phát video', initial: 'playVideo' },
+        { value: 'controlModel', label: 'Điều khiển mô hình', initial: 'controlModel' },
         { value: 'playAnimation', label: 'Chạy hoạt cảnh 3D', initial: 'playAnimation' },
         { value: 'askQuestion', label: 'Hiển thị câu hỏi', initial: 'askQuestion' },
     ] as const;
@@ -127,6 +128,15 @@ export function blockChoices(
 }
 /** Operations share one node family; only runtime-compatible fields are carried across. */
 export function actionOperationChoices(action?: Action) {
+    if (action?.type === 'controlModel')
+        return {
+            value: action.operation,
+            options: [
+                { value: 'enable', label: 'Bật điều khiển' },
+                { value: 'disable', label: 'Tắt điều khiển' },
+                { value: 'reset', label: 'Đặt lại vị trí' },
+            ],
+        };
     if (action?.type === 'setVisible' || action?.type === 'toggleVisible')
         return {
             value:
@@ -152,6 +162,8 @@ export function changeActionOperation(action: Action, value: string): Action {
     if (!choices?.options.some((option) => option.value === value))
         throw new Error('Chọn thao tác phù hợp với chức năng của khối.');
     if (choices.value === value) return action;
+    if (action.type === 'controlModel')
+        return { ...action, operation: value as 'enable' | 'disable' | 'reset' };
     if (action.type === 'setVisible' || action.type === 'toggleVisible') {
         const common = {
             objectId: action.objectId,

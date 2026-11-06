@@ -17,6 +17,8 @@ for (const name of [
     'InteractionRunner.ts',
     'WorkflowState.ts',
     'WorkflowPrompt.ts',
+    'ModelControls.ts',
+    'ModelControlAnimations.ts',
     'asset-cache.ts',
 ]) {
     const original = normalize(await readFile(path.join(viewer, 'src/scene-core', name), 'utf8'));
