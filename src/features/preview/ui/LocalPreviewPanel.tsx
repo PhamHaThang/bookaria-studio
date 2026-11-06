@@ -344,7 +344,7 @@ function ActivePreview({
                     </div>
                 )}
             </div>
-            <div className="flex h-10 shrink-0 items-center justify-between gap-4 border-border border-t px-5 text-muted-foreground text-xs">
+            <div className="flex h-10 shrink-0 items-center justify-between gap-4 border-border border-t bg-surface px-5 text-muted-foreground text-xs">
                 <span>
                     Nhấp: tương tác · Kéo trái: xoay · Phải / Space + kéo: dịch · Giữa + kéo / Cuộn:
                     zoom

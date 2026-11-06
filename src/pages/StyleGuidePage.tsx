@@ -9,6 +9,7 @@ import { LoadingSamples } from '@/features/style-guide/ui/LoadingSamples';
 import { NavigationSamples } from '@/features/style-guide/ui/NavigationSamples';
 import { OverlaySamples } from '@/features/style-guide/ui/OverlaySamples';
 import { cn } from '@/shared/lib/cn';
+import { useTheme } from '@/shared/theme/ThemeProvider';
 import { Badge } from '@/shared/ui/Badge';
 import { BookariaLogo } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
@@ -38,25 +39,35 @@ const sections = [
 const swatches = [
     ['Màu chính', '--action-primary'],
     ['Hover chính', '--action-primary-hover'],
+    ['Màu nhấn', '--action-highlight'],
+    ['Chữ nhấn', '--text-highlight'],
     ['Nền trang', '--bg-canvas'],
     ['Bề mặt', '--bg-surface'],
+    ['Nền phụ', '--bg-surface-subtle'],
+    ['Chữ trên nút chính', '--text-on-primary'],
     ['Chữ chính', '--text-primary'],
     ['Chữ phụ', '--text-muted'],
-    ['Viền control', '--border-input'],
+    ['Viền ô nhập', '--border-input'],
+    ['Viền nút phụ', '--border-button'],
+    ['Nền hover', '--bg-hover'],
+    ['Nền đang chọn', '--bg-selected'],
     ['Viền phân cách', '--border-default'],
     ['Thành công', '--status-success-text'],
     ['Cảnh báo', '--status-warning-text'],
     ['Lỗi', '--status-danger-text'],
     ['Focus', '--focus-color'],
+    ['Nhãn trục X', '--editor-axis-x'],
+    ['Nhãn trục Y', '--editor-axis-y'],
+    ['Nhãn trục Z', '--editor-axis-z'],
     ['Liên kết nội dung', '--text-link'],
     ['Bề mặt tối', '--surface-dark'],
-    ['Sky light — chỉ hero', '--gradient-sky-light'],
-    ['Sky mid — chỉ hero', '--gradient-sky-mid'],
 ] as const;
 
 export function StyleGuidePage() {
     const [active, setActive] = useState(() => window.location.hash.slice(1) || 'colors');
     const [values, setValues] = useState<Record<string, string>>({});
+    const { theme } = useTheme();
+    // biome-ignore lint/correctness/useExhaustiveDependencies: Re-read CSS variables after the resolved theme changes.
     useEffect(() => {
         const style = getComputedStyle(document.documentElement);
         setValues(
@@ -64,6 +75,8 @@ export function StyleGuidePage() {
                 swatches.map(([, token]) => [token, style.getPropertyValue(token).trim()]),
             ),
         );
+    }, [theme]);
+    useEffect(() => {
         const previous = document.title;
         document.title = 'Giao diện mẫu | Bookaria';
         const sync = () => setActive(window.location.hash.slice(1) || 'colors');
@@ -138,15 +151,15 @@ export function StyleGuidePage() {
                             tại chỗ.
                         </p>
                         <p className="mt-3 mb-0 text-muted-foreground text-sm">
-                            Nút chính #000000 / Chữ #1c2024 / Inter + JetBrains Mono / Tailwind +
-                            shadcn/Radix + Lucide + Sonner.
+                            Màu trung tính / Inter + JetBrains Mono / Tailwind + shadcn/Radix +
+                            Lucide + Sonner.
                         </p>
                     </div>
                     <p className="mb-10 max-w-[70ch] text-muted-foreground text-sm">
-                        Theo Expo đang chạy: nút và ô nhập bo tròn; nút chính đen, secondary nền
-                        nhạt, outline nền trắng. Control bị khóa giữ trạng thái rõ ràng và không
-                        phản hồi hover. Radio/checkbox chưa chọn có viền đen, nền trắng; đã chọn có
-                        nền đen. Tabs dạng line giữ gạch dưới.
+                        Bảng màu theo Cal.com: nền trắng ở chế độ sáng, nền gần đen ở chế độ tối.
+                        Nút chính trung tính, màu nhấn cam và các màu trạng thái có vai trò riêng.
+                        Secondary, outline, hover và selected dùng các mức nền phù hợp với theme.
+                        Control bị khóa không phản hồi hover; Tabs dạng line giữ gạch dưới.
                     </p>
                     <GuideSection
                         id="colors"

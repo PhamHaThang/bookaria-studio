@@ -5,26 +5,26 @@ import { cn } from '@/shared/lib/cn';
 import { Tooltip, TooltipContent, TooltipTrigger } from './tooltip';
 
 const buttonVariants = cva(
-    'button compact inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-transparent text-[length:var(--text-sm)] leading-[1.4] font-medium no-underline transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:border-border disabled:bg-surface disabled:text-muted-foreground disabled:opacity-100 aria-busy:cursor-progress [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-[18px]',
+    'button compact inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-transparent text-[length:var(--text-sm)] leading-[1.4] font-medium no-underline transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-[var(--opacity-disabled)] disabled:shadow-none aria-busy:cursor-progress motion-reduce:transition-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-[18px]',
     {
         variants: {
             variant: {
                 default:
-                    'primary bg-primary text-primary-foreground hover:not-disabled:bg-primary-hover',
+                    'primary border-primary bg-primary text-primary-foreground shadow-[var(--shadow-button)] hover:not-disabled:bg-primary-hover active:not-disabled:bg-primary-hover active:not-disabled:shadow-[var(--shadow-button-pressed)]',
                 secondary:
-                    'secondary bg-secondary text-foreground hover:not-disabled:bg-secondary-hover',
+                    'secondary bg-secondary text-foreground hover:not-disabled:bg-secondary-hover active:not-disabled:bg-secondary-hover',
                 outline:
-                    'ghost border-input bg-surface text-foreground hover:not-disabled:border-[var(--border-input-hover)] hover:not-disabled:bg-muted',
-                ghost: 'bg-transparent text-foreground hover:not-disabled:bg-hover disabled:border-transparent disabled:bg-transparent',
+                    'ghost border-[var(--border-button)] bg-[var(--action-outline)] text-foreground hover:not-disabled:bg-[var(--action-outline-hover)] active:not-disabled:bg-[var(--action-outline-hover)]',
+                ghost: 'bg-transparent text-foreground hover:not-disabled:bg-hover active:not-disabled:bg-hover disabled:border-transparent disabled:bg-transparent',
                 destructive:
-                    'danger bg-destructive text-destructive-foreground hover:not-disabled:bg-destructive-hover',
+                    'danger bg-destructive text-destructive-foreground hover:not-disabled:bg-destructive-hover active:not-disabled:bg-destructive-hover',
                 'destructive-ghost':
-                    'bg-transparent text-destructive hover:not-disabled:bg-destructive/10 hover:not-disabled:text-destructive-hover disabled:border-transparent disabled:bg-transparent disabled:text-destructive/40',
-                link: 'bg-transparent text-link underline-offset-4 hover:underline',
+                    'bg-transparent text-destructive hover:not-disabled:bg-destructive/10 hover:not-disabled:text-destructive-hover disabled:border-transparent disabled:bg-transparent',
+                link: 'bg-transparent text-link underline-offset-4 hover:not-disabled:underline',
             },
             size: {
                 default: 'min-h-10 px-4 py-2',
-                hero: 'min-h-10 px-4 py-2 font-semibold',
+                hero: 'min-h-12 px-6 py-3 text-base font-medium',
                 sm: 'button-sm min-h-[var(--control-height-sm)] px-3 py-1.5 text-[length:var(--text-sm)]',
                 icon: 'size-10 p-2',
                 'icon-sm': 'size-8 p-1.5',

@@ -2,8 +2,6 @@ import '@xyflow/react/dist/style.css';
 import { useQuery } from '@tanstack/react-query';
 import {
     applyNodeChanges,
-    Background,
-    BackgroundVariant,
     BaseEdge,
     type Connection,
     type Edge,
@@ -362,7 +360,7 @@ function WorkflowConnection(props: EdgeProps<WorkflowEdge>) {
 const nodeTypes = { workflow: Step };
 const edgeTypes = { workflow: WorkflowConnection };
 const flowStyle = {
-    '--xy-background-color': 'var(--bg-canvas)',
+    '--xy-background-color': 'var(--editor-ground)',
     '--xy-edge-stroke': 'var(--text-muted)',
     '--xy-node-boxshadow-selected': 'none',
     '--xy-handle-background-color': 'var(--text-primary)',
@@ -642,7 +640,7 @@ export function InteractionWorkflowEditor({
     }
     return (
         <div
-            className="relative min-h-0 min-w-0 flex-1 bg-background"
+            className="relative min-h-0 min-w-0 flex-1 bg-[var(--editor-ground)]"
             ref={canvasHost}
             data-testid="interaction-flow-canvas"
         >
@@ -813,12 +811,6 @@ export function InteractionWorkflowEditor({
                     'edge.a11yDescription.default': 'Đường nối xác định thứ tự thực hiện.',
                 }}
             >
-                <Background
-                    variant={BackgroundVariant.Dots}
-                    gap={22}
-                    size={1}
-                    color="var(--border-default)"
-                />
                 <Panel position="bottom-left">
                     <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
                         <Button

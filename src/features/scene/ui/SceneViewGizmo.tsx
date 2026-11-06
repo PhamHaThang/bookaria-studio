@@ -140,7 +140,9 @@ export function SceneViewGizmo({
                     aria-label={axis.label}
                     className="absolute top-0 left-0 grid size-6 place-items-center rounded-full border font-semibold text-xs leading-none hover:brightness-90 focus-visible:outline-offset-2"
                     style={{
-                        color: axis.id.startsWith('+') ? 'var(--palette-white)' : axis.color,
+                        color: axis.id.startsWith('+')
+                            ? 'var(--palette-white)'
+                            : `var(--editor-axis-${axis.id.slice(-1)})`,
                         backgroundColor: axis.id.startsWith('+') ? axis.color : 'var(--bg-surface)',
                         borderColor: axis.color,
                     }}
