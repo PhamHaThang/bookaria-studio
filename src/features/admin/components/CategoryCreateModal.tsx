@@ -43,6 +43,26 @@ export function CategoryCreateModal({
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [apiError, setApiError] = useState<string | null>(null);
 
+    const validateName = (val: string) => {
+        const trimmed = val.trim();
+        if (!trimmed) return 'Tên danh mục không được để trống';
+        if (trimmed.length > 100) return 'Tên danh mục tối đa 100 ký tự';
+        return '';
+    };
+
+    const handleNameChange = (val: string) => {
+        setName(val);
+        if (fieldErrors.name) {
+            const err = validateName(val);
+            setFieldErrors((p) => ({ ...p, name: err }));
+        }
+    };
+
+    const handleNameBlur = () => {
+        const err = validateName(name);
+        setFieldErrors((p) => ({ ...p, name: err }));
+    };
+
     const handleClose = () => {
         setName('');
         setParentId('');
@@ -85,8 +105,12 @@ export function CategoryCreateModal({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setFieldErrors({});
         setApiError(null);
+        const err = validateName(name);
+        if (err) {
+            setFieldErrors({ name: err });
+            return;
+        }
         createMutation.mutate();
     };
 
@@ -136,10 +160,10 @@ export function CategoryCreateModal({
                             <Input
                                 id="create-category-name"
                                 value={name}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                    setName(e.target.value);
-                                    if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: '' }));
-                                }}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                    handleNameChange(e.target.value)
+                                }
+                                onBlur={handleNameBlur}
                                 maxLength={100}
                                 disabled={createMutation.isPending}
                                 placeholder="Ví dụ: Mô hình 3D, Âm thanh thiên nhiên..."

@@ -10,6 +10,7 @@ import {
     userChanges,
 } from '../src/features/admin/model.ts';
 import { ContractError } from '../src/shared/api/contract.ts';
+import { AdminCreateUserBodySchema } from '../src/shared/contracts/api/admin.schema.ts';
 
 const id = '11111111-1111-4111-8111-111111111111';
 const other = '22222222-2222-4222-8222-222222222222';
@@ -274,4 +275,38 @@ test('dashboard accepts honest zero metrics and refuses malformed aggregates', a
     assert.equal((await createAdminApi(http).dashboard()).users, 0);
     data = { ...data, users: -1 };
     await assert.rejects(() => createAdminApi(http).dashboard(), ContractError);
+});
+test('admin user create validation rules enforce valid email, password and display name', () => {
+    assert.equal(
+        AdminCreateUserBodySchema.safeParse({
+            displayName: 'Test',
+            email: 'not-an-email',
+            password: 'password123',
+        }).success,
+        false,
+    );
+    assert.equal(
+        AdminCreateUserBodySchema.safeParse({
+            displayName: 'Test',
+            email: 'test@example.com',
+            password: '123',
+        }).success,
+        false,
+    );
+    assert.equal(
+        AdminCreateUserBodySchema.safeParse({
+            displayName: '',
+            email: 'test@example.com',
+            password: 'password123',
+        }).success,
+        false,
+    );
+    assert.equal(
+        AdminCreateUserBodySchema.safeParse({
+            displayName: 'Test User',
+            email: 'test@example.com',
+            password: 'password123',
+        }).success,
+        true,
+    );
 });

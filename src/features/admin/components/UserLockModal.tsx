@@ -221,8 +221,16 @@ export function UserLockModal({ user, isOpen, onClose, onSuccess }: UserLockModa
                                 id="lock-reason"
                                 value={reason}
                                 onChange={(e) => {
-                                    setReason(e.target.value);
-                                    if (fieldError) setFieldError(null);
+                                    const val = e.target.value;
+                                    setReason(val);
+                                    if (fieldError && val.trim()) setFieldError(null);
+                                }}
+                                onBlur={() => {
+                                    if (!reason.trim()) {
+                                        setFieldError(
+                                            'Vui lòng nhập lý do để lưu vào nhật ký kiểm toán hệ thống.',
+                                        );
+                                    }
                                 }}
                                 placeholder={
                                     isLocking
@@ -251,7 +259,7 @@ export function UserLockModal({ user, isOpen, onClose, onSuccess }: UserLockModa
                         <Button
                             type="submit"
                             variant={isLocking ? 'destructive' : 'default'}
-                            disabled={isSelf || lockMutation.isPending}
+                            disabled={isSelf || lockMutation.isPending || !reason.trim()}
                         >
                             {lockMutation.isPending
                                 ? 'Đang xử lý…'

@@ -60,8 +60,47 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
     const [customStorage, setCustomStorage] = useState(false);
 
     // Validation errors per field
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [apiError, setApiError] = useState<string | null>(null);
+
+    const validateField = (fieldName: 'displayName' | 'email' | 'password', value: string) => {
+        if (fieldName === 'displayName') {
+            const trimmed = value.trim();
+            if (!trimmed) return 'Vui lòng nhập họ tên / tên hiển thị';
+            if (trimmed.length > 100) return 'Tên hiển thị tối đa 100 ký tự';
+        }
+        if (fieldName === 'email') {
+            const trimmed = value.trim();
+            if (!trimmed) return 'Vui lòng nhập địa chỉ email';
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+                return 'Định dạng email không hợp lệ (ví dụ: user@example.com)';
+            }
+        }
+        if (fieldName === 'password') {
+            if (!value) return 'Vui lòng nhập mật khẩu ban đầu';
+            if (value.length < LIMITS.passwordMinLength) {
+                return `Mật khẩu tối thiểu ${LIMITS.passwordMinLength} ký tự`;
+            }
+        }
+        return '';
+    };
+
+    const handleBlur = (fieldName: 'displayName' | 'email' | 'password', val: string) => {
+        setTouched((prev) => ({ ...prev, [fieldName]: true }));
+        const err = validateField(fieldName, val);
+        setFieldErrors((prev) => ({ ...prev, [fieldName]: err }));
+    };
+
+    const handleChange = (fieldName: 'displayName' | 'email' | 'password', val: string) => {
+        if (fieldName === 'displayName') setDisplayName(val);
+        if (fieldName === 'email') setEmail(val);
+        if (fieldName === 'password') setPassword(val);
+        if (touched[fieldName] || fieldErrors[fieldName]) {
+            const err = validateField(fieldName, val);
+            setFieldErrors((prev) => ({ ...prev, [fieldName]: err }));
+        }
+    };
 
     const resetForm = () => {
         setDisplayName('');
@@ -70,6 +109,7 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
         setRole('AUTHOR');
         setStorageQuotaBytes(LIMITS.defaultQuotaBytes);
         setCustomStorage(false);
+        setTouched({});
         setFieldErrors({});
         setApiError(null);
     };
@@ -96,8 +136,22 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
 
     const handleSubmit = (event: React.FormEvent) => {
         event.preventDefault();
-        setFieldErrors({});
         setApiError(null);
+
+        const dErr = validateField('displayName', displayName);
+        const eErr = validateField('email', email);
+        const pErr = validateField('password', password);
+
+        setTouched({ displayName: true, email: true, password: true });
+
+        if (dErr || eErr || pErr) {
+            setFieldErrors({
+                ...(dErr ? { displayName: dErr } : {}),
+                ...(eErr ? { email: eErr } : {}),
+                ...(pErr ? { password: pErr } : {}),
+            });
+            return;
+        }
 
         const payload = {
             displayName: displayName.trim(),
@@ -163,12 +217,8 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
                             <Input
                                 id="create-display-name"
                                 value={displayName}
-                                onChange={(e) => {
-                                    setDisplayName(e.target.value);
-                                    if (fieldErrors.displayName) {
-                                        setFieldErrors((prev) => ({ ...prev, displayName: '' }));
-                                    }
-                                }}
+                                onChange={(e) => handleChange('displayName', e.target.value)}
+                                onBlur={() => handleBlur('displayName', displayName)}
                                 placeholder="Ví dụ: Nguyễn Văn A"
                                 maxLength={100}
                                 disabled={createMutation.isPending}
@@ -192,12 +242,8 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
                                 id="create-email"
                                 type="email"
                                 value={email}
-                                onChange={(e) => {
-                                    setEmail(e.target.value);
-                                    if (fieldErrors.email) {
-                                        setFieldErrors((prev) => ({ ...prev, email: '' }));
-                                    }
-                                }}
+                                onChange={(e) => handleChange('email', e.target.value)}
+                                onBlur={() => handleBlur('email', email)}
                                 placeholder="user@example.com"
                                 disabled={createMutation.isPending}
                                 className={fieldErrors.email ? 'border-destructive' : ''}
@@ -217,12 +263,8 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
                             <PasswordInput
                                 id="create-password"
                                 value={password}
-                                onChange={(e) => {
-                                    setPassword(e.target.value);
-                                    if (fieldErrors.password) {
-                                        setFieldErrors((prev) => ({ ...prev, password: '' }));
-                                    }
-                                }}
+                                onChange={(e) => handleChange('password', e.target.value)}
+                                onBlur={() => handleBlur('password', password)}
                                 placeholder={`Tối thiểu ${LIMITS.passwordMinLength} ký tự`}
                                 minLength={LIMITS.passwordMinLength}
                                 maxLength={LIMITS.passwordMaxLength}

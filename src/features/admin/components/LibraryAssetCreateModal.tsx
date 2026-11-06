@@ -301,6 +301,14 @@ export function LibraryAssetCreateModal({
                                                     onClick={() => {
                                                         if (isReady) handleSelectAsset(asset);
                                                     }}
+                                                    onKeyDown={(e) => {
+                                                        if (isReady && (e.key === 'Enter' || e.key === ' ')) {
+                                                            e.preventDefault();
+                                                            handleSelectAsset(asset);
+                                                        }
+                                                    }}
+                                                    role={isReady ? 'button' : undefined}
+                                                    tabIndex={isReady ? 0 : undefined}
                                                     className={`flex items-center justify-between gap-3 rounded-lg border p-2.5 transition-colors ${
                                                         isReady
                                                             ? 'cursor-pointer border-border bg-surface hover:border-primary/50 hover:bg-surface-hover'

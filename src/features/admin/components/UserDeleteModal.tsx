@@ -216,11 +216,20 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                                     id="delete-reason"
                                     value={reason}
                                     onChange={(e) => {
-                                        setReason(e.target.value);
-                                        if (fieldErrors.reason) {
+                                        const val = e.target.value;
+                                        setReason(val);
+                                        if (fieldErrors.reason && val.trim()) {
                                             setFieldErrors((prev) => ({
                                                 ...prev,
                                                 reason: undefined,
+                                            }));
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        if (!reason.trim()) {
+                                            setFieldErrors((prev) => ({
+                                                ...prev,
+                                                reason: 'Vui lòng nhập lý do xóa để lưu lại vào hồ sơ kiểm toán hệ thống.',
                                             }));
                                         }
                                     }}
@@ -285,7 +294,7 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                                 type="submit"
                                 variant="destructive"
                                 size="sm"
-                                disabled={deleteMutation.isPending}
+                                disabled={deleteMutation.isPending || !isConfirmed || !reason.trim()}
                             >
                                 <Trash2 className="h-4 w-4" data-icon="inline-start" />
                                 {deleteMutation.isPending ? 'Đang xóa…' : 'Xác nhận xóa tài khoản'}

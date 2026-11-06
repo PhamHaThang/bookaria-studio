@@ -9,6 +9,7 @@ import { formatBytes } from '@/shared/lib/format';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/primitives/alert';
+import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -33,10 +34,12 @@ export function LibraryAssetDeleteModal({
     onSuccess,
 }: LibraryAssetDeleteModalProps) {
     const queryClient = useQueryClient();
+    const [isConfirmed, setIsConfirmed] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen) {
+            setIsConfirmed(false);
             setApiError(null);
         }
     }, [isOpen]);
@@ -123,6 +126,25 @@ export function LibraryAssetDeleteModal({
                     </AlertDescription>
                 </Alert>
 
+                {/* Tích chọn xác nhận an toàn */}
+                <div className="flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/5 p-3 transition-colors">
+                    <Checkbox
+                        id="confirm-delete-library-asset"
+                        checked={isConfirmed}
+                        onCheckedChange={(checked) => setIsConfirmed(Boolean(checked))}
+                        disabled={deleteMutation.isPending}
+                        className="mt-0.5"
+                    />
+                    <label
+                        htmlFor="confirm-delete-library-asset"
+                        className="cursor-pointer select-none text-foreground text-xs leading-normal"
+                    >
+                        Tôi xác nhận muốn xóa tài nguyên{' '}
+                        <strong className="font-semibold text-foreground">{asset.name}</strong>{' '}
+                        khỏi thư viện dùng chung.
+                    </label>
+                </div>
+
                 {apiError && (
                     <div className="rounded-md border border-destructive/20 bg-destructive/10 p-2.5 text-destructive text-xs leading-relaxed">
                         {apiError}
@@ -145,7 +167,7 @@ export function LibraryAssetDeleteModal({
                         variant="destructive"
                         size="sm"
                         className="h-8 px-3.5 font-medium text-xs"
-                        disabled={deleteMutation.isPending}
+                        disabled={deleteMutation.isPending || !isConfirmed}
                         onClick={handleDelete}
                     >
                         {deleteMutation.isPending ? 'Đang xóa...' : 'Xác nhận xóa'}

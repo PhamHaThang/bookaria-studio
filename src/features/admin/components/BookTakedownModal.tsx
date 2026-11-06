@@ -174,8 +174,18 @@ export function BookTakedownModal({ book, isOpen, onClose, onSuccess }: BookTake
                                 id="takedown-reason"
                                 value={reason}
                                 onChange={(e) => {
-                                    setReason(e.target.value);
-                                    if (fieldError) setFieldError(null);
+                                    const val = e.target.value;
+                                    setReason(val);
+                                    if (fieldError && val.trim()) {
+                                        setFieldError(null);
+                                    }
+                                }}
+                                onBlur={() => {
+                                    if (!reason.trim()) {
+                                        setFieldError(
+                                            'Vui lòng nhập lý do gỡ sách để lưu vào biên bản kiểm duyệt.',
+                                        );
+                                    }
                                 }}
                                 placeholder="Ví dụ: Nội dung vi phạm bản quyền hình ảnh, vi phạm quy tắc tiêu chuẩn cộng đồng..."
                                 rows={2}
