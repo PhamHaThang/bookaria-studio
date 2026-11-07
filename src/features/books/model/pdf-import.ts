@@ -1,5 +1,6 @@
 import { GlobalWorkerOptions, getDocument, version } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { PAGE_IMAGE_BOUNDS } from '../../../shared/lib/image-file';
 import {
     canvasFile,
     type ImportProgress,
@@ -125,7 +126,11 @@ export async function preparePdf(
             },
             render(index) {
                 const result = queue.then(async () => {
-                    const canvas = await renderCanvas(index, 1600, 2400);
+                    const canvas = await renderCanvas(
+                        index,
+                        PAGE_IMAGE_BOUNDS.width,
+                        PAGE_IMAGE_BOUNDS.height,
+                    );
                     try {
                         return await canvasFile(canvas, `trang-pdf-${index + 1}.jpg`);
                     } finally {

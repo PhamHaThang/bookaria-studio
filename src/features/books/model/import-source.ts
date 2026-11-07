@@ -1,4 +1,7 @@
+import { PAGE_IMAGE_BOUNDS } from '../../../shared/lib/image-file';
 import type { PageSizeMm } from './page-size';
+
+export { canvasFile } from '../../../shared/lib/image-file';
 
 export const MAX_IMPORT_PAGES = 100;
 export interface ImportSource {
@@ -82,7 +85,9 @@ export function pageFit(width: number, height: number, aspect: number) {
         aspect > 5
     )
         throw new Error('Kích thước trang không hợp lệ.');
-    const targetWidth = Math.round(Math.min(1600, 2400 / aspect));
+    const targetWidth = Math.round(
+        Math.min(PAGE_IMAGE_BOUNDS.width, PAGE_IMAGE_BOUNDS.height / aspect),
+    );
     const targetHeight = Math.round(targetWidth * aspect);
     const scale = Math.min(targetWidth / width, targetHeight / height);
     return {
@@ -94,19 +99,6 @@ export function pageFit(width: number, height: number, aspect: number) {
         y: (targetHeight - height * scale) / 2,
         scale,
     };
-}
-
-export async function canvasFile(canvas: HTMLCanvasElement, name: string) {
-    const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob(
-            (value) => (value ? resolve(value) : reject(new Error('Không tạo được ảnh trang.'))),
-            'image/jpeg',
-            0.94,
-        ),
-    );
-    if (blob.size > 10 * 1024 * 1024)
-        throw new Error('Ảnh trang sau chuyển đổi vượt 10 MB. Hãy giảm độ phức tạp của tài liệu.');
-    return new File([blob], name, { type: 'image/jpeg' });
 }
 
 async function readImage(file: File) {

@@ -3,6 +3,7 @@ import { ArrowRight, BookOpen, FileUp, LoaderCircle, X } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
+import { optimizeBookCover } from '@/shared/lib/image-file';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -209,6 +210,8 @@ export function BookCreateDialog() {
                               transfer: uploadFile,
                               file: frozen.cover as File,
                               purpose: 'ASSET',
+                              prepareFile: optimizeBookCover,
+                              onPreparing: () => setStage('Đang tối ưu ảnh bìa…'),
                               metadata: { name: frozen.cover?.name || 'Ảnh bìa', tags: [] },
                               signal: new AbortController().signal,
                               checkpoint: coverCheckpoint.current,
