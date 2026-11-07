@@ -3,7 +3,14 @@ import { defineConfig } from '@playwright/test';
 const existingURL = process.env.BOOKARIA_TEST_BASE_URL;
 export default defineConfig({
     testDir: './tests/browser',
-    testMatch: ['interaction-workspace.spec.mjs', 'model-controls.spec.mjs'],
+    testMatch: [
+        'interaction-workspace.spec.mjs',
+        'model-controls.spec.mjs',
+        'cover-upload.spec.mjs',
+        'editor-pages.spec.mjs',
+        'interaction-repair.spec.mjs',
+        'marker-dialog-layout.spec.mjs',
+    ],
     workers: 1,
     retries: 0,
     timeout: 60000,

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, CircleAlert, Library, RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../features/auth';
 import { useBookDraft } from '../features/book-draft/ui/BookDraftProvider';
@@ -36,11 +36,9 @@ function BookEditorContent({ bookId }: { bookId: string }) {
         refetchOnWindowFocus: false,
     });
 
-    const [entry, setEntry] = useState<'empty' | 'pages' | null>(null);
-    useEffect(() => {
-        if (!entry && book.isSuccess && !book.isFetching)
-            setEntry(draftPages.length ? 'pages' : 'empty');
-    }, [entry, book.isSuccess, book.isFetching, draftPages.length]);
+    // The provider is initialized before this route mounts. An empty editor owns
+    // its add/import dialog until completion, then opens the newly added page.
+    const [entry] = useState(() => (draftPages.length ? 'pages' : 'empty'));
     if (!valid || (book.isError && (entry !== 'empty' || !book.data)))
         return (
             <section
@@ -101,8 +99,7 @@ function BookEditorContent({ bookId }: { bookId: string }) {
                 </Empty>
             </section>
         );
-    if (book.isPending || !entry || !book.data)
-        return <LoadingScreen fullScreen message="Đang mở editor…" />;
+    if (book.isPending || !book.data) return <LoadingScreen fullScreen message="Đang mở editor…" />;
     if (entry === 'empty')
         return (
             <EmptyBookEditor

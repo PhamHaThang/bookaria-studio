@@ -23,6 +23,8 @@ export function memoryDefinitions(
     scenes: Pick<Scene, 'interactions'>[],
 ): WorkflowVariable[] {
     const found = new Map(declared.map((item) => [item.key, item]));
+    const normalize = (name: string) => name.trim().normalize('NFC').toLocaleLowerCase('vi');
+    const names = new Set(declared.map((item) => normalize(item.name)));
     for (const scene of scenes)
         for (const action of scene.interactions.flatMap((rule) => rule.actions)) {
             const key = memoryKey(action);
@@ -36,7 +38,15 @@ export function memoryDefinitions(
                       ? action.test.value
                       : false;
             const builtin = memoryBuiltins.find((item) => item.key === key);
-            const name = builtin?.name || key.replace(/[_:.-]+/g, ' ');
+            const baseName = (
+                builtin?.name ||
+                key.replace(/[_:.-]+/g, ' ').trim() ||
+                'Thông tin'
+            ).slice(0, 90);
+            let name = baseName;
+            for (let suffix = 2; names.has(normalize(name)); suffix++)
+                name = `${baseName} (${suffix})`;
+            names.add(normalize(name));
             const definition =
                 typeof value === 'number'
                     ? { key, name, type: 'number' as const, initialValue: 0 }

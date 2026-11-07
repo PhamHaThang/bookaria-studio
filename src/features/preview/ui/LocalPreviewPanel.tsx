@@ -6,15 +6,18 @@ import type { Scene } from '@/shared/contracts/scene.schema';
 import { cn } from '@/shared/lib/cn';
 import { buildScene, type PageRuntime } from '@/shared/scene-runtime/buildScene';
 import { WorkflowState } from '@/shared/scene-runtime/WorkflowState';
+import { Alert } from '@/shared/ui/Alert';
 import { BookariaLogo } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { assetsApi } from '../../assets';
 import { useOptionalBookDraft } from '../../book-draft/ui/BookDraftProvider';
 import { pagesApi } from '../../pages';
+import type { InteractionProblem } from '../../scene/model/interaction-health';
 import { LocalPreviewStage, type PreviewView } from '../model/LocalPreviewStage';
 import { PreviewRendererCache } from '../model/PreviewRendererCache';
 import { makePreviewPayload } from '../model/preview';
+import { type PreviewFailure, type PreviewRepair, previewFailure } from '../model/preview-problem';
 import { PhonePreviewDialog } from './PhonePreviewDialog';
 import { PreviewPageStrip } from './PreviewPageStrip';
 
@@ -51,6 +54,7 @@ export function LocalPreviewPanel(props: {
     scene: Scene;
     unsaved: boolean;
     initialView?: PreviewView;
+    onRepair?: (repair: PreviewRepair, pageId: string) => void;
 }) {
     const [rendererCache] = useState(() => new PreviewRendererCache());
     useEffect(() => () => rendererCache.dispose(), [rendererCache]);
@@ -69,6 +73,7 @@ function ActivePreview({
     unsaved,
     initialView,
     rendererCache,
+    onRepair,
 }: {
     page: Page;
     book: BookDetail;
@@ -76,6 +81,7 @@ function ActivePreview({
     unsaved: boolean;
     initialView?: PreviewView;
     rendererCache: PreviewRendererCache;
+    onRepair?: (repair: PreviewRepair, pageId: string) => void;
 }) {
     const bookDraft = useOptionalBookDraft();
     const host = useRef<HTMLDivElement>(null);
@@ -98,6 +104,8 @@ function ActivePreview({
     const [error, setError] = useState(''),
         [isMuted, setIsMuted] = useState(false),
         [phone, setPhone] = useState(false);
+    const [failure, setFailure] = useState<PreviewFailure | null>(null);
+    const [problems, setProblems] = useState<InteractionProblem[]>([]);
     useEffect(() => {
         void revision;
         if (!host.current) return;
@@ -106,6 +114,8 @@ function ActivePreview({
         let currentStage: LocalPreviewStage | undefined, currentRuntime: PageRuntime | undefined;
         setState('loading');
         setError('');
+        setFailure(null);
+        setProblems([]);
         const fail = (message: string) => {
             if (!controller.signal.aborted) {
                 runtime.current?.stopMedia();
@@ -113,7 +123,10 @@ function ActivePreview({
                 setState('error');
             }
         };
-        const contextError = (event: Event) => fail((event as CustomEvent<string>).detail);
+        const contextError = (event: Event) => {
+            setFailure(null);
+            fail((event as CustomEvent<string>).detail);
+        };
         element.addEventListener('preview-error', contextError);
         void (async () => {
             try {
@@ -128,12 +141,6 @@ function ActivePreview({
                 await afterPreviewPaint(controller.signal);
                 controller.signal.throwIfAborted();
                 loadedPageId.current = previewPageId;
-                currentStage = new LocalPreviewStage(
-                    element,
-                    initialForPage,
-                    rendererCache.acquire(),
-                );
-                stage.current = currentStage;
                 const previewPage =
                     previewPageId === page.id
                         ? page
@@ -146,8 +153,16 @@ function ActivePreview({
                     structuredClone(previewPageId === page.id ? scene : previewPage.scene),
                     assetsApi.detail,
                     controller.signal,
+                    { allowInvalidInteractions: true },
                 );
                 controller.signal.throwIfAborted();
+                setProblems(payload.problems);
+                currentStage = new LocalPreviewStage(
+                    element,
+                    initialForPage,
+                    rendererCache.acquire(),
+                );
+                stage.current = currentStage;
                 currentRuntime = await buildScene(payload.page, payload.assets, controller.signal, {
                     notice: (message) => {
                         if (!controller.signal.aborted)
@@ -207,12 +222,11 @@ function ActivePreview({
                     setState('playing');
                 } else setState('ready');
             } catch (cause) {
-                if (!controller.signal.aborted)
-                    fail(
-                        cause instanceof Error
-                            ? cause.message
-                            : 'Chưa mở được bản xem trước. Hãy thử lại.',
-                    );
+                if (!controller.signal.aborted) {
+                    const problem = previewFailure(cause);
+                    setFailure(problem);
+                    fail(problem.message);
+                }
             }
         })();
         return () => {
@@ -247,6 +261,49 @@ function ActivePreview({
             aria-label="Xem trước trực tiếp"
             className="relative flex h-full min-h-0 flex-col bg-[var(--editor-ground)]"
         >
+            {problems.length > 0 && state !== 'loading' && state !== 'error' && (
+                <Alert tone="warning" className="shrink-0 rounded-none border-x-0 border-t-0">
+                    <p className="m-0 font-medium">
+                        Tạm bỏ qua {new Set(problems.map((problem) => problem.ruleId)).size} luồng
+                        cần sửa. Các nội dung khác vẫn xem được.
+                    </p>
+                    <ul className="m-0 mt-2 flex max-h-24 list-none flex-col gap-2 overflow-y-auto p-0">
+                        {[
+                            ...new Map(
+                                problems.map((problem) => [problem.ruleId, problem]),
+                            ).values(),
+                        ].map((problem) => (
+                            <li
+                                key={problem.ruleId}
+                                className="flex items-center justify-between gap-4"
+                            >
+                                <span>
+                                    “{problem.ruleName}”: {problem.message}
+                                </span>
+                                {onRepair && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        aria-label={`Sửa luồng ${problem.ruleName}`}
+                                        onClick={() =>
+                                            onRepair(
+                                                {
+                                                    kind: 'interaction',
+                                                    ruleId: problem.ruleId,
+                                                    actionIndex: problem.actionIndex,
+                                                },
+                                                previewPageId,
+                                            )
+                                        }
+                                    >
+                                        Sửa tương tác
+                                    </Button>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                </Alert>
+            )}
             <div className="relative min-h-0 flex-1" data-testid="local-preview-stage">
                 <div
                     ref={host}
@@ -327,10 +384,28 @@ function ActivePreview({
                                     <p role="alert" className="m-0 text-sm leading-6">
                                         {error}
                                     </p>
-                                    <Button onClick={() => setRevision((v) => v + 1)}>
-                                        <RotateCcw />
-                                        Thử lại
-                                    </Button>
+                                    {failure?.repair && onRepair && (
+                                        <Button
+                                            onClick={() =>
+                                                onRepair(
+                                                    failure.repair as PreviewRepair,
+                                                    previewPageId,
+                                                )
+                                            }
+                                        >
+                                            {failure.repair.kind === 'memory'
+                                                ? 'Sửa thông tin ghi nhớ'
+                                                : failure.repair.kind === 'interaction'
+                                                  ? 'Sửa tương tác'
+                                                  : 'Về Thiết kế'}
+                                        </Button>
+                                    )}
+                                    {failure?.retryable !== false && (
+                                        <Button onClick={() => setRevision((v) => v + 1)}>
+                                            <RotateCcw />
+                                            Thử lại
+                                        </Button>
+                                    )}
                                 </>
                             ) : (
                                 <>

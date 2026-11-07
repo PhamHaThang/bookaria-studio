@@ -45,6 +45,7 @@ import { useBookDraft } from '../../book-draft/ui/BookDraftProvider';
 import { BookInfoDialog } from '../../books/ui/BookInfoDialog';
 import type { ImageAttachmentContext } from '../../pages/ui/PageImageForm';
 import type { PreviewView } from '../../preview/model/LocalPreviewStage';
+import type { PreviewRepair } from '../../preview/model/preview-problem';
 import { LocalPreviewPanel } from '../../preview/ui/LocalPreviewPanel';
 import { PublicationDialog } from '../../publication/ui/PublicationDialog';
 import { type AnnotationObject, placeAnnotation } from '../model/annotation-placement';
@@ -55,7 +56,6 @@ import {
     moveObject,
     newObject,
     objectAssetTypes,
-    objectLabels,
     replaceObjectAsset,
     usesAsset,
 } from '../model/objects';
@@ -72,9 +72,10 @@ import { useSceneAssets } from '../model/use-scene-assets';
 import { useSceneDraft } from '../model/use-scene-draft';
 import { AssetPicker } from './AssetPicker';
 import { EditorSaveStatus } from './EditorSaveStatus';
-import type { InteractionEditorHandle } from './InteractionEditor';
+import type { InteractionEditorHandle, InteractionRequest } from './InteractionEditor';
 import { NavigationGuard } from './NavigationGuard';
 import { ObjectEditor } from './ObjectEditor';
+import { ObjectRemovalDialog } from './ObjectRemovalDialog';
 import {
     type PageSettingsDraftView,
     PageSettingsEditor,
@@ -82,6 +83,7 @@ import {
 } from './PageSettingsEditor';
 import { PageStrip } from './PageStrip';
 import { SceneCanvas, type SceneCanvasHandle } from './SceneCanvas';
+import { SceneEditorFrame, SceneEditorHeader, ScenePageDock } from './SceneEditorFrame';
 import { SceneEditorSidebar } from './SceneEditorSidebar';
 import { notifyHistoryFeedback, SceneHistoryControls } from './SceneHistoryControls';
 import { SceneInspectorContent } from './SceneInspectorContent';
@@ -126,7 +128,7 @@ function SceneEditorContent({
     const editor = useSceneDraft(page);
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
-    const [requestedRule, setRequestedRule] = useState<{ id: string; request: number }>();
+    const [requestedRule, setRequestedRule] = useState<InteractionRequest>();
     const { store: bookDraft, state: bookDraftState } = useBookDraft();
     const memoryBook = {
         ...book,
@@ -281,15 +283,44 @@ function SceneEditorContent({
     }
     useEffect(() => {
         const id = searchParams.get('flow');
-        if (!id) return;
-        if (editor.draft.interactions.some((rule) => rule.id === id)) {
-            setRequestedRule({ id, request: Date.now() });
+        const memory = searchParams.get('memory') === '1';
+        if (!id && !memory) return;
+        if (memory || editor.draft.interactions.some((rule) => rule.id === id)) {
+            const step = searchParams.get('step');
+            const actionIndex = step !== null && /^\d+$/.test(step) ? Number(step) : null;
+            setRequestedRule({ id: id || undefined, memory, actionIndex, request: Date.now() });
+            setSelectedIds([]);
             setPanel('interactions');
         }
         const next = new URLSearchParams(searchParams);
         next.delete('flow');
+        next.delete('step');
+        next.delete('memory');
         setSearchParams(next, { replace: true });
     }, [searchParams, setSearchParams, editor.draft.interactions]);
+    function repairPreview(repair: PreviewRepair, targetPageId: string) {
+        if (targetPageId !== page.id) {
+            const params = new URLSearchParams();
+            if (repair.kind === 'memory') params.set('memory', '1');
+            if (repair.ruleId) params.set('flow', repair.ruleId);
+            if (repair.actionIndex != null) params.set('step', String(repair.actionIndex));
+            navigate(`/books/${book.id}/pages/${targetPageId}${params.size ? `?${params}` : ''}`);
+            return;
+        }
+        runOutsideSettings(() => {
+            setSelectedIds([]);
+            if (repair.kind === 'scene') setPanel('properties');
+            else {
+                setRequestedRule({
+                    id: repair.ruleId,
+                    actionIndex: repair.actionIndex,
+                    memory: repair.kind === 'memory',
+                    request: Date.now(),
+                });
+                setPanel('interactions');
+            }
+        });
+    }
     function historyStep(redo = false) {
         const feedback = redo ? editor.redo() : editor.undo();
         notifyHistoryFeedback(feedback, panel === 'interactions', (target) => {
@@ -548,8 +579,7 @@ function SceneEditorContent({
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
     return (
-        <section
-            className="scene-editor m-0 min-h-[100dvh] bg-surface p-0 [--control-height:40px] [--text-md:0.8125rem] [--text-sm:0.8125rem] [--text-xs:0.75rem] [&_[data-slot=select-trigger]]:m-0 [&_audio]:my-3 [&_audio]:block [&_audio]:w-full [&_audio]:max-w-105 [&_input:not([type=checkbox])]:m-0 [&_label]:m-0 [&_textarea]:m-0 [.scene-editor_&_.button]:min-h-10 [.scene-editor_&_.button]:w-auto [.scene-editor_&_.button]:px-[13px] [.scene-editor_&_.button]:py-[9px] [.scene-editor_&_.button]:text-[length:13px]"
+        <SceneEditorFrame
             data-panel={panel === 'interactions' ? 'properties' : panel}
             data-layers={layersOpen}
             aria-labelledby="scene-heading"
@@ -590,7 +620,7 @@ function SceneEditorContent({
                 }}
                 saving={editor.busy || settingsBusy || publicationBusy || pagesBusy || infoBusy}
             />
-            <header className="scene-heading editor-header grid h-16 min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-border border-b bg-surface px-5 py-0">
+            <SceneEditorHeader>
                 <div className="editor-project flex min-w-0 items-center gap-4">
                     <Link
                         to="/books"
@@ -829,7 +859,7 @@ function SceneEditorContent({
                         }}
                     />
                 </div>
-            </header>
+            </SceneEditorHeader>
             <Feedback
                 error={error}
                 success={editor.notice}
@@ -1251,24 +1281,20 @@ function SceneEditorContent({
                             book={memoryBook}
                             scene={editor.draft}
                             unsaved={editor.dirty || settingsDirty}
+                            onRepair={repairPreview}
                         />
                     </section>
-                    <div
-                        className="pointer-events-none absolute inset-x-0 bottom-12 z-5 grid [grid-template-columns:inherit] [.scene-editor[data-panel=interactions]_&]:hidden [.scene-editor[data-panel=preview]_&]:hidden"
-                        data-page-dock
-                    >
-                        <div className="col-start-1 flex min-w-0 -translate-x-[calc(var(--inspector-offset)/2)] justify-center px-4 transition-[translate] duration-200 ease-out motion-reduce:transition-none [.scene-editor[data-panel=preview]_&]:translate-x-0">
-                            <PageStrip
-                                requestAction={pageAction.request}
-                                book={book}
-                                pageId={page.id}
-                                dirty={editor.dirty || workflowInvalid || settingsDirty}
-                                disabled={blocked}
-                                onBusyChange={setPagesBusy}
-                                onDraftChange={setPagesDirty}
-                            />
-                        </div>
-                    </div>
+                    <ScenePageDock>
+                        <PageStrip
+                            requestAction={pageAction.request}
+                            book={book}
+                            pageId={page.id}
+                            dirty={editor.dirty || workflowInvalid || settingsDirty}
+                            disabled={blocked}
+                            onBusyChange={setPagesBusy}
+                            onDraftChange={setPagesDirty}
+                        />
+                    </ScenePageDock>
                 </div>
             </SceneWorkbench>
             {saveBeforeAction.dialog}
@@ -1403,59 +1429,29 @@ function SceneEditorContent({
                 />
             )}
             {deleting && (
-                <ConfirmationDialog
-                    description={
-                        <>
-                            {deleting.length > 1
-                                ? `${deleting.length} đối tượng đã chọn`
-                                : `Đối tượng “${deleting[0].name || objectLabels[deleting[0].type]}”`}{' '}
-                            sẽ bị bỏ khỏi bản đang sửa. Tệp tài nguyên vẫn được giữ. Quy tắc tương
-                            tác liên quan sẽ được giữ và đánh dấu để bạn sửa.
-                        </>
-                    }
-                    title={
-                        deleting.length > 1
-                            ? `Xóa ${deleting.length} đối tượng khỏi trang?`
-                            : 'Xóa đối tượng khỏi trang?'
-                    }
-                    busy={false}
+                <ObjectRemovalDialog
+                    scene={editor.draft}
+                    objects={deleting}
+                    busy={blocked}
                     onClose={() => setDeleting(null)}
-                >
-                    <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
-                        <AlertDialogCancel variant="plain" asChild>
-                            <Button variant="secondary" onClick={() => setDeleting(null)}>
-                                Giữ đối tượng
-                            </Button>
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            variant="plain"
-                            asChild
-                            onClick={(event) => event.preventDefault()}
-                        >
-                            <Button
-                                variant="destructive"
-                                onClick={() => {
-                                    if (blocked) return;
-                                    try {
-                                        editor.setDraft((current) =>
-                                            removeSelection(
-                                                current,
-                                                deleting.map((object) => object.id),
-                                            ),
-                                        );
-                                        setDeleting(null);
-                                        setError(null);
-                                    } catch (cause) {
-                                        setDeleting(null);
-                                        setError(errorMessage(cause));
-                                    }
-                                }}
-                            >
-                                Xóa đối tượng
-                            </Button>
-                        </AlertDialogAction>
-                    </div>
-                </ConfirmationDialog>
+                    onRemove={(removeInteractions) => {
+                        if (blocked) return;
+                        try {
+                            editor.setDraft((current) =>
+                                removeSelection(
+                                    current,
+                                    deleting.map((object) => object.id),
+                                    removeInteractions,
+                                ),
+                            );
+                            setDeleting(null);
+                            setError(null);
+                        } catch (cause) {
+                            setDeleting(null);
+                            setError(errorMessage(cause));
+                        }
+                    }}
+                />
             )}
             {resetting && (
                 <ConfirmationDialog
@@ -1502,6 +1498,6 @@ function SceneEditorContent({
                     </div>
                 </ConfirmationDialog>
             )}
-        </section>
+        </SceneEditorFrame>
     );
 }

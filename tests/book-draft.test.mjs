@@ -6,6 +6,7 @@ import { startBookAutosave } from '../src/features/book-draft/model/autosave.ts'
 import { BookDraftStore } from '../src/features/book-draft/model/book-draft-store.ts';
 import { DraftRecordSchema } from '../src/features/book-draft/model/draft-model.ts';
 import { newObject } from '../src/features/scene/model/objects.ts';
+import { removeSelection } from '../src/features/scene/model/selection.ts';
 
 const uid = '10000000-0000-4000-8000-000000000001',
     book = '10000000-0000-4000-8000-000000000002',
@@ -131,6 +132,43 @@ function withText(text) {
         objects: [{ ...newObject('text', 'text'), text }],
     });
 }
+it('deleting an object with its workflows restores both in one undo, even after saving', async () => {
+    const { store } = await fixture();
+    const scene = SceneSchema.parse({
+        schemaVersion: 1,
+        objects: [newObject('text', 'source'), newObject('text', 'target')],
+        interactions: [
+            {
+                id: 'flow',
+                name: 'Luồng cần giữ',
+                trigger: { type: 'onTap', objectId: 'source' },
+                actions: [{ type: 'setVisible', objectId: 'target', value: true }],
+            },
+        ],
+    });
+    const variables = [
+        { key: 'book_score', name: 'Điểm của sách', type: 'number', initialValue: 0 },
+    ];
+    store.setWorkflowVariables(variables);
+    store.setScene(p1, scene);
+    assert.equal(await store.save(), true);
+    store.setScene(p1, (current) => removeSelection(current, ['target'], true));
+    assert.deepEqual(
+        store.getPage(p1).scene.objects.map((object) => object.id),
+        ['source'],
+    );
+    assert.deepEqual(store.getPage(p1).scene.interactions, []);
+    assert.deepEqual(store.getSnapshot().working.workflowVariables, variables);
+    assert.equal(await store.save(), true);
+    store.undo();
+    assert.deepEqual(store.getPage(p1).scene, scene);
+    store.redo();
+    assert.deepEqual(store.getPage(p1).scene.interactions, []);
+    assert.deepEqual(
+        store.getPage(p1).scene.objects.map((object) => object.id),
+        ['source'],
+    );
+});
 const uploaded = {
     id: image,
     type: 'IMAGE',

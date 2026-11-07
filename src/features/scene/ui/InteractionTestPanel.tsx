@@ -10,6 +10,11 @@ import { Spinner } from '@/shared/ui/primitives/spinner';
 import { assetsApi } from '../../assets';
 import { LocalPreviewStage } from '../../preview/model/LocalPreviewStage';
 import { makePreviewPayload } from '../../preview/model/preview';
+import {
+    type PreviewFailure,
+    type PreviewRepair,
+    previewFailure,
+} from '../../preview/model/preview-problem';
 import { memoryName, memoryValue } from '../model/memory-variables';
 
 export function InteractionTestPanel({
@@ -21,6 +26,7 @@ export function InteractionTestPanel({
     onClose,
     onReset,
     onMemoryChange,
+    onRepair,
 }: {
     scene: Scene;
     rule: InteractionRule;
@@ -30,6 +36,7 @@ export function InteractionTestPanel({
     onClose: () => void;
     onReset?: () => void;
     onMemoryChange?: (values: Record<string, boolean | number | string>) => void;
+    onRepair: (repair: PreviewRepair) => void;
 }) {
     const host = useRef<HTMLDivElement>(null);
     const stage = useRef<LocalPreviewStage | null>(null);
@@ -39,6 +46,7 @@ export function InteractionTestPanel({
         'loading',
     );
     const [message, setMessage] = useState('');
+    const [failure, setFailure] = useState<PreviewFailure | null>(null);
     const [memory, setMemory] = useState<Record<string, boolean | number | string>>({});
     const [link, setLink] = useState<string | null>(null);
     const callback = useRef(onStep);
@@ -51,6 +59,7 @@ export function InteractionTestPanel({
         let current: PageRuntime | undefined, currentStage: LocalPreviewStage | undefined;
         setState('loading');
         setMessage('');
+        setFailure(null);
         setMemory({});
         setLink(null);
         const error = (event: Event) => {
@@ -67,8 +76,6 @@ export function InteractionTestPanel({
             await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
             if (controller.signal.aborted || !element) return;
             try {
-                currentStage = new LocalPreviewStage(element);
-                stage.current = currentStage;
                 const isolated = structuredClone(scene);
                 isolated.interactions = [{ ...structuredClone(rule), enabled: true }];
                 const payload = await makePreviewPayload(
@@ -79,8 +86,10 @@ export function InteractionTestPanel({
                     controller.signal,
                 );
                 controller.signal.throwIfAborted();
+                currentStage = new LocalPreviewStage(element);
+                stage.current = currentStage;
                 current = await buildScene(payload.page, payload.assets, controller.signal, {
-                    state: new WorkflowState(undefined, book.workflowVariables || []),
+                    state: new WorkflowState(undefined, payload.workflowVariables),
                     notice: (notice) => {
                         if (!controller.signal.aborted) setMessage(notice);
                     },
@@ -130,7 +139,9 @@ export function InteractionTestPanel({
             } catch (cause) {
                 if (!controller.signal.aborted) {
                     current?.dispose();
-                    setMessage(cause instanceof Error ? cause.message : 'Chưa tải được scene.');
+                    const problem = previewFailure(cause);
+                    setFailure(problem);
+                    setMessage(problem.message);
                     setState('error');
                 }
             }
@@ -241,23 +252,35 @@ export function InteractionTestPanel({
                         <Play data-icon="inline-start" />
                         Chạy
                     </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={state === 'loading'}
-                        onClick={reset}
-                    >
-                        {state === 'running' ? (
-                            <Square data-icon="inline-start" />
-                        ) : (
-                            <RotateCcw data-icon="inline-start" />
-                        )}
-                        {state === 'running'
-                            ? 'Dừng và đặt lại'
-                            : state === 'error'
-                              ? 'Thử lại'
-                              : 'Đặt lại scene'}
-                    </Button>
+                    {failure?.repair ? (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onRepair(failure.repair as PreviewRepair)}
+                        >
+                            {failure.repair.kind === 'memory'
+                                ? 'Sửa thông tin ghi nhớ'
+                                : 'Sửa tương tác'}
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={state === 'loading'}
+                            onClick={reset}
+                        >
+                            {state === 'running' ? (
+                                <Square data-icon="inline-start" />
+                            ) : (
+                                <RotateCcw data-icon="inline-start" />
+                            )}
+                            {state === 'running'
+                                ? 'Dừng và đặt lại'
+                                : state === 'error'
+                                  ? 'Thử lại'
+                                  : 'Đặt lại scene'}
+                        </Button>
+                    )}
                 </div>
             </div>
         </section>

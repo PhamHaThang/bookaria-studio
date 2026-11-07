@@ -74,6 +74,7 @@ export function SceneEditorSidebar({
     activeObjectType,
     activePanel,
     disabled,
+    pageUnavailable = false,
     objectLimitReached,
     helpOpen,
     onAdd,
@@ -86,6 +87,7 @@ export function SceneEditorSidebar({
     activeObjectType?: SceneObjectType;
     activePanel: 'properties' | 'interactions' | 'settings' | 'preview';
     disabled: boolean;
+    pageUnavailable?: boolean;
     objectLimitReached: boolean;
     helpOpen: boolean;
     onAdd: (type: SceneObjectType) => void;
@@ -152,6 +154,7 @@ export function SceneEditorSidebar({
                                     type="button"
                                     className={itemClass}
                                     aria-label="Mở tương tác"
+                                    disabled={pageUnavailable}
                                     aria-pressed={activePanel === 'interactions'}
                                     isActive={activePanel === 'interactions'}
                                     onClick={onInteractions}
@@ -165,6 +168,7 @@ export function SceneEditorSidebar({
                                     type="button"
                                     className={itemClass}
                                     aria-label="Thiết lập AR Marker"
+                                    disabled={pageUnavailable}
                                     aria-haspopup="dialog"
                                     onClick={onRecognition}
                                 >
@@ -184,6 +188,7 @@ export function SceneEditorSidebar({
                                     type="button"
                                     className={itemClass}
                                     aria-label="Thiết lập trang"
+                                    disabled={pageUnavailable}
                                     aria-controls="panel-settings"
                                     aria-expanded={activePanel === 'settings'}
                                     isActive={activePanel === 'settings'}

@@ -9,6 +9,7 @@ import {
     useState,
 } from 'react';
 import { toast } from 'sonner';
+import { ZodError } from 'zod';
 import type { AssetRef } from '@/shared/contracts/asset.schema';
 import type { BookDetail, Page } from '@/shared/contracts/dto.schema';
 import {
@@ -20,6 +21,7 @@ import {
     type Scene,
     type SceneObject,
     type WorkflowVariable,
+    WorkflowVariablesSchema,
 } from '@/shared/contracts/scene.schema';
 import type { InteractionStepEvent } from '@/shared/scene-runtime/InteractionRunner';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
@@ -39,6 +41,7 @@ import { Separator } from '@/shared/ui/primitives/separator';
 import { Switch } from '@/shared/ui/primitives/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
 import { useAuth } from '../../auth';
+import type { PreviewRepair } from '../../preview/model/preview-problem';
 import { changeBlockAction } from '../model/interaction-blocks';
 import {
     arrangeFlow,
@@ -88,6 +91,12 @@ import { WorkflowTriggerFields } from './WorkflowFields';
 
 type Draft = { rule: InteractionRule; graph: InteractionFlow; template?: InteractionTemplateId };
 export type InteractionEditorHandle = { confirmLeave: (action: () => void) => void };
+export type InteractionRequest = {
+    id?: string;
+    request: number;
+    actionIndex?: number | null;
+    memory?: boolean;
+};
 function compile(draft: Draft, scene: Scene) {
     try {
         const rule = flowToRule(draft.graph, draft.rule);
@@ -97,7 +106,12 @@ function compile(draft: Draft, scene: Scene) {
     } catch (cause) {
         return {
             rule: draft.rule,
-            error: cause instanceof Error ? cause.message : 'Kiểm tra các bước trong luồng.',
+            error:
+                cause instanceof ZodError
+                    ? cause.issues.map((issue) => issue.message).join(' ')
+                    : cause instanceof Error
+                      ? cause.message
+                      : 'Kiểm tra các bước trong luồng.',
         };
     }
 }
@@ -261,7 +275,7 @@ export function InteractionEditor({
     onWorkflowVariablesChange?: (definitions: WorkflowVariable[]) => void;
     loadMemoryPages?: () => Promise<Pick<Page, 'id' | 'title' | 'scene'>[]>;
     preferredObject?: SceneObject;
-    requestedRule?: { id: string; request: number };
+    requestedRule?: InteractionRequest;
     page: Page;
     book: BookDetail;
     onDirtyChange: (dirty: boolean) => void;
@@ -312,7 +326,7 @@ export function InteractionEditor({
         [],
     );
     const declared = onWorkflowVariablesChange ? book.workflowVariables || [] : localDefinitions;
-    async function readMemoryPages() {
+    const readMemoryPages = useCallback(async () => {
         const version = ++memoryLoadVersion.current;
         setMemoryLoading(true);
         setMemoryError(null);
@@ -327,7 +341,7 @@ export function InteractionEditor({
         } finally {
             if (memoryLoadVersion.current === version) setMemoryLoading(false);
         }
-    }
+    }, [loadMemoryPages, page]);
     function manageMemory(select?: (definition: WorkflowVariable) => void) {
         setMemoryTab('memory');
         void readMemoryPages();
@@ -462,11 +476,17 @@ export function InteractionEditor({
     };
     useImperativeHandle(ref, () => ({ confirmLeave: guard }));
     const selectRule = useCallback(
-        (rule: InteractionRule) => {
+        (rule: InteractionRule, actionIndex?: number | null) => {
             const select = () => {
                 emitted.current = JSON.stringify(rule);
                 setDraft({ rule: structuredClone(rule), graph: restoreFlowLayout(rule) });
-                setSelected(START_NODE);
+                setSelected(
+                    actionIndex == null
+                        ? START_NODE
+                        : restoreFlowLayout(rule).nodes.filter((node) => node.action)[actionIndex]
+                              ?.id || START_NODE,
+                );
+                setShowInspector(true);
                 setSelectedEdge(null);
                 history.current = { past: [], future: [] };
 
@@ -479,13 +499,30 @@ export function InteractionEditor({
         },
         [invalid],
     );
-    const handledRuleRequest = useRef(requestedRule);
+    const handledRuleRequest = useRef<InteractionRequest | undefined>(undefined);
     useEffect(() => {
         if (!requestedRule || handledRuleRequest.current === requestedRule) return;
         handledRuleRequest.current = requestedRule;
+        if (requestedRule.memory) {
+            setMemoryTab('memory');
+            memoryPanel.current?.showList();
+            void readMemoryPages();
+            return;
+        }
+        setMemoryTab('flows');
         const rule = scene.interactions.find((item) => item.id === requestedRule.id);
-        if (rule) selectRule(rule);
-    }, [requestedRule, scene.interactions, selectRule]);
+        if (rule && current.current?.rule.id === rule.id) {
+            setSelected(
+                requestedRule.actionIndex == null
+                    ? START_NODE
+                    : current.current.graph.nodes.filter((node) => node.action)[
+                          requestedRule.actionIndex
+                      ]?.id || START_NODE,
+            );
+            setShowInspector(true);
+            setSelectedEdge(null);
+        } else if (rule) selectRule(rule, requestedRule.actionIndex);
+    }, [requestedRule, scene.interactions, selectRule, readMemoryPages]);
     function duplicateRule(rule: InteractionRule) {
         guard(() => {
             if (blocked) return;
@@ -985,7 +1022,24 @@ export function InteractionEditor({
         if (!draft || !result) return;
         if (result.error) {
             toast.error(result.error, { id: 'interaction-feedback' });
+            const firstProblem = Object.keys(errors)[0];
+            if (firstProblem) setSelected(firstProblem);
             setShowInspector(true);
+            return;
+        }
+        const problem = Object.entries(errors)[0];
+        if (problem) {
+            setSelected(problem[0]);
+            setShowInspector(true);
+            toast.error(problem[1], { id: 'interaction-feedback' });
+            return;
+        }
+        const memoryCheck = WorkflowVariablesSchema.safeParse(definitions);
+        if (!memoryCheck.success) {
+            toast.error(memoryCheck.error.issues[0]?.message || 'Kiểm tra thông tin ghi nhớ.', {
+                id: 'interaction-feedback',
+            });
+            manageMemory();
             return;
         }
         setTrace({});
@@ -1358,6 +1412,20 @@ export function InteractionEditor({
                                         onStep={observe}
                                         onMemoryChange={setMemoryValues}
                                         onReset={() => setTrace({})}
+                                        onRepair={(repair: PreviewRepair) => {
+                                            setTest(null);
+                                            if (repair.kind === 'memory') manageMemory();
+                                            else {
+                                                setSelected(
+                                                    repair.actionIndex == null
+                                                        ? START_NODE
+                                                        : draft?.graph.nodes.filter(
+                                                              (node) => node.action,
+                                                          )[repair.actionIndex]?.id || START_NODE,
+                                                );
+                                                setShowInspector(true);
+                                            }
+                                        }}
                                         onClose={() => {
                                             setTest(null);
                                             setTrace({});
