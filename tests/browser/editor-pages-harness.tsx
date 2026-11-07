@@ -8,6 +8,7 @@ import { BookEditorPage } from '../../src/pages/BookEditorPage';
 import { PageDetailPage } from '../../src/pages/PageDetailPage';
 import { apiClient } from '../../src/shared/api/client';
 import {
+    AssetSchema,
     BookDetailSchema,
     MeSchema,
     PageSchema,
@@ -23,6 +24,25 @@ const params = new URLSearchParams(location.search);
 const count = Number(params.get('pages') ?? 1);
 const repair = params.has('repair');
 const markerLayout = params.has('marker');
+const transformEditing = params.has('transform');
+const transformAsset = AssetSchema.parse({
+    id: '44444444-4444-4444-8444-444444444444',
+    type: 'MODEL',
+    name: 'Mô hình có xương',
+    url: `${location.origin}/tests/browser/skinned-transform.gltf`,
+    thumbnailUrl: null,
+    meta: {},
+    status: 'READY',
+    sizeBytes: 1000,
+    format: 'gltf',
+    tags: [],
+    license: null,
+    authorName: null,
+    sourceUrl: null,
+    scope: 'mine',
+    categoryId: null,
+    createdAt: new Date().toISOString(),
+});
 const markerReport = {
     analysis: {
         policyVersion: 'mindar-pictarize-v1',
@@ -93,9 +113,13 @@ const initial = Array.from({ length: count }, (_, i) =>
         markerReport: markerLayout ? markerReport : null,
         bookariaMarker: null,
         settings: {},
-        scene: repair ? repairScene : { schemaVersion: 1, objects: [] },
+        scene: transformEditing
+            ? { schemaVersion: 1, objects: [newObject('model', 'skinned', transformAsset)] }
+            : repair
+              ? repairScene
+              : { schemaVersion: 1, objects: [] },
         revision: 0,
-        assets: {},
+        assets: transformEditing ? { [transformAsset.id]: transformAsset } : {},
         updatedAt: new Date().toISOString(),
     }),
 );
@@ -169,7 +193,9 @@ apiClient.defaults.adapter = async (config) => {
             ),
         };
         data = { snapshot, pages, warnings: [], jobs: [] };
-    } else if (config.url === `/books/${bookId}/draft`) data = snapshot;
+    } else if (transformEditing && config.url === `/assets/${transformAsset.id}`)
+        data = transformAsset;
+    else if (config.url === `/books/${bookId}/draft`) data = snapshot;
     else if (config.url === `/books/${bookId}`)
         data = { ...book, pages: snapshot.pages, pageCount: snapshot.pages.length };
     else if (config.url?.startsWith('/pages/')) data = remote.get(config.url.split('/')[2]);

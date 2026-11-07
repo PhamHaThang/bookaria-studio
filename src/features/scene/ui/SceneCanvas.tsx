@@ -50,6 +50,7 @@ import { createModelSelectionBounds } from '../model/model-selection-bounds';
 import { objectLabels } from '../model/objects';
 import { pageImageSize } from '../model/page-image-fit';
 import { fitPreviewCamera } from '../model/preview-fit';
+import { applyRenderTransform, canRenderTransform } from '../model/render-transform';
 import { scaleConstraint, scaleFromGesture } from '../model/scale-gesture';
 import type { SceneAudioStore } from '../model/scene-audio-store';
 import type { SceneLoadStore } from '../model/scene-load-store';
@@ -527,16 +528,7 @@ export function SceneCanvas(props: Props) {
             return box;
         }
         function applyTransform(node: Node, object: SceneObject) {
-            node.root.position.fromArray(object.transform.position);
-            node.root.rotation.set(
-                ...(object.transform.rotation.map(THREE.MathUtils.degToRad) as [
-                    number,
-                    number,
-                    number,
-                ]),
-            );
-            node.root.scale.fromArray(object.transform.scale);
-            node.root.updateMatrixWorld(true);
+            applyRenderTransform(node.root, object.transform);
         }
 
         const draco = new DRACOLoader().setDecoderPath('/vendor/draco-0.161.0/');
@@ -614,14 +606,7 @@ export function SceneCanvas(props: Props) {
                     themeColor('--text-muted'),
                 );
                 if (node.placeholder) node.billboard.content.add(node.placeholder.group);
-                if (
-                    [
-                        ...spec.transform.position,
-                        ...spec.transform.rotation,
-                        ...spec.transform.scale,
-                    ].every(Number.isFinite)
-                )
-                    applyTransform(node, spec);
+                applyTransform(node, spec);
                 const asset = 'assetId' in spec ? latest.current.assets[spec.assetId] : undefined;
                 if ('assetId' in spec && !asset)
                     throw new Error('Thiếu tài nguyên. Chọn lại tài nguyên trong bảng thuộc tính.');
@@ -885,23 +870,7 @@ export function SceneCanvas(props: Props) {
                     if (value.suspended && !node.audio.paused) value.audioStore.pause(spec.id);
                 }
                 if (!(dragging && latest.current.selectedIds.includes(spec.id))) {
-                    if (
-                        [
-                            ...spec.transform.position,
-                            ...spec.transform.rotation,
-                            ...spec.transform.scale,
-                        ].every(Number.isFinite)
-                    ) {
-                        node.root.position.fromArray(spec.transform.position);
-                        node.root.rotation.set(
-                            ...(spec.transform.rotation.map(THREE.MathUtils.degToRad) as [
-                                number,
-                                number,
-                                number,
-                            ]),
-                        );
-                        node.root.scale.fromArray(spec.transform.scale);
-                    }
+                    applyTransform(node, spec);
                 }
                 node.root.visible = spec.visible;
                 node.billboard.update(
@@ -926,12 +895,7 @@ export function SceneCanvas(props: Props) {
                         node.status === 'ready' &&
                         node.spec.visible &&
                         !node.spec.locked &&
-                        [
-                            ...node.spec.transform.position,
-                            ...node.spec.transform.rotation,
-                            ...node.spec.transform.scale,
-                        ].every(Number.isFinite) &&
-                        node.spec.transform.scale.every((n) => n > 0),
+                        canRenderTransform(node.spec.transform),
                 ) &&
                 !value.disabled &&
                 !value.annotationToPlace &&

@@ -10,6 +10,7 @@ export default defineConfig({
         'editor-pages.spec.mjs',
         'interaction-repair.spec.mjs',
         'marker-dialog-layout.spec.mjs',
+        'transform-edit.spec.mjs',
     ],
     workers: 1,
     retries: 0,
