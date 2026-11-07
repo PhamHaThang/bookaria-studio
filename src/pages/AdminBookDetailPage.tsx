@@ -327,8 +327,23 @@ export function AdminBookDetailPage() {
                                                     {page.title || 'Chưa đặt tên'}
                                                 </h3>
                                                 <p>
-                                                    {page.objectCount} đối tượng · Điểm marker:{' '}
-                                                    {page.markerScore ?? 'Chưa chấm'}
+                                                    {page.objectCount} đối tượng · Marker:{' '}
+                                                    {page.markerMode === 'CUSTOM_MARKER'
+                                                        ? page.markerWarnings.includes('NOT_SCORED')
+                                                            ? 'Chưa phân tích'
+                                                            : page.markerWarnings.some((warning) =>
+                                                                    [
+                                                                        'LOW_SCORE',
+                                                                        'REANALYZE_REQUIRED',
+                                                                        'STALE_MARKER',
+                                                                        'NO_FEATURES',
+                                                                    ].includes(warning),
+                                                                )
+                                                              ? 'Cần phân tích lại'
+                                                              : 'Đã phân tích'
+                                                        : page.markerMode === 'NONE'
+                                                          ? 'Không dùng AR'
+                                                          : 'Bookaria'}
                                                 </p>
                                             </div>
                                         </div>

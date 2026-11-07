@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { assetsApi } from '../features/assets';
 import { uploadFile } from '../features/assets/api/upload-file';
@@ -30,6 +30,14 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
     const [markerOpen, setMarkerOpen] = useState(false),
         [markerBusy, setMarkerBusy] = useState(false),
         [sceneBusy, setSceneBusy] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+    useEffect(() => {
+        if (searchParams.get('marker') !== '1') return;
+        setMarkerOpen(true);
+        const next = new URLSearchParams(searchParams);
+        next.delete('marker');
+        setSearchParams(next, { replace: true });
+    }, [searchParams, setSearchParams]);
     const [jobId, setJobId] = useState<string | null>(null);
     const checkpoint = useRef<MindCheckpoint | null>(null);
     useEffect(() => {
