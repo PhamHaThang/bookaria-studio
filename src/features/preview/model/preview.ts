@@ -24,9 +24,11 @@ export function viewerOrigin(value: string) {
         throw new Error('VITE_VIEWER_ORIGIN phải là origin HTTP/HTTPS của Viewer.');
     return url.origin;
 }
-export function previewUrl(origin: string, token: string) {
+export function previewUrl(origin: string, token: string, mode?: 'ar') {
     if (!/^[A-Za-z0-9_-]{32}$/.test(token)) throw new Error('Token xem trước không hợp lệ.');
-    return new URL(`/preview/${token}`, viewerOrigin(origin)).href;
+    const url = new URL(`/preview/${token}`, viewerOrigin(origin));
+    if (mode === 'ar') url.searchParams.set('mode', 'ar');
+    return url.href;
 }
 export async function makePreviewPayload(
     page: Page,

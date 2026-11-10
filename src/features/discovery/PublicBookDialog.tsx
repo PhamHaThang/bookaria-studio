@@ -153,7 +153,7 @@ function BookDialog({ slug, onClose }: { slug: string; onClose: () => void }) {
                                 aria-label="Sao chép liên kết thông tin sách"
                             >
                                 <Copy data-icon="inline-start" />
-                                <span className="max-sm:sr-only">Sao chép liên kết</span>
+                                <span className="max-sm:sr-only">Sao chép liên kết thông tin</span>
                             </Button>
                             <Button asChild>
                                 <a

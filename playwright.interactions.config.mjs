@@ -13,6 +13,7 @@ export default defineConfig({
         'transform-edit.spec.mjs',
         'editor-inputs.spec.mjs',
         'admin-merge.spec.mjs',
+        'viewer-links.spec.mjs',
     ],
     workers: 1,
     retries: 0,

@@ -32,6 +32,12 @@ test('viewer origin and token reject non-HTTP, credentials, paths and invalid to
         previewUrl('http://viewer.localhost:5174', 'a'.repeat(32)),
         `http://viewer.localhost:5174/preview/${'a'.repeat(32)}`,
     );
+    assert.equal(
+        previewUrl('https://viewer.example', 'a'.repeat(32), 'ar'),
+        `https://viewer.example/preview/${'a'.repeat(32)}?mode=ar`,
+    );
+    assert.throws(() => previewUrl('https://viewer.example/path', 'a'.repeat(32), 'ar'));
+    assert.throws(() => previewUrl('https://viewer.example', 'a'.repeat(31), 'ar'));
 });
 test('preview API uses backend request schema, expected status and response validation', async () => {
     const calls = [];
