@@ -505,44 +505,32 @@ export function AdminBookDetailPage() {
                                             ) : (
                                                 <BookOpen className="h-8 w-8 text-muted-foreground/40" />
                                             )}
-<<<<<<< HEAD
                                             <span className="absolute top-1 left-1 rounded bg-black/60 px-1.5 py-0.5 font-mono text-[10px] text-white">
                                                 #{page.orderIndex + 1}
                                             </span>
-=======
-                                            <div>
-                                                <h3>
-                                                    Trang {page.orderIndex + 1}:{' '}
-                                                    {page.title || 'Chưa đặt tên'}
-                                                </h3>
-                                                <p>
-                                                    {page.objectCount} đối tượng · Marker:{' '}
-                                                    {page.markerMode === 'CUSTOM_MARKER'
-                                                        ? page.markerWarnings.includes('NOT_SCORED')
-                                                            ? 'Chưa phân tích'
-                                                            : page.markerWarnings.some((warning) =>
-                                                                    [
-                                                                        'LOW_SCORE',
-                                                                        'REANALYZE_REQUIRED',
-                                                                        'STALE_MARKER',
-                                                                        'NO_FEATURES',
-                                                                    ].includes(warning),
-                                                                )
-                                                              ? 'Cần phân tích lại'
-                                                              : 'Đã phân tích'
-                                                        : page.markerMode === 'NONE'
-                                                          ? 'Không dùng AR'
-                                                          : 'Bookaria'}
-                                                </p>
-                                            </div>
->>>>>>> origin/main
                                         </div>
                                         <div className="p-2 text-left">
                                             <p className="m-0 truncate font-medium text-foreground text-xs">
                                                 {page.title || `Trang ${page.orderIndex + 1}`}
                                             </p>
                                             <p className="m-0 mt-0.5 text-[10px] text-muted-foreground">
-                                                {page.objectCount} đối tượng
+                                                {page.objectCount} đối tượng · Marker:{' '}
+                                                {page.markerMode === 'CUSTOM_MARKER'
+                                                    ? page.markerWarnings.includes('NOT_SCORED')
+                                                        ? 'Chưa phân tích'
+                                                        : page.markerWarnings.some((warning) =>
+                                                                [
+                                                                    'LOW_SCORE',
+                                                                    'REANALYZE_REQUIRED',
+                                                                    'STALE_MARKER',
+                                                                    'NO_FEATURES',
+                                                                ].includes(warning),
+                                                            )
+                                                          ? 'Cần phân tích lại'
+                                                          : 'Đã phân tích'
+                                                    : page.markerMode === 'NONE'
+                                                      ? 'Không dùng AR'
+                                                      : 'Bookaria'}
                                             </p>
                                         </div>
                                     </div>
