@@ -1,4 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
+import {
+    ArrowLeft,
+    Ban,
+    BookOpen,
+    Calendar,
+    CheckCircle2,
+    Flag,
+    RotateCcw,
+    ShieldAlert,
+    User,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
@@ -12,6 +23,7 @@ import {
     adminApi,
     adminDate,
     adminKeys,
+    adminPageMarkerLabel,
     reportLabel,
     reportStatusLabel,
     visibilityLabel,
@@ -29,11 +41,13 @@ import { Badge } from '../shared/ui/Badge';
 import { Feedback } from '../shared/ui/Feedback';
 
 type BookAction = 'takedown' | 'reinstate' | 'dismiss';
+
 const actionLabel = {
     takedown: 'Gỡ sách',
     reinstate: 'Khôi phục sách',
     dismiss: 'Bỏ qua báo cáo đang mở',
 };
+
 function BookActions({
     data,
     onSaved,
@@ -41,28 +55,40 @@ function BookActions({
     data: AdminBookDetail;
     onSaved: (message: string) => void;
 }) {
-    const [kind, setKind] = useState<BookAction>(data.book.takenDown ? 'reinstate' : 'takedown'),
-        [note, setNote] = useState('');
-    const [draft, setDraft] = useState<{ kind: BookAction; note: string } | null>(null),
-        [error, setError] = useState<string | null>(null);
-    const action = useAdminAction(),
-        open = data.reports.filter((report) => report.status === 'OPEN').length;
+    const [kind, setKind] = useState<BookAction>(data.book.takenDown ? 'reinstate' : 'takedown');
+    const [note, setNote] = useState('');
+    const [draft, setDraft] = useState<{ kind: BookAction; note: string } | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    const action = useAdminAction();
+    const open = data.reports.filter((report) => report.status === 'OPEN').length;
+
     return (
-        <section className="admin-section mt-8">
-            <h2>Xử lý kiểm duyệt</h2>
+        <section className="rounded-[var(--radius-lg)] border border-border bg-surface p-5 shadow-xs sm:p-6">
+            <h2 className="m-0 font-semibold text-foreground text-lg tracking-tight">
+                Xử lý kiểm duyệt
+            </h2>
+            <p className="mt-1 text-muted-foreground text-xs">
+                Lựa chọn thao tác can thiệp kiểm duyệt đối với đầu sách và cập nhật trạng thái các
+                báo cáo.
+            </p>
+
             <Feedback error={error || action.error} />
+
             {action.uncertain && (
                 <Button
                     variant="secondary"
                     fullWidth
                     type="button"
+                    className="mt-4"
                     onClick={() => window.location.reload()}
                 >
                     Tải lại trang và kiểm tra
                 </Button>
             )}
+
             <form
-                className="admin-form my-6 max-w-160 [&_:is(input,_select,_textarea)]:w-full [&_label]:mb-4 [&_label]:grid [&_label]:gap-2 [&_textarea]:min-h-25"
+                className="mt-4 max-w-xl space-y-4"
                 onSubmit={(event) => {
                     event.preventDefault();
                     setError(null);
@@ -77,11 +103,13 @@ function BookActions({
                     setDraft({ kind, note: note.trim() });
                 }}
             >
-                <FieldGroup className="contents">
-                    <fieldset disabled={action.busy || action.uncertain}>
-                        <Field orientation="contents">
-                            <FieldLabel htmlFor="book-action">
-                                Thao tác
+                <FieldGroup className="space-y-4">
+                    <fieldset disabled={action.busy || action.uncertain} className="space-y-4">
+                        <Field>
+                            <FieldLabel htmlFor="book-action" className="font-medium text-xs">
+                                Thao tác kiểm duyệt
+                            </FieldLabel>
+                            <div className="mt-1">
                                 <FormSelect
                                     id="book-action"
                                     value={kind}
@@ -100,49 +128,89 @@ function BookActions({
                                         },
                                     ]}
                                 />
-                            </FieldLabel>
+                            </div>
                         </Field>
-                        <Field orientation="contents">
-                            <FieldLabel htmlFor="book-action-note">
+
+                        <Field>
+                            <FieldLabel htmlFor="book-action-note" className="font-medium text-xs">
                                 {kind === 'takedown'
                                     ? 'Lý do gỡ sách (bắt buộc)'
-                                    : 'Ghi chú (không bắt buộc)'}
-                                <Textarea
-                                    id="book-action-note"
-                                    required={kind === 'takedown'}
-                                    maxLength={1000}
-                                    value={note}
-                                    onChange={(event) => setNote(event.target.value)}
-                                />
+                                    : 'Ghi chú xử lý (không bắt buộc)'}
                             </FieldLabel>
+                            <Textarea
+                                id="book-action-note"
+                                className="mt-1"
+                                required={kind === 'takedown'}
+                                maxLength={1000}
+                                rows={3}
+                                value={note}
+                                onChange={(event) => setNote(event.target.value)}
+                                placeholder={
+                                    kind === 'takedown'
+                                        ? 'Nhập lý do gỡ sách để thông báo tới tác giả...'
+                                        : 'Nhập ghi chú lưu vào biên bản kiểm toán...'
+                                }
+                            />
                         </Field>
-                        <Button fullWidth type="submit" disabled={kind === 'dismiss' && !open}>
-                            Xem lại thao tác
-                        </Button>
+
+                        <div className="pt-1">
+                            <Button
+                                type="submit"
+                                disabled={kind === 'dismiss' && !open}
+                                variant={kind === 'takedown' ? 'destructive' : 'default'}
+                                className="gap-2"
+                            >
+                                {kind === 'takedown' && <Ban className="h-4 w-4" />}
+                                {kind === 'reinstate' && <RotateCcw className="h-4 w-4" />}
+                                {kind === 'dismiss' && <CheckCircle2 className="h-4 w-4" />}
+                                Xem lại và thực hiện thao tác
+                            </Button>
+                        </div>
                     </fieldset>
                 </FieldGroup>
             </form>
+
             {draft && (
                 <ConfirmationDialog
-                    description={<> Sách: {data.book.title} </>}
+                    description={<>Sách: {data.book.title}</>}
                     title={`Xác nhận: ${actionLabel[draft.kind].toLowerCase()}`}
                     busy={action.busy}
-                    className="admin-confirm [&_p]:wrap-anywhere max-h-[calc(100dvh_-_32px)] max-w-[min(480px,_calc(100%_-_32px))] overflow-y-auto [&_p]:[white-space:pre-wrap]"
+                    className="admin-confirm max-h-[88dvh] max-w-md overflow-y-auto p-5 sm:p-6"
                     onClose={() => setDraft(null)}
                 >
-                    <p>
+                    <p className="text-foreground/90 text-sm leading-relaxed">
                         {draft.kind === 'takedown'
                             ? 'Sách sẽ chuyển sang riêng tư; tất cả báo cáo đang mở được đánh dấu đã xử lý. Tác giả nhận thông báo.'
                             : draft.kind === 'reinstate'
                               ? 'Máy chủ bỏ trạng thái bị gỡ và khôi phục quyền hiển thị trước đó nếu tài khoản tác giả đang hoạt động. Tác giả nhận thông báo.'
                               : 'Tất cả báo cáo đang mở của sách sẽ được bỏ qua; không gỡ sách.'}
                     </p>
-                    {draft.note && <p>Lý do / ghi chú: {draft.note}</p>}
+                    {draft.note && (
+                        <div className="rounded bg-muted/40 p-3 text-xs italic">
+                            Lý do / ghi chú: {draft.note}
+                        </div>
+                    )}
                     <Feedback error={action.error} />
-                    <div className="admin-actions flex flex-wrap items-center gap-3 max-[640px]:flex-col max-[640px]:items-stretch [.admin-confirm_&]:mt-5">
+                    <div className="flex items-center justify-end gap-2.5 border-border border-t pt-4">
+                        <AlertDialogAction
+                            variant="plain"
+                            asChild
+                            onClick={(event) => event.preventDefault()}
+                        >
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                type="button"
+                                disabled={action.busy}
+                                onClick={() => setDraft(null)}
+                            >
+                                Quay lại
+                            </Button>
+                        </AlertDialogAction>
                         <AlertDialogCancel variant="plain" asChild>
                             <Button
-                                fullWidth
+                                variant={draft.kind === 'takedown' ? 'destructive' : 'default'}
+                                size="sm"
                                 type="button"
                                 disabled={action.busy || action.uncertain}
                                 onClick={() =>
@@ -178,32 +246,19 @@ function BookActions({
                                     : `Xác nhận ${actionLabel[draft.kind].toLowerCase()}`}
                             </Button>
                         </AlertDialogCancel>
-                        <AlertDialogAction
-                            variant="plain"
-                            asChild
-                            onClick={(event) => event.preventDefault()}
-                        >
-                            <Button
-                                variant="secondary"
-                                fullWidth
-                                type="button"
-                                disabled={action.busy}
-                                onClick={() => setDraft(null)}
-                            >
-                                Quay lại
-                            </Button>
-                        </AlertDialogAction>
                     </div>
                 </ConfirmationDialog>
             )}
         </section>
     );
 }
+
 export function AdminBookDetailPage() {
     const [success, setSuccess] = useState<string | null>(null);
-    const { user } = useAuth(),
-        { bookId = '' } = useParams(),
-        valid = IdSchema.safeParse(bookId).success;
+    const { user } = useAuth();
+    const { bookId = '' } = useParams();
+    const valid = IdSchema.safeParse(bookId).success;
+
     const query = useQuery({
         queryKey: adminKeys.book(user?.id || '', bookId),
         queryFn: ({ signal }) => adminApi.book(bookId, signal),
@@ -211,18 +266,43 @@ export function AdminBookDetailPage() {
         retry: false,
         refetchOnWindowFocus: false,
     });
-    if (!valid)
+
+    if (!valid) {
         return (
-            <>
-                <h1>Không tìm thấy sách</h1>
-                <Link to="/admin/books">Về tra cứu sách</Link>
-            </>
+            <div className="mx-auto max-w-6xl space-y-4 p-6">
+                <h1 className="font-semibold text-2xl text-foreground">Không tìm thấy sách</h1>
+                <p className="text-muted-foreground text-sm">
+                    Mã định danh sách không hợp lệ hoặc đã bị thay đổi.
+                </p>
+                <Button variant="outline" asChild>
+                    <Link to="/admin/books">Về tra cứu sách</Link>
+                </Button>
+            </div>
         );
+    }
+
     const data = query.data;
+
     return (
-        <>
-            <Link to="/admin/moderation">Về báo cáo chờ xử lý</Link>
+        <div className="mx-auto max-w-6xl space-y-6 p-6">
+            {/* Thanh điều hướng quay lại */}
+            <div className="flex items-center justify-between">
+                <Link
+                    to="/admin/moderation"
+                    className="inline-flex items-center gap-2 text-muted-foreground text-xs transition-colors hover:text-foreground"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    <span>Về hàng chờ kiểm duyệt</span>
+                </Link>
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" asChild className="h-8 text-xs">
+                        <Link to="/admin/books">Tra cứu tất cả sách</Link>
+                    </Button>
+                </div>
+            </div>
+
             <Feedback success={success} />
+
             {query.isPending && <LoadingState layout="detail">Đang tải sách…</LoadingState>}
             {query.isError && (
                 <>
@@ -230,132 +310,226 @@ export function AdminBookDetailPage() {
                     <AdminReload retry={() => void query.refetch()} busy={query.isFetching} />
                 </>
             )}
+
             {query.isSuccess && data && (
                 <>
-                    <div className="page-heading insights-heading [&_h1]:wrap-anywhere mx-0 mt-0 mb-7 flex items-center justify-between gap-6 max-[760px]:mb-6 max-[640px]:flex-col max-[700px]:flex-wrap max-[640px]:items-start max-[700px]:items-start max-[760px]:items-start max-[700px]:gap-3 max-[760px]:gap-4 max-[700px]:[&_>_.button]:max-w-full max-[700px]:[&_>_.button]:flex-[0_0_auto] [&_>_div]:min-w-0 max-[640px]:[&_>_div]:w-full max-[700px]:[&_>_div]:flex-[1_1_180px] [&_h1]:font-semibold [&_h1]:text-[length:28px] [&_h1]:tracking-[-0.025em] max-[700px]:[&_h1]:text-[length:25px] max-[760px]:[&_h1]:text-[length:var(--text-2xl)] [&_p]:mx-0 [&_p]:mt-2 [&_p]:mb-0 [&_p]:max-w-[64ch] [&_p]:text-[length:13px] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-sm)] [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-2 [.studio-editing_&_h1]:ml-4 [.studio-editing_&_h1]:inline [.studio-editing_&_h1]:text-[length:21px] max-[700px]:[.studio-editing_&_h1]:mx-0 max-[700px]:[.studio-editing_&_h1]:mt-[6px] max-[700px]:[.studio-editing_&_h1]:mb-0 max-[700px]:[.studio-editing_&_h1]:block [.studio-editing_&_p]:ml-[14px] [.studio-editing_&_p]:inline [.studio-editing_&_p]:text-[length:11px] max-[700px]:[.studio-editing_&_p]:mx-0 max-[700px]:[.studio-editing_&_p]:my-1 max-[700px]:[.studio-editing_&_p]:block [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375">
-                        <div>
-                            <h1>{data.book.title}</h1>
-                            <p>
-                                Tác giả:{' '}
-                                <Link to={`/admin/users/${data.book.author.id}`}>
-                                    {data.book.author.displayName}
-                                </Link>
-                            </p>
+                    {/* Header thông tin sách */}
+                    <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-6 shadow-xs">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="flex min-w-0 flex-1 items-start gap-4">
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-border bg-muted/40">
+                                    <BookOpen className="h-6 w-6 text-primary/80" />
+                                </div>
+                                <div className="min-w-0 flex-1 space-y-1.5">
+                                    <div className="flex flex-wrap items-center gap-2.5">
+                                        <h1 className="m-0 truncate font-semibold text-2xl text-foreground tracking-tight">
+                                            {data.book.title}
+                                        </h1>
+                                        <Badge
+                                            tone="neutral"
+                                            className="h-5 justify-center gap-1 px-2 text-center font-normal text-[11px] leading-none"
+                                        >
+                                            {visibilityLabel[data.book.visibility]}
+                                        </Badge>
+                                        {data.book.takenDown && (
+                                            <Badge
+                                                tone="danger"
+                                                className="h-5 justify-center gap-1 px-2 text-center font-normal text-[11px] leading-none"
+                                            >
+                                                Đã bị gỡ
+                                            </Badge>
+                                        )}
+                                        {data.reports.filter((r) => r.status === 'OPEN').length >
+                                            0 && (
+                                            <Badge
+                                                tone="warning"
+                                                className="h-5 justify-center gap-1 px-2 text-center font-normal text-[11px] leading-none"
+                                            >
+                                                <Flag className="h-2.5 w-2.5" />
+                                                {
+                                                    data.reports.filter((r) => r.status === 'OPEN')
+                                                        .length
+                                                }{' '}
+                                                báo cáo mở
+                                            </Badge>
+                                        )}
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs">
+                                        <span className="inline-flex items-center gap-1">
+                                            <User className="h-3.5 w-3.5" />
+                                            Tác giả:{' '}
+                                            <Link
+                                                to={`/admin/users/${data.book.author.id}`}
+                                                className="font-medium text-foreground hover:text-primary hover:underline"
+                                            >
+                                                {data.book.author.displayName}
+                                            </Link>
+                                        </span>
+                                        <span>•</span>
+                                        <span>{data.book.pageCount} trang</span>
+                                        <span>•</span>
+                                        <span className="font-mono text-muted-foreground/80">
+                                            ID: {data.book.id}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <AdminReload
+                                retry={() => void query.refetch()}
+                                busy={query.isFetching}
+                            />
                         </div>
-                        <AdminReload retry={() => void query.refetch()} busy={query.isFetching} />
+
+                        {data.book.description && (
+                            <div className="mt-4 border-border/70 border-t pt-3.5">
+                                <p className="m-0 text-muted-foreground text-xs leading-relaxed">
+                                    {data.book.description}
+                                </p>
+                            </div>
+                        )}
+
+                        {data.book.takenDownReason && (
+                            <div className="mt-3.5 rounded-[var(--radius-md)] border border-destructive/20 bg-destructive/10 p-3 text-destructive text-xs">
+                                <span className="flex items-center gap-1.5 font-medium">
+                                    <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+                                    Lý do đã gỡ trước đó:
+                                </span>
+                                <p className="m-0 mt-1 text-foreground/90 leading-relaxed">
+                                    {data.book.takenDownReason}
+                                </p>
+                            </div>
+                        )}
                     </div>
-                    <div className="admin-metadata flex flex-wrap items-center gap-3 text-[length:var(--text-sm)] text-muted-foreground">
-                        <Badge>{visibilityLabel[data.book.visibility]}</Badge>
-                        {data.book.takenDown && <Badge tone="danger">Đã bị gỡ</Badge>}
-                        <span>{data.book.pageCount} trang</span>
-                    </div>
-                    {data.book.description && (
-                        <p className="admin-prose wrap-anywhere [white-space:pre-wrap]">
-                            {data.book.description}
-                        </p>
-                    )}
-                    {data.book.takenDownReason && (
-                        <p className="admin-prose wrap-anywhere [white-space:pre-wrap]">
-                            Lý do đã gỡ: {data.book.takenDownReason}
-                        </p>
-                    )}
+
+                    {/* Khối xử lý kiểm duyệt */}
                     <BookActions
                         key={`${data.book.id}:${data.book.takenDown}:${data.reports.map((report) => report.status).join(',')}`}
                         data={data}
                         onSaved={setSuccess}
                     />
-                    <section className="admin-section mt-8">
-                        <h2>Báo cáo ({data.reports.length})</h2>
+
+                    {/* Danh sách báo cáo vi phạm */}
+                    <section className="rounded-[var(--radius-lg)] border border-border bg-surface p-5 shadow-xs sm:p-6">
+                        <div className="flex items-center justify-between">
+                            <h2 className="m-0 font-semibold text-foreground text-lg tracking-tight">
+                                Báo cáo vi phạm ({data.reports.length})
+                            </h2>
+                        </div>
+
                         {data.reports.length ? (
-                            <ul className="admin-rows [&_>_li]:wrap-anywhere mx-0 my-4 list-none p-0 [&_>_li]:flex [&_>_li]:items-start [&_>_li]:justify-between [&_>_li]:gap-5 [&_>_li]:border-b-[1px] [&_>_li]:border-b-border [&_>_li]:py-5 [&_>_li]:[border-bottom-style:solid] max-[640px]:[&_>_li]:flex-col max-[640px]:[&_>_li]:gap-3 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h2]:text-[length:var(--text-md)] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-2 [&_h3]:text-[length:var(--text-md)] [&_p]:mx-0 [&_p]:my-2">
+                            <ul className="mt-4 list-none space-y-3 p-0">
                                 {data.reports.map((report) => (
-                                    <li key={report.id}>
-                                        <div>
-                                            <h3>{reportLabel[report.reason]}</h3>
-                                            {report.note && (
-                                                <p className="admin-prose wrap-anywhere [white-space:pre-wrap]">
-                                                    {report.note}
-                                                </p>
-                                            )}
-                                            <div className="admin-metadata flex flex-wrap items-center gap-3 text-[length:var(--text-sm)] text-muted-foreground">
+                                    <li
+                                        key={report.id}
+                                        className="rounded-[var(--radius-md)] border border-border bg-surface p-4 text-xs shadow-xs"
+                                    >
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <Badge
+                                                    tone={
+                                                        report.reason === 'INAPPROPRIATE'
+                                                            ? 'danger'
+                                                            : 'warning'
+                                                    }
+                                                    className="h-5 justify-center gap-1 px-2 text-center font-normal text-[10px] leading-none"
+                                                >
+                                                    {reportLabel[report.reason]}
+                                                </Badge>
                                                 <Badge
                                                     tone={
                                                         report.status === 'OPEN'
                                                             ? 'warning'
                                                             : 'neutral'
                                                     }
+                                                    className="h-5 justify-center gap-1 px-2 text-center font-normal text-[10px] leading-none"
                                                 >
                                                     {reportStatusLabel[report.status]}
                                                 </Badge>
-                                                <span>Gửi: {adminDate(report.createdAt)}</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                                <span className="inline-flex items-center gap-1">
+                                                    <Calendar className="h-3 w-3" />
+                                                    Gửi: {adminDate(report.createdAt)}
+                                                </span>
                                                 {report.handledAt && (
                                                     <span>
-                                                        Xử lý: {adminDate(report.handledAt)}
+                                                        • Xử lý: {adminDate(report.handledAt)}
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
+
+                                        {report.note && (
+                                            <div className="mt-2.5 rounded bg-muted/40 p-2.5 text-foreground/90 italic">
+                                                “{report.note}”
+                                            </div>
+                                        )}
                                     </li>
                                 ))}
                             </ul>
                         ) : (
-                            <p>Chưa có báo cáo cho sách này.</p>
+                            <p className="mt-4 rounded-[var(--radius-md)] border border-border border-dashed p-5 text-center text-muted-foreground text-xs">
+                                Chưa có báo cáo nào cho đầu sách này.
+                            </p>
                         )}
                     </section>
-                    <section className="admin-section mt-8">
-                        <h2>Các trang hiện tại</h2>
-                        <p className="stats-note max-w-[75ch] text-[length:var(--text-sm)] text-muted-foreground [.admin-form_&]:mb-4">
-                            Ảnh thu nhỏ và thông tin bản nháp hiện tại do API trả về; không phải
-                            trình xem toàn bộ nội dung phiên bản đã xuất bản.
-                        </p>
+
+                    {/* Danh sách các trang hiện tại */}
+                    <section className="rounded-[var(--radius-lg)] border border-border bg-surface p-5 shadow-xs sm:p-6">
+                        <div>
+                            <h2 className="m-0 font-semibold text-foreground text-lg tracking-tight">
+                                Các trang hiện tại ({data.book.pages.length})
+                            </h2>
+                            <p className="mt-1 text-muted-foreground text-xs">
+                                Ảnh thu nhỏ và thông tin đối tượng hiện tại do máy chủ trả về.
+                            </p>
+                        </div>
+
                         {data.book.pages.length ? (
-                            <ol className="admin-rows [&_>_li]:wrap-anywhere mx-0 my-4 list-none p-0 [&_>_li]:flex [&_>_li]:items-start [&_>_li]:justify-between [&_>_li]:gap-5 [&_>_li]:border-b-[1px] [&_>_li]:border-b-border [&_>_li]:py-5 [&_>_li]:[border-bottom-style:solid] max-[640px]:[&_>_li]:flex-col max-[640px]:[&_>_li]:gap-3 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h2]:text-[length:var(--text-md)] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-2 [&_h3]:text-[length:var(--text-md)] [&_p]:mx-0 [&_p]:my-2">
+                            <div className="mt-4 grid grid-cols-2 gap-3.5 sm:grid-cols-4 lg:grid-cols-6">
                                 {data.book.pages.map((page) => (
-                                    <li key={page.id}>
-                                        <div className="admin-metadata flex flex-wrap items-center gap-3 text-[length:var(--text-sm)] text-muted-foreground">
-                                            {page.thumbnailUrl && (
+                                    <div
+                                        key={page.id}
+                                        className="group overflow-hidden rounded-[var(--radius-md)] border border-border bg-surface text-center shadow-xs transition-colors hover:border-primary/40"
+                                    >
+                                        <div className="relative flex aspect-3/4 items-center justify-center bg-muted/30">
+                                            {page.thumbnailUrl ? (
                                                 <img
-                                                    className="admin-page-thumb size-24 shrink-0 bg-muted object-contain"
+                                                    className="h-full w-full object-contain"
                                                     src={page.thumbnailUrl}
                                                     alt={`Ảnh thu nhỏ trang ${page.orderIndex + 1}`}
                                                     loading="lazy"
                                                 />
+                                            ) : (
+                                                <BookOpen className="h-8 w-8 text-muted-foreground/40" />
                                             )}
-                                            <div>
-                                                <h3>
-                                                    Trang {page.orderIndex + 1}:{' '}
-                                                    {page.title || 'Chưa đặt tên'}
-                                                </h3>
-                                                <p>
-                                                    {page.objectCount} đối tượng · Marker:{' '}
-                                                    {page.markerMode === 'CUSTOM_MARKER'
-                                                        ? page.markerWarnings.includes('NOT_SCORED')
-                                                            ? 'Chưa phân tích'
-                                                            : page.markerWarnings.some((warning) =>
-                                                                    [
-                                                                        'LOW_SCORE',
-                                                                        'REANALYZE_REQUIRED',
-                                                                        'STALE_MARKER',
-                                                                        'NO_FEATURES',
-                                                                    ].includes(warning),
-                                                                )
-                                                              ? 'Cần phân tích lại'
-                                                              : 'Đã phân tích'
-                                                        : page.markerMode === 'NONE'
-                                                          ? 'Không dùng AR'
-                                                          : 'Bookaria'}
-                                                </p>
-                                            </div>
+                                            <span className="absolute top-1 left-1 rounded bg-black/60 px-1.5 py-0.5 font-mono text-[10px] text-white">
+                                                #{page.orderIndex + 1}
+                                            </span>
                                         </div>
-                                    </li>
+                                        <div className="p-2 text-left">
+                                            <p className="m-0 truncate font-medium text-foreground text-xs">
+                                                {page.title || `Trang ${page.orderIndex + 1}`}
+                                            </p>
+                                            <p className="m-0 mt-0.5 text-[10px] text-muted-foreground">
+                                                {page.objectCount} đối tượng · Marker:{' '}
+                                                {adminPageMarkerLabel(page)}
+                                            </p>
+                                        </div>
+                                    </div>
                                 ))}
-                            </ol>
+                            </div>
                         ) : (
-                            <p>Sách chưa có trang.</p>
+                            <p className="mt-4 rounded-[var(--radius-md)] border border-border border-dashed p-5 text-center text-muted-foreground text-xs">
+                                Đầu sách chưa có trang nào được tạo.
+                            </p>
                         )}
                     </section>
                 </>
             )}
-        </>
+        </div>
     );
 }
