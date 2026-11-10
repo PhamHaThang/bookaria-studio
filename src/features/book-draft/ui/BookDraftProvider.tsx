@@ -11,6 +11,7 @@ import { Link, Outlet, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { errorMessage } from '@/shared/api/errors';
 import { IdSchema } from '@/shared/contracts/common.schema';
+import { flushPendingTextEdits } from '@/shared/lib/pending-text-edits';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
@@ -138,10 +139,13 @@ export function BookDraftProvider({ bookId, children }: { bookId: string; childr
         document.addEventListener('compositionend', compositionEnd);
         window.addEventListener('online', autosave.wake);
         const checkpoint = () => {
-            if (document.visibilityState === 'hidden') void store.flush();
-            else autosave.wake();
+            if (document.visibilityState === 'hidden') {
+                flushPendingTextEdits();
+                void store.flush();
+            } else autosave.wake();
         };
         const pagehide = () => {
+            flushPendingTextEdits();
             void store.flush();
         };
         document.addEventListener('visibilitychange', checkpoint);

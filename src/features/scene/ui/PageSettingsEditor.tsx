@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Eye, ImagePlus, RotateCcw } from 'lucide-react';
-import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { BufferedInput } from '@/shared/ui/BufferedTextInput';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { Feedback } from '@/shared/ui/Feedback';
@@ -132,7 +133,7 @@ export function PageSettingsEditor({
         setImageSize(null);
         return () => URL.revokeObjectURL(url);
     }, [imageFile]);
-    useEffect(() => {
+    useLayoutEffect(() => {
         onDirtyChange(dirty);
         return () => onDirtyChange(false);
     }, [dirty, onDirtyChange]);
@@ -429,15 +430,15 @@ export function PageSettingsEditor({
                             <FieldLabel htmlFor="page-settings-name" className="m-0">
                                 Tên trang
                             </FieldLabel>
-                            <Input
+                            <BufferedInput
                                 id="page-settings-name"
                                 name="title"
                                 value={title}
                                 maxLength={150}
                                 placeholder={`Trang ${page.orderIndex + 1}`}
                                 className="m-0 h-10"
-                                onChange={(event) => {
-                                    setTitle(event.currentTarget.value);
+                                onValueChange={(title) => {
+                                    setTitle(title);
                                     setError(null);
                                 }}
                             />

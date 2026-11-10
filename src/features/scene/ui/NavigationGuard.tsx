@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useBeforeUnload, useBlocker } from 'react-router-dom';
+import { flushPendingTextEdits } from '@/shared/lib/pending-text-edits';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { Feedback } from '@/shared/ui/Feedback';
 import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
@@ -32,16 +33,16 @@ export function NavigationGuard({
             currentLocation.pathname !== nextLocation.pathname &&
             !(draft && allowBookNavigation && draftPagePath(draft.bookId, nextLocation.pathname)),
     );
+    const current = useRef({ dirty, saving });
+    current.current = { dirty, saving };
     useBeforeUnload(
-        useCallback(
-            (event) => {
-                if (dirty || saving) {
-                    event.preventDefault();
-                    event.returnValue = '';
-                }
-            },
-            [dirty, saving],
-        ),
+        useCallback((event) => {
+            flushPendingTextEdits();
+            if (current.current.dirty || current.current.saving) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
+        }, []),
     );
     if (blocker.state !== 'blocked') return null;
     async function saveAndLeave() {

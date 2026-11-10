@@ -2204,7 +2204,7 @@ export function SceneCanvas(props: Props) {
         };
     }, [props.page.id, props.aspect]);
     useEffect(() => {
-        api.current?.sync();
+        if (!props.suspended) api.current?.sync();
     });
     useEffect(() => {
         api.current?.mode(mode, snap, space, snapSteps);

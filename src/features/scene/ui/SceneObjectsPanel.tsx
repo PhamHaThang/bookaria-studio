@@ -19,7 +19,7 @@ import {
     Volume2,
     X,
 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import type { SceneObject } from '@/shared/contracts/scene.schema';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/primitives/button';
@@ -76,7 +76,7 @@ type Props = {
     onDuplicate: (id: string) => void;
     onDelete: (object: SceneObject) => void;
 };
-export function SceneObjectsPanel({
+function SceneObjectsPanelContent({
     objects,
     selectedIds,
     query,
@@ -384,3 +384,8 @@ export function SceneObjectsPanel({
         </section>
     );
 }
+
+export const SceneObjectsPanel = memo(
+    SceneObjectsPanelContent,
+    (previous, next) => previous.hidden && next.hidden,
+);

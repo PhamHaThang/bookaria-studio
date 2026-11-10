@@ -1,13 +1,12 @@
 import type { SceneObject } from '@/shared/contracts/scene.schema';
 import { SCENE_LIMITS } from '@/shared/contracts/scene.schema';
 import { AUDIO_KIND_OPTIONS } from '@/shared/scene/audio-kind';
+import { BufferedInput, BufferedTextarea } from '@/shared/ui/BufferedTextInput';
 import { Button } from '@/shared/ui/Button';
 import { ColorInput } from '@/shared/ui/ColorInput';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
-import { Textarea } from '@/shared/ui/primitives/textarea';
 import type { SceneAudioStore } from '../model/scene-audio-store';
 import { NumericField, VectorFields } from './NumericField';
 import { SceneAudioControls } from './SceneAudioControls';
@@ -52,11 +51,11 @@ export function ObjectSpecificProperties({
                         object.presentation?.kind === 'bubble') && (
                         <Field>
                             <FieldLabel htmlFor={`${id}-title`}>Tiêu đề</FieldLabel>
-                            <Input
+                            <BufferedInput
                                 id={`${id}-title`}
                                 maxLength={100}
                                 value={object.presentation.title}
-                                onChange={(event) => {
+                                onValueChange={(value) => {
                                     if (
                                         object.presentation?.kind === 'screen' ||
                                         object.presentation?.kind === 'bubble'
@@ -64,7 +63,7 @@ export function ObjectSpecificProperties({
                                         patch({
                                             presentation: {
                                                 ...object.presentation,
-                                                title: event.currentTarget.value,
+                                                title: value,
                                             },
                                         });
                                 }}
@@ -81,30 +80,30 @@ export function ObjectSpecificProperties({
                                     ? 'Nhãn'
                                     : 'Nội dung chữ'}
                         </FieldLabel>
-                        <Textarea
+                        <BufferedTextarea
                             id={`${id}-text`}
                             rows={3}
                             maxLength={SCENE_LIMITS.maxTextChars}
                             value={object.text}
-                            onChange={(event) => patch({ text: event.currentTarget.value })}
+                            onValueChange={(text) => patch({ text })}
                             className="field-sizing-content resize-none overflow-hidden"
                         />
                     </Field>
                     {object.presentation?.kind === 'annotation' && (
                         <Field>
                             <FieldLabel htmlFor={`${id}-description`}>Mô tả</FieldLabel>
-                            <Textarea
+                            <BufferedTextarea
                                 id={`${id}-description`}
                                 rows={3}
                                 maxLength={1000}
                                 value={object.presentation.description}
                                 className="field-sizing-content resize-none overflow-hidden"
-                                onChange={(event) => {
+                                onValueChange={(value) => {
                                     if (object.presentation?.kind === 'annotation')
                                         patch({
                                             presentation: {
                                                 ...object.presentation,
-                                                description: event.currentTarget.value,
+                                                description: value,
                                             },
                                         });
                                 }}

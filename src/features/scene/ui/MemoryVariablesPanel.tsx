@@ -1,5 +1,5 @@
 import { CaseSensitive, Hash, Plus, ToggleLeft, Trash2 } from 'lucide-react';
-import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { Page } from '@/shared/contracts/dto.schema';
 import { type WorkflowVariable, WorkflowVariablesSchema } from '@/shared/contracts/scene.schema';
@@ -67,7 +67,7 @@ export function MemoryVariablesPanel({
             : !!draft.name || draft.type !== 'boolean' || draft.initialValue !== false);
     const busy = disabled || loading || !!error;
     const usages = draft ? memoryUses(draft.key, pages) : [];
-    useEffect(() => {
+    useLayoutEffect(() => {
         onDirtyChange(dirty);
     }, [dirty, onDirtyChange]);
     useEffect(() => () => onDirtyChange(false), [onDirtyChange]);

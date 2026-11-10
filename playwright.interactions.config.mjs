@@ -11,6 +11,7 @@ export default defineConfig({
         'interaction-repair.spec.mjs',
         'marker-dialog-layout.spec.mjs',
         'transform-edit.spec.mjs',
+        'editor-inputs.spec.mjs',
         'admin-merge.spec.mjs',
     ],
     workers: 1,

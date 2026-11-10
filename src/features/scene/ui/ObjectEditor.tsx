@@ -3,6 +3,7 @@ import { Copy, Eye, Gamepad2, Info, Move, Play, SlidersHorizontal, Trash2 } from
 import { useState, useSyncExternalStore } from 'react';
 import { AssetPreviewDialog } from '@/features/assets/ui/LibraryAssetPreview';
 import { facesCamera } from '@/shared/scene/audio-kind';
+import { BufferedInput } from '@/shared/ui/BufferedTextInput';
 import { Disclosure, DisclosureGroup } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
@@ -13,7 +14,6 @@ import {
     FieldLabel,
     FieldSet,
 } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
 import { Switch } from '@/shared/ui/primitives/switch';
 import { errorMessage } from '../../../shared/api/errors';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
@@ -136,13 +136,11 @@ export function ObjectEditor({
                             <Field orientation="contents">
                                 <FieldLabel htmlFor={`${id}-name`}>
                                     Tên đối tượng
-                                    <Input
+                                    <BufferedInput
                                         id={`${id}-name`}
                                         maxLength={100}
                                         value={object.name || ''}
-                                        onChange={(event) =>
-                                            patch({ name: event.currentTarget.value })
-                                        }
+                                        onValueChange={(name) => patch({ name })}
                                     />
                                 </FieldLabel>
                             </Field>

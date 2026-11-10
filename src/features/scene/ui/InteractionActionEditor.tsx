@@ -5,12 +5,12 @@ import type { AssetRef } from '@/shared/contracts/asset.schema';
 import type { BookDetail } from '@/shared/contracts/dto.schema';
 import type { Action, Easing, Scene, SceneObject } from '@/shared/contracts/scene.schema';
 import { facesCamera } from '@/shared/scene/audio-kind';
+import { BufferedInput } from '@/shared/ui/BufferedTextInput';
 import { Button } from '@/shared/ui/Button';
 import { Disclosure } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldGroup, FieldLabel, FieldSet } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
 import { assetKeys, assetsApi } from '../../assets';
 import { useAuth } from '../../auth';
 import { actionOperationChoices, changeActionOperation } from '../model/interaction-blocks';
@@ -306,12 +306,12 @@ export function InteractionActionEditor({
                     {action.type === 'openUrl' && (
                         <Field>
                             <FieldLabel htmlFor={`${id}-url`}>Địa chỉ liên kết</FieldLabel>
-                            <Input
+                            <BufferedInput
                                 id={`${id}-url`}
                                 type="url"
                                 value={action.url}
                                 placeholder="https://..."
-                                onChange={(e) => patch({ url: e.currentTarget.value })}
+                                onValueChange={(url) => patch({ url })}
                             />
                         </Field>
                     )}

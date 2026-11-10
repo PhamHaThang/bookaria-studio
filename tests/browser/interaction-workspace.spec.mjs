@@ -936,6 +936,9 @@ test('canvas undo shortcuts use page history for valid workflows and keep unfini
         page.getByRole('button', { name: 'Xóa luồng “Chạm để khám phá”', exact: true }),
     ).toBeVisible();
     await page.getByRole('button', { name: /Chạm để khám phá Khi chạm/ }).click();
+    // Restoring the inspector can resize/pan the viewport. Fit the restored flow
+    // before sampling a wire's screen coordinates for the physical pointer click.
+    await page.getByRole('button', { name: 'Vừa toàn bộ luồng', exact: true }).click();
     const point = await page
         .locator('.react-flow__edge-interaction')
         .first()

@@ -4,6 +4,7 @@ import {
     useCallback,
     useEffect,
     useImperativeHandle,
+    useLayoutEffect,
     useMemo,
     useRef,
     useState,
@@ -24,6 +25,7 @@ import {
     WorkflowVariablesSchema,
 } from '@/shared/contracts/scene.schema';
 import type { InteractionStepEvent } from '@/shared/scene-runtime/InteractionRunner';
+import { BufferedInput } from '@/shared/ui/BufferedTextInput';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Button } from '@/shared/ui/primitives/button';
@@ -36,7 +38,6 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
 import { Separator } from '@/shared/ui/primitives/separator';
 import { Switch } from '@/shared/ui/primitives/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
@@ -378,7 +379,7 @@ export function InteractionEditor({
     } | null>(null);
     const history = useRef<{ past: Draft[]; future: Draft[] }>({ past: [], future: [] });
     const [movingNode, setMovingNode] = useState(false);
-    const result = draft ? compile(draft, scene) : null;
+    const result = useMemo(() => (draft ? compile(draft, scene) : null), [draft, scene]);
     const invalid = !!result?.error;
     const blocked = disabled || !!test;
     const emitted = useRef<string | null>(null);
@@ -391,13 +392,13 @@ export function InteractionEditor({
             });
         restoreNotice.current = true;
     }, [key, scene]);
-    useEffect(() => {
+    useLayoutEffect(() => {
         onDirtyChange(invalid || memoryDirty);
     }, [invalid, memoryDirty, onDirtyChange]);
     useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
     useEffect(() => {
-        if (!draft || disabled || movingNode) return;
-        const next = compile(draft, scene);
+        if (!draft || !result || disabled || movingNode) return;
+        const next = result;
         if (previousRules.current !== scene.interactions) {
             previousRules.current = scene.interactions;
             const external = scene.interactions.find((rule) => rule.id === draft.rule.id);
@@ -446,7 +447,7 @@ export function InteractionEditor({
                 /* Keep the in-memory draft if storage is unavailable. */
             }
         }
-    }, [draft, scene, disabled, movingNode, onChange, key]);
+    }, [draft, scene, disabled, movingNode, onChange, key, result]);
     const commit = useCallback(
         (next: Draft, record = true) => {
             if (disabled) return;
@@ -1222,18 +1223,16 @@ export function InteractionEditor({
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                         <div className="flex min-h-15 shrink-0 items-center gap-2 border-border border-b px-4 py-2.5">
                             {draft ? (
-                                <Input
+                                <BufferedInput
+                                    key={draft.rule.id}
                                     aria-label="Tên luồng tương tác"
                                     value={draft.rule.name || ''}
                                     maxLength={100}
                                     className="min-w-24 max-w-64 flex-1"
                                     disabled={blocked}
                                     placeholder="Đặt tên luồng"
-                                    onChange={(event) =>
-                                        commit({
-                                            ...draft,
-                                            rule: { ...draft.rule, name: event.target.value },
-                                        })
+                                    onValueChange={(name) =>
+                                        commit({ ...draft, rule: { ...draft.rule, name } })
                                     }
                                 />
                             ) : (

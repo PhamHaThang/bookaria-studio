@@ -94,9 +94,11 @@ export function NumericField({
                     ? Number(normalized)
                     : Number.NaN;
                 const next = parsed / displayFactor;
-                emitted.current = next;
                 setText(raw);
-                onChange(next);
+                if (!Object.is(next, emitted.current)) {
+                    emitted.current = next;
+                    onChange(next);
+                }
             }}
         />
     );

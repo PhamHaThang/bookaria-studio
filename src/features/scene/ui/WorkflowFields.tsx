@@ -3,11 +3,11 @@ import { type ReactNode, useId } from 'react';
 import type { AssetRef } from '@/shared/contracts/asset.schema';
 import type { BookDetail } from '@/shared/contracts/dto.schema';
 import type { Action, Scene, Trigger, WorkflowCondition } from '@/shared/contracts/scene.schema';
+import { BufferedInput, BufferedTextarea } from '@/shared/ui/BufferedTextInput';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Button } from '@/shared/ui/primitives/button';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { Textarea } from '@/shared/ui/primitives/textarea';
 import { objectName } from '../model/interaction-templates';
 import { targetObjects, triggerLabels } from '../model/interactions';
 import {
@@ -646,31 +646,29 @@ export function WorkflowActionFields({
             <FieldGroup className="gap-5">
                 <Field>
                     <FieldLabel htmlFor={`${id}-question`}>Nội dung câu hỏi</FieldLabel>
-                    <Textarea
+                    <BufferedTextarea
                         id={`${id}-question`}
                         aria-label="Nội dung câu hỏi"
                         value={question.title}
                         disabled={disabled}
                         maxLength={500}
-                        onChange={(event) => patch({ title: event.target.value })}
+                        onValueChange={(title) => patch({ title })}
                     />
                 </Field>
                 {question.choices.map((choice, index) => (
                     <Field key={choice.id}>
                         <FieldLabel htmlFor={`${id}-${choice.id}`}>Đáp án {index + 1}</FieldLabel>
                         <div className="flex items-center gap-2">
-                            <Input
+                            <BufferedInput
                                 id={`${id}-${choice.id}`}
                                 className="mt-0 min-w-0 flex-1"
                                 value={choice.text}
                                 disabled={disabled}
                                 maxLength={200}
-                                onChange={(event) =>
+                                onValueChange={(text) =>
                                     patch({
                                         choices: question.choices.map((item) =>
-                                            item.id === choice.id
-                                                ? { ...item, text: event.target.value }
-                                                : item,
+                                            item.id === choice.id ? { ...item, text } : item,
                                         ),
                                     })
                                 }
@@ -787,19 +785,16 @@ export function WorkflowActionFields({
                 )}
                 {action.navigation.target === 'end' && (
                     <Row label="Lời kết">
-                        <Textarea
+                        <BufferedTextarea
                             aria-label="Lời kết trải nghiệm"
                             value={action.navigation.message || ''}
                             disabled={disabled}
                             placeholder="Bạn đã hoàn thành chuyến khám phá!"
                             maxLength={500}
-                            onChange={(event) =>
+                            onValueChange={(message) =>
                                 onChange({
                                     ...action,
-                                    navigation: {
-                                        ...action.navigation,
-                                        message: event.target.value,
-                                    },
+                                    navigation: { ...action.navigation, message },
                                 })
                             }
                         />

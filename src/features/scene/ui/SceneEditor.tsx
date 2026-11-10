@@ -10,7 +10,7 @@ import {
     Share2,
     Upload,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { pageWidthMm } from '@/shared/contracts/marker.schema';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
@@ -268,8 +268,8 @@ function SceneEditorContent({
     function runOutsideSettings(action: () => void) {
         if (panel === 'interactions' && interactionEditor.current)
             interactionEditor.current.confirmLeave(action);
-        else if (panel === 'settings' && settingsDirty)
-            settingsEditor.current?.confirmLeave(action);
+        else if (panel === 'settings' && settingsEditor.current)
+            settingsEditor.current.confirmLeave(action);
         else action();
     }
     const previewView = useRef<PreviewView | undefined>(undefined);
@@ -349,7 +349,7 @@ function SceneEditorContent({
         else select();
     }
     const sceneAssets = useSceneAssets(editor.draft, { ...page.assets, ...assets });
-    const validation = SceneSchema.safeParse(editor.draft);
+    const validation = useMemo(() => SceneSchema.safeParse(editor.draft), [editor.draft]);
     const validationIssue = validation.success ? undefined : validation.error.issues[0];
     const invalidObjectIndex =
         validationIssue?.path[0] === 'objects' && typeof validationIssue.path[1] === 'number'
@@ -446,7 +446,9 @@ function SceneEditorContent({
             editor.uncertain
         )
             return false;
-        if (settingsDirty && (!settingsEditor.current || !(await settingsEditor.current.save()))) {
+        // The field may have flushed in this same key/pointer event. Read the
+        // settings editor directly instead of waiting for its dirty notification.
+        if (settingsEditor.current && !(await settingsEditor.current.save())) {
             setPanel('settings');
             return false;
         }
