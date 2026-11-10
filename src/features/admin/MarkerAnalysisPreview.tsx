@@ -1,14 +1,15 @@
 import { Minus, Plus, RotateCcw } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
-import type { MarkerTestResult } from '@/shared/contracts/api/admin.schema';
+import type { MarkerImagePreview } from '@/shared/contracts/marker-analysis.schema';
 import { Button } from '@/shared/ui/primitives/button';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
 
-export function MarkerAnalysisPreview({ result }: { result: MarkerTestResult }) {
+export function MarkerAnalysisPreview({ result }: { result: MarkerImagePreview }) {
     const [mode, setMode] = useState('features'),
         [view, setView] = useState({ zoom: 1, x: 0, y: 0 });
     const drag = useRef<{ id: number; x: number; y: number } | null>(null);
     const { width, height } = result;
+    const grid = Math.sqrt(result.cells.length);
     const layer = useMemo(
         () =>
             mode === 'features'
@@ -17,23 +18,23 @@ export function MarkerAnalysisPreview({ result }: { result: MarkerTestResult }) 
                           key={`${point.x}:${point.y}`}
                           cx={point.x}
                           cy={point.y}
-                          r={Math.max(width, height) / 280}
-                          fill="var(--status-success-text)"
-                          stroke="white"
-                          strokeWidth={Math.max(width, height) / 900}
+                          r={2 ** (point.scale / 2)}
+                          fill="none"
+                          stroke="red"
+                          strokeWidth="1"
                       />
                   ))
                 : mode === 'coverage'
                   ? result.cells.map((count, index) => {
-                        const x = ((index % 4) * width) / 4,
-                            y = (Math.floor(index / 4) * height) / 4;
+                        const x = ((index % grid) * width) / grid,
+                            y = (Math.floor(index / grid) * height) / grid;
                         return (
                             <g key={`${x}:${y}`}>
                                 <rect
                                     x={x}
                                     y={y}
-                                    width={width / 4}
-                                    height={height / 4}
+                                    width={width / grid}
+                                    height={height / grid}
                                     fill={
                                         count
                                             ? 'var(--status-success-text)'
@@ -44,8 +45,8 @@ export function MarkerAnalysisPreview({ result }: { result: MarkerTestResult }) 
                                     strokeWidth={Math.max(width, height) / 600}
                                 />
                                 <rect
-                                    x={x + width / 8 - 22}
-                                    y={y + height / 8 - 15}
+                                    x={x + width / (grid * 2) - 22}
+                                    y={y + height / (grid * 2) - 15}
                                     width="44"
                                     height="30"
                                     rx="6"
@@ -53,8 +54,8 @@ export function MarkerAnalysisPreview({ result }: { result: MarkerTestResult }) 
                                     fillOpacity=".95"
                                 />
                                 <text
-                                    x={x + width / 8}
-                                    y={y + height / 8 + 1}
+                                    x={x + width / (grid * 2)}
+                                    y={y + height / (grid * 2) + 1}
                                     dominantBaseline="middle"
                                     textAnchor="middle"
                                     fontSize="20"
@@ -66,7 +67,7 @@ export function MarkerAnalysisPreview({ result }: { result: MarkerTestResult }) 
                         );
                     })
                   : null,
-        [result, mode, width, height],
+        [result, mode, width, height, grid],
     );
     const zoom = (delta: number) =>
         setView((v) => ({ ...v, zoom: Math.max(0.5, Math.min(3, v.zoom + delta)) }));
@@ -83,7 +84,9 @@ export function MarkerAnalysisPreview({ result }: { result: MarkerTestResult }) 
                 >
                     <ToggleGroupItem value="original">Ảnh gốc</ToggleGroupItem>
                     <ToggleGroupItem value="features">Điểm đặc trưng</ToggleGroupItem>
-                    <ToggleGroupItem value="coverage">Phân bố 4 × 4</ToggleGroupItem>
+                    <ToggleGroupItem value="coverage">
+                        Phân bố {grid} × {grid}
+                    </ToggleGroupItem>
                 </ToggleGroup>
                 <div className="flex items-center gap-1">
                     <Button
@@ -162,7 +165,7 @@ export function MarkerAnalysisPreview({ result }: { result: MarkerTestResult }) 
             <div className="flex flex-wrap justify-between gap-2 text-muted-foreground text-xs">
                 <span>
                     {mode === 'features'
-                        ? 'Chấm xanh là điểm đặc trưng được phát hiện.'
+                        ? 'Vòng tròn đỏ là điểm đặc trưng được phát hiện.'
                         : mode === 'coverage'
                           ? 'Ô đỏ chưa có điểm; số trong ô là số điểm đặc trưng.'
                           : 'Ảnh đã xoay đúng chiều và đặt trên nền trắng.'}

@@ -34,16 +34,14 @@ export function PublicHeader() {
     }, []);
 
     return (
-        <header className="site-header sticky top-0 z-20 bg-surface">
-            <div className="mx-auto grid min-h-17 max-w-[1328px] grid-cols-[auto_1fr_auto] items-center gap-6 px-6 max-sm:grid-cols-[1fr_auto] max-sm:gap-x-4 max-sm:gap-y-0 max-sm:py-3 sm:px-6">
+        <header className="site-header sticky top-3 z-20 mx-auto mt-3 w-[calc(100%-48px)] max-w-[1280px] rounded-[var(--radius-nav)] bg-surface shadow-[var(--shadow-header)] supports-[backdrop-filter]:bg-[var(--bg-header-glass)] supports-[backdrop-filter]:backdrop-blur-[12px] max-sm:top-2 max-sm:mt-2 max-sm:w-[calc(100%-16px)]">
+            <div className="mx-auto grid min-h-16 grid-cols-[auto_1fr_auto] items-center gap-6 px-6 max-sm:grid-cols-[1fr_auto] max-sm:gap-x-4 max-sm:gap-y-0 max-sm:px-3 max-sm:py-3 sm:px-6">
                 <Link
                     to="/"
                     aria-label="Bookaria - Trang chủ"
-                    className={bookariaLogoLinkStyles(
-                        'inline-flex rounded-md [&_.bookaria-logo]:w-36',
-                    )}
+                    className={bookariaLogoLinkStyles('inline-flex rounded-md')}
                 >
-                    <BookariaLogo />
+                    <BookariaLogo className="w-36 max-sm:w-24 max-[360px]:w-20" />
                 </Link>
                 <NavigationMenu
                     viewport={false}
@@ -58,7 +56,11 @@ export function PublicHeader() {
                                     : pathname === to || pathname.startsWith(`${to}/`);
                             return (
                                 <NavigationMenuItem key={to}>
-                                    <NavigationMenuLink active={active} asChild>
+                                    <NavigationMenuLink
+                                        active={active}
+                                        className="max-sm:px-2"
+                                        asChild
+                                    >
                                         <Link to={to} aria-current={active ? 'page' : undefined}>
                                             {label}
                                         </Link>
@@ -68,12 +70,12 @@ export function PublicHeader() {
                         })}
                     </NavigationMenuList>
                 </NavigationMenu>
-                <div className="flex items-center justify-end gap-3">
+                <div className="flex items-center justify-end gap-3 max-sm:gap-1 [&_[data-slot=button]]:whitespace-nowrap">
                     {signedIn ? (
                         <HeaderAccountActions />
                     ) : (
                         <>
-                            <Button variant="outline" size="sm" asChild>
+                            <Button variant="ghost" size="sm" asChild>
                                 <AuthDialogLink mode="login">Đăng nhập</AuthDialogLink>
                             </Button>
                             <Button variant="default" size="sm" asChild>

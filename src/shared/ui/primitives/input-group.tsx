@@ -13,7 +13,7 @@ function InputGroup({ className, ...props }: React.ComponentProps<'div'>) {
         <div
             data-slot="input-group"
             className={cn(
-                'group/input-group relative flex min-h-[var(--control-height)] w-full min-w-0 items-center rounded-[var(--radius-control)] border border-input bg-surface outline-none transition-colors hover:border-[var(--border-input-hover)] has-[>textarea]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:flex-col has-[>[data-align=block-end]]:rounded-xl has-[>[data-align=block-start]]:rounded-xl has-[>textarea]:rounded-xl has-[[data-slot=input-group-control]:focus-visible]:border-primary has-[[data-slot][aria-invalid=true]]:border-danger-foreground has-disabled:bg-surface has-[[data-slot=input-group-control]:focus-visible]:ring-1 has-[[data-slot=input-group-control]:focus-visible]:ring-primary has-[[data-slot][aria-invalid=true]]:ring-danger-foreground has-[[data-slot=input-group-control]:focus-visible]:ring-inset has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5',
+                'group/input-group relative flex min-h-[var(--control-height)] w-full min-w-0 items-center rounded-[var(--radius-control)] border border-input bg-surface outline-none transition-colors not-has-disabled:hover:border-[var(--border-input-hover)] has-[>textarea]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:flex-col has-[>[data-align=block-end]]:rounded-xl has-[>[data-align=block-start]]:rounded-xl has-[>textarea]:rounded-xl has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot][aria-invalid=true]]:border-danger-foreground has-disabled:bg-muted has-disabled:opacity-[var(--opacity-disabled)] has-[[data-slot=input-group-control]:focus-visible]:ring-1 has-[[data-slot=input-group-control]:focus-visible]:ring-ring has-[[data-slot][aria-invalid=true]]:ring-danger-foreground has-[[data-slot=input-group-control]:focus-visible]:ring-inset has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5',
                 className,
             )}
             {...props}
@@ -22,7 +22,7 @@ function InputGroup({ className, ...props }: React.ComponentProps<'div'>) {
 }
 
 const inputGroupAddonVariants = cva(
-    "flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 [&>kbd]:rounded-[var(--radius-sm)] [&>svg:not([class*='size-'])]:size-4",
+    "flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground select-none [&>kbd]:rounded-[var(--radius-sm)] [&>svg:not([class*='size-'])]:size-4",
     {
         variants: {
             align: {
@@ -106,7 +106,7 @@ function InputGroupInput({ className, ...props }: React.ComponentProps<'input'>)
         <Input
             data-slot="input-group-control"
             className={cn(
-                'm-0 h-[calc(var(--control-height)-2px)] min-h-0 flex-1 rounded-none border-0 bg-transparent shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0',
+                'm-0 h-[calc(var(--control-height)-2px)] min-h-0 flex-1 rounded-none border-0 bg-transparent shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100 aria-invalid:ring-0',
                 className,
             )}
             {...props}
@@ -119,7 +119,7 @@ function InputGroupTextarea({ className, ...props }: React.ComponentProps<'texta
         <Textarea
             data-slot="input-group-control"
             className={cn(
-                'm-0 flex-1 resize-none rounded-none border-0 bg-transparent py-2 shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0',
+                'm-0 flex-1 resize-none rounded-none border-0 bg-transparent py-2 shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100 aria-invalid:ring-0',
                 className,
             )}
             {...props}

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { assetsApi } from '../features/assets';
 import { uploadFile } from '../features/assets/api/upload-file';
@@ -11,6 +11,7 @@ import { bookKeys, booksApi } from '../features/books';
 import { pageKeys, pagesApi } from '../features/pages';
 import { compileMarker } from '../features/pages/api/compile-marker';
 import { type MindCheckpoint, prepareMarkerUpload } from '../features/pages/model/marker-upload';
+import { pageAfterRemoval } from '../features/pages/model/page-after-removal';
 import { ArMarkerDialog } from '../features/pages/ui/ArMarkerDialog';
 import type { ImageAttachmentContext } from '../features/pages/ui/PageImageForm';
 import { SceneEditor } from '../features/scene';
@@ -30,6 +31,14 @@ function PageEditor({ page, book }: { page: Page; book: BookDetail }) {
     const [markerOpen, setMarkerOpen] = useState(false),
         [markerBusy, setMarkerBusy] = useState(false),
         [sceneBusy, setSceneBusy] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+    useEffect(() => {
+        if (searchParams.get('marker') !== '1') return;
+        setMarkerOpen(true);
+        const next = new URLSearchParams(searchParams);
+        next.delete('marker');
+        setSearchParams(next, { replace: true });
+    }, [searchParams, setSearchParams]);
     const [jobId, setJobId] = useState<string | null>(null);
     const checkpoint = useRef<MindCheckpoint | null>(null);
     useEffect(() => {
@@ -178,6 +187,7 @@ function PageDetailContent({ bookId, pageId }: { bookId: string; pageId: string 
         navigate = useNavigate();
     const page = store.getPage(pageId);
     const summaries = state.working?.pages || [];
+    const previousPages = useRef(summaries);
     const exists = summaries.some((item) => item.id === pageId);
     const book = useQuery({
         queryKey: bookKeys.detail(user?.id || '', bookId),
@@ -191,12 +201,16 @@ function PageDetailContent({ bookId, pageId }: { bookId: string; pageId: string 
         retry: false,
         refetchOnWindowFocus: false,
     });
-    const firstPageId = summaries[0]?.id;
     useEffect(() => {
         store.activate(pageId);
-        if (!exists && firstPageId)
-            navigate(`/books/${bookId}/pages/${firstPageId}`, { replace: true });
-    }, [store, pageId, exists, firstPageId, bookId, navigate]);
+        if (!exists) {
+            const nextId = pageAfterRemoval(previousPages.current, summaries, pageId);
+            navigate(nextId ? `/books/${bookId}/pages/${nextId}` : `/books/${bookId}/edit`, {
+                replace: true,
+            });
+        }
+        previousPages.current = summaries;
+    }, [store, pageId, exists, summaries, bookId, navigate]);
     const problem = (!book.data && book.error) || (!page && detail.error);
     if (problem)
         return (
@@ -214,7 +228,7 @@ function PageDetailContent({ bookId, pageId }: { bookId: string; pageId: string 
                 <Link to="/books">Về Studio</Link>
             </div>
         );
-    if (!book.data || (exists && !page))
+    if (!book.data || (!page && summaries.length > 0))
         return <LoadingScreen fullScreen message="Đang tải trang sách…" />;
     if (!book.data) return null;
     const currentBook = {

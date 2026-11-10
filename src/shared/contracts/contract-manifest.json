@@ -10,14 +10,15 @@
     "api/me.schema.ts": "09443bfa6b7363c9f115ab9fa04acdd7176a8190dc395ae4831cdb55bf43cfe6",
     "api/pages.schema.ts": "56849a3a39b9dbe3d41b0bb18dabfa8e15aa101e38f3d141d4c3ea1a685c78d0",
     "api/public.schema.ts": "3e54283b87a2b60b31ab2faf9352f5d11bf2f14cf4641a51dc71e9d7178cafa6",
-    "api/publish.schema.ts": "3877a5fc70f596fb9ddcb2b218bc450fd98f264556b3482179648b4252bc90ee",
+    "api/publish.schema.ts": "3b220411b623d845da3ceabd494fae609f4fce0b4a7e534b0c70a33a8b9f91e5",
     "asset.schema.ts": "ada6c40629cba82f6efc08fac2042fed3c6f77664fa40b22caa01a4729a08b37",
     "common.schema.ts": "41d88395a2f9e44b909dba8b8ca0e4b557dc439ba2527912b91a7849e6fbcd3d",
-    "dto.schema.ts": "49cf8564170f7f68d66292227989ddf58d56381e3cc983e72fd3f073957a0c7e",
+    "dto.schema.ts": "c4d93af0382c0a9570da19a533da9dc8a47fd1d2617dba87df074479ccdc4810",
     "enums.schema.ts": "735aab626ffdd48416de58e8e6a161683bb9a744a5f162e3b3351eff36640452",
     "error.schema.ts": "da9a1ab3c8a3a8de6ce67c5b23bb905b0011e6376d368085a7eabd15b9299c9e",
     "manifest.schema.ts": "4110bf4f041c72310bbb40bf29c1402c173062640a5d944dfbc997a63c529611",
-    "marker.schema.ts": "3cbc07a8b53b5da890433e5f2fc7a3762a87799804e5ab46cfc428f09be4afd5",
+    "marker-analysis.schema.ts": "8e2bdcdd3753349c5b386fee0b2d2bb676a7f4e707e9ad809aa5d8fa46b6a685",
+    "marker.schema.ts": "c029bfd3c9311657c118d052c7ab9a84a4bcc46dedf2e556e860b4de3fed88fd",
     "routes.schema.ts": "7a8f289172c116d04eed63046ec983be03905655c9e24c8fb545e97dd868b131",
     "scene.schema.ts": "9be63b29dce2c755816bbee9f0fdec3af28dc95c02b11b2a10add1e76e736c2e"
   }

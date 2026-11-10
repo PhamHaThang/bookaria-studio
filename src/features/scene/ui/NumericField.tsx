@@ -7,7 +7,7 @@ import { Input } from '@/shared/ui/primitives/input';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/shared/ui/primitives/input-group';
 
 type Axis = 'X' | 'Y' | 'Z';
-const axisColor = { X: 'text-[#ba2548]', Y: 'text-[#167142]', Z: 'text-[#215dd0]' };
+const axisColor = { X: 'text-axis-x', Y: 'text-axis-y', Z: 'text-axis-z' };
 
 function compactNumber(value: number) {
     if (!Number.isFinite(value)) return '';

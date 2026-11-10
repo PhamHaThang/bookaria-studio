@@ -161,3 +161,68 @@ test('canceling before work prevents requests, and canceling before attachment p
         false,
     );
 });
+
+test('cover preparation signs and transfers the optimized file, not the original PNG', async () => {
+    const optimized = new File(['jpg'], 'cover.jpg', { type: 'image/jpeg' });
+    const prepared = [];
+    let transferred;
+    const f = fixture({
+        prepareFile: async (file) => {
+            prepared.push(file);
+            return optimized;
+        },
+        onPreparing: () => prepared.push('preparing'),
+        transfer: async (_signature, file) => {
+            transferred = file;
+        },
+    });
+    await saveUploadedImage(f.options);
+    assert.deepEqual(prepared, ['preparing', f.options.file]);
+    assert.equal(f.calls[0][1].fileName, optimized.name);
+    assert.equal(f.calls[0][1].mimeType, 'image/jpeg');
+    assert.equal(f.calls[0][1].sizeBytes, optimized.size);
+    assert.equal(transferred, optimized);
+    assert.deepEqual(f.calls.at(-1), ['save', id]);
+});
+
+test('retrying an uploaded cover or attaching a ready asset skips image preparation', async () => {
+    const f = fixture({
+        prepareFile: async () => {
+            throw new Error('must not prepare again');
+        },
+        checkpoint: { signature, uploaded: true },
+    });
+    await saveUploadedImage(f.options);
+    assert.deepEqual(
+        f.calls.map((call) => call[0]),
+        ['complete', 'save'],
+    );
+    const g = fixture({
+        prepareFile: async () => {
+            throw new Error('must not prepare a ready asset');
+        },
+        readyAsset: asset,
+    });
+    await saveUploadedImage(g.options);
+    assert.deepEqual(g.calls, [['save', id]]);
+});
+
+test('a cover preparation error or cancellation sends no upload requests', async () => {
+    const f = fixture({
+        prepareFile: async () => {
+            throw new Error('bad image');
+        },
+    });
+    await assert.rejects(saveUploadedImage(f.options), /bad image/);
+    assert.deepEqual(f.calls, []);
+    const active = new AbortController();
+    const g = fixture({
+        signal: active.signal,
+        prepareFile: async (file) => {
+            active.abort();
+            return file;
+        },
+    });
+    await assert.rejects(saveUploadedImage(g.options));
+    assert.deepEqual(g.calls, []);
+});

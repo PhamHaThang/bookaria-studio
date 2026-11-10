@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Image, ImageOff, QrCode, RotateCcw, Scan, Star, X } from 'lucide-react';
+import { Image, ImageOff, QrCode, RotateCcw, Scan, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ContractError } from '@/shared/api/contract';
@@ -35,6 +35,7 @@ import { compileMarker } from '../api/compile-marker';
 import { type MindCheckpoint, prepareMarkerUpload } from '../model/marker-upload';
 import { pageKeys, pagesApi } from '../model/pages';
 import { placementFromForm } from '../model/placement';
+import { MarkerMetrics } from './MarkerMetrics';
 import { MarkerPlacementPreview } from './MarkerPlacementPreview';
 
 const options = [
@@ -261,13 +262,13 @@ export function ArMarkerDialog({
         >
             <DialogContent
                 showCloseButton={false}
-                className="h-[min(820px,calc(100dvh-48px))] max-w-[min(1280px,calc(100vw-48px))] grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0"
+                className="h-[min(880px,calc(100dvh-32px))] max-w-[min(1440px,calc(100vw-32px))] grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0"
                 onEscapeKeyDown={(event) => {
                     if (busy) event.preventDefault();
                 }}
                 onInteractOutside={(event) => event.preventDefault()}
             >
-                <DialogHeader className="relative gap-2 border-border border-b p-6 pr-16">
+                <DialogHeader className="relative gap-1 border-border border-b px-6 py-4 pr-16">
                     <DialogTitle className="m-0 flex items-center gap-3">
                         <QrCode className="size-6 shrink-0" aria-hidden="true" />
                         Thiết lập AR Marker
@@ -278,7 +279,7 @@ export function ArMarkerDialog({
                     <IconButton
                         variant="ghost"
                         size="icon-sm"
-                        className="absolute top-5 right-5"
+                        className="absolute top-4 right-4"
                         aria-label="Đóng thiết lập AR Marker"
                         disabled={busy}
                         onClick={onClose}
@@ -307,7 +308,7 @@ export function ArMarkerDialog({
                         <TabsList
                             variant="navigation"
                             aria-label="Cách nhận diện AR"
-                            className="w-52 shrink-0 justify-start self-stretch rounded-none border-border border-r px-3 py-5"
+                            className="w-48 shrink-0 justify-start self-stretch rounded-none border-border border-r px-3 py-4"
                         >
                             {options.map(({ value, label, description, icon: Icon }) => (
                                 <TabsTrigger
@@ -326,7 +327,7 @@ export function ArMarkerDialog({
                                 </TabsTrigger>
                             ))}
                         </TabsList>
-                        <div className="min-h-0 min-w-0 flex-1 overflow-hidden p-6">
+                        <div className="min-h-0 min-w-0 flex-1 overflow-hidden p-5">
                             <fieldset
                                 disabled={busy || disabled || scoring}
                                 className="m-0 h-full min-h-0 min-w-0 border-0 p-0"
@@ -488,18 +489,18 @@ export function ArMarkerDialog({
                                 </TabsContent>
                                 <TabsContent
                                     value="CUSTOM_MARKER"
-                                    className="m-0 flex h-full min-h-0 flex-col gap-5"
+                                    className="m-0 flex h-full min-h-0 flex-col gap-4"
                                 >
-                                    <div className="flex flex-col gap-2">
+                                    <div className="flex shrink-0 flex-col gap-1">
                                         <h3 className="m-0 font-semibold text-base">
                                             Nhận diện bằng ảnh trang
                                         </h3>
                                         <p className="m-0 text-muted-foreground text-sm">
-                                            Người đọc quét trực tiếp ảnh trong sách để mở nội dung
-                                            AR, không cần thêm marker vào bản in.
+                                            Quét ảnh trang để mở nội dung AR, không cần thêm marker
+                                            vào bản in.
                                         </p>
                                     </div>
-                                    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_264px] gap-6">
+                                    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_320px] gap-5">
                                         <figure className="m-0 flex min-h-0 min-w-0 flex-col gap-3">
                                             <img
                                                 src={
@@ -515,43 +516,38 @@ export function ArMarkerDialog({
                                                 className="min-h-0 w-full flex-1 rounded-lg border border-border object-contain p-5"
                                             />
                                             <figcaption className="text-muted-foreground text-xs">
-                                                Ảnh trang hiện tại · {page.image.width} ×{' '}
-                                                {page.image.height} px
+                                                Ảnh nền hiện tại · {page.image.width} ×{' '}
+                                                {page.image.height} px. Đổi ảnh trong Thiết lập
+                                                trang.
                                             </figcaption>
                                         </figure>
-                                        <div className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overscroll-contain pr-1">
-                                            <p className="m-0 text-sm">
-                                                Bookaria dùng chính ảnh nền của trang. Để dùng ảnh
-                                                khác, đổi ảnh nền trong Thiết lập trang.
-                                            </p>
-                                            <p className="m-0 text-muted-foreground text-sm">
-                                                Chọn ảnh nhiều chi tiết, tương phản rõ và ít họa
-                                                tiết lặp để dễ quét.
-                                            </p>
+                                        <section
+                                            aria-label="Đánh giá ảnh nhận diện"
+                                            className="m-0 flex min-h-0 min-w-0 flex-col overflow-y-auto overscroll-contain border-0 p-0 pr-1"
+                                        >
                                             {page.markerMode === 'CUSTOM_MARKER' && (
-                                                <div className="flex flex-col gap-2">
-                                                    <div
-                                                        className="flex items-center gap-1"
-                                                        role="img"
-                                                        aria-label={`Chất lượng nhận diện ${page.markerScore ?? 0} trên 5 sao`}
-                                                    >
-                                                        {[1, 2, 3, 4, 5].map((star) => (
-                                                            <Star
-                                                                key={star}
-                                                                className={
-                                                                    star <= (page.markerScore ?? 0)
-                                                                        ? 'size-4 fill-current'
-                                                                        : 'size-4 text-muted-foreground'
-                                                                }
-                                                                aria-hidden="true"
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                    <p className="m-0 text-sm">
-                                                        {page.markerScore == null
-                                                            ? 'Chưa có đánh giá.'
-                                                            : `${page.markerScore}/5 sao · Cần tối thiểu ${MARKER_RULES.minPublishScore} sao để xuất bản.`}
-                                                    </p>
+                                                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 [&>dl]:col-span-2 [&>p]:col-span-2">
+                                                    {page.markerReport &&
+                                                        !page.markerReport.source && (
+                                                            <p
+                                                                role="status"
+                                                                className="m-0 text-muted-foreground text-xs leading-5"
+                                                            >
+                                                                Báo cáo cũ. Đánh giá lại trước khi
+                                                                xuất bản.
+                                                            </p>
+                                                        )}
+                                                    {page.markerReport?.analysis ? (
+                                                        <MarkerMetrics
+                                                            analysis={page.markerReport.analysis}
+                                                            compact
+                                                        />
+                                                    ) : (
+                                                        <p className="m-0 text-sm">
+                                                            Phân tích lại để xem ba tiêu chí của
+                                                            ảnh.
+                                                        </p>
+                                                    )}
                                                     {page.markerReport && (
                                                         <>
                                                             <p className="m-0 text-muted-foreground text-xs">
@@ -585,6 +581,7 @@ export function ArMarkerDialog({
                                                                     type="button"
                                                                     variant="default"
                                                                     size="sm"
+                                                                    className="whitespace-nowrap"
                                                                     onClick={() =>
                                                                         setHeatmap(
                                                                             (value) => !value,
@@ -602,6 +599,11 @@ export function ArMarkerDialog({
                                                         type="button"
                                                         variant="outline"
                                                         size="sm"
+                                                        className={
+                                                            !page.markerReport?.heatmapUrl
+                                                                ? 'col-span-2 whitespace-nowrap'
+                                                                : 'whitespace-nowrap'
+                                                        }
                                                         onClick={() =>
                                                             void run(async () => {
                                                                 setStage('Đang gửi đánh giá lại…');
@@ -621,7 +623,7 @@ export function ArMarkerDialog({
                                                     </Button>
                                                 </div>
                                             )}
-                                        </div>
+                                        </section>
                                     </div>
                                 </TabsContent>
                                 <TabsContent

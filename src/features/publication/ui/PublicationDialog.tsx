@@ -21,7 +21,6 @@ import { apiClient } from '@/shared/api/client';
 import { errorMessage } from '@/shared/api/errors';
 import type { PublishCheck } from '@/shared/contracts/api/publish.schema';
 import type { BookDetail } from '@/shared/contracts/dto.schema';
-import { MARKER_RULES } from '@/shared/contracts/marker.schema';
 import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
 import { BookCoverImage } from '@/shared/ui/BookCoverImage';
@@ -292,7 +291,7 @@ export function PublicationDialog({
                                 {issues.map((item) => {
                                     const message =
                                         item.code === 'PAGE_LOW_SCORE'
-                                            ? `Ảnh nhận diện cần đạt ít nhất ${MARKER_RULES.minPublishScore} sao để xuất bản.`
+                                            ? 'Báo cáo marker cũ. Mở AR Marker và chọn Đánh giá lại.'
                                             : item.message.replace(/^Trang \d+\s*[:·]?\s*/u, '');
                                     return (
                                         <li
@@ -309,9 +308,23 @@ export function PublicationDialog({
                                                     onClick={onClose}
                                                     to={`/books/${book.id}/pages/${item.otherPageId}`}
                                                 >
-                                                    Xem trang tương tự
+                                                    {item.code === 'MARKER_DUPLICATE'
+                                                        ? 'Xem trang dùng cùng marker'
+                                                        : 'Xem trang tương tự'}
                                                 </Link>
                                             )}
+                                            {(item.code.startsWith('MARKER_') ||
+                                                item.code === 'PAGE_NOT_SCORED' ||
+                                                item.code === 'PAGE_LOW_SCORE') &&
+                                                item.pageId && (
+                                                    <Link
+                                                        className="w-fit underline underline-offset-4"
+                                                        onClick={onClose}
+                                                        to={`/books/${book.id}/pages/${item.pageId}?marker=1`}
+                                                    >
+                                                        Kiểm tra AR Marker
+                                                    </Link>
+                                                )}
                                             {item.code === 'EMAIL_NOT_VERIFIED' && (
                                                 <AuthDialogLink
                                                     mode="check-email"

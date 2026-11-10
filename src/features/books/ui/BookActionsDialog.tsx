@@ -231,11 +231,11 @@ export function BookActionsDialog({
                             Đổi tên
                         </ActionButton>
                         <ActionButton
-                            variant="plain"
-                            className="flex min-h-14 items-center gap-3 rounded-[var(--radius-md)] px-3 font-semibold text-destructive text-sm hover:bg-destructive/10"
+                            variant="ghost"
+                            className="min-h-14 justify-start gap-3 px-3 text-destructive/90 hover:not-disabled:bg-destructive/5"
                             onClick={onDelete}
                         >
-                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-destructive/40">
                                 <Trash2 aria-hidden="true" />
                             </span>
                             Chuyển vào thùng rác

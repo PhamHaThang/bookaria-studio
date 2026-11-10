@@ -41,6 +41,7 @@ export function PageStrip({
     dirty,
     onBusyChange,
     onDraftChange,
+    onAddingChange,
 }: {
     requestAction: (label: string, action: () => void, returnFocus?: HTMLElement | null) => void;
     book: BookDetail;
@@ -49,6 +50,7 @@ export function PageStrip({
     dirty: boolean;
     onBusyChange: (busy: boolean) => void;
     onDraftChange: (dirty: boolean) => void;
+    onAddingChange?: (adding: boolean) => void;
 }) {
     const { user } = useAuth();
     const bookDraft = useOptionalBookDraft();
@@ -67,6 +69,10 @@ export function PageStrip({
     const [deleting, setDeleting] = useState(false),
         [adding, setAdding] = useState(false);
     const [target, setTarget] = useState<string | null>(null);
+    useEffect(() => {
+        onAddingChange?.(adding);
+        return () => onAddingChange?.(false);
+    }, [adding, onAddingChange]);
     const currentPageLink = useRef<HTMLAnchorElement>(null);
     const pageScroll = useRef<HTMLElement>(null);
     const dragSession = useRef<{ id: string; ids: string[] } | null>(null);
@@ -345,7 +351,8 @@ export function PageStrip({
                 aria-label="Các trang trong sách"
             >
                 <section
-                    className="m-0 flex min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain border-0 p-1 [scrollbar-width:thin]"
+                    className="m-0 flex min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain border-0 p-1 [scrollbar-width:thin] [&[hidden]]:hidden"
+                    hidden={listing.data?.length === 0}
                     aria-label="Sắp xếp các trang"
                     data-page-scroll
                     ref={pageScroll}
@@ -565,7 +572,12 @@ export function PageStrip({
                 </section>
                 <Tooltip delayDuration={250}>
                     <TooltipTrigger asChild>
-                        <span className="mt-2 inline-flex shrink-0 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2">
+                        <span
+                            className={cn(
+                                'inline-flex shrink-0 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2',
+                                { 'mt-2': Boolean(listing.data?.length) },
+                            )}
+                        >
                             <ActionButton
                                 variant="plain"
                                 className="strip-add-page grid size-14 shrink-0 place-items-center rounded-xl border border-border bg-surface text-primary transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:pointer-events-none"
@@ -655,20 +667,22 @@ export function PageStrip({
                             disabled={locked}
                             onClick={() =>
                                 void run(async () => {
-                                    if (bookDraft) await bookDraft.removePage(menu.id);
-                                    else await pagesApi.remove(menu.id);
+                                    if (bookDraft) {
+                                        // The editor selects the neighbouring page when its draft changes.
+                                        await bookDraft.removePage(menu.id);
+                                        return;
+                                    }
+                                    await pagesApi.remove(menu.id);
                                     if (menu.id === pageId && currentSession()) {
                                         // Deletion is confirmed: a failed refresh must not leave the editor on a deleted page.
-                                        const remaining = bookDraft
-                                            ? bookDraft.getSnapshot().working?.pages || []
-                                            : await pagesApi.list(bookId).catch(() => null);
+                                        const remaining = await pagesApi
+                                            .list(bookId)
+                                            .catch(() => null);
                                         if (!currentSession()) return;
                                         setTarget(
                                             remaining?.[0]
                                                 ? `/books/${bookId}/pages/${remaining[0].id}`
-                                                : bookDraft
-                                                  ? `/books/${bookId}/pages/${pageId}`
-                                                  : `/books/${bookId}/edit`,
+                                                : `/books/${bookId}/edit`,
                                         );
                                     }
                                 })

@@ -32,6 +32,8 @@
     --color-card-foreground: var(--text-primary);
     --color-popover: var(--bg-surface);
     --color-popover-foreground: var(--text-primary);
+    --color-highlight: var(--action-highlight);
+    --color-highlight-foreground: var(--text-highlight);
     --color-primary: var(--action-primary);
     --color-primary-foreground: var(--text-on-primary);
     --color-primary-hover: var(--action-primary-hover);
@@ -44,6 +46,7 @@
     --color-accent-foreground: var(--action-primary);
     --color-selected: var(--bg-selected);
     --color-hover: var(--bg-hover);
+    --color-option-hover: var(--bg-option-hover);
     --color-destructive: var(--action-danger);
     --color-destructive-hover: var(--action-danger-hover);
     --color-destructive-foreground: var(--text-on-danger);
@@ -51,6 +54,9 @@
     --color-line: var(--border-default);
     --color-input: var(--border-input);
     --color-ring: var(--focus-color);
+    --color-axis-x: var(--editor-axis-x);
+    --color-axis-y: var(--editor-axis-y);
+    --color-axis-z: var(--editor-axis-z);
     --color-neutral: var(--status-neutral-bg);
     --color-neutral-foreground: var(--status-neutral-text);
     --color-success: var(--status-success-bg);

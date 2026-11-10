@@ -138,7 +138,7 @@ export function BooksPage({ trash = false }: { trash?: boolean }) {
                         ]}
                     />
                     <form
-                        className="books-toolbar mb-8 flex items-center gap-3 bg-surface py-1 max-[760px]:grid max-[760px]:grid-cols-[minmax(0,_1fr)_auto] max-[700px]:flex-wrap max-[760px]:gap-3 [&_label]:m-0 [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
+                        className="books-toolbar mb-8 flex items-center gap-3 py-1 max-[760px]:grid max-[760px]:grid-cols-[minmax(0,_1fr)_auto] max-[700px]:flex-wrap max-[760px]:gap-3 [&_label]:m-0 [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
                         onSubmit={(event) => event.preventDefault()}
                     >
                         <FieldGroup className="contents">

@@ -6,13 +6,28 @@ import { AxiosError } from 'axios';
 import { uploadRequest } from '../src/features/assets/model/form.ts';
 import { createPagesApi } from '../src/features/pages/api/pages-api.ts';
 import { prepareMarkerUpload } from '../src/features/pages/model/marker-upload.ts';
-import { movedPageIds, uncertainWrite } from '../src/features/pages/model/operations.ts';
+import {
+    markerWarningText,
+    movedPageIds,
+    uncertainWrite,
+} from '../src/features/pages/model/operations.ts';
 import { placementFromForm } from '../src/features/pages/model/placement.ts';
 import { ContractError } from '../src/shared/api/contract.ts';
 import { markerToMm } from '../src/shared/contracts/marker.schema.ts';
 
 const id = '11111111-1111-4111-8111-111111111111',
     second = '22222222-2222-4222-8222-222222222222';
+test('marker diagnostics explain required repair and quality warnings without a star gate', () => {
+    assert.match(markerWarningText('REANALYZE_REQUIRED'), /đánh giá lại/);
+    assert.match(markerWarningText('STALE_MARKER'), /thay đổi/);
+    assert.match(markerWarningText('NO_FEATURES'), /chọn ảnh khác/);
+    for (const code of ['DISTRIBUTION_LOW', 'UNIQUENESS_LOW', 'IMAGE_SMALL']) {
+        assert.doesNotMatch(
+            markerWarningText(code),
+            /5 sao|3 sao|đạt ít nhất|DISTRIBUTION|UNIQUENESS/,
+        );
+    }
+});
 const summary = {
     id,
     orderIndex: 0,

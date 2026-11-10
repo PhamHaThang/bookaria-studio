@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ImagePlus, UserRound } from 'lucide-react';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { cn } from '@/shared/lib/cn';
+import { optimizeBookCover } from '@/shared/lib/image-file';
 import { Button as PreviewButton } from '@/shared/ui/primitives/button';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -17,8 +18,9 @@ import { assetKeys, assetsApi } from '../model/assets';
 import { imageUploadRequest, saveUploadedImage } from '../model/image';
 import type { UploadCheckpoint, UploadStage } from '../model/upload';
 
-type Stage = UploadStage | 'saving';
+type Stage = UploadStage | 'preparing' | 'saving';
 const stages: Record<Stage, string> = {
+    preparing: 'Đang tối ưu ảnh bìa…',
     signing: 'Đang chuẩn bị tải ảnh…',
     uploading: 'Đang tải ảnh…',
     completing: 'Đang xác nhận ảnh…',
@@ -87,6 +89,8 @@ export function ImageUploadEditor({
                 transfer: uploadFile,
                 file,
                 purpose,
+                prepareFile: avatar ? undefined : optimizeBookCover,
+                onPreparing: () => setStage('preparing'),
                 metadata: { tags: [] },
                 signal: active.signal,
                 checkpoint,

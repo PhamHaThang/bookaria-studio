@@ -12,6 +12,10 @@
     * {
         box-sizing: border-box;
     }
+    html,
+    body {
+        overflow-x: clip;
+    }
     body {
         margin: 0;
         min-width: 320px;
@@ -136,9 +140,9 @@
         color: var(--text-placeholder);
         opacity: 1;
     }
-    input:not([type="checkbox"]):hover,
-    select:hover,
-    textarea:hover {
+    input:not([type="checkbox"]):not(:disabled):hover,
+    select:not(:disabled):hover,
+    textarea:not(:disabled):hover {
         border-color: var(--border-input-hover);
     }
     input[readonly],
@@ -194,5 +198,13 @@
 @keyframes bookaria-signal-orbit {
     to {
         transform: rotate(360deg);
+    }
+}
+
+/* Public navigation stays solid when transparency is reduced. */
+@media (prefers-reduced-transparency: reduce) {
+    .site-header {
+        background-color: var(--bg-surface);
+        backdrop-filter: none;
     }
 }
