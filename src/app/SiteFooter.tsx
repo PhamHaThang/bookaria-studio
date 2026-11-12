@@ -43,7 +43,13 @@ export function SiteFooter() {
                             to="/library"
                             className="text-on-dark-soft underline-offset-4 hover:text-on-dark hover:underline"
                         >
-                            Thư viện sách
+                            Khám phá sách
+                        </Link>
+                        <Link
+                            to="/resources"
+                            className="text-on-dark-soft underline-offset-4 hover:text-on-dark hover:underline"
+                        >
+                            Thư viện tài nguyên
                         </Link>
                         <Link
                             to="/help"

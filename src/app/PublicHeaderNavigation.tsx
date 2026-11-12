@@ -9,10 +9,25 @@ import {
     NavigationMenuList,
 } from '@/shared/ui/primitives/navigation-menu';
 
+export type PublicNavigationLink = {
+    to: string;
+    label: string;
+};
+
 type PublicHeaderNavigationProps = {
-    links: readonly { to: string; label: string }[];
+    links: readonly PublicNavigationLink[];
     activePath: string | null;
 };
+
+const linkClassName =
+    'group/public-nav relative inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-md border-b-2 border-transparent px-4 py-2 text-sm font-medium text-foreground/75 transition-colors duration-150 hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[active]:border-transparent data-[active]:text-foreground motion-reduce:transition-none max-sm:px-1.5';
+const hoverLine = (
+    <span
+        aria-hidden="true"
+        data-public-nav-hover-underline=""
+        className="pointer-events-none absolute inset-x-2 -bottom-0.5 h-0.5 rounded-full bg-foreground/30 opacity-0 group-hover/public-nav:opacity-100 group-focus-visible/public-nav:opacity-100 group-data-[active]/public-nav:opacity-0 max-sm:inset-x-1"
+    />
+);
 
 export function PublicHeaderNavigation({ links, activePath }: PublicHeaderNavigationProps) {
     const listRef = useRef<HTMLUListElement>(null);
@@ -24,7 +39,7 @@ export function PublicHeaderNavigation({ links, activePath }: PublicHeaderNaviga
         const list = listRef.current;
         const target =
             list &&
-            [...list.querySelectorAll<HTMLAnchorElement>('[data-public-nav-path]')].find(
+            [...list.querySelectorAll<HTMLElement>('[data-public-nav-path]')].find(
                 (link) => link.dataset.publicNavPath === activePath,
             );
         if (!list || !target) {
@@ -36,12 +51,8 @@ export function PublicHeaderNavigation({ links, activePath }: PublicHeaderNaviga
                 '[data-public-nav-hover-underline]',
             );
             if (!underline) return;
-            // Measure the styled line itself so hover and active share the same edges at every breakpoint.
             const rect = underline.getBoundingClientRect();
-            const next = {
-                x: rect.left - list.getBoundingClientRect().left,
-                width: rect.width,
-            };
+            const next = { x: rect.left - list.getBoundingClientRect().left, width: rect.width };
             setBounds((previous) =>
                 previous?.x === next.x && previous.width === next.width ? previous : next,
             );
@@ -57,14 +68,17 @@ export function PublicHeaderNavigation({ links, activePath }: PublicHeaderNaviga
         <NavigationMenu
             viewport={false}
             aria-label="Điều hướng chính"
-            className="justify-self-center max-lg:order-3 max-lg:col-span-full max-lg:w-full max-lg:max-w-none max-lg:pt-1"
+            className="justify-self-center max-lg:order-3 max-lg:col-span-full max-lg:w-full max-lg:max-w-none max-lg:justify-start max-lg:overflow-x-auto max-lg:pt-1"
         >
-            <NavigationMenuList ref={listRef} className="relative gap-0 sm:gap-2">
+            <NavigationMenuList
+                ref={listRef}
+                className="relative gap-0 max-lg:mx-auto max-lg:flex-none sm:gap-2"
+            >
                 {links.map(({ to, label }) => (
                     <NavigationMenuItem key={to}>
                         <NavigationMenuLink
                             active={activePath === to}
-                            className="group/public-nav relative whitespace-nowrap rounded-md text-foreground/75 transition-colors duration-150 hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[active]:border-transparent data-[active]:text-foreground motion-reduce:transition-none max-sm:px-1.5"
+                            className={linkClassName}
                             asChild
                         >
                             <Link
@@ -73,18 +87,13 @@ export function PublicHeaderNavigation({ links, activePath }: PublicHeaderNaviga
                                 aria-current={activePath === to ? 'page' : undefined}
                             >
                                 {label}
-                                <span
-                                    aria-hidden="true"
-                                    data-public-nav-hover-underline=""
-                                    className="pointer-events-none absolute inset-x-2 -bottom-0.5 h-0.5 rounded-full bg-foreground/30 opacity-0 group-hover/public-nav:opacity-100 group-focus-visible/public-nav:opacity-100 group-data-[active]/public-nav:opacity-0 max-sm:inset-x-1"
-                                />
+                                {hoverLine}
                             </Link>
                         </NavigationMenuLink>
                     </NavigationMenuItem>
                 ))}
                 {bounds && (
                     <li aria-hidden="true" className="pointer-events-none absolute inset-0">
-                        {/* Animate only horizontal transforms; sticky/scroll offsets cannot move the baseline. */}
                         <motion.span
                             data-public-nav-underline=""
                             className="absolute bottom-0 left-0 h-0.5 w-[100px] origin-left rounded-full bg-foreground"

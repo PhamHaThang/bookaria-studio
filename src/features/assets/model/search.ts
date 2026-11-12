@@ -44,16 +44,21 @@ export function updateAssetSearch(
     return next;
 }
 
-/** Keep old shared-library links useful after moving the catalog into Explore. */
+/** Keep shared-library links pointing to the standalone resource catalog. */
 export function libraryAssetLocation(current: URLSearchParams) {
     const query = readAssetSearch(
         new URLSearchParams({ ...Object.fromEntries(current), scope: 'library' }),
     );
-    const params = new URLSearchParams({ view: 'assets' });
+    const params = new URLSearchParams();
     if (query.type) params.set('type', query.type);
     if (query.q) params.set('q', query.q);
     if (query.categoryId) params.set('categoryId', query.categoryId);
     if (query.hasAnimation !== undefined) params.set('hasAnimation', String(query.hasAnimation));
     if (query.page > 1) params.set('page', String(query.page));
-    return `/library?${params}`;
+    for (const key of ['auth', 'next', 'token']) {
+        const value = current.get(key);
+        if (value) params.set(key, value);
+    }
+    const search = params.toString();
+    return search ? `/resources?${search}` : '/resources';
 }

@@ -92,6 +92,9 @@ const NotFoundPage = lazy(() =>
     import('../pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })),
 );
 
+const ExploreAssetsPage = lazy(() =>
+    import('../pages/ExploreAssetsPage').then((module) => ({ default: module.ExploreAssetsPage })),
+);
 const ExplorePage = lazy(() =>
     import('../pages/ExplorePage').then((module) => ({ default: module.ExplorePage })),
 );
@@ -181,6 +184,7 @@ const router = createBrowserRouter(
             <Route element={<PublicLayout />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/library" element={<ExplorePage />} />
+                <Route path="/resources" element={<ExploreAssetsPage />} />
                 <Route path="/explore" element={<LegacyExploreRedirect />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="*" element={<NotFoundPage />} />

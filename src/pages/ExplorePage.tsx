@@ -1,10 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { FolderOpen, Library } from 'lucide-react';
 import { useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { AssetCatalog } from '@/features/assets/ui/AssetCatalog';
-import { useAuth } from '@/features/auth';
-import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
+import { libraryAssetLocation } from '@/features/assets/model/search';
 import { Button } from '@/shared/ui/Button';
 import { SearchFilter, SelectFilter, TextFilter } from '@/shared/ui/LiveFilters';
 import { LoadingState } from '@/shared/ui/LoadingState';
@@ -14,11 +11,9 @@ import {
     EmptyContent,
     EmptyDescription,
     EmptyHeader,
-    EmptyMedia,
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
 import { discoveryApi } from '../features/discovery';
 import { PublicBooks } from '../features/discovery/PublicBooks';
 import { readDiscoverySearch, updateDiscoverySearch } from '../features/discovery/search';
@@ -28,81 +23,21 @@ import { Feedback } from '../shared/ui/Feedback';
 const ages = Array.from({ length: 19 }, (_, value) => String(value));
 
 export function ExplorePage() {
-    const [params, setParams] = useSearchParams();
-    const { user } = useAuth();
-    const view = params.get('view') === 'assets' ? 'assets' : 'books';
+    const [params] = useSearchParams();
+    const { hash } = useLocation();
+    if (params.get('view') === 'assets') {
+        return <Navigate to={libraryAssetLocation(params) + hash} replace />;
+    }
     return (
-        <Tabs
-            value={view}
-            onValueChange={(value) =>
-                setParams((current) => {
-                    const next = new URLSearchParams();
-                    if (value === 'assets') next.set('view', 'assets');
-                    for (const key of ['auth', 'next', 'token']) {
-                        const item = current.get(key);
-                        if (item) next.set(key, item);
-                    }
-                    return next;
-                })
-            }
-            className="gap-8"
-        >
-            <div
-                data-slot="explore-section-navigation"
-                className="flex min-h-13 items-center justify-between gap-6"
-            >
-                <TabsList aria-label="Khám phá">
-                    <TabsTrigger value="books">
-                        <Library aria-hidden="true" />
-                        Sách
-                    </TabsTrigger>
-                    <TabsTrigger value="assets">
-                        <FolderOpen aria-hidden="true" />
-                        Tài nguyên
-                    </TabsTrigger>
-                </TabsList>
+        <>
+            <div className="mb-7">
+                <h1 className="font-semibold text-[28px] tracking-tight">Khám phá sách</h1>
+                <p className="mt-2 text-muted-foreground text-sm">
+                    Tìm sách tương tác và đọc cùng Bookaria.
+                </p>
             </div>
-            <TabsContent value="books">
-                <div className="mb-7">
-                    <h1 className="font-semibold text-[28px] tracking-tight">Khám phá sách</h1>
-                    <p className="mt-2 text-muted-foreground text-sm">
-                        Tìm sách tương tác và đọc cùng Bookaria.
-                    </p>
-                </div>
-                <ExploreBooks />
-            </TabsContent>
-            <TabsContent value="assets">
-                <div className="mb-7">
-                    <h1 className="font-semibold text-[28px] tracking-tight">
-                        Tài nguyên dùng chung
-                    </h1>
-                    <p className="mt-2 text-muted-foreground text-sm">
-                        Khám phá hình ảnh, âm thanh, video và mô hình 3D cho sách của bạn.
-                    </p>
-                </div>
-                {user ? (
-                    <AssetCatalog scope="library" />
-                ) : (
-                    <Empty className="py-16">
-                        <EmptyHeader>
-                            <EmptyMedia>
-                                <FolderOpen size={38} aria-hidden="true" />
-                            </EmptyMedia>
-                            <EmptyTitle>Thư viện tài nguyên Bookaria</EmptyTitle>
-                            <EmptyDescription>
-                                Đăng nhập để xem trước hình ảnh, âm thanh, video và mô hình 3D dùng
-                                chung cho sách của bạn.
-                            </EmptyDescription>
-                        </EmptyHeader>
-                        <EmptyContent>
-                            <Button asChild>
-                                <AuthDialogLink mode="login">Đăng nhập</AuthDialogLink>
-                            </Button>
-                        </EmptyContent>
-                    </Empty>
-                )}
-            </TabsContent>
-        </Tabs>
+            <ExploreBooks />
+        </>
     );
 }
 

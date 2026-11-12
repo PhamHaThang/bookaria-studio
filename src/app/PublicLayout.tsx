@@ -9,7 +9,8 @@ export function PublicLayout() {
     const { pathname } = useLocation();
     const titles: Record<string, string> = {
         '/': 'Bookaria - Đọc và tạo sách tương tác',
-        '/library': 'Khám phá | Bookaria',
+        '/library': 'Khám phá sách | Bookaria',
+        '/resources': 'Thư viện tài nguyên | Bookaria',
         '/help': 'Hướng dẫn | Bookaria',
         '/profile': 'Hồ sơ | Bookaria',
         '/change-password': 'Đổi mật khẩu | Bookaria',
@@ -40,7 +41,7 @@ export function PublicLayout() {
                 className={
                     pathname === '/'
                         ? 'public-main min-w-0 flex-1 outline-none'
-                        : pathname === '/library'
+                        : pathname === '/library' || pathname === '/resources'
                           ? 'public-main mx-auto w-full min-w-0 max-w-[1328px] flex-1 px-6 pt-8 pb-16 outline-none'
                           : 'public-main mx-auto w-full max-w-320 flex-1 px-6 py-12 outline-none sm:px-8'
                 }

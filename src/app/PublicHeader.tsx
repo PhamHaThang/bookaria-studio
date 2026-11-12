@@ -7,12 +7,13 @@ import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
 import { BookariaLogo, bookariaLogoLinkStyles } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
 import { HeaderAccountActions } from './HeaderAccountActions';
-import { PublicHeaderNavigation } from './PublicHeaderNavigation';
+import { PublicHeaderNavigation, type PublicNavigationLink } from './PublicHeaderNavigation';
 import { getStudioSection } from './studio-navigation';
 
-const destinations = [
+const destinations: readonly PublicNavigationLink[] = [
     { to: '/', label: 'Trang chủ' },
-    { to: '/library', label: 'Khám phá' },
+    { to: '/library', label: 'Khám phá sách' },
+    { to: '/resources', label: 'Thư viện tài nguyên' },
     { to: '/help', label: 'Hướng dẫn' },
 ];
 
@@ -25,7 +26,7 @@ export function PublicHeader() {
     const [scrolled, setScrolled] = useState(() => window.scrollY > 24);
     const signedIn = status === 'authenticated' && user !== null;
     const links = signedIn
-        ? [...destinations.slice(0, 2), { to: '/books', label: 'Studio' }, ...destinations.slice(2)]
+        ? [...destinations.slice(0, 3), { to: '/books', label: 'Studio' }, ...destinations.slice(3)]
         : destinations;
     const activePath =
         links.find(({ to }) =>

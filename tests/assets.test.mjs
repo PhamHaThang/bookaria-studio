@@ -385,7 +385,7 @@ test('animation filter only applies to models and is cleared when changing asset
     assert.equal(updateAssetSearch(model, { type: undefined }).has('hasAnimation'), false);
 });
 
-test('old shared-library links move into Explore with valid filters and pagination', () => {
+test('old shared-library links move to resources with valid filters and pagination', () => {
     const target = new URL(
         libraryAssetLocation(
             new URLSearchParams({
@@ -401,9 +401,8 @@ test('old shared-library links move into Explore with valid filters and paginati
         ),
         'https://bookaria.example',
     );
-    assert.equal(target.pathname, '/library');
+    assert.equal(target.pathname, '/resources');
     assert.deepEqual(Object.fromEntries(target.searchParams), {
-        view: 'assets',
         type: 'MODEL',
         q: 'mèo',
         categoryId: id,
@@ -419,10 +418,10 @@ test('old shared-library links do not carry stale animation or invalid filters',
                 'scope=library&type=IMAGE&hasAnimation=true&page=bad&categoryId=invalid',
             ),
         ),
-        '/library?view=assets&type=IMAGE',
+        '/resources?type=IMAGE',
     );
     assert.equal(
         libraryAssetLocation(new URLSearchParams('type=UNKNOWN&tag=hidden')),
-        '/library?view=assets',
+        '/resources',
     );
 });
