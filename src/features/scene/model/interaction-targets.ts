@@ -75,11 +75,12 @@ export function workflowTargetChoices(
         return complete({ label: 'Âm thanh', value, options });
     }
     const conditionObject =
-        action?.type === 'condition' && 'objectId' in action.test
+        (action?.type === 'condition' || action?.type === 'waitUntil') && 'objectId' in action.test
             ? action.test.objectId
             : undefined;
     if (action && !('objectId' in action) && conditionObject === undefined) return null;
-    if (!action && trigger.type === 'onAnswer') return null;
+    if (!action && (trigger.type === 'onAnswer' || trigger.type === 'onStateCondition'))
+        return null;
     const type = action ? action.type : trigger.type === 'onAnimationEnd' ? trigger.type : 'onTap';
     const candidates = targetObjects(scene.objects, type);
     const options: TargetOption[] = candidates.map((object) => ({

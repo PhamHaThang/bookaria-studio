@@ -37,6 +37,7 @@ source.transform.position = [-0.2, 0, 0];
 target.name = 'Thông tin';
 target.text = 'Thông tin thử nghiệm';
 target.visible = false;
+if (new URLSearchParams(location.search).has('visible-content')) target.visible = true;
 target.transform.position = [0.2, 0, 0.1];
 const initial: Scene = {
     schemaVersion: 1,

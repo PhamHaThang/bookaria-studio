@@ -370,7 +370,7 @@ export function MemoryVariablesPanel({
                                         aria-expanded={showUses}
                                         onClick={() => setShowUses(!showUses)}
                                     >
-                                        {usages.length} bước sử dụng
+                                        {usages.length} nơi sử dụng
                                     </Button>
                                     {showUses && (
                                         <ul className="m-0 flex list-none flex-col gap-2 p-0 text-muted-foreground text-xs leading-5">
@@ -378,8 +378,10 @@ export function MemoryVariablesPanel({
                                                 <li
                                                     key={`${usage.pageId}:${usage.ruleId}:${usage.index}`}
                                                 >
-                                                    {usage.pageName} / {usage.ruleName} / Bước{' '}
-                                                    {usage.index + 1}
+                                                    {usage.pageName} / {usage.ruleName} /{' '}
+                                                    {usage.index < 0
+                                                        ? 'Sự kiện bắt đầu'
+                                                        : `Bước ${usage.index + 1}`}
                                                 </li>
                                             ))}
                                             {!usages.length && <li>Chưa dùng trong luồng nào.</li>}

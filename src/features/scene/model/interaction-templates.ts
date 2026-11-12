@@ -31,7 +31,7 @@ export const interactionTemplates = [
     {
         id: 'unlock',
         title: 'Mở khóa theo điểm',
-        description: 'Chỉ hiện nội dung sau khi đạt số điểm yêu cầu.',
+        description: 'Tự hiện nội dung khi điểm đạt mức đã chọn.',
         group: 'Nhiệm vụ và đố vui',
         icon: 'custom',
     },
@@ -151,7 +151,7 @@ export function templateUnavailable(
     objects: SceneObject[],
     scope: InteractionScope,
 ) {
-    if (scope.type === 'page' && !['intro', 'enter', 'leave', 'custom'].includes(id))
+    if (scope.type === 'page' && !['intro', 'enter', 'leave', 'custom', 'unlock'].includes(id))
         return 'Chuyển phạm vi sang Tất cả để tạo tương tác khi chạm.';
     if (scope.type === 'object' && ['intro', 'enter', 'leave'].includes(id))
         return 'Mẫu này bắt đầu từ sự kiện của trang.';
@@ -209,7 +209,21 @@ export function templateRule(
         loop: false,
         delayMsSchema: 0,
     };
-    if (['quiz', 'once', 'unlock', 'count', 'finish'].includes(id)) {
+    if (id === 'unlock')
+        return {
+            id: ruleId,
+            name: 'Mở khóa theo điểm',
+            enabled: true,
+            onRetrigger: 'ignore',
+            trigger: {
+                type: 'onStateCondition',
+                test: { type: 'variable', key: 'score', operator: 'gte', value: 3 },
+            },
+            actions: [
+                { ...show, objectId: scope.type === 'object' ? source?.id || '' : show.objectId },
+            ],
+        };
+    if (['quiz', 'once', 'count', 'finish'].includes(id)) {
         const noop: Action = { type: 'wait', ms: 0 };
         const remember = (key: string, value: boolean | number): Action => ({
             type: 'setState',
@@ -431,13 +445,13 @@ export function interactionProblems(rule: InteractionRule, scene: Scene): string
         const checked = ActionSchema.safeParse(a);
         if (
             !checked.success &&
-            ['condition', 'setState', 'askQuestion', 'navigate'].includes(a.type)
+            ['condition', 'waitUntil', 'setState', 'askQuestion', 'navigate'].includes(a.type)
         ) {
             const key = checked.error.issues[0]?.path.join('.') || '';
             problems.push(
                 a.type === 'askQuestion'
                     ? `${step}Nhập câu hỏi, các đáp án và chọn đáp án đúng.`
-                    : a.type === 'condition'
+                    : a.type === 'condition' || a.type === 'waitUntil'
                       ? `${step}Kiểm tra ${key.includes('key') ? 'mã ghi nhớ' : 'đối tượng và giá trị điều kiện'}.`
                       : a.type === 'setState'
                         ? `${step}Kiểm tra mã và giá trị ghi nhớ.`
@@ -475,12 +489,14 @@ export function interactionProblems(rule: InteractionRule, scene: Scene): string
     return [...new Set(problems)];
 }
 
-export function actionSummary(action: Action, objects: SceneObject[]) {
+export function actionSummary(action: Action, objects: SceneObject[]): string {
     const target =
         'objectId' in action ? objectName(objects.find((o) => o.id === action.objectId)) : '';
     switch (action.type) {
         case 'controlModel':
             return `${action.operation === 'enable' ? 'Cho phép điều khiển' : action.operation === 'disable' ? 'Dừng điều khiển' : 'Đưa về vị trí đầu'} “${target}”`;
+        case 'waitUntil':
+            return `Chờ đến khi: ${actionSummary({ ...action, type: 'condition' }, objects)}`;
         case 'condition': {
             const test = action.test;
             if (test.type === 'variable')
@@ -508,9 +524,12 @@ export function actionSummary(action: Action, objects: SceneObject[]) {
             return objects.some((o) => o.type === 'audio' && o.assetId === action.assetId)
                 ? `Phát “${objectName(objects.find((o) => o.type === 'audio' && o.assetId === action.assetId))}”`
                 : 'Phát âm thanh đã chọn';
-        case 'stopAudio':
+        case 'stopAudio': {
             if (action.assetId === '') return 'Chọn âm thanh cần dừng';
-            return action.assetId ? 'Dừng âm thanh đã chọn' : 'Dừng tất cả âm thanh';
+            if (!action.assetId) return 'Dừng tất cả âm thanh';
+            const audio = objects.find((o) => o.type === 'audio' && o.assetId === action.assetId);
+            return audio ? `Dừng “${objectName(audio)}”` : 'Dừng âm thanh đã chọn';
+        }
         case 'playVideo':
             return `Phát video “${target}”`;
         case 'playAnimation':
@@ -522,7 +541,7 @@ export function actionSummary(action: Action, objects: SceneObject[]) {
         case 'openUrl':
             return action.url ? `Mở ${action.url}` : 'Mở liên kết';
         case 'wait':
-            return `Chờ ${Number((action.ms / 1000).toFixed(3))} giây`;
+            return `Đợi ${Number((action.ms / 1000).toFixed(3))} giây`;
         case 'transformTo':
             return `${[action.position && 'Di chuyển', action.rotation && 'xoay', action.scale && 'đổi kích thước'].filter(Boolean).join(' + ')} “${target}” trong ${action.durationMs / 1000} giây`;
     }

@@ -8,7 +8,6 @@ import {
     type SceneObject,
 } from '@/shared/contracts/scene.schema';
 import { Button } from '@/shared/ui/Button';
-import { Disclosure } from '@/shared/ui/Disclosure';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -65,11 +64,13 @@ export function InteractionActionStack({
                                 <ArrowDown className="size-4" />
                             </div>
                         )}
-                        <Disclosure
-                            variant="panel"
-                            title={`${index + 1}. ${actionLabels[action.type]}`}
-                            defaultOpen
+                        <section
+                            aria-label={`Bước ${index + 1}. ${actionLabels[action.type]}`}
+                            className="flex min-w-0 flex-col gap-4 rounded-lg border border-border p-4"
                         >
+                            <h4 className="m-0 font-semibold text-sm">
+                                {index + 1}. {actionLabels[action.type]}
+                            </h4>
                             <div className="flex min-w-0 flex-col gap-3 pb-1">
                                 <InteractionActionEditor
                                     id={`action-${ruleId}-${index}`}
@@ -118,7 +119,7 @@ export function InteractionActionStack({
                                     </Button>
                                 </div>
                             </div>
-                        </Disclosure>
+                        </section>
                     </li>
                 ))}
             </ol>
@@ -134,8 +135,9 @@ export function InteractionActionStack({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                     <DropdownMenuGroup>
-                        {(Object.entries(actionLabels) as [ActionType, string][]).map(
-                            ([type, label]) => (
+                        {(Object.entries(actionLabels) as [ActionType, string][])
+                            .filter(([type]) => type !== 'waitUntil')
+                            .map(([type, label]) => (
                                 <DropdownMenuItem
                                     key={type}
                                     onSelect={() =>
@@ -144,8 +146,7 @@ export function InteractionActionStack({
                                 >
                                     {label}
                                 </DropdownMenuItem>
-                            ),
-                        )}
+                            ))}
                     </DropdownMenuGroup>
                 </DropdownMenuContent>
             </DropdownMenu>

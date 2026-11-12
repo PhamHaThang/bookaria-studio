@@ -5,11 +5,13 @@ import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/primitives/button';
 import { SearchInput } from '@/shared/ui/SearchInput';
 import { ruleTriggerLabel } from '../model/interaction-scope';
+import { useMemory } from './MemoryContext';
 
 /** Always-visible workflow list. Switching still uses the editor's unfinished-draft guard. */
 export function InteractionFlowPicker({
     rules,
     active,
+    activeStepCount,
     objects,
     disabled,
     onSelect,
@@ -19,6 +21,7 @@ export function InteractionFlowPicker({
 }: {
     rules: InteractionRule[];
     active?: InteractionRule;
+    activeStepCount?: number;
     objects: SceneObject[];
     disabled: boolean;
     onSelect: (rule: InteractionRule) => void;
@@ -26,13 +29,14 @@ export function InteractionFlowPicker({
     onDelete: (rule: InteractionRule) => void;
     canDuplicate: (rule: InteractionRule) => boolean;
 }) {
+    const { definitions } = useMemory();
     const [query, setQuery] = useState('');
     const items =
         active && !rules.some((rule) => rule.id === active.id)
             ? [...rules, active]
             : rules.map((rule) => (rule.id === active?.id ? active : rule));
     const matches = items.filter((rule) =>
-        `${rule.name || 'Luồng chưa đặt tên'} ${ruleTriggerLabel(rule, objects)}`
+        `${rule.name || 'Luồng chưa đặt tên'} ${ruleTriggerLabel(rule, objects, definitions)}`
             .toLocaleLowerCase('vi')
             .includes(query.trim().toLocaleLowerCase('vi')),
     );
@@ -71,12 +75,16 @@ export function InteractionFlowPicker({
                                     {rule.name || 'Luồng chưa đặt tên'}
                                 </span>
                                 <span className="line-clamp-2 text-muted-foreground text-xs leading-5">
-                                    {ruleTriggerLabel(rule, objects)}
+                                    {ruleTriggerLabel(rule, objects, definitions)}
                                 </span>
                                 <span className="text-muted-foreground text-xs">
+                                    {rule.id === active?.id
+                                        ? (activeStepCount ?? rule.actions.length)
+                                        : rule.actions.length}{' '}
+                                    bước
                                     {!rules.some((item) => item.id === rule.id)
-                                        ? 'Đang thiết lập'
-                                        : `${rule.actions.length} bước`}
+                                        ? ' — Đang thiết lập'
+                                        : ''}
                                     {!rule.enabled ? ' — Đã tắt' : ''}
                                 </span>
                             </span>

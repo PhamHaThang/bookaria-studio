@@ -17,6 +17,7 @@ for (const name of [
     'InteractionRunner.ts',
     'WorkflowState.ts',
     'WorkflowPrompt.ts',
+    'MediaElementPool.ts',
     'ModelControls.ts',
     'ModelControlAnimations.ts',
     'asset-cache.ts',
@@ -25,9 +26,15 @@ for (const name of [
     let content = original
         .replaceAll("'../shared/contracts/", "'../contracts/")
         .replaceAll("'../shared/scene/", "'../scene/")
+        .replace("'../reader-feedback'", "'./reader-feedback'")
         .replace("'../shared/api'", "'./fetchBytes'");
     if (name === 'buildScene.ts')
         content = content
+            .replace("import type { ReaderNoticeOptions } from './reader-feedback';\n", '')
+            .replace(
+                'import { askWorkflowQuestion }',
+                "import type { ReaderNoticeOptions } from './reader-feedback';\nimport { askWorkflowQuestion }",
+            )
             .replace("import { fetchBytes } from './fetchBytes';\n", '')
             .replace(
                 "import type { AssetCache } from './asset-cache';",
@@ -72,6 +79,8 @@ for (const name of [
 const api = normalize(await readFile(path.join(viewer, 'src/shared/api.ts'), 'utf8'));
 const fetchBytes = api.slice(api.indexOf('export async function fetchBytes('));
 outputs['fetchBytes.ts'] = { original: fetchBytes, content: fetchBytes };
+const feedback = normalize(await readFile(path.join(viewer, 'src/reader-feedback.ts'), 'utf8'));
+outputs['reader-feedback.ts'] = { original: feedback, content: feedback };
 const require = createRequire(import.meta.url);
 const biome = path.join(path.dirname(require.resolve('@biomejs/biome/package.json')), 'bin/biome');
 for (const [name, value] of Object.entries(outputs)) {

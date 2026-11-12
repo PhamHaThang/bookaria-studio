@@ -4,6 +4,7 @@ const existingURL = process.env.BOOKARIA_TEST_BASE_URL;
 export default defineConfig({
     testDir: './tests/browser',
     testMatch: [
+        'interaction-guided.spec.mjs',
         'interaction-workspace.spec.mjs',
         'model-controls.spec.mjs',
         'cover-upload.spec.mjs',

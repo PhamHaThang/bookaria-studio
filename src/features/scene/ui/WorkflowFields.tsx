@@ -8,16 +8,19 @@ import { FormSelect } from '@/shared/ui/FormSelect';
 import { Button } from '@/shared/ui/primitives/button';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { objectName } from '../model/interaction-templates';
-import { targetObjects, triggerLabels } from '../model/interactions';
+import { conditionOptions, navigationOptions } from '../model/interaction-blocks';
+import { actionSummary, objectName } from '../model/interaction-templates';
+import { defaultWorkflowTrigger, targetObjects, triggerLabels } from '../model/interactions';
 import {
+    changeMemoryAction,
     type MemoryValue,
+    memoryActionChoices,
     memoryDefinitions,
-    memoryOperations,
     memorySummary,
     memoryValue,
     selectMemory,
 } from '../model/memory-variables';
+import { InteractionChoices } from './InteractionChoices';
 import { InteractionTextInput } from './InteractionTextInput';
 import { useMemory } from './MemoryContext';
 
@@ -58,15 +61,17 @@ function StateKey({
                     if (definition) onChange(definition);
                 }}
             />
-            <Button
-                variant="outline"
-                size="sm"
-                disabled={disabled || memory.disabled}
-                onClick={() => memory.manage(onChange)}
-            >
-                <Plus data-icon="inline-start" />
-                Tạo thông tin
-            </Button>
+            {memory.canCreate !== false && (
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={disabled || memory.disabled}
+                    onClick={() => memory.manage(onChange)}
+                >
+                    <Plus data-icon="inline-start" />
+                    Tạo thông tin
+                </Button>
+            )}
         </FieldGroup>
     );
 }
@@ -135,26 +140,127 @@ function ValueField({
         </FieldGroup>
     );
 }
+function VariableConditionFields({
+    test,
+    scene,
+    disabled,
+    onChange,
+}: {
+    test: Extract<WorkflowCondition, { type: 'variable' }>;
+    scene: Scene;
+    disabled: boolean;
+    onChange: (test: Extract<WorkflowCondition, { type: 'variable' }>) => void;
+}) {
+    const patch = onChange;
+    return (
+        <>
+            <Row label="Thông tin cần kiểm tra">
+                <StateKey
+                    value={test.key}
+                    scene={scene}
+                    disabled={disabled}
+                    label="Thông tin cần kiểm tra"
+                    onChange={(definition) =>
+                        patch({
+                            ...test,
+                            key: definition.key,
+                            operator: definition.type === 'number' ? 'gte' : 'eq',
+                            value:
+                                definition.type === 'number'
+                                    ? 1
+                                    : definition.type === 'boolean'
+                                      ? true
+                                      : '',
+                        })
+                    }
+                />
+            </Row>
+            {typeof test.value !== 'boolean' && (
+                <Row label="So sánh">
+                    <FormSelect
+                        aria-label="Phép so sánh"
+                        value={test.operator}
+                        disabled={disabled}
+                        options={[
+                            { value: 'eq', label: 'Bằng' },
+                            { value: 'ne', label: 'Khác' },
+                            ...(typeof test.value === 'number'
+                                ? [
+                                      { value: 'gte', label: 'Ít nhất' },
+                                      { value: 'gt', label: 'Lớn hơn' },
+                                      { value: 'lte', label: 'Không quá' },
+                                      { value: 'lt', label: 'Nhỏ hơn' },
+                                  ]
+                                : []),
+                        ]}
+                        onValueChange={(operator) =>
+                            patch({
+                                ...test,
+                                operator: operator as typeof test.operator,
+                                value: ['gt', 'gte', 'lt', 'lte'].includes(operator)
+                                    ? typeof test.value === 'number'
+                                        ? test.value
+                                        : 1
+                                    : test.value,
+                            })
+                        }
+                    />
+                </Row>
+            )}
+            <Row
+                label={
+                    typeof test.value === 'boolean'
+                        ? test.operator === 'ne'
+                            ? 'Không phải trạng thái'
+                            : 'Trạng thái cần có'
+                        : 'Giá trị cần đạt'
+                }
+            >
+                <ValueField
+                    value={test.value}
+                    lockType
+                    numeric={['gt', 'gte', 'lt', 'lte'].includes(test.operator)}
+                    disabled={disabled}
+                    onChange={(value) => patch({ ...test, value })}
+                />
+            </Row>
+        </>
+    );
+}
+
 const questions = (scene: Scene) =>
     scene.interactions.flatMap((rule) =>
         rule.actions.flatMap((action) => (action.type === 'askQuestion' ? [action.question] : [])),
     );
+const triggerDescriptions: Partial<Record<Trigger['type'], string>> = {
+    onPageEnter: 'Luồng chạy khi người đọc mở trang này.',
+    onPageLeave: 'Luồng chạy khi người đọc rời trang này.',
+    onMarkerFound: 'Luồng chạy khi camera nhận diện được ảnh hoặc marker của trang in.',
+    onMarkerLost: 'Luồng chạy khi camera mất dấu ảnh hoặc marker đã nhận diện.',
+};
 export function WorkflowTriggerFields({
     trigger,
     scene,
     assets,
     disabled,
+    configuredInGraph = false,
     onChange,
 }: {
     trigger: Trigger;
     scene: Scene;
     assets: Record<string, AssetRef>;
     disabled: boolean;
+    configuredInGraph?: boolean;
     onChange: (trigger: Trigger) => void;
 }) {
+    if (configuredInGraph && trigger.type === 'onTap') return null;
+
+    const description = triggerDescriptions[trigger.type];
     const choose = (type: string) => {
         if (type === 'onTap' || type === 'onAnimationEnd')
             onChange({ type, objectId: targetObjects(scene.objects, type)[0]?.id || '' });
+        else if (type === 'onStateCondition')
+            onChange(defaultWorkflowTrigger('onStateCondition', scene));
         else if (type === 'onAnswer')
             onChange({ type, questionId: questions(scene)[0]?.questionId || '', answer: 'any' });
         else
@@ -163,20 +269,36 @@ export function WorkflowTriggerFields({
             });
     };
     return (
-        <FieldGroup className="gap-5">
-            <Row label="Bắt đầu khi">
-                <FormSelect
-                    aria-label="Bắt đầu khi"
-                    value={trigger.type}
-                    options={Object.entries(triggerLabels).map(([value, label]) => ({
-                        value,
-                        label,
-                    }))}
-                    disabled={disabled}
-                    onValueChange={choose}
-                />
-            </Row>
-            {'objectId' in trigger && (
+        <FieldGroup className={configuredInGraph ? 'gap-3.5' : 'gap-5'}>
+            {!configuredInGraph && (
+                <Row label="Bắt đầu khi">
+                    <FormSelect
+                        aria-label="Bắt đầu khi"
+                        value={trigger.type}
+                        options={Object.entries(triggerLabels).map(([value, label]) => ({
+                            value,
+                            label,
+                        }))}
+                        disabled={disabled}
+                        onValueChange={choose}
+                    />
+                </Row>
+            )}
+            {trigger.type === 'onStateCondition' && (
+                <>
+                    <VariableConditionFields
+                        test={trigger.test}
+                        scene={scene}
+                        disabled={disabled}
+                        onChange={(test) => onChange({ ...trigger, test })}
+                    />
+                    <p className="m-0 text-muted-foreground text-xs leading-5">
+                        Tự chạy khi ghi nhớ chuyển từ chưa đạt sang đạt. Nếu đã đạt lúc vào trang,
+                        chạy một lần ngay. Giữ nguyên giá trị sẽ không chạy lặp lại.
+                    </p>
+                </>
+            )}
+            {'objectId' in trigger && (!configuredInGraph || trigger.type === 'onAnimationEnd') && (
                 <Row
                     label={
                         trigger.type === 'onTap'
@@ -278,10 +400,8 @@ export function WorkflowTriggerFields({
                     </Row>
                 </>
             )}
-            {(trigger.type === 'onMarkerFound' || trigger.type === 'onMarkerLost') && (
-                <p className="m-0 text-muted-foreground text-xs leading-5">
-                    Chạy khi quét sách in. Trong chạy thử, nút Chạy mô phỏng sự kiện này.
-                </p>
+            {description && (
+                <p className="m-0 text-muted-foreground text-xs leading-5">{description}</p>
             )}
         </FieldGroup>
     );
@@ -291,12 +411,14 @@ export function WorkflowActionFields({
     scene,
     pages,
     disabled,
+    configuredInGraph = false,
     onChange,
 }: {
     action: Action;
     scene: Scene;
     pages: BookDetail['pages'];
     disabled: boolean;
+    configuredInGraph?: boolean;
     onChange: (action: Action) => void;
 }) {
     const id = useId();
@@ -306,121 +428,52 @@ export function WorkflowActionFields({
         value: object.id,
         label: objectName(object),
     }));
-    if (action.type === 'condition') {
+    if (action.type === 'condition' || action.type === 'waitUntil') {
         const test = action.test;
         const patch = (next: WorkflowCondition) => onChange({ ...action, test: next });
         return (
             <FieldGroup className="gap-5">
-                <Row label="Kiểm tra điều gì?">
-                    <FormSelect
-                        aria-label="Loại điều kiện"
-                        value={test.type}
-                        disabled={disabled}
-                        options={[
-                            { value: 'variable', label: 'Điểm số / thông tin ghi nhớ' },
-                            { value: 'answer', label: 'Kết quả câu hỏi' },
-                            { value: 'interactionCount', label: 'Số lần chạm đối tượng' },
-                            { value: 'visible', label: 'Đối tượng đang hiện / ẩn' },
-                        ]}
-                        onValueChange={(type) =>
-                            patch(
-                                type === 'answer'
-                                    ? {
-                                          type,
-                                          questionId: questions(scene)[0]?.questionId || '',
-                                          result: 'correct',
-                                      }
-                                    : type === 'interactionCount'
-                                      ? { type, objectId: scene.objects[0]?.id || '', min: 1 }
-                                      : type === 'visible'
+                {(!configuredInGraph || action.type === 'waitUntil') && (
+                    <Row label="Kiểm tra điều gì?">
+                        <FormSelect
+                            aria-label="Loại điều kiện"
+                            value={test.type}
+                            disabled={disabled}
+                            options={[...conditionOptions]}
+                            onValueChange={(type) =>
+                                patch(
+                                    type === 'answer'
                                         ? {
                                               type,
-                                              objectId: scene.objects[0]?.id || '',
-                                              value: true,
+                                              questionId: questions(scene)[0]?.questionId || '',
+                                              result: 'correct',
                                           }
-                                        : {
-                                              type: 'variable',
-                                              key: 'score',
-                                              operator: 'gte',
-                                              value: 1,
-                                          },
-                            )
-                        }
-                    />
-                </Row>
-                {test.type === 'variable' && (
-                    <>
-                        <Row label="Thông tin cần kiểm tra">
-                            <StateKey
-                                value={test.key}
-                                scene={scene}
-                                disabled={disabled}
-                                label="Thông tin cần kiểm tra"
-                                onChange={(definition) =>
-                                    patch({
-                                        ...test,
-                                        key: definition.key,
-                                        operator: definition.type === 'number' ? 'gte' : 'eq',
-                                        value:
-                                            definition.type === 'number'
-                                                ? 1
-                                                : definition.type === 'boolean'
-                                                  ? true
-                                                  : '',
-                                    })
-                                }
-                            />
-                        </Row>
-                        {typeof test.value !== 'boolean' && (
-                            <Row label="So sánh">
-                                <FormSelect
-                                    aria-label="Phép so sánh"
-                                    value={test.operator}
-                                    disabled={disabled}
-                                    options={[
-                                        { value: 'eq', label: 'Bằng' },
-                                        { value: 'ne', label: 'Khác' },
-                                        ...(typeof test.value === 'number'
-                                            ? [
-                                                  { value: 'gte', label: 'Ít nhất' },
-                                                  { value: 'gt', label: 'Lớn hơn' },
-                                                  { value: 'lte', label: 'Không quá' },
-                                                  { value: 'lt', label: 'Nhỏ hơn' },
-                                              ]
-                                            : []),
-                                    ]}
-                                    onValueChange={(operator) =>
-                                        patch({
-                                            ...test,
-                                            operator: operator as typeof test.operator,
-                                            value: ['gt', 'gte', 'lt', 'lte'].includes(operator)
-                                                ? typeof test.value === 'number'
-                                                    ? test.value
-                                                    : 1
-                                                : test.value,
-                                        })
-                                    }
-                                />
-                            </Row>
-                        )}
-                        <Row
-                            label={
-                                typeof test.value === 'boolean'
-                                    ? test.operator === 'ne'
-                                        ? 'Không phải trạng thái'
-                                        : 'Trạng thái cần có'
-                                    : 'Giá trị cần đạt'
+                                        : type === 'interactionCount'
+                                          ? { type, objectId: scene.objects[0]?.id || '', min: 1 }
+                                          : type === 'visible'
+                                            ? {
+                                                  type,
+                                                  objectId: scene.objects[0]?.id || '',
+                                                  value: true,
+                                              }
+                                            : {
+                                                  type: 'variable',
+                                                  key: 'score',
+                                                  operator: 'gte',
+                                                  value: 1,
+                                              },
+                                )
                             }
-                        >
-                            <ValueField
-                                value={test.value}
-                                lockType
-                                numeric={['gt', 'gte', 'lt', 'lte'].includes(test.operator)}
-                                disabled={disabled}
-                                onChange={(value) => patch({ ...test, value })}
-                            />
-                        </Row>
-                    </>
+                        />
+                    </Row>
+                )}
+                {test.type === 'variable' && (
+                    <VariableConditionFields
+                        test={test}
+                        scene={scene}
+                        disabled={disabled}
+                        onChange={patch}
+                    />
                 )}
                 {test.type === 'answer' && (
                     <>
@@ -516,10 +569,23 @@ export function WorkflowActionFields({
                         />
                     </Row>
                 )}
-                <p className="m-0 text-muted-foreground text-xs leading-5">
-                    Kết quả đúng đi theo cổng Đúng; kết quả còn lại đi theo cổng Sai. Thông tin chưa
-                    có được coi là 0, Sai hoặc chữ rỗng.
-                </p>
+                {configuredInGraph && action.type === 'condition' ? (
+                    <div className="flex flex-col gap-1 rounded-md bg-muted p-3">
+                        <p className="m-0 font-medium text-sm">
+                            {memorySummary(action, definitions) ||
+                                actionSummary(action, scene.objects)}
+                        </p>
+                        <p className="m-0 text-muted-foreground text-xs leading-5">
+                            Kiểm tra một lần khi luồng đến bước này.
+                        </p>
+                    </div>
+                ) : (
+                    <p className="m-0 text-muted-foreground text-xs leading-5">
+                        {action.type === 'waitUntil'
+                            ? 'Nếu điều kiện đã đúng, tiếp tục ngay. Nếu chưa, chờ đến khi đạt rồi chạy bước tiếp theo. Lượt chờ dừng khi rời trang hoặc đặt lại luồng.'
+                            : 'Kiểm tra một lần khi đến bước này. Kết quả dẫn đến nhánh Đúng hoặc Sai.'}
+                    </p>
+                )}
             </FieldGroup>
         );
     }
@@ -528,22 +594,10 @@ export function WorkflowActionFields({
         const type = definition?.type || typeof action.value;
         const initialValue =
             definition?.initialValue ?? (type === 'number' ? 0 : type === 'boolean' ? false : '');
-        const currentValue = memory.currentValues?.[action.key] ?? initialValue;
+        const testedValue = memory.currentValues?.[action.key];
         const isDecrease = action.operation === 'increment' && Number(action.value) < 0;
-        const operation =
-            action.operation === 'increment'
-                ? isDecrease
-                    ? 'decrease'
-                    : 'increase'
-                : action.operation;
-        const options =
-            type === 'number'
-                ? [
-                      { value: 'increase', label: 'Tăng thêm' },
-                      { value: 'decrease', label: 'Giảm bớt' },
-                      { value: 'set', label: 'Đặt thành' },
-                  ]
-                : memoryOperations(definition);
+        const choices = memoryActionChoices(action, definition);
+        const changeOperation = (value: string) => onChange(changeMemoryAction(action, value));
         return (
             <FieldGroup className="gap-5">
                 <Row label="Ghi nhớ điều gì?">
@@ -554,45 +608,14 @@ export function WorkflowActionFields({
                         onChange={(definition) => onChange(selectMemory(action, definition))}
                     />
                 </Row>
-                <Row
-                    label="Giá trị hiện tại"
-                    hint={
-                        memory.currentValues
-                            ? 'Kết quả của lần chạy thử gần nhất.'
-                            : 'Giá trị ban đầu, chưa chạy thử.'
-                    }
-                >
-                    <Input
-                        aria-label="Giá trị hiện tại"
-                        disabled
-                        value={memoryValue(currentValue)}
-                    />
-                </Row>
-                <Row label="Thay đổi thế nào?">
-                    <FormSelect
-                        aria-label="Cách cập nhật ghi nhớ"
-                        value={operation}
+                {choices.options.length > 1 && (
+                    <InteractionChoices
+                        label="Cách cập nhật ghi nhớ"
+                        {...choices}
                         disabled={disabled}
-                        options={options}
-                        onValueChange={(next) =>
-                            onChange({
-                                ...action,
-                                operation:
-                                    next === 'increase' || next === 'decrease'
-                                        ? 'increment'
-                                        : (next as 'set' | 'toggle'),
-                                value:
-                                    next === 'increase'
-                                        ? Math.abs(Number(action.value)) || 1
-                                        : next === 'decrease'
-                                          ? -(Math.abs(Number(action.value)) || 1)
-                                          : type === 'boolean'
-                                            ? true
-                                            : action.value,
-                            })
-                        }
+                        onChange={changeOperation}
                     />
-                </Row>
+                )}
                 {action.operation !== 'toggle' && (
                     <Row
                         label={
@@ -628,13 +651,19 @@ export function WorkflowActionFields({
                         />
                     </Row>
                 )}
-                <p role="status" className="m-0 text-sm">
-                    {memorySummary(action, definitions)}
-                </p>
-                <p className="m-0 text-muted-foreground text-xs leading-5">
-                    Thông tin dùng chung giữa các trang. Chạy thử có tiến trình riêng và có thể đặt
-                    lại.
-                </p>
+                <div className="flex min-w-0 flex-col gap-2 rounded-md bg-muted p-3">
+                    <p role="status" className="wrap-anywhere m-0 font-medium text-sm">
+                        {memorySummary(action, definitions)}
+                    </p>
+                    <dl className="m-0 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 text-xs leading-5">
+                        <dt className="text-muted-foreground">
+                            {testedValue === undefined ? 'Giá trị ban đầu' : 'Kết quả chạy thử'}
+                        </dt>
+                        <dd className="wrap-anywhere m-0 min-w-0 font-medium">
+                            {memoryValue(testedValue ?? initialValue)}
+                        </dd>
+                    </dl>
+                </div>
             </FieldGroup>
         );
     }
@@ -738,29 +767,28 @@ export function WorkflowActionFields({
     if (action.type === 'navigate')
         return (
             <FieldGroup className="gap-5">
-                <Row label="Đi đến đâu?">
-                    <FormSelect
-                        aria-label="Đích điều hướng"
-                        value={action.navigation.target}
-                        disabled={disabled}
-                        options={[
-                            { value: 'next', label: 'Trang tiếp theo' },
-                            { value: 'previous', label: 'Trang trước' },
-                            { value: 'page', label: 'Một trang cụ thể' },
-                            { value: 'end', label: 'Kết thúc trải nghiệm' },
-                        ]}
-                        onValueChange={(target) =>
-                            onChange({
-                                ...action,
-                                navigation: {
-                                    ...action.navigation,
-                                    target: target as typeof action.navigation.target,
-                                    pageId: target === 'page' ? pages[0]?.id : undefined,
-                                },
-                            })
-                        }
-                    />
-                </Row>
+                {!configuredInGraph && (
+                    <Row label="Đi đến đâu?">
+                        <FormSelect
+                            aria-label="Đích điều hướng"
+                            value={action.navigation.target}
+                            disabled={disabled}
+                            options={navigationOptions.filter(
+                                (option) => option.value !== 'openUrl',
+                            )}
+                            onValueChange={(target) =>
+                                onChange({
+                                    ...action,
+                                    navigation: {
+                                        ...action.navigation,
+                                        target: target as typeof action.navigation.target,
+                                        pageId: target === 'page' ? pages[0]?.id : undefined,
+                                    },
+                                })
+                            }
+                        />
+                    </Row>
+                )}
                 {action.navigation.target === 'page' && (
                     <Row label="Trang đích">
                         <FormSelect
@@ -801,8 +829,9 @@ export function WorkflowActionFields({
                     </Row>
                 )}
                 <p className="m-0 text-muted-foreground text-xs leading-5">
-                    Điều hướng kết thúc nhánh hiện tại. Khi quét AR, chuyển trang sẽ hướng dẫn người
-                    đọc quét trang đích.
+                    Nhánh kết thúc tại bước này.
+                    {action.navigation.target !== 'end' &&
+                        ' Trong chế độ AR, người đọc sẽ được hướng dẫn quét trang đích.'}
                 </p>
             </FieldGroup>
         );

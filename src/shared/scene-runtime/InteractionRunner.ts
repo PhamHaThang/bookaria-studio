@@ -2,11 +2,12 @@ import type {
     Action,
     InteractionRule,
     Trigger,
+    WorkflowCondition,
     WorkflowNavigation,
     WorkflowQuestion,
 } from '../contracts/scene.schema';
 
-import { WorkflowState } from './WorkflowState';
+import { type WorkflowChange, WorkflowState } from './WorkflowState';
 
 export type WorkflowEnvironment = {
     state?: WorkflowState;
@@ -47,6 +48,8 @@ export class InteractionRunner {
     onStep?: (event: InteractionStepEvent) => void;
     private active = new Map<string, { controller: AbortController; task: Promise<void> }>();
     private disposed = false;
+    private conditionSubscription?: () => void;
+    private conditionValues = new Map<string, boolean>();
     private rules: InteractionRule[];
     private execute: ActionExecutor;
     private onError: (message: string) => void;
@@ -74,14 +77,95 @@ export class InteractionRunner {
             /* Diagnostic UI must never affect execution. */
         }
     }
+    private waitUntil(test: WorkflowCondition, signal: AbortSignal): Promise<void> {
+        signal.throwIfAborted();
+        return new Promise((resolve, reject) => {
+            let settled = false;
+            const cleanup = () => {
+                settled = true;
+                unsubscribe();
+                signal.removeEventListener('abort', abort);
+            };
+            const abort = () => {
+                cleanup();
+                reject(signal.reason);
+            };
+            const check = () => {
+                if (settled) return;
+                try {
+                    if (
+                        !this.progress.test(
+                            test,
+                            this.environment.pageId || '',
+                            this.environment.visible,
+                        )
+                    )
+                        return;
+                    cleanup();
+                    resolve();
+                } catch (error) {
+                    cleanup();
+                    reject(error);
+                }
+            };
+            // Subscribe before checking so an update cannot be missed between the two.
+            const unsubscribe = this.progress.subscribe(check);
+            signal.addEventListener('abort', abort, { once: true });
+            if (signal.aborted) abort();
+            else check();
+        });
+    }
+    private stopConditions() {
+        this.conditionSubscription?.();
+        this.conditionSubscription = undefined;
+        this.conditionValues.clear();
+    }
+    private startConditions() {
+        this.stopConditions();
+        const rules = this.rules.filter(
+            (rule) => rule.enabled && rule.trigger.type === 'onStateCondition',
+        );
+        if (!rules.length) return;
+        const evaluate = (change: WorkflowChange = { reactions: 0 }) => {
+            if (change.stopped) return;
+            for (const rule of rules) {
+                if (!this.conditionSubscription || rule.trigger.type !== 'onStateCondition') return;
+                const satisfied = this.progress.test(
+                    rule.trigger.test,
+                    this.environment.pageId || '',
+                );
+                const previous = this.conditionValues.get(rule.id) ?? false;
+                this.conditionValues.set(rule.id, satisfied);
+                if (!satisfied || previous) continue;
+                // Bound the same reaction chain even when its steps await timers or media.
+                if (++change.reactions > 100) {
+                    change.stopped = true;
+                    this.stopConditions();
+                    for (const item of rules) this.active.get(item.id)?.controller.abort();
+                    const message =
+                        'Các sự kiện ghi nhớ đang tự kích hoạt lẫn nhau. Hãy kiểm tra các bước thay đổi ghi nhớ.';
+                    this.report({ ruleId: rule.id, index: 0, state: 'error', message });
+                    this.onError(message);
+                    return;
+                }
+                void this.run(rule.id, change);
+            }
+        };
+        this.conditionSubscription = this.progress.subscribe(evaluate);
+        evaluate();
+    }
     fire(trigger: Trigger) {
         if (this.disposed) return Promise.resolve([]);
+        const change: WorkflowChange = { reactions: 0 };
+        if (trigger.type === 'onPageEnter') this.startConditions();
+        if (trigger.type === 'onPageLeave') this.stopConditions();
         if (trigger.type === 'onTap')
-            this.progress.tap(this.environment.pageId || '', trigger.objectId);
+            this.progress.tap(this.environment.pageId || '', trigger.objectId, change);
         return Promise.all(
             this.rules
                 .filter((rule) => {
                     const wanted = rule.trigger;
+                    if (wanted.type === 'onStateCondition') return false;
                     if (wanted.type !== trigger.type) return false;
                     if (
                         'objectId' in wanted &&
@@ -97,10 +181,10 @@ export class InteractionRunner {
                         );
                     return true;
                 })
-                .map((rule) => this.run(rule.id)),
+                .map((rule) => this.run(rule.id, change)),
         );
     }
-    run(id: string): Promise<void> {
+    run(id: string, change: WorkflowChange = { reactions: 0 }): Promise<void> {
         const rule = this.rules.find((item) => item.id === id);
         if (this.disposed || !rule?.enabled) return Promise.resolve();
         const previous = this.active.get(id);
@@ -137,7 +221,10 @@ export class InteractionRunner {
                     let branch: 'true' | 'false' | undefined;
                     let terminal = false;
                     if (action.type !== 'wait') this.report({ ...detail, state: 'running' });
-                    if (action.type === 'condition') {
+                    if (action.type === 'waitUntil') {
+                        this.report({ ...detail, state: 'waiting' });
+                        await this.waitUntil(action.test, controller.signal);
+                    } else if (action.type === 'condition') {
                         branch = this.progress.test(
                             action.test,
                             this.environment.pageId || '',
@@ -145,7 +232,7 @@ export class InteractionRunner {
                         )
                             ? 'true'
                             : 'false';
-                    } else if (action.type === 'setState') this.progress.set(action);
+                    } else if (action.type === 'setState') this.progress.set(action, change);
                     else if (action.type === 'askQuestion') {
                         if (!this.environment.question)
                             throw new Error('Chế độ xem này chưa mở được câu hỏi.');
@@ -161,7 +248,11 @@ export class InteractionRunner {
                             if (!action.question.choices.some((choice) => choice.id === choiceId))
                                 throw new Error('Đáp án không hợp lệ.');
                             const correct = choiceId === action.question.correctChoiceId;
-                            this.progress.answer(action.question.questionId, { choiceId, correct });
+                            this.progress.answer(
+                                action.question.questionId,
+                                { choiceId, correct },
+                                change,
+                            );
                             void this.fire({
                                 type: 'onAnswer',
                                 questionId: action.question.questionId,
@@ -200,6 +291,7 @@ export class InteractionRunner {
         return task;
     }
     cancelAll() {
+        this.stopConditions();
         for (const run of this.active.values()) run.controller.abort();
         this.active.clear();
     }

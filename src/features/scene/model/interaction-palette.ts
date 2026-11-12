@@ -46,7 +46,7 @@ export const actionPalette = [
         label: 'Chạy hoạt cảnh 3D',
         group: 'Hành động — Action',
     },
-    { id: 'wait', type: 'wait', label: 'Chờ', group: 'Hành động — Action' },
+    { id: 'wait', type: 'wait', label: 'Đợi một khoảng thời gian', group: 'Hành động — Action' },
     { id: 'openUrl', type: 'openUrl', label: 'Mở liên kết', group: 'Điều hướng — Navigation' },
     {
         id: 'controlModel',
@@ -86,7 +86,7 @@ export function assignActionObject(
     assets: Record<string, AssetRef>,
 ): Action {
     if (
-        action.type === 'condition' &&
+        (action.type === 'condition' || action.type === 'waitUntil') &&
         (action.test.type === 'visible' || action.test.type === 'interactionCount')
     )
         return { ...action, test: { ...action.test, objectId: object.id } };
@@ -148,6 +148,7 @@ export function paletteAction(
     return action;
 }
 export function actionTitle(action: Action) {
+    if (action.type === 'waitUntil') return 'Chờ đến khi điều kiện đúng';
     if (action.type === 'controlModel')
         return { enable: 'Bật điều khiển', disable: 'Tắt điều khiển', reset: 'Đặt lại vị trí' }[
             action.operation

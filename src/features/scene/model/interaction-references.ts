@@ -10,7 +10,7 @@ export function stepReferencesObject(
     if (!object) return false;
     if (!action) return 'objectId' in trigger && trigger.objectId === object.id;
     if ('objectId' in action) return action.objectId === object.id;
-    if (action.type === 'condition' && 'objectId' in action.test)
+    if ((action.type === 'condition' || action.type === 'waitUntil') && 'objectId' in action.test)
         return action.test.objectId === object.id;
     if (object.type === 'audio' && (action.type === 'playAudio' || action.type === 'stopAudio'))
         return !action.assetId || action.assetId === object.assetId;

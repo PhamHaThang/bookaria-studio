@@ -33,7 +33,7 @@ test('every existing action belongs to one of five grouped blocks without changi
         );
         assert.equal(changeBlockAction(action, actionVariant(action), scene, {}, []), action);
     }
-    assert.equal(blockChoices(undefined, trigger, scene, {}).options.length, 7);
+    assert.equal(blockChoices(undefined, trigger, scene, {}).options.length, 8);
 });
 
 test('inline action changes preserve compatible object targets and disallow cross-group or unavailable actions', () => {
@@ -120,7 +120,7 @@ test('object highlights include trigger, action, condition and audio references 
     assert.equal(canAssignStepObject(undefined, audio, {}), false);
 });
 
-test('action functions are eight families and legacy variants retain their operation', () => {
+test('action functions include timed and conditional waits and retain legacy operations', () => {
     const options = blockChoices({ type: 'wait', ms: 0 }, trigger, scene, {}).options;
     assert.deepEqual(
         options.map((option) => option.value).sort(),

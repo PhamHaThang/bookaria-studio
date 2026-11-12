@@ -2,6 +2,7 @@ import '@xyflow/react/dist/style.css';
 import { useQuery } from '@tanstack/react-query';
 import {
     applyNodeChanges,
+    Background,
     BaseEdge,
     type Connection,
     type Edge,
@@ -59,7 +60,7 @@ import { ruleTriggerLabel } from '../model/interaction-scope';
 import { workflowTargetChoices } from '../model/interaction-targets';
 import { actionSummary } from '../model/interaction-templates';
 import { defaultWorkflowTrigger, triggerLabels } from '../model/interactions';
-import { memoryKey, memoryOperations, memorySummary } from '../model/memory-variables';
+import { memorySummary } from '../model/memory-variables';
 import { ActionPalette, actionIcons } from './InteractionAddMenu';
 import { ObjectThumbnail } from './InteractionScopeFilter';
 import { useMemory } from './MemoryContext';
@@ -97,17 +98,7 @@ type WorkflowNode = Node<StepData, 'workflow'>;
 type WorkflowEdge = Edge<{ context: Context; port?: FlowPort }, 'workflow'>;
 const Step = memo(function Step({ data, selected }: NodeProps<WorkflowNode>) {
     const { definitions } = useMemory();
-    const stateDef =
-        data.action?.type === 'setState'
-            ? definitions.find(
-                  (item) =>
-                      item.key ===
-                      memoryKey(data.action as import('@/shared/contracts/scene.schema').Action),
-              )
-            : undefined;
-    const choices = stateDef
-        ? { value: data.choice.value, options: memoryOperations(stateDef) }
-        : data.choice;
+    const choices = data.choice;
     const memoryText = data.action ? memorySummary(data.action, definitions) : undefined;
     const { user } = useAuth();
     const externalAudioId =
@@ -379,6 +370,7 @@ export function InteractionWorkflowEditor({
     trace,
     branches,
     disabled,
+    testing = false,
     onSelect,
     onDeselect,
     onTrigger,
@@ -405,6 +397,7 @@ export function InteractionWorkflowEditor({
     trace: Trace;
     branches: Record<string, 'true' | 'false'>;
     disabled: boolean;
+    testing?: boolean;
     onSelect: (id: string) => void;
     onDeselect: () => void;
     onTrigger: (trigger?: Trigger) => void;
@@ -424,6 +417,7 @@ export function InteractionWorkflowEditor({
     onMoveStart: () => void;
     onMoveEnd: () => void;
 }) {
+    const { definitions } = useMemory();
     const [flow, setFlow] = useState<ReactFlowInstance<WorkflowNode, WorkflowEdge> | null>(null);
     const [sizes, setSizes] = useState<Record<string, { width: number; height: number }>>({});
     const [addMenu, setAddMenu] = useState<{
@@ -477,11 +471,11 @@ export function InteractionWorkflowEditor({
                     id: step.id,
                     title: blockLabel(step.action),
                     target: workflowTargetChoices(step.action, rule.trigger, scene, assets, pages),
-                    choice: blockChoices(step.action, rule.trigger, scene, assets),
+                    choice: blockChoices(step.action, rule.trigger, scene, assets, definitions),
                     operation: actionOperationChoices(step.action),
                     summary: step.action
                         ? actionSummary(step.action, scene.objects)
-                        : ruleTriggerLabel(rule, scene.objects),
+                        : ruleTriggerLabel(rule, scene.objects, definitions),
                     actionType: step.action?.type,
                     action: step.action,
                     event: !step.action,
@@ -509,6 +503,7 @@ export function InteractionWorkflowEditor({
             })),
         [
             graph.nodes,
+            definitions,
             pages,
             selected,
             selectedEdge,
@@ -811,6 +806,13 @@ export function InteractionWorkflowEditor({
                     'edge.a11yDescription.default': 'Đường nối xác định thứ tự thực hiện.',
                 }}
             >
+                {testing && (
+                    <Background
+                        gap={20}
+                        size={1.2}
+                        color="color-mix(in srgb, var(--text-muted) 35%, transparent)"
+                    />
+                )}
                 <Panel position="bottom-left">
                     <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
                         <Button

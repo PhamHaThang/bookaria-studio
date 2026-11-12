@@ -1,6 +1,6 @@
 import type { AssetRef } from '@/shared/contracts/asset.schema';
 import type { BookDetail } from '@/shared/contracts/dto.schema';
-import type { Action, Scene, Trigger } from '@/shared/contracts/scene.schema';
+import type { Action, Scene, Trigger, WorkflowVariable } from '@/shared/contracts/scene.schema';
 import {
     actionPalette,
     type PaletteId,
@@ -8,6 +8,7 @@ import {
     paletteUnavailable,
 } from './interaction-palette';
 import { triggerLabels } from './interactions';
+import { changeMemoryAction, memoryActionChoices } from './memory-variables';
 
 export type BlockGroup = 'trigger' | 'condition' | 'action' | 'state' | 'navigation';
 export const blockGroups = [
@@ -61,11 +62,27 @@ export function actionVariant(action: Action): string {
     if (action.type === 'transformTo') return 'transform';
     return action.type;
 }
+export const conditionOptions = [
+    { value: 'variable', label: 'Thông tin ghi nhớ' },
+    { value: 'answer', label: 'Kết quả câu hỏi' },
+    { value: 'interactionCount', label: 'Số lần chạm' },
+    { value: 'visible', label: 'Trạng thái hiển thị' },
+] as const;
+
+export const navigationOptions = [
+    { value: 'next', label: 'Trang tiếp theo' },
+    { value: 'previous', label: 'Trang trước' },
+    { value: 'page', label: 'Một trang cụ thể' },
+    { value: 'end', label: 'Kết thúc trải nghiệm' },
+    { value: 'openUrl', label: 'Mở liên kết' },
+] as const;
+
 export function blockChoices(
     action: Action | undefined,
     trigger: Trigger,
     scene: Scene,
     assets: Record<string, AssetRef>,
+    definitions: WorkflowVariable[] = [],
 ) {
     const group = blockGroup(action);
     if (!action)
@@ -80,35 +97,20 @@ export function blockChoices(
     if (group === 'condition')
         return {
             value: actionVariant(action),
-            options: [
-                { value: 'variable', label: 'Điểm số / thông tin ghi nhớ', disabled: false },
-                { value: 'answer', label: 'Kết quả câu hỏi', disabled: false },
-                { value: 'interactionCount', label: 'Số lần chạm', disabled: false },
-                { value: 'visible', label: 'Đối tượng đang hiện / ẩn', disabled: false },
-            ],
+            options: [...conditionOptions],
         };
-    if (group === 'state')
-        return {
-            value: actionVariant(action),
-            options: [
-                { value: 'set', label: 'Gán giá trị / đánh dấu', disabled: false },
-                { value: 'increment', label: 'Cộng / trừ điểm', disabled: false },
-                { value: 'toggle', label: 'Đảo Đúng / Sai', disabled: false },
-            ],
-        };
+    if (action.type === 'setState')
+        return memoryActionChoices(
+            action,
+            definitions.find((item) => item.key === action.key),
+        );
     if (group === 'navigation')
         return {
             value: actionVariant(action),
-            options: [
-                { value: 'openUrl', label: 'Mở liên kết', disabled: false },
-                { value: 'next', label: 'Trang tiếp theo', disabled: false },
-                { value: 'previous', label: 'Trang trước', disabled: false },
-                { value: 'page', label: 'Một trang cụ thể', disabled: false },
-                { value: 'end', label: 'Kết thúc trải nghiệm', disabled: false },
-            ],
+            options: [...navigationOptions],
         };
     const families = [
-        { value: 'wait', label: 'Chờ', initial: 'wait' },
+        { value: 'wait', label: 'Đợi một khoảng thời gian', initial: 'wait' },
         { value: 'visibility', label: 'Hiển thị đối tượng', initial: 'show' },
         { value: 'audio', label: 'Âm thanh', initial: 'playAudio' },
         { value: 'transform', label: 'Chuyển động', initial: 'move' },
@@ -119,11 +121,22 @@ export function blockChoices(
     ] as const;
     return {
         value: actionVariant(action),
-        options: families.map((item) => ({
-            value: item.value,
-            label: item.label,
-            disabled: !!paletteUnavailable(item.initial, scene.objects, assets),
-        })),
+        options: [
+            ...(action.type === 'waitUntil'
+                ? [
+                      {
+                          value: 'waitUntil',
+                          label: 'Chờ đến khi điều kiện đúng (đã có)',
+                          disabled: false,
+                      },
+                  ]
+                : []),
+            ...families.map((item) => ({
+                value: item.value,
+                label: item.label,
+                disabled: !!paletteUnavailable(item.initial, scene.objects, assets),
+            })),
+        ],
     };
 }
 /** Operations share one node family; only runtime-compatible fields are carried across. */
@@ -236,22 +249,7 @@ export function changeBlockAction(
                       };
         return { ...action, test };
     }
-    if (action.type === 'setState') {
-        if (!['set', 'increment', 'toggle'].includes(value))
-            throw new Error('Chọn cách ghi nhớ hợp lệ.');
-        return {
-            ...action,
-            operation: value as typeof action.operation,
-            value:
-                value === 'increment'
-                    ? typeof action.value === 'number'
-                        ? action.value
-                        : 1
-                    : value === 'toggle'
-                      ? true
-                      : action.value,
-        };
-    }
+    if (action.type === 'setState') return changeMemoryAction(action, value);
     if (action.type === 'navigate' || action.type === 'openUrl') {
         if (value === 'openUrl')
             return { type: 'openUrl', url: '', delayMsSchema: action.delayMsSchema };

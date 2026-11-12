@@ -7,10 +7,9 @@ import type { Action, Easing, Scene, SceneObject } from '@/shared/contracts/scen
 import { facesCamera } from '@/shared/scene/audio-kind';
 import { BufferedInput } from '@/shared/ui/BufferedTextInput';
 import { Button } from '@/shared/ui/Button';
-import { Disclosure } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
-import { Field, FieldGroup, FieldLabel, FieldSet } from '@/shared/ui/primitives/field';
+import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/shared/ui/primitives/field';
 import { assetKeys, assetsApi } from '../../assets';
 import { useAuth } from '../../auth';
 import { actionOperationChoices, changeActionOperation } from '../model/interaction-blocks';
@@ -31,6 +30,9 @@ export function InteractionActionEditor({
     assets,
     id,
     disabled,
+    configuredInGraph = false,
+    hideOperation = false,
+    hideObject = false,
     onChange,
 }: {
     action: Action;
@@ -40,6 +42,9 @@ export function InteractionActionEditor({
     assets: Record<string, AssetRef>;
     id: string;
     disabled: boolean;
+    configuredInGraph?: boolean;
+    hideOperation?: boolean;
+    hideObject?: boolean;
     defaultTarget?: SceneObject;
     onChange: (action: Action) => void;
 }) {
@@ -75,7 +80,7 @@ export function InteractionActionEditor({
         detail.data?.name || (audioObject ? objectName(audioObject) : 'Âm thanh đang chọn');
     const operation = actionOperationChoices(action);
     const patch = (value: Partial<Action>) => onChange({ ...action, ...value } as Action);
-    if (['condition', 'setState', 'askQuestion', 'navigate'].includes(action.type))
+    if (['condition', 'waitUntil', 'setState', 'askQuestion', 'navigate'].includes(action.type))
         return (
             <WorkflowActionFields
                 key={id}
@@ -83,14 +88,15 @@ export function InteractionActionEditor({
                 scene={scene || { schemaVersion: 1, objects, interactions: [] }}
                 pages={pages}
                 disabled={disabled}
+                configuredInGraph={configuredInGraph}
                 onChange={onChange}
             />
         );
     return (
         <>
             <FieldSet disabled={disabled} className="m-0 min-w-0 shrink-0 border-0 p-0">
-                <FieldGroup className="shrink-0 gap-4">
-                    {operation && (
+                <FieldGroup className="shrink-0 gap-4 [&_[data-orientation=contents]>[data-slot=field-label]]:mb-0">
+                    {operation && !hideOperation && (
                         <Field>
                             <FieldLabel htmlFor={`${id}-operation`}>Thao tác</FieldLabel>
                             <FormSelect
@@ -104,7 +110,7 @@ export function InteractionActionEditor({
                             />
                         </Field>
                     )}
-                    {'objectId' in action && (
+                    {!hideObject && 'objectId' in action && (
                         <Field>
                             <FieldLabel htmlFor={`${id}-target`}>Áp dụng cho</FieldLabel>
                             <FormSelect
@@ -396,33 +402,42 @@ export function InteractionActionEditor({
                             )}
                         </FieldGroup>
                     )}
+                    {configuredInGraph &&
+                        (action.type === 'playAudio' ||
+                            action.type === 'playVideo' ||
+                            action.type === 'playAnimation') && (
+                            <p className="m-0 text-muted-foreground text-xs leading-5">
+                                Bước sau bắt đầu ngay khi gửi lệnh phát.
+                            </p>
+                        )}
                     {action.type !== 'wait' && (
-                        <Disclosure
-                            title={
-                                action.type === 'transformTo'
-                                    ? 'Thời gian và cách chuyển động'
-                                    : 'durationMs' in action
-                                      ? 'Thời gian chuyển đổi'
-                                      : 'Thời gian bắt đầu'
-                            }
-                        >
+                        <FieldSet className="gap-3 pt-3 [&_[data-slot=field-label]]:text-xs [&_[data-slot=field-label]]:leading-5 [&_[data-slot=input]]:mt-0">
+                            <FieldLegend variant="label" className="mb-0 font-semibold leading-5">
+                                Thời gian
+                            </FieldLegend>
                             <FieldGroup className="gap-4">
-                                <NumericField
-                                    id={`${id}-delay`}
-                                    label="Chờ trước khi bắt đầu (giây, 0–60)"
-                                    value={action.delayMsSchema / 1000}
-                                    onChange={(v) => patch({ delayMsSchema: Math.round(v * 1000) })}
-                                />
-                                {'durationMs' in action && (
+                                <Field className="gap-2">
                                     <NumericField
-                                        id={`${id}-duration`}
-                                        label="Thời gian chuyển đổi (giây, 0–10)"
-                                        value={action.durationMs / 1000}
+                                        id={`${id}-delay`}
+                                        label="Chờ trước khi bắt đầu (giây, 0–60)"
+                                        value={action.delayMsSchema / 1000}
                                         onChange={(v) =>
-                                            patch({ durationMs: Math.round(v * 1000) })
+                                            patch({ delayMsSchema: Math.round(v * 1000) })
                                         }
                                     />
-                                )}{' '}
+                                </Field>
+                                {'durationMs' in action && (
+                                    <Field className="gap-2">
+                                        <NumericField
+                                            id={`${id}-duration`}
+                                            label="Thời lượng chuyển đổi (giây, 0–10)"
+                                            value={action.durationMs / 1000}
+                                            onChange={(v) =>
+                                                patch({ durationMs: Math.round(v * 1000) })
+                                            }
+                                        />
+                                    </Field>
+                                )}
                                 {action.type === 'transformTo' && (
                                     <Field>
                                         <FieldLabel htmlFor={`${id}-easing`}>
@@ -443,7 +458,7 @@ export function InteractionActionEditor({
                                     </Field>
                                 )}
                             </FieldGroup>
-                        </Disclosure>
+                        </FieldSet>
                     )}
                 </FieldGroup>
             </FieldSet>

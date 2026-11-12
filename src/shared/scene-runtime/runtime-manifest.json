@@ -2,20 +2,24 @@
     "source": "bookaria-viewer/src/scene-core",
     "files": {
         "buildScene.ts": {
-            "source": "723c2d461f35759835a920ecef1c05e13e2be24511dff002ac0562498ed1df1f",
-            "snapshot": "6eb6d3e77c9398219030784e77767787d9397034139b32efdc9cab49a199d00c"
+            "source": "10318497df6565789d923e53f8ed11b01f2de9e97c9a37ff0d15142275a28461",
+            "snapshot": "32b8cbb5bc182947d679ccacac5e8b7d025806f0b5b8d2a5b3013e2b2e339a88"
         },
         "InteractionRunner.ts": {
-            "source": "d0f1793df2790e1391cebf7526bb05af0c9a0bcd827e918d30d9f2a0cafc83ec",
-            "snapshot": "219e2dbb94cdef110cd4dcea4024e7eac3d18b08c89c3d505961ceb55dfa8bc2"
+            "source": "fede022bdc384faeafc432a608298506a710fd176e5de839f0955d2c7eca54f0",
+            "snapshot": "e47951b1349ad79e7e8ddeba9ed3d15cf765f51580ca9e71507a2b00a077a7ce"
         },
         "WorkflowState.ts": {
-            "source": "2fedc34bc8306eee33eb50d4929b198b57f727714edfabb65a6f2d4e6694f4d5",
-            "snapshot": "9b24bf4e40eea9ec1701e2116c1fcb3fd0fa9e7e6c715d5d01aed748dd05e798"
+            "source": "3c4114fb92df0d8407d5649993545296bf9e44e6b3a42590d1b0024dce1941fe",
+            "snapshot": "91aefde694495a8e99b4ac6d0392adad8badee7b5b6988f6f902043a61eba1db"
         },
         "WorkflowPrompt.ts": {
             "source": "5f0d9bc761c1a7120cdd44dcff7ad72f2ac7818fdbcb919edeb01ff012d3144b",
             "snapshot": "8833134d767498ea3b414772e40250e8ebdc8b3393f3832f99dd03622a807e78"
+        },
+        "MediaElementPool.ts": {
+            "source": "00915bb96f79c0c98d4ee4312be915f4d4df3ffe44e5d7db80d5f6a8f30be085",
+            "snapshot": "00915bb96f79c0c98d4ee4312be915f4d4df3ffe44e5d7db80d5f6a8f30be085"
         },
         "ModelControls.ts": {
             "source": "83f80b00c02b4ed48be2f15cb3204893e8079fc8a5d76518dea1fd0c4cdcad9a",
@@ -32,6 +36,10 @@
         "fetchBytes.ts": {
             "source": "a89e8d77b030e9e979a63d43f04fa19fb18791304e0ac3e35e126ecebcc22890",
             "snapshot": "a89e8d77b030e9e979a63d43f04fa19fb18791304e0ac3e35e126ecebcc22890"
+        },
+        "reader-feedback.ts": {
+            "source": "2d0e3d568d89685760bc6f085d96b6df1246173a74385cb2dcede20cd7db8104",
+            "snapshot": "2d0e3d568d89685760bc6f085d96b6df1246173a74385cb2dcede20cd7db8104"
         }
     }
 }

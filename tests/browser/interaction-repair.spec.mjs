@@ -64,11 +64,13 @@ for (const [theme, width, height] of [
         await expect(
             page.getByRole('textbox', { name: 'Tên luồng tương tác', exact: true }),
         ).toHaveValue('Hiện thông tin');
-        await expect(page.locator('.react-flow__node.selected')).toHaveAttribute(
-            'data-id',
-            'action-0',
+        await expect(page.locator('[data-workflow-step]').nth(1).locator('..')).toHaveClass(
+            /selected/,
         );
-        await page.getByRole('button', { name: 'Chạy thử', exact: true }).click();
+        await page.getByRole('button', { name: 'Tùy chọn chạy thử', exact: true }).click();
+        await page
+            .getByRole('menuitem', { name: 'Chạy riêng luồng đang chọn', exact: true })
+            .click();
         await expect(
             page.getByRole('region', { name: 'Chạy thử tương tác', exact: true }),
         ).toHaveCount(0);
@@ -98,11 +100,14 @@ test('isolated test tolerates inferred/declared name collisions by generating di
     await open(page);
     await page.getByRole('radio', { name: 'Tương tác', exact: true }).click();
     await page.getByRole('button', { name: /^Luồng hợp lệ/ }).click();
-    await page.getByRole('button', { name: 'Chạy thử', exact: true }).click();
+    await page.getByRole('button', { name: 'Tùy chọn chạy thử', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Chạy riêng luồng đang chọn', exact: true }).click();
     const panel = page.getByRole('region', { name: 'Chạy thử tương tác', exact: true });
     await expect(panel.getByRole('button', { name: 'Chạy', exact: true })).toBeEnabled();
-    await expect(panel.getByText('Điểm số', { exact: true })).toBeVisible();
-    await expect(panel.getByText('Điểm số (2)', { exact: true })).toBeVisible();
+    await panel.getByRole('button', { name: 'Chi tiết chạy thử', exact: true }).click();
+    const details = page.getByRole('dialog', { name: 'Chi tiết chạy thử', exact: true });
+    await expect(details.getByText('Điểm số', { exact: true })).toBeVisible();
+    await expect(details.getByText('Điểm số (2)', { exact: true })).toBeVisible();
     await panel.getByRole('button', { name: 'Chạy', exact: true }).click();
     await expect(
         page.getByRole('heading', { name: 'Luồng hợp lệ vẫn chạy', exact: true }),

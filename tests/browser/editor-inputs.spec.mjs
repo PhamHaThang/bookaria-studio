@@ -213,7 +213,8 @@ test('workflow name, question, choice and URL flush before save/test, retaining 
     await expect(question).toHaveValue('Rùa ');
     await question.pressSequentially('có thắng không?', { delay: 5 });
     await page.getByLabel('Đáp án 1', { exact: true }).fill('Rùa thắng');
-    await page.getByRole('button', { name: 'Chạy thử', exact: true }).click();
+    await page.getByRole('button', { name: 'Tùy chọn chạy thử', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Chạy riêng luồng đang chọn', exact: true }).click();
     await page.getByRole('button', { name: 'Chạy', exact: true }).click();
     await expect(
         page.getByRole('heading', { name: 'Rùa có thắng không?', exact: true }),
@@ -223,7 +224,7 @@ test('workflow name, question, choice and URL flush before save/test, retaining 
         .getByRole('dialog', { name: 'Câu hỏi tương tác', exact: true })
         .getByRole('button', { name: 'Đóng câu hỏi', exact: true })
         .click();
-    await page.getByRole('button', { name: 'Đóng chạy thử', exact: true }).click();
+    await page.getByRole('button', { name: 'Đóng thử', exact: true }).click();
     await page.locator('[data-workflow-step="action-1"] .workflow-drag').click();
     await page
         .getByLabel('Địa chỉ liên kết', { exact: true })
@@ -293,7 +294,7 @@ test('clearing a question blocks an immediate save shortcut until the local flow
     await openEditor(page);
     await page.getByRole('radio', { name: 'Tương tác', exact: true }).click();
     await page.getByRole('button', { name: /^Luồng hợp lệ Khi/ }).click();
-    await page.locator('[data-workflow-step="action-1"] .workflow-drag').click();
+    await page.locator('[data-workflow-step]').nth(2).locator('.workflow-drag').click();
     await page.evaluate(() => {
         const store = window.__editorPages.store;
         const original = store.save;

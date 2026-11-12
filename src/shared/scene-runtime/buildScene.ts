@@ -17,14 +17,16 @@ import {
     sleep,
     type WorkflowEnvironment,
 } from './InteractionRunner';
+import type { MediaElementPool } from './MediaElementPool';
 import { ModelControlAnimations } from './ModelControlAnimations';
 import { ModelControls } from './ModelControls';
+import type { ReaderNoticeOptions } from './reader-feedback';
 import { askWorkflowQuestion } from './WorkflowPrompt';
 
 type Hooks = WorkflowEnvironment & {
     step?: (event: InteractionStepEvent) => void;
     tap?: (id: string) => void;
-    notice: (message: string) => void;
+    notice: (message: string, options?: ReaderNoticeOptions) => void;
     link: (url: string) => void;
     log: (message: string) => void;
 };
@@ -54,7 +56,7 @@ export async function buildScene(
     assets: Record<string, ManifestAsset>,
     signal: AbortSignal,
     hooks: Hooks,
-    options: { background?: boolean; bytes?: AssetCache } = {},
+    options: { background?: boolean; bytes?: AssetCache; mediaPool?: MediaElementPool } = {},
 ) {
     const group = new THREE.Group();
     const nodes = new Map<string, Node>(),
@@ -65,11 +67,15 @@ export async function buildScene(
     const playAttempts = new WeakMap<HTMLMediaElement, number>();
     const blockedMedia = new Set<HTMLMediaElement>();
     const suspendedMedia = new Set<HTMLMediaElement>();
+    const pendingMedia = new Set<HTMLMediaElement>();
     let suspended = false;
     let modelControls: ModelControls | undefined;
     let controlAnimations: ModelControlAnimations | undefined;
     let lifecycle = 0;
     const blobUrls: string[] = [];
+    const mediaListeners: (() => void)[] = [];
+    let audioChannel = 0,
+        videoChannel = 0;
     const draco = new DRACOLoader().setDecoderPath('/vendor/draco-0.161.0/');
     const loader = new GLTFLoader().setDRACOLoader(draco);
     let muted = false,
@@ -97,10 +103,13 @@ export async function buildScene(
         controlAnimations?.dispose();
         for (const cleanup of animationListeners.values()) cleanup();
         for (const tween of activeTweens.values()) tween.abort();
+        for (const remove of mediaListeners) remove();
         for (const item of media) {
             item.pause();
-            item.removeAttribute('src');
-            item.load();
+            if (!options.mediaPool) {
+                item.removeAttribute('src');
+                item.load();
+            }
         }
         for (const node of nodes.values()) {
             node.releaseAudio?.();
@@ -108,6 +117,7 @@ export async function buildScene(
             node.mixer?.stopAllAction();
             if (node.mixer) node.mixer.uncacheRoot(node.mixer.getRoot());
         }
+        for (const item of media) options.mediaPool?.release(item);
         group.traverse((object) => {
             if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.Line)) return;
             object.geometry.dispose();
@@ -177,12 +187,24 @@ export async function buildScene(
         new THREE.MeshBasicMaterial({ map, transparent: true, side: THREE.DoubleSide });
     function safePlay(element: HTMLMediaElement) {
         if (disposed) return;
+        if (suspended) {
+            suspendedMedia.add(element);
+            return;
+        }
         const attempt = (playAttempts.get(element) || 0) + 1;
         playAttempts.set(element, attempt);
-        const playing = element.play();
+        pendingMedia.add(element);
+        // Some engines throw synchronously. Preserve the gesture by calling play directly.
+        let playing: Promise<void> | undefined;
+        try {
+            playing = element.play();
+        } catch (error) {
+            playing = Promise.reject(error);
+        }
         playing
             ?.then(() => {
                 if (!disposed && playAttempts.get(element) === attempt) {
+                    pendingMedia.delete(element);
                     blockedMedia.delete(element);
                     if (suspended) {
                         suspendedMedia.add(element);
@@ -190,8 +212,10 @@ export async function buildScene(
                     }
                 }
             })
-            .catch(() => {
-                if (disposed || playAttempts.get(element) !== attempt) return;
+            .catch((error: unknown) => {
+                if (disposed || signal.aborted || playAttempts.get(element) !== attempt) return;
+                pendingMedia.delete(element);
+                if (error instanceof Error && error.name === 'AbortError') return;
                 blockedMedia.add(element);
                 for (const node of nodes.values())
                     if (node.audio === element)
@@ -202,10 +226,13 @@ export async function buildScene(
                             duration: Number.isFinite(element.duration) ? element.duration : 0,
                             error: 'Không phát được âm thanh. Hãy thử lại.',
                         });
-                if (!disposed)
-                    hooks.notice(
-                        'Trình duyệt chưa phát được âm thanh/video. Chọn “Chạm để bật âm thanh” hoặc kiểm tra tệp.',
-                    );
+                const permission = error instanceof Error && error.name === 'NotAllowedError';
+                hooks.notice(
+                    permission
+                        ? 'Chạm để cho phép phát âm thanh/video của sách.'
+                        : 'Không phát được âm thanh/video. Hãy thử lại hoặc kiểm tra tệp.',
+                    { kind: 'error', action: 'media', mediaPermission: permission },
+                );
             });
     }
     function getAudio(id: string, key = id) {
@@ -213,21 +240,30 @@ export async function buildScene(
         if (element) return element;
         const asset = assets[id];
         if (asset?.type !== 'AUDIO') throw new Error('Thiếu tài nguyên âm thanh.');
-        element = new Audio();
+        element =
+            options.mediaPool?.audio(
+                key === 'background' || key === 'narration' ? key : `audio:${audioChannel++}`,
+            ) ?? new Audio();
         element.crossOrigin = 'anonymous';
         element.preload = 'metadata';
         element.src = asset.url;
         element.muted = muted;
-        element.addEventListener('error', () => {
+        const onError = () => {
             if (!disposed)
-                hooks.notice('Không tải được âm thanh. Kiểm tra tài nguyên hoặc thử lại.');
-        });
+                hooks.notice('Không tải được âm thanh. Kiểm tra tài nguyên hoặc thử lại.', {
+                    kind: 'error',
+                    action: 'media',
+                });
+        };
+        element.addEventListener('error', onError);
+        mediaListeners.push(() => element.removeEventListener('error', onError));
         audio.set(key, element);
         audioAssets.set(element, id);
         media.add(element);
         return element;
     }
     function stopMedia() {
+        pendingMedia.clear();
         suspendedMedia.clear();
         blockedMedia.clear();
         for (const element of media) {
@@ -296,6 +332,8 @@ export async function buildScene(
                     (!action.assetId || audioAssets.get(element) === action.assetId)
                 ) {
                     playAttempts.set(element, (playAttempts.get(element) || 0) + 1);
+                    pendingMedia.delete(element);
+                    suspendedMedia.delete(element);
                     element.pause();
                     blockedMedia.delete(element);
                     element.currentTime = 0;
@@ -368,7 +406,9 @@ export async function buildScene(
                     }
             });
             const start = visibilityProgress.get(node.spec.id) ?? (node.root.visible ? 1 : 0);
-            node.root.visible = true;
+            // Hiding an already hidden object must not briefly satisfy a visible condition.
+            node.root.visible = visible || start > 0;
+            runner.progress.notify();
             try {
                 const completed = await tween(
                     `${node.spec.id}:visible`,
@@ -385,6 +425,7 @@ export async function buildScene(
                 );
                 if (completed && visibilityGeneration.get(node.spec.id) === generation) {
                     node.root.visible = visible;
+                    runner.progress.notify();
                     visibilityProgress.set(node.spec.id, visible ? 1 : 0);
                 }
             } finally {
@@ -529,7 +570,9 @@ export async function buildScene(
             } else if (spec.type === 'video') {
                 const asset = assets[spec.assetId];
                 if (asset?.type !== 'VIDEO') throw new Error('Thiếu tài nguyên video.');
-                const element = document.createElement('video');
+                const element =
+                    options.mediaPool?.video(`video:${videoChannel++}`) ??
+                    document.createElement('video');
                 element.crossOrigin = 'anonymous';
                 element.playsInline = true;
                 element.preload = 'metadata';
@@ -539,9 +582,15 @@ export async function buildScene(
                 element.src = asset.url;
                 node.video = element;
                 media.add(element);
-                element.addEventListener('error', () => {
-                    if (!disposed) hooks.notice('Không tải được video của trang.');
-                });
+                const onError = () => {
+                    if (!disposed)
+                        hooks.notice('Không tải được video của trang.', {
+                            kind: 'error',
+                            action: 'media',
+                        });
+                };
+                element.addEventListener('error', onError);
+                mediaListeners.push(() => element.removeEventListener('error', onError));
                 const map = new THREE.VideoTexture(element);
                 map.colorSpace = THREE.SRGBColorSpace;
                 textures.add(map);
@@ -550,25 +599,26 @@ export async function buildScene(
                     (asset.meta?.height || 1) / (asset.meta?.width || 1),
                     material(map),
                 );
-                if (!asset.meta?.width || !asset.meta?.height)
-                    element.addEventListener(
-                        'loadedmetadata',
-                        () => {
-                            if (
-                                disposed ||
-                                signal.aborted ||
-                                !element.videoWidth ||
-                                !element.videoHeight
-                            )
-                                return;
-                            surface.geometry.dispose();
-                            surface.geometry = new THREE.PlaneGeometry(
-                                1,
-                                element.videoHeight / element.videoWidth,
-                            );
-                        },
-                        { once: true },
+                if (!asset.meta?.width || !asset.meta?.height) {
+                    const onMetadata = () => {
+                        if (
+                            disposed ||
+                            signal.aborted ||
+                            !element.videoWidth ||
+                            !element.videoHeight
+                        )
+                            return;
+                        surface.geometry.dispose();
+                        surface.geometry = new THREE.PlaneGeometry(
+                            1,
+                            element.videoHeight / element.videoWidth,
+                        );
+                    };
+                    element.addEventListener('loadedmetadata', onMetadata, { once: true });
+                    mediaListeners.push(() =>
+                        element.removeEventListener('loadedmetadata', onMetadata),
                     );
+                }
                 node.billboard.content.add(surface);
             } else if (spec.type === 'hotspot') {
                 const hitArea = plane(
@@ -701,8 +751,9 @@ export async function buildScene(
                 modelControls?.pause(true);
                 suspended = true;
                 for (const element of media) {
-                    if (!element.paused) {
+                    if (!element.paused || pendingMedia.has(element)) {
                         suspendedMedia.add(element);
+                        pendingMedia.delete(element);
                         playAttempts.set(element, (playAttempts.get(element) || 0) + 1);
                         element.pause();
                     }
@@ -769,7 +820,11 @@ export async function buildScene(
                 }
             },
             retryMedia() {
-                for (const element of blockedMedia) safePlay(element);
+                if (disposed || suspended) return;
+                for (const element of blockedMedia) {
+                    if (element.error) element.load();
+                    safePlay(element);
+                }
             },
             stopMedia,
             dispose,

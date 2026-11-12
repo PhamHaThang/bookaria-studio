@@ -1,12 +1,15 @@
 import type { Action, WorkflowCondition, WorkflowVariable } from '../contracts/scene.schema';
 
 type Value = boolean | number | string;
+/** Shared cause follows reactions across async steps; a new reader event starts a fresh chain. */
+export type WorkflowChange = { reactions: number; stopped?: boolean };
 export type Answer = { choiceId: string; correct: boolean };
 /** Per-reader progress, shared between pages. Storage failure only disables persistence. */
 export class WorkflowState {
     private values = new Map<string, Value>();
     private answers = new Map<string, Answer>();
     private counts = new Map<string, number>();
+    private listeners = new Set<(change: WorkflowChange) => void>();
     private key?: string;
     private defaults: WorkflowVariable[];
     constructor(key?: string, definitions: WorkflowVariable[] = []) {
@@ -68,6 +71,16 @@ export class WorkflowState {
             /* Reading must remain available without storage. */
         }
     }
+    /** Notify pending conditions, including scene visibility changes. */
+    notify(change: WorkflowChange = { reactions: 0 }) {
+        for (const listener of [...this.listeners]) listener(change);
+    }
+    subscribe(listener: (change: WorkflowChange) => void) {
+        this.listeners.add(listener);
+        return () => {
+            this.listeners.delete(listener);
+        };
+    }
     snapshot() {
         return {
             values: Object.fromEntries(this.values),
@@ -81,8 +94,9 @@ export class WorkflowState {
         this.counts.clear();
         this.initialize();
         this.save();
+        this.notify();
     }
-    set(action: Extract<Action, { type: 'setState' }>) {
+    set(action: Extract<Action, { type: 'setState' }>, change?: WorkflowChange) {
         if (!this.values.has(action.key) && this.values.size >= 200)
             throw new Error('Sách đã đạt giới hạn thông tin ghi nhớ.');
         const definition = this.defaults.find((item) => item.key === action.key);
@@ -110,18 +124,21 @@ export class WorkflowState {
         }
         this.values.set(action.key, next);
         this.save();
+        this.notify(change);
     }
-    answer(id: string, answer: Answer) {
+    answer(id: string, answer: Answer, change?: WorkflowChange) {
         if (!this.answers.has(id) && this.answers.size >= 200)
             this.answers.delete(this.answers.keys().next().value as string);
         this.answers.set(id, answer);
         this.save();
+        this.notify(change);
     }
-    tap(pageId: string, objectId: string) {
+    tap(pageId: string, objectId: string, change?: WorkflowChange) {
         const key = `${pageId}:${objectId}`;
         if (!this.counts.has(key) && this.counts.size >= 1000) return;
         this.counts.set(key, Math.min(1000000, (this.counts.get(key) || 0) + 1));
         this.save();
+        this.notify(change);
     }
     test(test: WorkflowCondition, pageId: string, visible: (id: string) => boolean = () => false) {
         if (test.type === 'answer') {

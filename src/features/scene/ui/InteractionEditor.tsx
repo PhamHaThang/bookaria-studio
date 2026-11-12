@@ -1,4 +1,4 @@
-import { Copy, Play, Plus, Trash2, TriangleAlert, Unplug, X, Zap } from 'lucide-react';
+import { ChevronDown, Copy, Play, Plus, Trash2, TriangleAlert, Unplug, X, Zap } from 'lucide-react';
 import {
     type Ref,
     useCallback,
@@ -27,9 +27,15 @@ import {
 import type { InteractionStepEvent } from '@/shared/scene-runtime/InteractionRunner';
 import { BufferedInput } from '@/shared/ui/BufferedTextInput';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
-import { FormSelect } from '@/shared/ui/FormSelect';
 import { Button } from '@/shared/ui/primitives/button';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/shared/ui/primitives/dropdown-menu';
 import {
     Empty,
     EmptyDescription,
@@ -37,13 +43,19 @@ import {
     EmptyMedia,
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { Separator } from '@/shared/ui/primitives/separator';
 import { Switch } from '@/shared/ui/primitives/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
 import { useAuth } from '../../auth';
 import type { PreviewRepair } from '../../preview/model/preview-problem';
-import { changeBlockAction } from '../model/interaction-blocks';
+import {
+    actionVariant,
+    blockGroup,
+    changeBlockAction,
+    conditionOptions,
+    navigationOptions,
+} from '../model/interaction-blocks';
 import {
     arrangeFlow,
     type FlowPort,
@@ -67,6 +79,8 @@ import {
 } from '../model/interaction-palette';
 import { type InteractionScope, rulesInScope } from '../model/interaction-scope';
 import {
+    actionSummary,
+    applyInteraction,
     type InteractionTemplateId,
     interactionProblems,
     objectName,
@@ -82,13 +96,15 @@ import {
 import { memoryDefinitions, memoryOperations } from '../model/memory-variables';
 import { InteractionActionEditor } from './InteractionActionEditor';
 import { ActionPalette, TemplateMenu } from './InteractionAddMenu';
+import { InteractionChoices } from './InteractionChoices';
+import { InteractionConditionBranches } from './InteractionConditionBranches';
+import { InteractionEventSettings } from './InteractionEventSettings';
 import { InteractionFlowPicker } from './InteractionFlowPicker';
 import { InteractionTargetPreview } from './InteractionTargetPreview';
 import { InteractionTestPanel } from './InteractionTestPanel';
 import { InteractionWorkflowEditor } from './InteractionWorkflowEditor';
 import { MemoryContext } from './MemoryContext';
 import { MemoryVariablesPanel, type MemoryVariablesPanelHandle } from './MemoryVariablesPanel';
-import { WorkflowTriggerFields } from './WorkflowFields';
 
 type Draft = { rule: InteractionRule; graph: InteractionFlow; template?: InteractionTemplateId };
 export type InteractionEditorHandle = { confirmLeave: (action: () => void) => void };
@@ -145,10 +161,17 @@ function recover(key: string, scene: Scene): Draft | null {
                 'onMarkerLost',
                 'onAnimationEnd',
                 'onAnswer',
+                'onStateCondition',
             ].includes(rule.trigger?.type) ||
             (rule.trigger.type === 'onTap' && typeof rule.trigger.objectId !== 'string')
         )
             return null;
+        if (rule.trigger.type === 'onStateCondition') {
+            const test = rule.trigger.test;
+            if (test?.type !== 'variable' || typeof test.key !== 'string') return null;
+            if ((test as { value: unknown }).value === null)
+                Object.assign(test, { value: Number.NaN });
+        }
         const graph: InteractionFlow = saved.draft.graph;
         if (
             !graph.nodes.length ||
@@ -196,7 +219,7 @@ function recover(key: string, scene: Scene): Draft | null {
                     ))
             )
                 return null;
-            if (action.type === 'condition') {
+            if (action.type === 'condition' || action.type === 'waitUntil') {
                 const test = action.test;
                 if (
                     !test ||
@@ -359,7 +382,16 @@ export function InteractionEditor({
         scene: Scene;
         rule: InteractionRule;
         graph: InteractionFlow;
+        mode: 'page' | 'rule';
     } | null>(null);
+    const testButton = useRef<HTMLButtonElement>(null);
+    const focusTestButton = useRef(false);
+    useLayoutEffect(() => {
+        if (!test && focusTestButton.current) {
+            focusTestButton.current = false;
+            testButton.current?.focus();
+        }
+    }, [test]);
     const [memoryValues, setMemoryValues] = useState<Record<
         string,
         boolean | number | string
@@ -554,13 +586,21 @@ export function InteractionEditor({
             onChange({ ...scene, interactions });
         });
     }
-    function create(template: InteractionTemplateId, overrideScope = scope, source?: SceneObject) {
+    function create(
+        template: InteractionTemplateId,
+        overrideScope = scope,
+        source?: SceneObject,
+        configured?: InteractionRule,
+        hideTargetId?: string,
+    ) {
         guard(() => {
             if (scene.interactions.length >= SCENE_LIMITS.maxRules) {
                 toast.error('Trang đã đạt giới hạn tương tác.');
                 return;
             }
-            const rule = templateRule(template, crypto.randomUUID(), scene, assets, overrideScope);
+            const rule =
+                configured ||
+                templateRule(template, crypto.randomUUID(), scene, assets, overrideScope);
             if (source?.type === 'audio') {
                 rule.actions = rule.actions.map((action) =>
                     action.type === 'playAudio' ? { ...action, assetId: source.assetId } : action,
@@ -575,6 +615,11 @@ export function InteractionEditor({
             history.current = { past: [], future: [] };
             previousRules.current = scene.interactions;
             emitted.current = null;
+            if (configured) {
+                const ready = flowToRule(graph, rule);
+                emitted.current = JSON.stringify(ready);
+                onChange(applyInteraction(scene, ready, hideTargetId));
+            }
             setDraft({ rule, graph, template });
             setSelected(START_NODE);
             setSelectedEdge(null);
@@ -618,15 +663,33 @@ export function InteractionEditor({
                         : undefined);
                 const anchor = active.graph.nodes.find((node) => node.id === preceding);
                 const nextId = crypto.randomUUID();
+                const nextPosition = position || {
+                    x: (anchor?.position.x ?? 40) + 310,
+                    y: anchor?.position.y ?? 80,
+                };
+                if (
+                    !position &&
+                    anchor &&
+                    port &&
+                    port !== 'next' &&
+                    !active.graph.edges.some(
+                        (edge) => edge.source === preceding && edge.port === port,
+                    )
+                ) {
+                    const direction = port === 'true' ? -1 : 1;
+                    nextPosition.y += direction * 130;
+                    const column = active.graph.nodes.filter(
+                        (node) => Math.abs(node.position.x - nextPosition.x) < 260,
+                    );
+                    while (column.some((node) => Math.abs(node.position.y - nextPosition.y) < 230))
+                        nextPosition.y += direction * 230;
+                }
                 const graph = insertFlowStep(
                     active.graph,
                     {
                         id: nextId,
                         action,
-                        position: position || {
-                            x: (anchor?.position.x || 40) + 310,
-                            y: anchor?.position.y || 80,
-                        },
+                        position: nextPosition,
                     },
                     preceding,
                     port,
@@ -984,6 +1047,25 @@ export function InteractionEditor({
         }
     }
     const selectedAction = selectedStep?.action;
+    const selectedGroup = blockGroup(selectedAction);
+    const hasNextStep = draft?.graph.edges.some((edge) => edge.source === selected) ?? false;
+    const hasNamedTarget =
+        selectedAction &&
+        (('objectId' in selectedAction && selectedAction.objectId) ||
+            ((selectedAction.type === 'playAudio' || selectedAction.type === 'stopAudio') &&
+                scene.objects.some(
+                    (object) =>
+                        object.type === 'audio' && object.assetId === selectedAction.assetId,
+                )));
+    const inspectorTitle = selectedEdge
+        ? 'Đường nối'
+        : selectedGroup === 'navigation'
+          ? 'Điều hướng'
+          : selectedAction
+            ? selectedGroup === 'action' && hasNamedTarget
+                ? actionSummary(selectedAction, scene.objects)
+                : actionTitle(selectedAction)
+            : 'Sự kiện bắt đầu';
     const revealTarget =
         selectedAction &&
         ((selectedAction.type === 'setVisible' && selectedAction.value) ||
@@ -1001,6 +1083,7 @@ export function InteractionEditor({
     const observe = useCallback(
         (event: InteractionStepEvent) => {
             if (!test) return;
+            if (event.ruleId !== test.rule.id) return;
             try {
                 const step = event.nodeId
                     ? test.graph.nodes.find((node) => node.id === event.nodeId)
@@ -1019,7 +1102,27 @@ export function InteractionEditor({
         },
         [test],
     );
-    function startTest() {
+    function closeTest() {
+        focusTestButton.current = true;
+        setTest(null);
+        setTrace({});
+        setBranches({});
+    }
+    const selectedRule = result?.rule;
+    const needsPageTest =
+        selectedRule?.trigger.type === 'onAnswer' ||
+        selectedRule?.actions.some((action) => {
+            if (
+                (action.type !== 'condition' && action.type !== 'waitUntil') ||
+                action.test.type !== 'answer'
+            )
+                return false;
+            const { questionId } = action.test;
+            return !selectedRule.actions.some(
+                (step) => step.type === 'askQuestion' && step.question.questionId === questionId,
+            );
+        });
+    function startTest(mode: 'page' | 'rule') {
         if (!draft || !result) return;
         if (result.error) {
             toast.error(result.error, { id: 'interaction-feedback' });
@@ -1043,13 +1146,21 @@ export function InteractionEditor({
             manageMemory();
             return;
         }
+        const rule = result.rule;
+        const interactions = scene.interactions.some((item) => item.id === rule.id)
+            ? scene.interactions.map((item) => (item.id === rule.id ? rule : item))
+            : [...scene.interactions, rule];
         setTrace({});
         setBranches({});
         setTest({
             book: memoryBook,
-            scene: structuredClone(scene),
+            scene: structuredClone({
+                ...scene,
+                interactions,
+            }),
             rule: structuredClone(result.rule),
             graph: structuredClone(draft.graph),
+            mode,
         });
     }
     const memoryPageList = useMemo(
@@ -1132,18 +1243,21 @@ export function InteractionEditor({
                                     aria-label="Danh sách luồng tương tác"
                                     className="flex h-full min-h-0 flex-col gap-3 py-4"
                                 >
-                                    <div className="flex shrink-0 items-center justify-between gap-2 px-4">
-                                        <h2 className="m-0 font-semibold text-sm">
+                                    <div className="flex shrink-0 flex-wrap items-center gap-2 px-4">
+                                        <h2 className="m-0 flex-1 font-semibold text-sm">
                                             Luồng tương tác
                                         </h2>
                                         <TemplateMenu
                                             scene={editingScene}
+                                            assets={assets}
                                             scope={scope}
                                             disabled={
                                                 blocked ||
                                                 scene.interactions.length >= SCENE_LIMITS.maxRules
                                             }
-                                            onChoose={create}
+                                            onChoose={(id, configured, hidden) =>
+                                                create(id, scope, undefined, configured, hidden)
+                                            }
                                         >
                                             <Button
                                                 variant="ghost"
@@ -1158,6 +1272,9 @@ export function InteractionEditor({
                                     <InteractionFlowPicker
                                         rules={scene.interactions}
                                         active={draft?.rule}
+                                        activeStepCount={
+                                            draft?.graph.nodes.filter((node) => node.action).length
+                                        }
                                         objects={scene.objects}
                                         disabled={blocked}
                                         onSelect={selectRule}
@@ -1221,7 +1338,7 @@ export function InteractionEditor({
                         )}
                     </aside>
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                        <div className="flex min-h-15 shrink-0 items-center gap-2 border-border border-b px-4 py-2.5">
+                        <div className="flex min-h-15 shrink-0 flex-wrap items-center gap-2 border-border border-b px-4 py-2.5">
                             {draft ? (
                                 <BufferedInput
                                     key={draft.rule.id}
@@ -1250,21 +1367,72 @@ export function InteractionEditor({
                                             commit({ ...draft, rule: { ...draft.rule, enabled } })
                                         }
                                     />
-                                    <div className="ml-auto flex shrink-0 items-center gap-2">
+                                    {test ? (
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            disabled={disabled}
-                                            onClick={() => (test ? setTest(null) : startTest())}
+                                            className="ml-auto"
+                                            onClick={closeTest}
                                         >
-                                            {test ? (
-                                                <X data-icon="inline-start" />
-                                            ) : (
-                                                <Play data-icon="inline-start" />
-                                            )}
-                                            {test ? 'Đóng thử' : 'Chạy thử'}
+                                            <X data-icon="inline-start" />
+                                            Đóng thử
                                         </Button>
-                                    </div>
+                                    ) : (
+                                        <div className="ml-auto flex flex-wrap items-center gap-2">
+                                            <fieldset
+                                                aria-label="Chạy thử"
+                                                className="m-0 inline-flex min-w-0 items-stretch border-0 p-0"
+                                            >
+                                                <Button
+                                                    ref={testButton}
+                                                    size="sm"
+                                                    disabled={disabled}
+                                                    title="Chạy thử các tương tác của cả trang"
+                                                    className="relative rounded-r-none border-r-0 focus-visible:z-10"
+                                                    onClick={() => startTest('page')}
+                                                >
+                                                    <Play data-icon="inline-start" />
+                                                    Chạy thử
+                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger
+                                                        asChild
+                                                        disabled={disabled}
+                                                    >
+                                                        <Button
+                                                            size="sm"
+                                                            disabled={disabled}
+                                                            aria-label="Tùy chọn chạy thử"
+                                                            className="relative w-9 rounded-l-none border-l-primary-foreground/20 px-0 focus-visible:z-10"
+                                                        >
+                                                            <ChevronDown aria-hidden="true" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent
+                                                        align="end"
+                                                        className="w-72"
+                                                    >
+                                                        <DropdownMenuGroup>
+                                                            <DropdownMenuItem
+                                                                disabled={disabled}
+                                                                onSelect={() =>
+                                                                    startTest(
+                                                                        needsPageTest
+                                                                            ? 'page'
+                                                                            : 'rule',
+                                                                    )
+                                                                }
+                                                            >
+                                                                {needsPageTest
+                                                                    ? 'Thử cả trang với câu hỏi'
+                                                                    : 'Chạy riêng luồng đang chọn'}
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuGroup>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </fieldset>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -1288,6 +1456,7 @@ export function InteractionEditor({
                                     trace={trace}
                                     branches={branches}
                                     disabled={blocked}
+                                    testing={!!test}
                                     onSelect={(id) => {
                                         setSelected(id);
                                         setShowInspector(true);
@@ -1299,7 +1468,10 @@ export function InteractionEditor({
                                     }}
                                     onTrigger={(trigger) => {
                                         if (trigger)
-                                            commit({ ...draft, rule: { ...draft.rule, trigger } });
+                                            commit({
+                                                ...draft,
+                                                rule: { ...draft.rule, trigger },
+                                            });
                                         setSelected(START_NODE);
                                         setSelectedEdge(null);
                                         setShowInspector(true);
@@ -1408,13 +1580,25 @@ export function InteractionEditor({
                                         rule={test.rule}
                                         page={page}
                                         book={test.book}
+                                        mode={test.mode}
                                         onStep={observe}
                                         onMemoryChange={setMemoryValues}
-                                        onReset={() => setTrace({})}
+                                        onReset={() => {
+                                            setTrace({});
+                                            setBranches({});
+                                        }}
                                         onRepair={(repair: PreviewRepair) => {
                                             setTest(null);
                                             if (repair.kind === 'memory') manageMemory();
-                                            else {
+                                            else if (
+                                                repair.ruleId &&
+                                                repair.ruleId !== draft?.rule.id
+                                            ) {
+                                                const rule = test.scene.interactions.find(
+                                                    (item) => item.id === repair.ruleId,
+                                                );
+                                                if (rule) selectRule(rule, repair.actionIndex);
+                                            } else {
                                                 setSelected(
                                                     repair.actionIndex == null
                                                         ? START_NODE
@@ -1425,11 +1609,6 @@ export function InteractionEditor({
                                                 setShowInspector(true);
                                             }
                                         }}
-                                        onClose={() => {
-                                            setTest(null);
-                                            setTrace({});
-                                            setBranches({});
-                                        }}
                                     />
                                 ) : (
                                     showInspector &&
@@ -1439,17 +1618,14 @@ export function InteractionEditor({
                                             className="flex w-76 shrink-0 flex-col border-border border-l bg-surface xl:w-80"
                                         >
                                             <header className="flex shrink-0 items-center justify-between gap-3 border-border border-b px-4 py-3">
-                                                <h2 className="m-0 font-semibold text-sm">
-                                                    {selectedEdge
-                                                        ? 'Đường nối'
-                                                        : selectedAction
-                                                          ? actionTitle(selectedAction)
-                                                          : 'Sự kiện bắt đầu'}
+                                                <h2 className="wrap-anywhere m-0 min-w-0 font-semibold text-sm leading-5">
+                                                    {inspectorTitle}
                                                 </h2>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon-xs"
                                                     aria-label="Đóng thiết lập bước"
+                                                    className="shrink-0"
                                                     onClick={() => setShowInspector(false)}
                                                 >
                                                     <X />
@@ -1492,13 +1668,61 @@ export function InteractionEditor({
                                                             Ngắt dây nối
                                                         </Button>
                                                     </>
-                                                ) : selectedAction ? (
+                                                ) : selectedAction && selectedStep ? (
                                                     <>
-                                                        <p className="m-0 text-muted-foreground text-xs leading-5">
-                                                            {selectedAction.type === 'transformTo'
-                                                                ? 'Nhập thông số hoặc kéo tay nắm ở khung trạng thái đích bên cạnh.'
-                                                                : 'Chọn chức năng ngay trong khối. Điều chỉnh thông số chi tiết tại đây.'}
-                                                        </p>
+                                                        {selectedAction.type === 'condition' && (
+                                                            <InteractionChoices
+                                                                label="Loại điều kiện"
+                                                                value={selectedAction.test.type}
+                                                                options={conditionOptions}
+                                                                disabled={blocked}
+                                                                onChange={(value) =>
+                                                                    chooseBlock(
+                                                                        selectedStep.id,
+                                                                        value,
+                                                                    )
+                                                                }
+                                                            />
+                                                        )}
+                                                        {selectedGroup === 'navigation' && (
+                                                            <div className="flex flex-col gap-2">
+                                                                <InteractionChoices
+                                                                    label="Đi đến đâu?"
+                                                                    value={actionVariant(
+                                                                        selectedAction,
+                                                                    )}
+                                                                    options={navigationOptions.map(
+                                                                        (option) => ({
+                                                                            ...option,
+                                                                            disabled:
+                                                                                hasNextStep &&
+                                                                                option.value !==
+                                                                                    'openUrl',
+                                                                        }),
+                                                                    )}
+                                                                    disabled={blocked}
+                                                                    onChange={(value) =>
+                                                                        chooseBlock(
+                                                                            selectedStep.id,
+                                                                            value,
+                                                                        )
+                                                                    }
+                                                                />
+                                                                {hasNextStep && (
+                                                                    <p className="m-0 text-muted-foreground text-xs leading-5">
+                                                                        Ngắt dây nối sau bước này để
+                                                                        chọn chuyển trang hoặc kết
+                                                                        thúc trải nghiệm.
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        {selectedAction.type === 'transformTo' && (
+                                                            <p className="m-0 text-muted-foreground text-xs leading-5">
+                                                                Nhập thông số hoặc kéo tay nắm ở
+                                                                khung trạng thái đích bên cạnh.
+                                                            </p>
+                                                        )}
                                                         <InteractionActionEditor
                                                             scene={editingScene}
                                                             pages={book.pages}
@@ -1507,8 +1731,38 @@ export function InteractionEditor({
                                                             assets={assets}
                                                             id={`workflow-${selected}`}
                                                             disabled={blocked}
+                                                            configuredInGraph
+                                                            hideOperation
+                                                            hideObject={
+                                                                selectedAction.type !==
+                                                                'playAnimation'
+                                                            }
                                                             onChange={updateAction}
                                                         />
+                                                        {selectedAction.type === 'condition' && (
+                                                            <InteractionConditionBranches
+                                                                key={selectedStep.id}
+                                                                graph={draft.graph}
+                                                                stepId={selectedStep.id}
+                                                                scene={editingScene}
+                                                                assets={assets}
+                                                                disabled={
+                                                                    blocked ||
+                                                                    draft.graph.nodes.length >=
+                                                                        SCENE_LIMITS.maxActionsPerRule +
+                                                                            1
+                                                                }
+                                                                onAdd={(id, port) =>
+                                                                    add(
+                                                                        id,
+                                                                        selectedStep.id,
+                                                                        undefined,
+                                                                        undefined,
+                                                                        port,
+                                                                    )
+                                                                }
+                                                            />
+                                                        )}
                                                         {revealTarget && (
                                                             <Field orientation="horizontal">
                                                                 <Checkbox
@@ -1543,54 +1797,47 @@ export function InteractionEditor({
                                                                 </FieldLabel>
                                                             </Field>
                                                         )}
-                                                        <Separator />
-                                                        <p className="m-0 text-muted-foreground text-xs leading-5">
-                                                            {selectedAction.type === 'playAudio' ||
-                                                            selectedAction.type === 'playVideo' ||
-                                                            selectedAction.type === 'playAnimation'
-                                                                ? 'Bước sau bắt đầu khi lệnh phát đã được gửi, không chờ nội dung phát xong. Thêm bước Chờ nếu cần.'
-                                                                : 'Bước sau thực hiện khi bước này hoàn tất.'}
-                                                        </p>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                disabled={
-                                                                    blocked ||
-                                                                    draft.graph.nodes.length >=
-                                                                        SCENE_LIMITS.maxActionsPerRule +
-                                                                            1
-                                                                }
-                                                                onClick={() => {
-                                                                    const id = crypto.randomUUID();
-                                                                    const next = insertFlowStep(
-                                                                        draft.graph,
-                                                                        {
-                                                                            id,
-                                                                            action: copyStepAction(
-                                                                                selectedAction,
-                                                                            ),
-                                                                            position: {
-                                                                                x:
-                                                                                    (selectedStep
-                                                                                        ?.position
-                                                                                        .x || 0) +
-                                                                                    310,
-                                                                                y:
-                                                                                    selectedStep
-                                                                                        ?.position
-                                                                                        .y || 80,
+                                                        <div className="flex flex-wrap gap-2 border-border border-t pt-3">
+                                                            {selectedAction.type !== 'navigate' && (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    disabled={
+                                                                        blocked ||
+                                                                        draft.graph.nodes.length >=
+                                                                            SCENE_LIMITS.maxActionsPerRule +
+                                                                                1
+                                                                    }
+                                                                    onClick={() => {
+                                                                        const id =
+                                                                            crypto.randomUUID();
+                                                                        const next = insertFlowStep(
+                                                                            draft.graph,
+                                                                            {
+                                                                                id,
+                                                                                action: copyStepAction(
+                                                                                    selectedAction,
+                                                                                ),
+                                                                                position: {
+                                                                                    x:
+                                                                                        selectedStep
+                                                                                            .position
+                                                                                            .x +
+                                                                                        310,
+                                                                                    y: selectedStep
+                                                                                        .position.y,
+                                                                                },
                                                                             },
-                                                                        },
-                                                                        selected || undefined,
-                                                                    );
-                                                                    graphChange(next);
-                                                                    setSelected(id);
-                                                                }}
-                                                            >
-                                                                <Copy data-icon="inline-start" />
-                                                                Nhân bản bước
-                                                            </Button>
+                                                                            selectedStep.id,
+                                                                        );
+                                                                        graphChange(next);
+                                                                        setSelected(id);
+                                                                    }}
+                                                                >
+                                                                    <Copy data-icon="inline-start" />
+                                                                    Nhân bản bước
+                                                                </Button>
+                                                            )}
                                                             <Button
                                                                 variant="destructive-ghost"
                                                                 size="sm"
@@ -1603,78 +1850,18 @@ export function InteractionEditor({
                                                         </div>
                                                     </>
                                                 ) : (
-                                                    <FieldGroup className="gap-5">
-                                                        <WorkflowTriggerFields
-                                                            assets={assets}
-                                                            trigger={draft.rule.trigger}
-                                                            scene={editingScene}
-                                                            disabled={blocked}
-                                                            onChange={(trigger) =>
-                                                                commit({
-                                                                    ...draft,
-                                                                    rule: {
-                                                                        ...draft.rule,
-                                                                        trigger,
-                                                                    },
-                                                                })
-                                                            }
-                                                        />
-                                                        <Field>
-                                                            <FieldLabel htmlFor="workflow-retrigger">
-                                                                {draft.rule.trigger.type === 'onTap'
-                                                                    ? 'Bấm thêm khi đang chạy'
-                                                                    : 'Kích hoạt thêm khi đang chạy'}
-                                                            </FieldLabel>
-                                                            <FormSelect
-                                                                id="workflow-retrigger"
-                                                                aria-describedby="workflow-retrigger-description"
-                                                                value={draft.rule.onRetrigger}
-                                                                disabled={blocked}
-                                                                options={[
-                                                                    {
-                                                                        value: 'ignore',
-                                                                        label:
-                                                                            draft.rule.trigger
-                                                                                .type === 'onTap'
-                                                                                ? 'Bỏ qua lần bấm thêm'
-                                                                                : 'Bỏ qua lần kích hoạt thêm',
-                                                                    },
-                                                                    {
-                                                                        value: 'restart',
-                                                                        label: 'Chạy lại từ đầu',
-                                                                    },
-                                                                ]}
-                                                                onValueChange={(value) =>
-                                                                    commit({
-                                                                        ...draft,
-                                                                        rule: {
-                                                                            ...draft.rule,
-                                                                            onRetrigger: value as
-                                                                                | 'ignore'
-                                                                                | 'restart',
-                                                                        },
-                                                                    })
-                                                                }
-                                                            />
-                                                            <FieldDescription id="workflow-retrigger-description">
-                                                                {draft.rule.onRetrigger === 'ignore'
-                                                                    ? draft.rule.trigger.type ===
-                                                                      'onTap'
-                                                                        ? 'Lượt hiện tại vẫn chạy tiếp. Bấm thêm không có tác dụng.'
-                                                                        : 'Lượt hiện tại vẫn chạy tiếp. Các lần kích hoạt thêm bị bỏ qua.'
-                                                                    : draft.rule.trigger.type ===
-                                                                        'onTap'
-                                                                      ? 'Bấm thêm sẽ dừng lượt hiện tại và chạy lại từ bước đầu.'
-                                                                      : 'Kích hoạt thêm sẽ dừng lượt hiện tại và chạy lại từ bước đầu.'}
-                                                            </FieldDescription>
-                                                        </Field>
-                                                        {draft.rule.trigger.type ===
-                                                            'onPageEnter' && (
-                                                            <p className="m-0 text-muted-foreground text-xs leading-5">
-                                                                Luồng chạy khi người đọc mở trang.
-                                                            </p>
-                                                        )}
-                                                    </FieldGroup>
+                                                    <InteractionEventSettings
+                                                        assets={assets}
+                                                        rule={draft.rule}
+                                                        scene={editingScene}
+                                                        disabled={blocked}
+                                                        onTriggerTypeChange={(type) =>
+                                                            chooseBlock(START_NODE, type)
+                                                        }
+                                                        onChange={(rule) =>
+                                                            commit({ ...draft, rule })
+                                                        }
+                                                    />
                                                 )}
                                                 {invalid && (
                                                     <Button

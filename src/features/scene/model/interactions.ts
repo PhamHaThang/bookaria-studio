@@ -16,6 +16,7 @@ export const triggerLabels: Record<Trigger['type'], string> = {
     onMarkerLost: 'Khi mất dấu trang AR',
     onAnimationEnd: 'Khi hoạt ảnh kết thúc',
     onAnswer: 'Khi trả lời câu hỏi',
+    onStateCondition: 'Khi ghi nhớ đạt điều kiện',
 };
 export const actionLabels: Record<ActionType, string> = {
     controlModel: 'Điều khiển mô hình',
@@ -26,7 +27,8 @@ export const actionLabels: Record<ActionType, string> = {
     toggleVisible: 'Đổi hiện / ẩn mỗi lần chạm',
     playVideo: 'Phát video',
     openUrl: 'Mở liên kết',
-    wait: 'Chờ',
+    wait: 'Đợi một khoảng thời gian',
+    waitUntil: 'Chờ đến khi điều kiện đúng',
     transformTo: 'Di chuyển, xoay hoặc đổi kích thước',
     condition: 'Nếu điều kiện đúng',
     setState: 'Ghi nhớ',
@@ -50,6 +52,7 @@ export function newAction(type: ActionType): Action {
     switch (type) {
         case 'controlModel':
             return { type, objectId: '', operation: 'enable', delayMsSchema };
+        case 'waitUntil':
         case 'condition':
             return {
                 type,
@@ -138,7 +141,8 @@ export function copyRule(rules: InteractionRule[], id: string, newId: string) {
                           questionIds.get(action.question.questionId) || action.question.questionId,
                   },
               }
-            : action.type === 'condition' && action.test.type === 'answer'
+            : (action.type === 'condition' || action.type === 'waitUntil') &&
+                action.test.type === 'answer'
               ? {
                     ...action,
                     test: {
@@ -198,5 +202,7 @@ export function defaultWorkflowTrigger(type: Trigger['type'], scene: Scene): Tri
                     .find((action) => action.type === 'askQuestion')?.question.questionId || '',
             answer: 'any',
         };
+    if (type === 'onStateCondition')
+        return { type, test: { type: 'variable', key: 'score', operator: 'gte', value: 3 } };
     return { type };
 }

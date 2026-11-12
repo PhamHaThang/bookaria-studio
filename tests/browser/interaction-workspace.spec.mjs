@@ -100,14 +100,15 @@ test('runs the real scene runtime, reports wait/completion and restores authored
     await page.setViewportSize({ width: 1600, height: 900 });
     await open(page);
     const before = await page.evaluate(() => structuredClone(window.__interaction.scene.objects));
-    await page.getByRole('button', { name: 'Chạy thử', exact: true }).click();
+    await page.getByRole('button', { name: 'Tùy chọn chạy thử', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Chạy riêng luồng đang chọn', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Chạy', exact: true })).toBeEnabled({
         timeout: 30000,
     });
     await page.getByRole('button', { name: 'Chạy', exact: true }).click();
     await expect(page.locator('[data-step-state="waiting"]')).toHaveCount(1);
     await expect(page.locator('[data-step-state="done"]')).toHaveCount(3);
-    await page.getByRole('button', { name: 'Đóng chạy thử', exact: true }).click();
+    await page.getByRole('button', { name: 'Đóng thử', exact: true }).click();
     expect(await page.evaluate(() => window.__interaction.scene.objects)).toEqual(before);
     await page.getByRole('button', { name: 'Hành động', exact: true }).click();
     await chooseInNode(page, page.locator('[data-workflow-step]').last(), 'Chuyển động');
@@ -272,13 +273,15 @@ test('quiz template asks, reports correct answer and runs only its chosen branch
         path: info.outputPath('template-modal-light.png'),
     });
     await templates.getByRole('button', { name: 'Sử dụng mẫu', exact: true }).click();
+    await page.getByRole('button', { name: 'Tạo tương tác', exact: true }).click();
     await expect(page.locator('[data-workflow-step]')).toHaveCount(7);
     await expect
         .poll(() => page.evaluate(() => window.__interaction.scene.interactions.length))
         .toBe(2);
     await page.getByRole('button', { name: 'Tự sắp xếp luồng', exact: true }).click();
     await page.screenshot({ path: info.outputPath('workflow-quiz.png') });
-    await page.getByRole('button', { name: 'Chạy thử', exact: true }).click();
+    await page.getByRole('button', { name: 'Tùy chọn chạy thử', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Chạy riêng luồng đang chọn', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Chạy', exact: true })).toBeEnabled({
         timeout: 30000,
     });
@@ -296,7 +299,7 @@ test('quiz template asks, reports correct answer and runs only its chosen branch
     await expect(page.locator('[data-workflow-step="step-5"][data-step-state="done"]')).toHaveCount(
         0,
     );
-    await page.getByRole('button', { name: 'Đóng chạy thử', exact: true }).click();
+    await page.getByRole('button', { name: 'Đóng thử', exact: true }).click();
     expect(await page.evaluate(() => window.__interaction.scene.objects.length)).toBe(2);
 });
 
@@ -1034,6 +1037,7 @@ for (const theme of ['light', 'dark']) {
         await search.fill('Đúng');
         await modal.getByRole('radio').first().check();
         await modal.getByRole('button', { name: 'Sử dụng mẫu', exact: true }).click();
+        await page.getByRole('button', { name: 'Tạo tương tác', exact: true }).click();
         const question = page
             .locator('[data-workflow-step]')
             .filter({
@@ -1255,9 +1259,7 @@ test('question prompt preserves an answer on close and cancels pending feedback 
     expect(await page.evaluate(() => window.__question.count)).toBe(0);
 });
 
-test('visibility operation stays in sync between node and inspector and survives undo/reload', async ({
-    page,
-}) => {
+test('visibility operation lives on the node and survives undo/reload', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 });
     await open(page);
     const first = page.locator('[data-workflow-step="action-0"]');
@@ -1266,9 +1268,11 @@ test('visibility operation stays in sync between node and inspector and survives
     await expect
         .poll(() => page.evaluate(() => window.__interaction.scene.interactions[0].actions[0].type))
         .toBe('toggleVisible');
-    const inspectorOperation = page.getByRole('combobox', { name: 'Thao tác', exact: true });
-    await expect(inspectorOperation).toHaveText('Đổi ẩn / hiện');
-    await inspectorOperation.click();
+    await expect(page.getByRole('combobox', { name: 'Thao tác', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: 'Áp dụng cho', exact: true })).toHaveCount(0);
+    const operation = first.getByRole('combobox', { name: /^Thao tác khối/ });
+    await expect(operation).toHaveText('Đổi ẩn / hiện');
+    await operation.click();
     await page.getByRole('option', { name: 'Ẩn', exact: true }).click();
     await expect(first.getByRole('combobox', { name: /^Thao tác khối/ })).toHaveText('Ẩn');
     await page.getByTestId('scene-history-undo').click();
@@ -1348,14 +1352,14 @@ test('audio family switches play stop and all-audio without losing the chosen ta
     );
     await first.getByRole('combobox', { name: /^Thao tác khối/ }).click();
     await page.getByRole('option', { name: 'Dừng', exact: true }).click();
-    await expect(page.getByRole('combobox', { name: 'Thao tác', exact: true })).toHaveText('Dừng');
+    await expect(first.getByRole('combobox', { name: /^Thao tác khối/ })).toHaveText('Dừng');
     expect(
         await page.evaluate(() => window.__interaction.scene.interactions[0].actions[0]),
     ).toMatchObject({ type: 'stopAudio', assetId: '33333333-3333-4333-8333-333333333333' });
     await first.getByRole('combobox', { name: /^Mục tiêu khối/ }).click();
     await page.getByRole('option', { name: 'Toàn bộ âm thanh của trang', exact: true }).click();
     await expect(first).toContainText('Dừng tất cả âm thanh');
-    await page.getByRole('combobox', { name: 'Thao tác', exact: true }).click();
+    await first.getByRole('combobox', { name: /^Thao tác khối/ }).click();
     await page.getByRole('option', { name: 'Phát', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Lưu sách', exact: true })).toBeDisabled();
     await chooseNodeTarget(page, first, 'Nhạc nền');
@@ -1439,7 +1443,7 @@ for (const theme of ['light', 'dark']) {
         await chooseInNode(page, node, 'Âm thanh');
         const inspector = page.getByRole('complementary', { name: 'Thiết lập bước tương tác' });
         const audio = inspector.getByRole('combobox', { name: 'Âm thanh', exact: true });
-        const operation = inspector.getByRole('combobox', { name: 'Thao tác', exact: true });
+        const operation = node.getByRole('combobox', { name: /^Thao tác khối/ });
         const volume = inspector.getByRole('textbox', { name: 'Âm lượng (%)', exact: true });
         await audio.click();
         await expect(
@@ -1470,11 +1474,15 @@ for (const theme of ['light', 'dark']) {
                 page.evaluate(() => window.__interaction.scene.interactions[0].actions[0].volume),
             )
             .toBe(0.65);
-        await inspector.getByRole('button', { name: 'Thời gian bắt đầu', exact: true }).click();
+        await expect(inspector.getByText('Bước sau bắt đầu ngay khi gửi lệnh phát.')).toBeVisible();
+        await expect(
+            inspector.getByRole('heading', { name: 'Phát “bgm”', exact: true }),
+        ).toBeVisible();
         const delay = inspector.getByRole('textbox', {
             name: 'Chờ trước khi bắt đầu (giây, 0–60)',
             exact: true,
         });
+        await expect(delay).toBeVisible();
         await delay.fill('0.5');
         await expect
             .poll(() =>
@@ -1716,7 +1724,7 @@ test('audio can be cleared from the inspector and picker without deleting the as
         dialog.getByRole('button', { name: 'Xem Sóng biển.wav', exact: true }),
     ).toBeEnabled();
     await dialog.getByRole('button', { name: 'Chọn âm thanh: Sóng biển.wav', exact: true }).click();
-    await inspector.getByRole('combobox', { name: 'Thao tác', exact: true }).click();
+    await node.getByRole('combobox', { name: /^Thao tác khối/ }).click();
     await page.getByRole('option', { name: 'Dừng', exact: true }).click();
     await picker.click();
     await dialog.getByRole('button', { name: 'Bỏ chọn', exact: true }).click();
@@ -1747,7 +1755,9 @@ test('audio can be cleared from the inspector and picker without deleting the as
     expect(await page.evaluate(() => window.__interaction.scene.objects.length)).toBe(2);
 });
 
-test('named numeric memory can decrease points and be reused by a condition', async ({ page }) => {
+test('named numeric memory can decrease points and be reused by a condition', async ({
+    page,
+}, info) => {
     await open(page);
     await page.getByRole('button', { name: 'Ghi nhớ', exact: true }).click();
     await page.getByRole('button', { name: 'Tạo thông tin', exact: true }).click();
@@ -1762,11 +1772,18 @@ test('named numeric memory can decrease points and be reused by a condition', as
     await page.getByRole('option', { name: 'Điểm / số lượng', exact: true }).click();
     await manager.getByRole('spinbutton', { name: 'Ban đầu là', exact: true }).fill('20');
     await manager.getByRole('button', { name: /^(Thêm|Lưu) thông tin$/, exact: true }).click();
-    await expect(page.getByRole('textbox', { name: 'Giá trị hiện tại', exact: true })).toHaveValue(
-        '20',
+    const initialValue = page.locator('dl').filter({ hasText: 'Giá trị ban đầu' }).locator('dd');
+    await expect(initialValue).toHaveText('20');
+    const operations = page.getByRole('group', { name: 'Cách cập nhật ghi nhớ', exact: true });
+    const decrease = operations.getByRole('radio', { name: 'Giảm', exact: true });
+    await decrease.check();
+    const memoryNode = page.locator('[data-workflow-step][aria-label="Ghi nhớ"]');
+    await expect(memoryNode.getByRole('combobox', { name: 'Chức năng khối Ghi nhớ' })).toHaveText(
+        'Giảm',
     );
-    await page.getByRole('combobox', { name: 'Cách cập nhật ghi nhớ', exact: true }).click();
-    await page.getByRole('option', { name: 'Giảm bớt', exact: true }).click();
+    await chooseInNode(page, memoryNode, 'Tăng');
+    await expect(operations.getByRole('radio', { name: 'Tăng', exact: true })).toBeChecked();
+    await decrease.check();
     await page.getByRole('spinbutton', { name: 'Giá trị ghi nhớ', exact: true }).fill('3');
     await expect
         .poll(() =>
@@ -1794,28 +1811,32 @@ test('named numeric memory can decrease points and be reused by a condition', as
             }),
         )
         .toBe(true);
-    await page.getByRole('button', { name: 'Chạy thử', exact: true }).click();
+    await page.getByRole('button', { name: 'Tùy chọn chạy thử', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Chạy riêng luồng đang chọn', exact: true }).click();
     const panel = page.getByRole('region', { name: 'Chạy thử tương tác', exact: true });
-    await expect(panel.locator('[aria-label="Ghi nhớ khi chạy thử"]')).toContainText(
+    await panel.getByRole('button', { name: 'Chi tiết chạy thử', exact: true }).click();
+    const details = page.getByRole('dialog', { name: 'Chi tiết chạy thử', exact: true });
+    await expect(details.locator('[aria-label="Ghi nhớ khi chạy thử"]')).toContainText(
         'Điểm khám phá',
     );
-    await expect(panel.locator('[aria-label="Ghi nhớ khi chạy thử"]')).toContainText('20');
+    await expect(details.locator('[aria-label="Ghi nhớ khi chạy thử"]')).toContainText('20');
     await panel.getByRole('button', { name: 'Chạy', exact: true }).click();
-    await expect(panel.locator('[aria-label="Ghi nhớ khi chạy thử"]')).toContainText('→ 17');
-    await panel.getByRole('button', { name: 'Đóng chạy thử', exact: true }).click();
+    await expect(details.locator('[aria-label="Ghi nhớ khi chạy thử"]')).toContainText('→ 17');
+    await page.getByRole('button', { name: 'Đóng thử', exact: true }).click();
     await page
         .locator('[data-workflow-step][aria-label="Ghi nhớ"]')
         .getByText('Ghi nhớ', { exact: true })
         .click();
-    await expect(page.getByRole('textbox', { name: 'Giá trị hiện tại', exact: true })).toHaveValue(
-        '17',
-    );
-    await expect(
-        page.getByText('Kết quả của lần chạy thử gần nhất.', { exact: true }),
-    ).toBeVisible();
-    await page.getByRole('button', { name: 'Chạy thử', exact: true }).click();
-    await panel.getByRole('button', { name: 'Đặt lại scene', exact: true }).click();
-    await expect(panel.locator('[aria-label="Ghi nhớ khi chạy thử"]')).toContainText('20 → 20');
+    const testedValue = page.locator('dl').filter({ hasText: 'Kết quả chạy thử' }).locator('dd');
+    await expect(testedValue).toHaveText('17');
+    await page
+        .getByRole('complementary', { name: 'Thiết lập bước tương tác' })
+        .screenshot({ path: info.outputPath('memory-settings.png') });
+    await page.getByRole('button', { name: 'Tùy chọn chạy thử', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Chạy riêng luồng đang chọn', exact: true }).click();
+    await panel.getByRole('button', { name: 'Chi tiết chạy thử', exact: true }).click();
+    await panel.getByRole('button', { name: 'Đặt lại từ đầu', exact: true }).click();
+    await expect(details.locator('[aria-label="Ghi nhớ khi chạy thử"]')).toContainText('20 → 20');
     await page.screenshot({ path: 'test-results/memory-numeric.png' });
 });
 
@@ -2274,7 +2295,8 @@ test('target authoring ignores object taps while normal trial still runs the wor
     await clickSource();
     expect(await page.evaluate(() => window.__previewTaps)).toBe(0);
     await page.getByRole('button', { name: 'Đóng thiết lập bước', exact: true }).click();
-    await page.getByRole('button', { name: 'Chạy thử', exact: true }).click();
+    await page.getByRole('button', { name: 'Tùy chọn chạy thử', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Chạy riêng luồng đang chọn', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Chạy', exact: true })).toBeEnabled();
     await clickSource();
     await expect.poll(() => page.evaluate(() => window.__previewTaps)).toBe(1);
@@ -2523,8 +2545,7 @@ test('camera-facing target locks rotation, preserves saved angles and still allo
     await page.keyboard.press('e');
     await expect(rotate).not.toBeChecked();
     // A regular object remains rotatable, including after switching from a billboard target.
-    await page.getByRole('combobox', { name: 'Áp dụng cho', exact: true }).click();
-    await page.getByRole('option', { name: 'Khủng long', exact: true }).click();
+    await chooseNodeTarget(page, page.locator('[data-workflow-step="action-0"]'), 'Khủng long');
     await expect(rotate).toBeEnabled();
     await expect(rotate).toBeChecked();
     await expect(page.getByRole('textbox', { name: 'Góc cuối X (°)', exact: true })).toBeEnabled();

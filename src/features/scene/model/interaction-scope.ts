@@ -3,8 +3,10 @@ import type {
     ActionType,
     InteractionRule,
     SceneObject,
+    WorkflowVariable,
 } from '@/shared/contracts/scene.schema';
 import { newAction, newRule, targetObjects, triggerLabels } from './interactions';
+import { memorySummary } from './memory-variables';
 import { objectLabels } from './objects';
 
 export type InteractionScope =
@@ -64,7 +66,13 @@ export function moveScopedRule(
     return next;
 }
 
-export function ruleTriggerLabel(rule: InteractionRule, objects: SceneObject[]) {
+export function ruleTriggerLabel(
+    rule: InteractionRule,
+    objects: SceneObject[],
+    definitions: WorkflowVariable[] = [],
+) {
+    if (rule.trigger.type === 'onStateCondition')
+        return memorySummary(rule.trigger, definitions) || triggerLabels.onStateCondition;
     if (!('objectId' in rule.trigger)) return triggerLabels[rule.trigger.type];
     const id = rule.trigger.objectId,
         object = objects.find((item) => item.id === id);

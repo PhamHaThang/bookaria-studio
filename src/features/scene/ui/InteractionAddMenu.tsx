@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import type { AssetRef } from '@/shared/contracts/asset.schema';
-import type { ActionType, Scene, Trigger } from '@/shared/contracts/scene.schema';
+import type { ActionType, InteractionRule, Scene, Trigger } from '@/shared/contracts/scene.schema';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/primitives/button';
 import {
@@ -47,6 +47,7 @@ export const actionIcons: Record<ActionType, typeof Eye> = {
     toggleVisible: Eye,
     transformTo: Move,
     wait: Clock3,
+    waitUntil: Clock3,
     openUrl: Link2,
 };
 export function ActionPalette({
@@ -120,14 +121,16 @@ export function ActionPalette({
 }
 export function TemplateMenu({
     scene,
+    assets,
     scope,
     onChoose,
     disabled,
     children,
 }: {
     scene: Scene;
+    assets: Record<string, AssetRef>;
     scope: InteractionScope;
-    onChoose: (id: InteractionTemplateId) => void;
+    onChoose: (id: InteractionTemplateId, rule?: InteractionRule, hideTargetId?: string) => void;
     disabled?: boolean;
     children?: ReactNode;
 }) {
@@ -158,7 +161,9 @@ export function TemplateMenu({
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             disabled={disabled}
-                            onSelect={() => setTemplatesOpen(true)}
+                            onSelect={() => {
+                                setTemplatesOpen(true);
+                            }}
                         >
                             <LayoutTemplate />
                             Dùng mẫu
@@ -170,6 +175,7 @@ export function TemplateMenu({
                 open={templatesOpen}
                 onOpenChange={setTemplatesOpen}
                 scene={scene}
+                assets={assets}
                 scope={scope}
                 disabled={disabled}
                 onChoose={onChoose}

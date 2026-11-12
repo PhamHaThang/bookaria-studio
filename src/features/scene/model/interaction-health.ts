@@ -43,7 +43,7 @@ export function objectRemovalImpact(scene: Scene, objectIds: readonly string[]):
                     rule.actions.some(
                         (action) =>
                             ('objectId' in action && removed.has(action.objectId)) ||
-                            (action.type === 'condition' &&
+                            ((action.type === 'condition' || action.type === 'waitUntil') &&
                                 'objectId' in action.test &&
                                 removed.has(action.test.objectId)),
                     ),
@@ -60,7 +60,7 @@ export function objectRemovalImpact(scene: Scene, objectIds: readonly string[]):
                 ((rule.trigger.type === 'onAnswer' && missing(rule.trigger.questionId)) ||
                     rule.actions.some(
                         (action) =>
-                            action.type === 'condition' &&
+                            (action.type === 'condition' || action.type === 'waitUntil') &&
                             action.test.type === 'answer' &&
                             missing(action.test.questionId),
                     )),

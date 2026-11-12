@@ -1,4 +1,4 @@
-import type { Action, Scene, WorkflowVariable } from '@/shared/contracts/scene.schema';
+import type { Action, Scene, Trigger, WorkflowVariable } from '@/shared/contracts/scene.schema';
 export type MemoryValue = boolean | number | string;
 export const memoryTypeNames = {
     number: 'Điểm / số lượng',
@@ -11,10 +11,14 @@ export const memoryBuiltins: WorkflowVariable[] = [
     { key: 'reward', name: 'Nhận phần thưởng', type: 'boolean', initialValue: false },
     { key: 'seen', name: 'Xem nội dung', type: 'boolean', initialValue: false },
 ];
-export function memoryKey(action: Action): string | undefined {
+type MemorySource = Action | Extract<Trigger, { type: 'onStateCondition' }>;
+export function memoryKey(action: MemorySource): string | undefined {
     return action.type === 'setState'
         ? action.key
-        : action.type === 'condition' && action.test.type === 'variable'
+        : (action.type === 'condition' ||
+                action.type === 'waitUntil' ||
+                action.type === 'onStateCondition') &&
+            action.test.type === 'variable'
           ? action.test.key
           : undefined;
 }
@@ -26,7 +30,10 @@ export function memoryDefinitions(
     const normalize = (name: string) => name.trim().normalize('NFC').toLocaleLowerCase('vi');
     const names = new Set(declared.map((item) => normalize(item.name)));
     for (const scene of scenes)
-        for (const action of scene.interactions.flatMap((rule) => rule.actions)) {
+        for (const action of scene.interactions.flatMap((rule) => [
+            ...(rule.trigger.type === 'onStateCondition' ? [rule.trigger] : []),
+            ...rule.actions,
+        ])) {
             const key = memoryKey(action);
             if (!key || found.has(key)) continue;
             const value =
@@ -34,7 +41,10 @@ export function memoryDefinitions(
                     ? action.operation === 'toggle'
                         ? false
                         : action.value
-                    : action.type === 'condition' && action.test.type === 'variable'
+                    : (action.type === 'condition' ||
+                            action.type === 'waitUntil' ||
+                            action.type === 'onStateCondition') &&
+                        action.test.type === 'variable'
                       ? action.test.value
                       : false;
             const builtin = memoryBuiltins.find((item) => item.key === key);
@@ -78,21 +88,23 @@ export function memoryUses(
     pages: { id: string; title: string | null; scene: Scene }[],
 ) {
     return pages.flatMap((page) =>
-        page.scene.interactions.flatMap((rule) =>
-            rule.actions.flatMap((action, index) =>
-                memoryKey(action) === key
-                    ? [
-                          {
-                              pageId: page.id,
-                              pageName: page.title || 'Trang sách',
-                              ruleId: rule.id,
-                              ruleName: rule.name || 'Luồng chưa đặt tên',
-                              index,
-                          },
-                      ]
-                    : [],
-            ),
-        ),
+        page.scene.interactions.flatMap((rule) => {
+            const describe = (index: number) => ({
+                pageId: page.id,
+                pageName: page.title || 'Trang sách',
+                ruleId: rule.id,
+                ruleName: rule.name || 'Luồng chưa đặt tên',
+                index,
+            });
+            return [
+                ...(rule.trigger.type === 'onStateCondition' && rule.trigger.test.key === key
+                    ? [describe(-1)]
+                    : []),
+                ...rule.actions.flatMap((action, index) =>
+                    memoryKey(action) === key ? [describe(index)] : [],
+                ),
+            ];
+        }),
     );
 }
 export function memoryOperations(definition?: WorkflowVariable) {
@@ -108,6 +120,60 @@ export function memoryOperations(definition?: WorkflowVariable) {
                 { value: 'set', label: 'Đặt thành một số' },
             ];
 }
+type MemoryAction = Extract<Action, { type: 'setState' }>;
+
+export function memoryActionChoices(action: MemoryAction, definition?: WorkflowVariable) {
+    const type = definition?.type ?? typeof action.value;
+    return {
+        value:
+            action.operation === 'increment'
+                ? Number(action.value) < 0
+                    ? 'decrease'
+                    : 'increase'
+                : action.operation,
+        options:
+            type === 'number'
+                ? [
+                      { value: 'increase', label: 'Tăng' },
+                      { value: 'decrease', label: 'Giảm' },
+                      { value: 'set', label: 'Đặt thành' },
+                  ]
+                : type === 'boolean'
+                  ? [
+                        { value: 'set', label: 'Đặt Đúng / Sai' },
+                        { value: 'toggle', label: 'Đảo Đúng / Sai' },
+                    ]
+                  : [{ value: 'set', label: 'Ghi nội dung' }],
+    };
+}
+
+export function changeMemoryAction(action: MemoryAction, value: string): MemoryAction {
+    if (value === action.operation || value === memoryActionChoices(action).value) return action;
+    switch (value) {
+        case 'increase':
+        case 'decrease': {
+            const amount = Math.abs(Number(action.value)) || 1;
+            return {
+                ...action,
+                operation: 'increment',
+                value: value === 'increase' ? amount : -amount,
+            };
+        }
+        case 'increment':
+            return {
+                ...action,
+                operation: value,
+                value: typeof action.value === 'number' ? action.value : 1,
+            };
+        case 'set':
+            return { ...action, operation: value };
+        case 'toggle':
+            return { ...action, operation: value, value: true };
+        default:
+            throw new Error('Chọn cách ghi nhớ hợp lệ.');
+    }
+}
+
 export function selectMemory(
     action: Extract<Action, { type: 'setState' }>,
     definition: WorkflowVariable,
@@ -131,7 +197,21 @@ export function selectMemory(
                 : '',
     };
 }
-export function memorySummary(action: Action, definitions: WorkflowVariable[]) {
+export function memorySummary(
+    action: MemorySource,
+    definitions: WorkflowVariable[],
+): string | undefined {
+    if (action.type === 'onStateCondition') {
+        const summary = memorySummary(
+            { type: 'condition', test: action.test, delayMsSchema: 0 },
+            definitions,
+        );
+        return summary ? `Khi ${summary.replace(/\?$/, '')}` : undefined;
+    }
+    if (action.type === 'waitUntil') {
+        const summary = memorySummary({ ...action, type: 'condition' }, definitions);
+        return summary ? `Chờ đến khi ${summary.replace(/\?$/, '')}` : undefined;
+    }
     if (action.type === 'setState') {
         const name = memoryName(action.key, definitions);
         if (action.operation === 'increment')
