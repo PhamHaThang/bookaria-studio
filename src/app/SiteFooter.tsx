@@ -11,11 +11,11 @@ export function SiteFooter() {
         <footer className="bg-[var(--bg-footer)] text-on-dark [--logo-filter:invert(1)]">
             <div
                 aria-hidden="true"
-                className="h-8 rounded-b-[var(--radius-feature)] bg-background sm:h-12"
+                className="h-8 rounded-b-2xl bg-background sm:h-12 sm:rounded-b-3xl"
             />
-            <div className="mx-auto max-w-[1328px] px-6">
-                <div className="grid gap-10 py-14 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] sm:gap-16">
-                    <div className="max-w-85">
+            <div className="mx-auto max-w-[1328px] px-6 sm:px-8">
+                <div className="grid grid-cols-2 gap-8 py-12 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] sm:gap-16 sm:py-14">
+                    <div className="col-span-2 max-w-85 sm:col-span-1">
                         <Link
                             to="/"
                             aria-label="Bookaria - Trang chủ"
