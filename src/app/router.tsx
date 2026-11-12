@@ -12,6 +12,7 @@ import {
 import { FloatingThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
 import { RequireSession, SessionBoundary } from '../features/auth';
 import { AuthDialog, LegacyAuthRoute } from '../features/auth/ui/AuthDialog';
+import { HomePage } from '../pages/HomePage';
 import { AdminLayout, AdminNotFoundPage } from './AdminLayout';
 import { PublicLayout } from './PublicLayout';
 import { StudioLayout } from './StudioLayout';
@@ -83,9 +84,6 @@ const AdminCategoryEditPage = lazy(() =>
 );
 const AdminMarkersPage = lazy(() =>
     import('../pages/AdminMarkersPage').then((module) => ({ default: module.AdminMarkersPage })),
-);
-const HomePage = lazy(() =>
-    import('../pages/HomePage').then((module) => ({ default: module.HomePage })),
 );
 const HelpPage = lazy(() =>
     import('../pages/HelpPage').then((module) => ({ default: module.HelpPage })),
