@@ -43,7 +43,9 @@ export function PublicLayout() {
                         ? 'public-main min-w-0 flex-1 outline-none'
                         : pathname === '/library' || pathname === '/resources'
                           ? 'public-main mx-auto w-full min-w-0 max-w-[1328px] flex-1 px-6 pt-8 pb-16 outline-none'
-                          : 'public-main mx-auto w-full max-w-320 flex-1 px-6 py-12 outline-none sm:px-8'
+                          : pathname === '/profile'
+                            ? 'public-main mx-auto w-[calc(100%-48px)] min-w-0 max-w-[1280px] flex-1 py-12 outline-none max-sm:w-[calc(100%-16px)]'
+                            : 'public-main mx-auto w-full max-w-320 flex-1 px-6 py-12 outline-none sm:px-8'
                 }
             >
                 <Suspense fallback={<LoadingScreen message="Đang mở trang…" />}>

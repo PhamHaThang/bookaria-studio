@@ -31,6 +31,7 @@ export function ImageUploadEditor({
     kind,
     currentUrl,
     disabled = false,
+    embedded = false,
     onSave,
     onBusyChange,
     onUploaded,
@@ -38,6 +39,7 @@ export function ImageUploadEditor({
     kind: 'avatar' | 'cover';
     currentUrl: string | null;
     disabled?: boolean;
+    embedded?: boolean;
     onSave: (assetId: string | null) => Promise<void>;
     onBusyChange: (busy: boolean) => void;
     onUploaded: () => void;
@@ -163,17 +165,41 @@ export function ImageUploadEditor({
     }
     return (
         <section
-            className="editor-form image-editor mb-6 max-w-180 rounded-[var(--radius-lg)] border border-border border-solid bg-surface p-8 max-[760px]:px-5 max-[760px]:py-6 [&_.feedback]:mb-6 [&_h2]:mt-0 [&_h2]:text-[length:var(--text-xl)]"
+            className={cn(
+                'image-editor',
+                !embedded && 'rounded-[var(--radius-card)] border border-border bg-surface',
+                !embedded &&
+                    (avatar
+                        ? 'p-6 [&_h2]:m-0 [&_h2]:font-semibold [&_h2]:text-lg'
+                        : 'editor-form mb-6 max-w-180 p-8 max-[760px]:px-5 max-[760px]:py-6 [&_.feedback]:mb-6 [&_h2]:mt-0 [&_h2]:text-[length:var(--text-xl)]'),
+            )}
             aria-labelledby={`${id}-title`}
         >
-            <h2 id={`${id}-title`}>{title}</h2>
-            <p className="section-description mx-0 mt-[-6px] mb-6 text-[length:var(--text-sm)] text-muted-foreground">
-                {avatar
-                    ? 'Ảnh hiển thị trên hồ sơ và góc tài khoản.'
-                    : 'Ảnh giúp nhận diện sách trong danh sách của bạn.'}
-            </p>
+            <h2 id={`${id}-title`} className={embedded ? 'sr-only' : undefined}>
+                {title}
+            </h2>
+            {!embedded && (
+                <p
+                    className={cn(
+                        'text-muted-foreground text-sm',
+                        avatar ? 'mt-1 mb-5' : 'section-description mx-0 mt-[-6px] mb-6',
+                    )}
+                >
+                    {avatar
+                        ? 'Ảnh hiển thị trên hồ sơ và góc tài khoản.'
+                        : 'Ảnh giúp nhận diện sách trong danh sách của bạn.'}
+                </p>
+            )}
             <Feedback error={error} success={notice} />
-            <div className="image-editor-layout grid grid-cols-[144px_minmax(0,_1fr)] items-start gap-6 max-[600px]:grid-cols-[minmax(0,_1fr)] [&_form]:min-w-0">
+            <div
+                className={cn(
+                    'image-editor-layout grid [&_form]:min-w-0',
+                    embedded ? 'items-center' : 'items-start',
+                    avatar
+                        ? 'grid-cols-[80px_minmax(0,1fr)] gap-5'
+                        : 'grid-cols-[144px_minmax(0,_1fr)] gap-6 max-[600px]:grid-cols-[minmax(0,_1fr)]',
+                )}
+            >
                 <PreviewButton
                     variant="plain"
                     type="button"
@@ -184,7 +210,7 @@ export function ImageUploadEditor({
                     className={cn(
                         'image-editor-preview flex cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden bg-muted text-[length:var(--text-xs)] text-muted-foreground [&_img]:block [&_img]:size-full',
                         avatar
-                            ? 'avatar-preview size-32 rounded-[50%] [&_img]:object-cover'
+                            ? 'avatar-preview group/avatar-preview relative size-20 rounded-full border border-border bg-background [&_img]:object-cover'
                             : 'cover-preview h-48 w-36 rounded-[var(--radius-sm)] [&_img]:object-contain',
                     )}
                 >
@@ -198,8 +224,16 @@ export function ImageUploadEditor({
                             <span aria-hidden="true">
                                 {avatar ? <UserRound size={32} /> : <ImagePlus size={32} />}
                             </span>
-                            <span>Chưa có ảnh</span>
+                            {!avatar && <span>Chưa có ảnh</span>}
                         </>
+                    )}
+                    {avatar && (
+                        <span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity duration-150 group-hover/avatar-preview:opacity-100 group-focus-visible/avatar-preview:opacity-100 group-disabled/avatar-preview:opacity-0 motion-reduce:transition-none"
+                        >
+                            <ImagePlus className="size-5" />
+                        </span>
                     )}
                 </PreviewButton>
                 <form
@@ -207,21 +241,28 @@ export function ImageUploadEditor({
                     aria-label={`Cập nhật ${title.toLowerCase()}`}
                     aria-busy={Boolean(stage)}
                 >
-                    <FieldGroup className="contents">
+                    <FieldGroup className={avatar ? 'items-start gap-3' : 'contents'}>
                         <Field orientation="contents">
-                            <FieldLabel htmlFor={`${id}-file`}>{title}</FieldLabel>
+                            <FieldLabel
+                                htmlFor={`${id}-file`}
+                                className={avatar ? 'sr-only' : undefined}
+                            >
+                                {title}
+                            </FieldLabel>
                         </Field>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            disabled={choosingDisabled}
-                            aria-controls={`${id}-file`}
-                            aria-describedby={`${id}-help`}
-                            onClick={chooseImage}
-                        >
-                            <ImagePlus data-icon="inline-start" aria-hidden="true" />
-                            {file ? 'Chọn ảnh khác' : `Chọn ${title.toLowerCase()}`}
-                        </Button>
+                        {(!avatar || !file) && (
+                            <Button
+                                type="button"
+                                variant={avatar ? 'outline' : 'secondary'}
+                                disabled={choosingDisabled}
+                                aria-controls={`${id}-file`}
+                                aria-describedby={`${id}-help`}
+                                onClick={chooseImage}
+                            >
+                                <ImagePlus data-icon="inline-start" aria-hidden="true" />
+                                {file ? 'Đổi ảnh' : `Chọn ${title.toLowerCase()}`}
+                            </Button>
+                        )}
                         <Input
                             className="hidden"
                             tabIndex={-1}
@@ -247,11 +288,23 @@ export function ImageUploadEditor({
                         />
                         <p
                             id={`${id}-help`}
-                            className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]"
+                            className={
+                                avatar
+                                    ? 'm-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs leading-relaxed'
+                                    : 'field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]'
+                            }
                         >
-                            JPG, PNG hoặc WebP. Tối đa {avatar ? '2' : '10'} MB.
+                            <span>JPG, PNG hoặc WebP. Tối đa {avatar ? '2' : '10'} MB.</span>
+                            {avatar && file && (
+                                <>
+                                    <span className="border-border border-l pl-3">
+                                        {formatBytes(file.size)}
+                                    </span>
+                                    <span className="sr-only">Đã chọn ảnh: {file.name}</span>
+                                </>
+                            )}
                         </p>
-                        {file && (
+                        {!avatar && file && (
                             <p className="image-file-name wrap-anywhere text-[length:var(--text-sm)]">
                                 {file.name} · {formatBytes(file.size)}
                             </p>
@@ -272,17 +325,35 @@ export function ImageUploadEditor({
                             </div>
                         )}
                         {!stage && readyAsset && (
-                            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
+                            <p
+                                className={
+                                    avatar
+                                        ? 'm-0 text-muted-foreground text-xs leading-relaxed'
+                                        : 'field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]'
+                                }
+                            >
                                 Ảnh đã tải xong. Bấm Thử lưu lại để cập nhật, không cần tải ảnh lần
                                 nữa.
                             </p>
                         )}
                         {!stage && !readyAsset && checkpoint?.uploaded && (
-                            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
+                            <p
+                                className={
+                                    avatar
+                                        ? 'm-0 text-muted-foreground text-xs leading-relaxed'
+                                        : 'field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]'
+                                }
+                            >
                                 Ảnh đã tải xong, đang chờ xác nhận. Bạn có thể thử lại.
                             </p>
                         )}
-                        <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
+                        <div
+                            className={
+                                avatar
+                                    ? 'flex flex-wrap items-center gap-3 empty:hidden'
+                                    : 'form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2'
+                            }
+                        >
                             {file && (
                                 <Button
                                     type="submit"
@@ -303,6 +374,19 @@ export function ImageUploadEditor({
                                               : 'Lưu ảnh bìa'}
                                 </Button>
                             )}
+                            {avatar && file && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={choosingDisabled}
+                                    aria-controls={`${id}-file`}
+                                    aria-describedby={`${id}-help`}
+                                    onClick={chooseImage}
+                                >
+                                    <ImagePlus data-icon="inline-start" aria-hidden="true" />
+                                    Đổi ảnh
+                                </Button>
+                            )}
                             {stage && stage !== 'completing' && stage !== 'saving' && (
                                 <Button variant="secondary" onClick={cancel}>
                                     Dừng tải ảnh
@@ -310,7 +394,7 @@ export function ImageUploadEditor({
                             )}
                             {!stage && file && (
                                 <Button
-                                    variant="outline"
+                                    variant={avatar ? 'ghost' : 'outline'}
                                     disabled={disabled}
                                     onClick={() => {
                                         resetSelection();
@@ -337,8 +421,14 @@ export function ImageUploadEditor({
                                 </Button>
                             )}
                         </div>
-                        {currentUrl && (
-                            <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
+                        {currentUrl && !file && (
+                            <p
+                                className={
+                                    avatar
+                                        ? 'm-0 text-muted-foreground text-xs leading-relaxed'
+                                        : 'field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]'
+                                }
+                            >
                                 Gỡ ảnh chỉ bỏ liên kết, không xóa tệp đã tải.
                             </p>
                         )}
