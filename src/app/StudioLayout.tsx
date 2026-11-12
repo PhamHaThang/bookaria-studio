@@ -7,7 +7,6 @@ import { StudioStorageUsage } from '@/features/profile/ui/StudioStorageUsage';
 import { Alert } from '@/shared/ui/Alert';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
-import { PublicHeader } from './PublicHeader';
 import { getStudioSection } from './studio-navigation';
 
 const destinations = [
@@ -45,8 +44,7 @@ export function StudioLayout() {
             </main>
         );
     return (
-        <div className="studio-shell flex min-h-dvh flex-col bg-background">
-            <PublicHeader />
+        <div className="studio-shell flex flex-1 flex-col">
             <main
                 id="main"
                 className="studio-main mx-auto w-full min-w-0 max-w-[1328px] flex-1 px-6 pt-8 pb-16"

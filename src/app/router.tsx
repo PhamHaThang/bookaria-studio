@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useLayoutEffect } from 'react';
 import {
     createBrowserRouter,
     createRoutesFromElements,
@@ -8,12 +8,14 @@ import {
     Route,
     RouterProvider,
     useLocation,
+    useMatches,
 } from 'react-router-dom';
 import { FloatingThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
-import { RequireSession, SessionBoundary } from '../features/auth';
+import { RequireSession, SessionBoundary, useAuth } from '../features/auth';
 import { AuthDialog, LegacyAuthRoute } from '../features/auth/ui/AuthDialog';
 import { HomePage } from '../pages/HomePage';
 import { AdminLayout, AdminNotFoundPage } from './AdminLayout';
+import { PublicHeader } from './PublicHeader';
 import { PublicLayout } from './PublicLayout';
 import { StudioLayout } from './StudioLayout';
 
@@ -152,11 +154,33 @@ const StyleGuidePage = import.meta.env.DEV
       )
     : null;
 
+function SiteLayout() {
+    const { pathname } = useLocation();
+    // biome-ignore lint/correctness/useExhaustiveDependencies: Reset on route changes, not on search filters.
+    useLayoutEffect(() => {
+        window.scrollTo(0, 0);
+    }, [pathname]);
+    return (
+        <div className="site-shell flex min-h-dvh flex-col bg-background">
+            <PublicHeader />
+            <Outlet />
+        </div>
+    );
+}
+
 function RouterLayout() {
     const { pathname } = useLocation();
+    const matches = useMatches();
+    const { status } = useAuth();
     const inEditor = Boolean(
         matchPath('/books/:bookId/edit', pathname) ||
             matchPath('/books/:bookId/pages/:pageId', pathname),
+    );
+    const showSiteLayout = matches.some(
+        ({ id }) =>
+            id === 'public-pages' ||
+            (status === 'authenticated' &&
+                (id === 'account-pages' || (id === 'studio-pages' && !inEditor))),
     );
     return (
         <>
@@ -166,7 +190,7 @@ function RouterLayout() {
             >
                 Đến nội dung chính
             </a>
-            <Outlet />
+            {showSiteLayout ? <SiteLayout /> : <Outlet />}
             {!inEditor && <FloatingThemeSwitcher />}
             <AuthDialog />
         </>
@@ -181,7 +205,7 @@ function LegacyExploreRedirect() {
 const router = createBrowserRouter(
     createRoutesFromElements(
         <Route element={<RouterLayout />}>
-            <Route element={<PublicLayout />}>
+            <Route id="public-pages" element={<PublicLayout />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/library" element={<ExplorePage />} />
                 <Route path="/resources" element={<ExploreAssetsPage />} />
@@ -218,7 +242,7 @@ const router = createBrowserRouter(
             )}
             <Route element={<SessionBoundary />}>
                 <Route element={<RequireSession />}>
-                    <Route element={<PublicLayout />}>
+                    <Route id="account-pages" element={<PublicLayout />}>
                         <Route path="/profile" element={<ProfilePage />} />
                         <Route path="/change-password" element={<ChangePasswordPage />} />
                     </Route>
@@ -251,7 +275,7 @@ const router = createBrowserRouter(
                         <Route path="books/:bookId" element={<AdminBookDetailPage />} />
                         <Route path="*" element={<AdminNotFoundPage />} />
                     </Route>
-                    <Route element={<StudioLayout />}>
+                    <Route id="studio-pages" element={<StudioLayout />}>
                         <Route path="/books" element={<BooksPage key="active" />} />
                         <Route path="/stats" element={<StatsBooksPage />} />
                         <Route path="/books/:bookId/stats" element={<BookStatsPage />} />

@@ -15,6 +15,8 @@ const buttonVariants = cva(
                     'secondary bg-secondary text-foreground hover:not-disabled:bg-secondary-hover active:not-disabled:bg-secondary-hover',
                 outline:
                     'ghost border-[var(--border-button)] bg-[var(--action-outline)] text-foreground hover:not-disabled:bg-[var(--action-outline-hover)] active:not-disabled:bg-[var(--action-outline-hover)]',
+                utility:
+                    'rounded-full border-[var(--border-button)] bg-surface text-foreground hover:not-disabled:border-[var(--border-button-hover)] hover:not-disabled:bg-hover active:not-disabled:border-[var(--border-input-hover)] active:not-disabled:bg-selected data-[state=open]:border-[var(--border-input-hover)] data-[state=open]:bg-selected data-[state=open]:hover:not-disabled:border-[var(--border-input-hover)] data-[state=open]:hover:not-disabled:bg-selected',
                 ghost: 'bg-transparent text-foreground hover:not-disabled:bg-hover active:not-disabled:bg-hover disabled:border-transparent disabled:bg-transparent',
                 destructive:
                     'danger bg-destructive text-destructive-foreground hover:not-disabled:bg-destructive-hover active:not-disabled:bg-destructive-hover',

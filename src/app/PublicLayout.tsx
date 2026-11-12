@@ -2,7 +2,6 @@ import { Suspense, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { PublicBookDialog } from '@/features/discovery/PublicBookDialog';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
-import { PublicHeader } from './PublicHeader';
 import { SiteFooter } from './SiteFooter';
 
 export function PublicLayout() {
@@ -27,14 +26,9 @@ export function PublicLayout() {
             document.title = previousTitle;
         };
     }, [pageTitle]);
-    // biome-ignore lint/correctness/useExhaustiveDependencies: Reset on page changes while keeping library filters from resetting scroll.
-    useEffect(() => {
-        window.scrollTo(0, 0);
-    }, [pathname]);
 
     return (
-        <div className="public-shell flex min-h-dvh flex-col bg-background">
-            <PublicHeader />
+        <div className="public-shell flex flex-1 flex-col">
             <main
                 id="main"
                 tabIndex={-1}

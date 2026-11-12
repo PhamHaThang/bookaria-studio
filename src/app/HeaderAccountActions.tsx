@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import { LogOut, PanelsTopLeft, ShieldCheck, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { auth, useAuth } from '@/features/auth/model/session';
@@ -22,6 +22,7 @@ import {
     DropdownMenuTrigger,
 } from '@/shared/ui/primitives/dropdown-menu';
 import { Spinner } from '@/shared/ui/primitives/spinner';
+import { getStudioSection } from './studio-navigation';
 
 type Panel = 'account' | 'notifications' | null;
 type AccountVariant = 'full' | 'compact';
@@ -81,9 +82,15 @@ function SignedInActions({
     }
 
     return (
-        <div className="header-account-actions flex items-center gap-2">
+        <div
+            className={cn(
+                'header-account-actions flex items-center',
+                variant === 'compact' ? 'gap-3 max-sm:gap-2' : 'gap-2',
+            )}
+        >
             <NotificationsPopover
                 userId={user.id}
+                triggerVariant={variant === 'compact' ? 'utility' : 'ghost'}
                 open={panel === 'notifications'}
                 preventCloseFocus={panel === 'account'}
                 onOpenChange={(open) => changePanel('notifications', open)}
@@ -96,11 +103,13 @@ function SignedInActions({
                 <DropdownMenuTrigger asChild>
                     <Button
                         type="button"
-                        variant="ghost"
+                        variant={variant === 'compact' ? 'utility' : 'ghost'}
                         size={variant === 'compact' ? 'icon' : 'default'}
                         className={cn(
-                            'group/account focus-visible:bg-hover focus-visible:text-foreground data-[state=open]:bg-hover data-[state=open]:text-foreground',
-                            variant === 'full' && 'max-w-68 justify-start gap-3 px-2 py-1.5',
+                            'group/account',
+                            variant === 'full'
+                                ? 'max-w-68 justify-start gap-3 px-2 py-1.5 focus-visible:bg-hover focus-visible:text-foreground data-[state=open]:bg-hover data-[state=open]:text-foreground'
+                                : 'rounded-full p-1 [&_[data-slot=avatar]]:after:border-0',
                         )}
                         data-account-variant={variant}
                         aria-label={`Tài khoản của ${user.displayName}`}
@@ -134,7 +143,7 @@ function SignedInActions({
                             }
                         }}
                     >
-                        <Avatar url={user.avatarUrl || null} />
+                        <Avatar url={user.avatarUrl || null} transparent={variant === 'compact'} />
                         {variant === 'full' && (
                             <span className="min-w-0 text-left max-sm:hidden" aria-hidden="true">
                                 <span className="block truncate font-semibold text-sm">
@@ -219,7 +228,13 @@ function SignedInActions({
     );
 }
 
-export function HeaderAccountActions({ variant = 'full' }: { variant?: AccountVariant }) {
+export function HeaderAccountActions({
+    variant = 'full',
+    showStudio = false,
+}: {
+    variant?: AccountVariant;
+    showStudio?: boolean;
+}) {
     const { user } = useAuth();
     const { pathname } = useLocation();
     const profile = useQuery({
@@ -231,6 +246,26 @@ export function HeaderAccountActions({ variant = 'full' }: { variant?: AccountVa
     });
     const account = profile.data?.id === user?.id ? profile.data : user;
     return account ? (
-        <SignedInActions key={`${account.id}:${pathname}`} user={account} variant={variant} />
+        <div className="flex items-center gap-3 max-sm:gap-2">
+            <SignedInActions key={`${account.id}:${pathname}`} user={account} variant={variant} />
+            {showStudio && (
+                <Button asChild size="sm" className="min-h-10 max-sm:px-2">
+                    <Link
+                        to="/books"
+                        aria-label="Studio Editor"
+                        aria-current={getStudioSection(pathname) ? 'page' : undefined}
+                    >
+                        <PanelsTopLeft
+                            data-icon="inline-start"
+                            aria-hidden="true"
+                            className="max-[360px]:hidden"
+                        />
+                        <span>
+                            Studio<span className="max-sm:hidden"> Editor</span>
+                        </span>
+                    </Link>
+                </Button>
+            )}
+        </div>
     ) : null;
 }

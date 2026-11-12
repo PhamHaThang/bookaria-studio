@@ -68,11 +68,11 @@ export function PublicHeaderNavigation({ links, activePath }: PublicHeaderNaviga
         <NavigationMenu
             viewport={false}
             aria-label="Điều hướng chính"
-            className="justify-self-center max-lg:order-3 max-lg:col-span-full max-lg:w-full max-lg:max-w-none max-lg:justify-start max-lg:overflow-x-auto max-lg:pt-1"
+            className="justify-self-center max-xl:order-3 max-xl:col-span-full max-xl:w-full max-xl:max-w-none max-xl:justify-start max-xl:overflow-x-auto max-xl:pt-1"
         >
             <NavigationMenuList
                 ref={listRef}
-                className="relative gap-0 max-lg:mx-auto max-lg:flex-none sm:gap-2"
+                className="relative gap-0 max-xl:mx-auto max-xl:flex-none sm:gap-2"
             >
                 {links.map(({ to, label }) => (
                     <NavigationMenuItem key={to}>

@@ -8,7 +8,6 @@ import { BookariaLogo, bookariaLogoLinkStyles } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
 import { HeaderAccountActions } from './HeaderAccountActions';
 import { PublicHeaderNavigation, type PublicNavigationLink } from './PublicHeaderNavigation';
-import { getStudioSection } from './studio-navigation';
 
 const destinations: readonly PublicNavigationLink[] = [
     { to: '/', label: 'Trang chủ' },
@@ -25,15 +24,8 @@ export function PublicHeader() {
     const reduceMotion = useShouldReduceMotion();
     const [scrolled, setScrolled] = useState(() => window.scrollY > 24);
     const signedIn = status === 'authenticated' && user !== null;
-    const links = signedIn
-        ? [...destinations.slice(0, 3), { to: '/books', label: 'Studio' }, ...destinations.slice(3)]
-        : destinations;
     const activePath =
-        links.find(({ to }) =>
-            to === '/books'
-                ? getStudioSection(pathname) !== null
-                : pathname === to || pathname.startsWith(`${to}/`),
-        )?.to ?? null;
+        destinations.find(({ to }) => pathname === to || pathname.startsWith(`${to}/`))?.to ?? null;
 
     useEffect(() => {
         // Session recovery personalizes the header; public content never waits for it.
@@ -73,7 +65,7 @@ export function PublicHeader() {
             transition={transition.reveal}
             className="site-header sticky top-3 z-20 mx-auto mt-3 w-[calc(100%-48px)] max-w-[1280px] rounded-[var(--radius-nav)] bg-surface shadow-[var(--shadow-header)] transition-[background-color,box-shadow] duration-200 data-[scrolled=true]:shadow-[var(--shadow-header-scrolled)] supports-[backdrop-filter]:bg-[var(--bg-header-glass)] supports-[backdrop-filter]:backdrop-blur-[24px] supports-[backdrop-filter]:backdrop-saturate-150 motion-reduce:transition-none max-sm:top-2 max-sm:mt-2 max-sm:w-[calc(100%-16px)]"
         >
-            <div className="mx-auto grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-5 px-6 max-sm:px-3 max-lg:grid-cols-[minmax(0,1fr)_auto] max-lg:gap-x-4 max-lg:gap-y-0 max-lg:py-2">
+            <div className="mx-auto grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-5 px-6 max-sm:px-3 max-xl:grid-cols-[minmax(0,1fr)_auto] max-xl:gap-x-4 max-xl:gap-y-0 max-xl:py-2">
                 <Link
                     to="/"
                     aria-label="Bookaria - Trang chủ"
@@ -81,10 +73,10 @@ export function PublicHeader() {
                 >
                     <BookariaLogo className="w-36 max-sm:w-24 max-[360px]:w-20" />
                 </Link>
-                <PublicHeaderNavigation links={links} activePath={activePath} />
-                <div className="flex min-w-0 items-center justify-end gap-3 max-sm:gap-1 [&_[data-account-variant=full]]:max-w-[180px] xl:[&_[data-account-variant=full]]:max-w-[220px] [&_[data-slot=button]]:whitespace-nowrap">
+                <PublicHeaderNavigation links={destinations} activePath={activePath} />
+                <div className="flex min-w-0 items-center justify-end gap-3 max-sm:gap-2 [&_[data-slot=button]]:whitespace-nowrap">
                     {signedIn ? (
-                        <HeaderAccountActions />
+                        <HeaderAccountActions variant="compact" showStudio />
                     ) : (
                         <>
                             <Button

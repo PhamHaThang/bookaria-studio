@@ -15,6 +15,7 @@ export default defineConfig({
         'editor-inputs.spec.mjs',
         'admin-merge.spec.mjs',
         'viewer-links.spec.mjs',
+        'notifications.spec.mjs',
     ],
     workers: 1,
     retries: 0,
