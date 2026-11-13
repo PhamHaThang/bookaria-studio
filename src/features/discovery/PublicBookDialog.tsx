@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { BookOpen, BookX, Copy, ExternalLink, QrCode, RotateCcw, X } from 'lucide-react';
+import { BookOpen, BookX, Copy, ExternalLink, RotateCcw, X } from 'lucide-react';
 import { useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -14,12 +14,6 @@ import { Alert } from '@/shared/ui/Alert';
 import { BookCoverImage } from '@/shared/ui/BookCoverImage';
 import { Button } from '@/shared/ui/Button';
 import { PdfReaderButton } from '@/shared/ui/pdf-reader/PdfReaderButton';
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from '@/shared/ui/primitives/accordion';
 import {
     Dialog,
     DialogClose,
@@ -208,7 +202,6 @@ function BookInformation({ book }: { book: PublicBook }) {
             },
         );
     }
-    const mobileQr = useRef<HTMLDivElement>(null);
     const language =
         bookLanguageOptions(book.language).find((item) => item.value === book.language)?.label ||
         book.language;
@@ -278,40 +271,7 @@ function BookInformation({ book }: { book: PublicBook }) {
                     </p>
                 </section>
             </div>
-            <aside
-                aria-label="Đọc sách bằng mã QR"
-                className="hidden min-w-0 border-border border-l pl-6 lg:block"
-            >
-                <PublicBookQr slug={book.slug} />
-            </aside>
-            <div ref={mobileQr} className="col-span-2 lg:hidden">
-                <Accordion
-                    type="single"
-                    collapsible
-                    onValueChange={(value) => {
-                        if (value)
-                            requestAnimationFrame(() =>
-                                mobileQr.current?.scrollIntoView({
-                                    block: 'nearest',
-                                    behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
-                                        .matches
-                                        ? 'instant'
-                                        : 'smooth',
-                                }),
-                            );
-                    }}
-                >
-                    <AccordionItem value="qr">
-                        <AccordionTrigger>
-                            <QrCode className="size-4" aria-hidden="true" />
-                            Mã QR mở sách
-                        </AccordionTrigger>
-                        <AccordionContent className="[&_p:not(:last-child)]:mb-0">
-                            <PublicBookQr slug={book.slug} />
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
-            </div>
+            <PublicBookQr slug={book.slug} />
         </div>
     );
 }
@@ -340,10 +300,9 @@ function BookInformationSkeleton() {
                     <Skeleton className="h-4 w-3/4" />
                 </div>
             </div>
-            <div className="hidden flex-col items-center gap-3 border-border border-l pl-6 lg:flex">
-                <Skeleton className="size-36 rounded-lg" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-24" />
+            <div className="col-span-2 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 border-border border-t pt-4 lg:col-span-1 lg:flex lg:flex-col lg:gap-3 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+                <Skeleton className="size-28 rounded-lg lg:size-36" />
+                <Skeleton className="h-4 w-28 max-w-full" />
             </div>
         </div>
     );

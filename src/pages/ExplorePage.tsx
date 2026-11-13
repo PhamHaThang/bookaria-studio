@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { libraryAssetLocation } from '@/features/assets/model/search';
+import { BOOK_AGE_MAX } from '@/shared/contracts/common.schema';
 import { Button } from '@/shared/ui/Button';
 import { SearchFilter, SelectFilter, TextFilter } from '@/shared/ui/LiveFilters';
 import { LoadingState } from '@/shared/ui/LoadingState';
@@ -19,8 +20,6 @@ import { PublicBooks } from '../features/discovery/PublicBooks';
 import { readDiscoverySearch, updateDiscoverySearch } from '../features/discovery/search';
 import { errorMessage } from '../shared/api/errors';
 import { Feedback } from '../shared/ui/Feedback';
-
-const ages = Array.from({ length: 19 }, (_, value) => String(value));
 
 export function ExplorePage() {
     const [params] = useSearchParams();
@@ -87,16 +86,14 @@ function ExploreBooks() {
                     <Field orientation="contents">
                         <FieldLabel>
                             Độ tuổi
-                            <SelectFilter
+                            <TextFilter
                                 name="age"
-                                value={query.age ?? ''}
-                                options={[
-                                    { value: '', label: 'Tất cả độ tuổi' },
-                                    ...(ages.map((age) => ({
-                                        value: age,
-                                        label: <>{age} tuổi</>,
-                                    })) ?? []),
-                                ]}
+                                type="number"
+                                min={0}
+                                max={BOOK_AGE_MAX}
+                                step={1}
+                                placeholder="Tất cả độ tuổi"
+                                value={query.age === undefined ? '' : String(query.age)}
                             />
                         </FieldLabel>
                     </Field>

@@ -18,19 +18,26 @@ export function PublicBookQr({ slug }: { slug: string }) {
             });
         },
         staleTime: Number.POSITIVE_INFINITY,
+        networkMode: 'always',
         retry: false,
     });
     return (
         <section
             aria-label="Mã QR mở sách"
-            className="flex flex-col items-center gap-2 text-center"
+            className="col-span-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-4 border-border border-t pt-4 lg:col-span-1 lg:flex lg:flex-col lg:gap-2 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6 lg:text-center"
         >
             {qr.isPending ? (
-                <Skeleton className="size-36 rounded-lg" aria-label="Đang tạo mã QR" />
+                <>
+                    <Skeleton
+                        className="size-28 rounded-lg lg:size-36"
+                        aria-label="Đang tạo mã QR"
+                    />
+                    <Skeleton className="h-4 w-28 max-w-full" />
+                </>
             ) : qr.isError ? (
                 <div
                     role="status"
-                    className="flex min-h-36 flex-col items-center justify-center gap-3"
+                    className="col-span-2 flex min-h-28 flex-col items-start justify-center gap-3 lg:min-h-36 lg:items-center"
                 >
                     <p className="text-muted-foreground text-xs">
                         Chưa tạo được QR. Bạn vẫn có thể dùng nút Mở sách.
@@ -46,16 +53,20 @@ export function PublicBookQr({ slug }: { slug: string }) {
                         src={qr.data}
                         width={144}
                         height={144}
-                        className="size-36 rounded-lg"
+                        className="size-28 rounded-lg lg:size-36"
                         alt="Mã QR mở sách trên điện thoại"
                     />
-                    <p className="text-muted-foreground text-xs">Quét để mở trên điện thoại.</p>
-                    <Button variant="link" size="sm" asChild>
-                        <a href={qr.data} download={`${slug}-qr.png`}>
-                            <Download data-icon="inline-start" />
-                            Tải mã QR
-                        </a>
-                    </Button>
+                    <div className="flex min-w-0 flex-col items-start gap-1 lg:items-center">
+                        <p className="m-0 text-muted-foreground text-xs">
+                            Quét để mở trên điện thoại.
+                        </p>
+                        <Button variant="link" size="sm" className="px-0" asChild>
+                            <a href={qr.data} download={`${slug}-qr.png`}>
+                                <Download data-icon="inline-start" />
+                                Tải mã QR
+                            </a>
+                        </Button>
+                    </div>
                 </>
             )}
         </section>
