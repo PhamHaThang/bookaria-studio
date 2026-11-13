@@ -16,6 +16,9 @@
     body {
         overflow-x: clip;
     }
+    html:has([data-pdf-reader][data-state="open"]) {
+        overflow: hidden;
+    }
     body {
         margin: 0;
         min-width: 320px;

@@ -1,0 +1,379 @@
+:root {
+    color-scheme: light;
+    --surface: #ffffff;
+    --stage: #f3f1ef;
+    --ink: #242424;
+    --muted: #60646c;
+    --hover: #f3f4f6;
+    --line: #e5e7eb;
+    --active: #dee1e6;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface: #1c1c1c;
+    --stage: #141517;
+    --ink: #fafafa;
+    --muted: #b8b8b8;
+    --hover: #292929;
+    --line: #363636;
+    --active: #393939;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    color: var(--ink);
+    background: var(--stage);
+    font:
+        14px / 1.5 system-ui,
+        sans-serif;
+}
+
+body {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+}
+
+#controls[hidden],
+#controls button[hidden],
+#status[hidden],
+.df-container.df-floating .df-ui-controls,
+.df-container.df-floating > .df-ui-prev,
+.df-container.df-floating > .df-ui-next,
+.df-container.df-floating .df-ui-size,
+.df-container .df-thumb-container .df-ui-sidemenu-close {
+    display: none;
+}
+
+#flipbook {
+    overflow: hidden;
+}
+
+#controls {
+    position: relative;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 7px 14px max(7px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+}
+
+.tools,
+.pagination,
+.page-number {
+    display: flex;
+    align-items: center;
+}
+
+.tools:last-child {
+    justify-self: end;
+}
+
+.pagination {
+    gap: 4px;
+}
+
+.page-number {
+    justify-content: center;
+    gap: 4px;
+    box-sizing: border-box;
+    min-width: 76px;
+    height: 34px;
+    padding-inline: 7px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 20px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.page-number input {
+    box-sizing: border-box;
+    width: 4ch;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    color: var(--ink);
+    background: transparent;
+    font: inherit;
+    font-weight: 600;
+    text-align: center;
+}
+
+#controls button,
+#controls summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    color: var(--ink);
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+
+#controls button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+#controls summary {
+    list-style: none;
+}
+
+#controls summary::-webkit-details-marker {
+    display: none;
+}
+
+#controls :is(button:enabled, summary):hover {
+    background: var(--hover);
+}
+
+#controls :is(button[aria-pressed="true"]:not([data-action="sound"]), details[open] > summary) {
+    background: var(--active);
+}
+
+#controls :focus-visible {
+    outline: 2px solid var(--muted);
+    outline-offset: -2px;
+}
+
+[data-action="sound"][aria-pressed="true"] .lucide-volume-x,
+[data-action="sound"][aria-pressed="false"] .lucide-volume-2 {
+    display: none;
+}
+
+.options {
+    position: absolute;
+    right: 12px;
+    bottom: calc(100% + 8px);
+    min-width: 218px;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 6px 20px #0002;
+}
+
+#controls .options button {
+    justify-content: flex-start;
+    gap: 10px;
+    width: 100%;
+    padding: 0 10px;
+    text-align: left;
+}
+
+.df-container .df-thumb-container {
+    width: 152px;
+    border-right: 1px solid var(--line);
+    background: var(--surface);
+}
+
+.df-container.df-sidemenu-open .df-book-stage {
+    padding-left: 162px;
+}
+
+.thumbnail-toolbar {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    padding-inline: 12px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+:root[data-theme="light"] [data-action="theme"] .lucide-sun,
+:root[data-theme="dark"] [data-action="theme"] .lucide-moon {
+    display: none;
+}
+
+.df-container .df-thumb-wrapper {
+    top: 44px;
+    box-shadow: none;
+    scrollbar-color: var(--muted) transparent;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+}
+
+.df-container .df-thumb-container:not(.df-sidemenu-visible) {
+    visibility: hidden;
+}
+
+.df-container .df-thumb-container .df-vrow {
+    right: 8px;
+    left: 8px;
+    width: auto;
+    height: 120px;
+    margin: 4px 0;
+    padding: 8px 8px 26px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background-color: var(--surface);
+    background-origin: content-box;
+    background-position: center;
+}
+
+.df-container .df-thumb-container .df-vrow:focus-visible {
+    outline: 2px solid var(--muted);
+    outline-offset: -2px;
+}
+
+.df-container .df-thumb-container .df-vrow.df-selected {
+    border-color: var(--ink);
+}
+
+.df-container.df-floating .df-thumb-container .df-vrow:hover,
+.df-container.df-floating .df-thumb-container .df-vrow.df-selected {
+    background-color: var(--hover);
+}
+
+.df-thumb-container .df-vrow > div {
+    position: absolute;
+    right: 8px;
+    bottom: 4px;
+    left: 8px;
+    width: auto;
+    height: 18px;
+    color: var(--muted);
+    background: transparent;
+    font-size: 12px;
+    line-height: 18px;
+    font-variant-numeric: tabular-nums;
+}
+
+.df-thumb-container .df-vrow.df-selected > div {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+#status {
+    position: absolute;
+    z-index: 6;
+    right: 12px;
+    bottom: 62px;
+    max-width: calc(100% - 48px);
+    margin: 0;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+}
+
+@media (max-width: 640px) {
+    #controls {
+        gap: 0;
+        padding-inline: 4px;
+    }
+
+    #controls .tools > button,
+    #controls summary {
+        min-width: 36px;
+    }
+
+    .pagination {
+        gap: 0;
+    }
+
+    #controls .pagination button {
+        min-width: 36px;
+    }
+
+    .page-number {
+        min-width: 64px;
+    }
+    .df-container.df-sidemenu-open .df-book-stage {
+        padding-left: 10px;
+    }
+}
+
+@media (max-width: 359px) {
+    #controls .tools > button,
+    #controls .pagination button,
+    #controls summary {
+        min-width: 32px;
+    }
+
+    .page-number {
+        width: 56px;
+        min-width: 0;
+        padding-inline: 4px;
+    }
+
+    .page-number input {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 379px) {
+    #controls :is([data-action="zoomIn"], [data-action="zoomOut"]) {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .df-container .df-sidemenu {
+        transition: none;
+    }
+}
+
+/* Match the Lucide LoaderCircle used by the Studio Spinner. */
+.df-container.df-loading::after,
+.df-container .df-page-loading::after,
+.df-container .df-thumb-container .df-vrow::before {
+    width: 16px;
+    height: 16px;
+    background: var(--ink);
+    mask:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M21 12a9 9 0 1 1-6.219-8.56' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")
+        center / contain no-repeat;
+}
+
+.df-container.df-loading::before,
+.df-container .df-page-loading::before {
+    border-color: var(--line);
+    background-color: var(--surface);
+}
+
+.df-container.df-loading::after {
+    margin: -28px 0 0 -8px;
+}
+
+.df-container .df-page-loading::after {
+    margin: -8px 0 0 -8px;
+}
+
+.df-container .df-thumb-container .df-vrow::before {
+    position: absolute;
+    top: 42%;
+    left: 50%;
+    margin: -8px 0 0 -8px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .df-container.df-loading::after,
+    .df-container .df-page-loading::after,
+    .df-container .df-thumb-container .df-vrow::before {
+        animation: pdf-reader-spin 1s linear infinite;
+    }
+}
+
+@keyframes pdf-reader-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

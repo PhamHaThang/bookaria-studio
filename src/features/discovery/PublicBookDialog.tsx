@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { BookOpen, BookX, Copy, ExternalLink, FileDown, QrCode, RotateCcw, X } from 'lucide-react';
+import { BookOpen, BookX, Copy, ExternalLink, QrCode, RotateCcw, X } from 'lucide-react';
 import { useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -10,8 +10,10 @@ import { errorMessage } from '@/shared/api/errors';
 import { SlugSchema } from '@/shared/contracts/common.schema';
 import type { PublicBook } from '@/shared/contracts/dto.schema';
 import { formatBytes, formatDate } from '@/shared/lib/format';
+import { Alert } from '@/shared/ui/Alert';
 import { BookCoverImage } from '@/shared/ui/BookCoverImage';
 import { Button } from '@/shared/ui/Button';
+import { PdfReaderButton } from '@/shared/ui/pdf-reader/PdfReaderButton';
 import {
     Accordion,
     AccordionContent,
@@ -64,6 +66,7 @@ function BookDialog({ slug, onClose }: { slug: string; onClose: () => void }) {
         queryKey: ['discovery', 'book', slug],
         queryFn: ({ signal }) => discoveryApi.book(slug, signal),
         enabled: valid,
+        networkMode: 'always',
         staleTime: 0,
         retry: false,
     });
@@ -189,6 +192,22 @@ function BookDialog({ slug, onClose }: { slug: string; onClose: () => void }) {
 }
 
 function BookInformation({ book }: { book: PublicBook }) {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const params = new URLSearchParams(location.search);
+    const openPdf = params.get('pdf') === '1';
+    function closePdf() {
+        if (!openPdf) return;
+        params.delete('pdf');
+        navigate(
+            { pathname: location.pathname, search: `?${params}`, hash: location.hash },
+            {
+                replace: true,
+                preventScrollReset: true,
+                state: location.state,
+            },
+        );
+    }
     const mobileQr = useRef<HTMLDivElement>(null);
     const language =
         bookLanguageOptions(book.language).find((item) => item.value === book.language)?.label ||
@@ -237,21 +256,21 @@ function BookInformation({ book }: { book: PublicBook }) {
                     <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
                         {book.description?.trim() || 'Cuốn sách này chưa có mô tả.'}
                     </p>
-                    {book.printPdfUrl && (
-                        <Button
+                    {book.printPdfUrl ? (
+                        <PdfReaderButton
+                            url={book.printPdfUrl}
+                            title={book.title}
+                            defaultOpen={openPdf}
+                            onOpenChange={(open) => {
+                                if (!open) closePdf();
+                            }}
                             variant="link"
                             size="sm"
-                            className="w-fit cursor-pointer justify-start px-0"
-                            asChild
-                        >
-                            <a href={book.printPdfUrl} target="_blank" rel="noopener noreferrer">
-                                <FileDown data-icon="inline-start" />
-                                Bản in PDF
-                                <ExternalLink data-icon="inline-end" />
-                                <span className="sr-only"> — mở trong tab mới</span>
-                            </a>
-                        </Button>
-                    )}
+                            className="w-fit justify-start px-0"
+                        />
+                    ) : openPdf ? (
+                        <Alert tone="info">Sách này hiện chưa có bản in PDF.</Alert>
+                    ) : null}
                     <p className="mt-2 text-muted-foreground text-xs">
                         Cập nhật {formatDate(book.version.publishedAt)}
                         {book.downloadBytes > 0 &&
