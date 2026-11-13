@@ -1,9 +1,9 @@
-import { FolderOpen } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 import { AssetCatalog } from '@/features/assets/ui/AssetCatalog';
+import { LibraryAssetGridSkeleton } from '@/features/assets/ui/LibraryAssetGrid';
 import { useAuth } from '@/features/auth';
 import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
 import { Button } from '@/shared/ui/Button';
-import { LoadingState } from '@/shared/ui/LoadingState';
 import {
     Empty,
     EmptyContent,
@@ -17,26 +17,29 @@ export function ExploreAssetsPage() {
     const { user, status } = useAuth();
     return (
         <>
-            <div className="mb-7">
-                <h1 className="font-semibold text-[28px] tracking-tight">Thư viện tài nguyên</h1>
-                <p className="mt-2 text-muted-foreground text-sm">
-                    Khám phá hình ảnh, âm thanh, video và mô hình 3D cho sách của bạn.
+            <header data-stable-scroll-overlays className="pt-3 pb-7 sm:pt-7 sm:pb-9">
+                <h1 className="m-0 font-semibold text-4xl leading-tight tracking-tight sm:text-5xl">
+                    Thư viện tài nguyên
+                </h1>
+                <p className="mt-3 mb-0 max-w-[58ch] text-muted-foreground text-sm leading-relaxed sm:text-base">
+                    Khám phá những tài nguyên dùng chung được chia sẻ của Bookaria.
                 </p>
-            </div>
+            </header>
             {status === 'loading' ? (
-                <LoadingState layout="assets">Đang tải tài nguyên…</LoadingState>
+                <LibraryAssetGridSkeleton />
             ) : user ? (
                 <AssetCatalog scope="library" />
             ) : (
-                <Empty className="py-16">
+                <Empty className="gap-5 px-4 py-9 sm:py-12">
                     <EmptyHeader>
-                        <EmptyMedia>
-                            <FolderOpen size={38} aria-hidden="true" />
+                        <EmptyMedia variant="icon" className="mb-2 size-12 rounded-xl">
+                            <LogIn className="size-6" aria-hidden="true" />
                         </EmptyMedia>
-                        <EmptyTitle>Thư viện tài nguyên Bookaria</EmptyTitle>
+                        <EmptyTitle>
+                            <h2>Đăng nhập để xem thư viện</h2>
+                        </EmptyTitle>
                         <EmptyDescription>
-                            Đăng nhập để xem trước hình ảnh, âm thanh, video và mô hình 3D dùng
-                            chung cho sách của bạn.
+                            Dùng tài khoản Bookaria để tìm và xem trước tài nguyên dùng chung.
                         </EmptyDescription>
                     </EmptyHeader>
                     <EmptyContent>

@@ -38,7 +38,7 @@ export function ExplorePage() {
 
     return (
         <>
-            <header data-explore-books className="pt-3 pb-7 sm:pt-7 sm:pb-9">
+            <header data-stable-scroll-overlays className="pt-3 pb-7 sm:pt-7 sm:pb-9">
                 <h1 className="m-0 font-semibold text-4xl leading-tight tracking-tight sm:text-5xl">
                     Khám phá sách
                 </h1>

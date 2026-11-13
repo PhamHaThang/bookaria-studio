@@ -8,9 +8,11 @@ const icons = { MODEL: Box, IMAGE: FileImage, AUDIO: Music2, VIDEO: Film };
 export function AssetThumbnail({
     asset,
     variant = 'compact',
+    className,
 }: {
     asset: Asset;
     variant?: 'compact' | 'card';
+    className?: string;
 }) {
     const [failedUrl, setFailedUrl] = useState<string | null>(null);
     const Icon = icons[asset.type];
@@ -24,6 +26,7 @@ export function AssetThumbnail({
                 variant === 'card'
                     ? 'h-full w-full bg-surface text-muted-foreground'
                     : 'size-16 rounded-[var(--radius-md)] bg-[var(--bg-cover)] text-[var(--text-cover)] max-[540px]:row-span-2 max-[540px]:size-12',
+                className,
             )}
             aria-hidden="true"
         >

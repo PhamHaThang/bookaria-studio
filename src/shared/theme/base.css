@@ -24,7 +24,7 @@
         min-width: 320px;
     }
     /* The root scrollbar still occupies space when Radix locks body scrolling. */
-    html:has([data-explore-books]):not(:has([data-pdf-reader][data-state="open"]))
+    html:has([data-stable-scroll-overlays]):not(:has([data-pdf-reader][data-state="open"]))
     body[data-scroll-locked] {
         /* biome-ignore lint/complexity/noImportantStyles: Radix injects the scrollbar compensation with !important. */
         margin-right: 0 !important;
