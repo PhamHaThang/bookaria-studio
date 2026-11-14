@@ -374,10 +374,15 @@ export function PageStrip({
                     }}
                 >
                     {listing.isPending && (
-                        <div className="flex items-center gap-2 p-1" role="status" aria-busy="true">
+                        <div className="flex items-center gap-1" role="status" aria-busy="true">
                             <span className="sr-only">Đang tải các trang…</span>
-                            {[0, 1, 2].map((index) => (
-                                <Skeleton key={index} className="size-14 shrink-0 rounded-xl" />
+                            {Array.from(
+                                { length: Math.min(Math.max(1, book.pageCount), 9) },
+                                (_, index) => `page-placeholder-${index + 1}`,
+                            ).map((key) => (
+                                <div key={key} className="shrink-0 p-1">
+                                    <Skeleton className="size-14 rounded-xl" />
+                                </div>
                             ))}
                         </div>
                     )}

@@ -427,7 +427,7 @@ export function AdminLibraryPage() {
 
             {/* Trạng thái tải & Báo lỗi */}
             {categories.isError && <Feedback error={errorMessage(categories.error)} />}
-            {list.isPending && <LoadingState layout="rows">Đang tải thư viện…</LoadingState>}
+            {list.isPending && <LoadingState layout="admin-rows">Đang tải thư viện…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
 
             {/* Danh sách tài nguyên */}

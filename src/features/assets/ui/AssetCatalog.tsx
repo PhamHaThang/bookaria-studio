@@ -288,7 +288,7 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                         </p>
                     )}
                     {library && listing.data.data.length === 0 ? (
-                        <Empty className="gap-5 px-4 py-9 sm:py-12">
+                        <Empty className="min-h-48 gap-5 px-4 py-9 sm:min-h-70 sm:py-12">
                             <EmptyHeader className="gap-2">
                                 <EmptyMedia
                                     variant="icon"

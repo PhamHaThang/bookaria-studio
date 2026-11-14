@@ -25,7 +25,13 @@ export function BookStatusFilter({
                 onValueChange={(value) => onChange(value === 'all' ? undefined : value)}
             />
             <p className="m-0 ml-auto text-muted-foreground text-sm tabular-nums" role="status">
-                {total !== undefined ? `${total} cuốn sách` : null}
+                {total !== undefined ? (
+                    `${total} cuốn sách`
+                ) : (
+                    <span className="invisible" aria-hidden="true">
+                        0 cuốn sách
+                    </span>
+                )}
             </p>
         </div>
     );

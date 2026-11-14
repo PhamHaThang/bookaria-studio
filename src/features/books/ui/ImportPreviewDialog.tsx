@@ -67,7 +67,7 @@ export function ImportPreviewDialog({
             }}
         >
             <DialogContent
-                className="flex max-h-[calc(100dvh-48px)] max-w-240 flex-col gap-4 p-5"
+                className="flex h-[min(760px,calc(100dvh-48px))] max-w-[min(960px,calc(100vw-32px))] flex-col gap-4 p-5"
                 onCloseAutoFocus={(event) => {
                     event.preventDefault();
                     if (opener?.isConnected) opener.focus({ preventScroll: true });
@@ -81,7 +81,7 @@ export function ImportPreviewDialog({
                             : 'Ảnh gốc sẽ được đặt trọn trong khổ sách đã chọn.'}
                     </DialogDescription>
                 </DialogHeader>
-                <div className="flex min-h-0 items-center justify-center overflow-auto rounded-lg bg-muted p-3">
+                <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto rounded-lg bg-muted p-3">
                     {error ? (
                         <div className="flex w-full flex-col items-start gap-3">
                             <Alert tone="danger" className="mb-0">
@@ -98,11 +98,14 @@ export function ImportPreviewDialog({
                         <img
                             src={url}
                             alt={title}
-                            className="max-h-[72dvh] max-w-full object-contain"
+                            className="max-h-full max-w-full object-contain"
                             onError={() => setError('Chưa tải được ảnh xem trước. Hãy thử lại.')}
                         />
                     ) : (
-                        <Skeleton className="h-96 w-full" />
+                        <div className="size-full" role="status">
+                            <span className="sr-only">Đang tải ảnh xem trước…</span>
+                            <Skeleton className="size-full" />
+                        </div>
                     )}
                 </div>
             </DialogContent>

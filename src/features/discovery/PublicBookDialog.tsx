@@ -48,7 +48,7 @@ import { PublicBookQr } from './PublicBookQr';
 import { publicBookAgeLabel, publicBookInfoUrl, withoutPublicBookInfo } from './public-book-info';
 
 const informationLayout =
-    'grid min-h-0 min-w-0 overflow-y-auto overscroll-contain md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:[@media(min-height:400px)]:grid-rows-[minmax(0,1fr)_auto] md:[@media(min-height:400px)]:overflow-hidden';
+    'grid min-h-0 min-w-0 flex-1 grid-rows-[auto_1fr_auto] overflow-y-auto overscroll-contain md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:grid-rows-[auto_auto] md:[@media(min-height:400px)]:grid-rows-[minmax(0,1fr)_auto] md:[@media(min-height:400px)]:overflow-hidden';
 const coverPanel =
     'relative isolate grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-4 overflow-clip bg-muted px-4 pt-16 pb-5 sm:px-6 md:row-span-2 md:flex md:flex-col md:items-stretch md:gap-6 md:p-7';
 const detailsPanel =
@@ -104,7 +104,7 @@ function BookDialog({ slug, onClose }: { slug: string; onClose: () => void }) {
         >
             <DialogContent
                 showCloseButton={false}
-                className="flex max-h-[calc(100dvh-32px)] max-w-[min(960px,calc(100vw-32px))] flex-col overflow-hidden p-0"
+                className="flex h-[min(760px,calc(100dvh-32px))] max-w-[min(960px,calc(100vw-32px))] flex-col overflow-hidden p-0 md:h-[min(520px,calc(100dvh-32px))]"
                 onOpenAutoFocus={(event) => {
                     event.preventDefault();
                     if (event.target instanceof HTMLElement) event.target.focus();
@@ -120,7 +120,7 @@ function BookDialog({ slug, onClose }: { slug: string; onClose: () => void }) {
                 {book ? (
                     <BookInformation book={book} onCopy={() => void copyLink()} />
                 ) : unavailable || detail.isError ? (
-                    <div className="min-h-0 overflow-y-auto px-5 py-6">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-6">
                         <DialogTitle className="px-1 pr-12">Thông tin sách</DialogTitle>
                         <Empty className="min-h-64 border-0 p-4">
                             <EmptyHeader>
@@ -347,6 +347,12 @@ function BookInformationSkeleton() {
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-4/5" />
                 </div>
+            </div>
+            <div
+                aria-hidden="true"
+                className="flex justify-end px-4 py-3 sm:px-6 md:px-8 md:pt-1 md:pb-6"
+            >
+                <Skeleton className="h-10 w-32" />
             </div>
         </div>
     );

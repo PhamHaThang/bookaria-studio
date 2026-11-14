@@ -122,11 +122,25 @@ export function AssetCardGrid({
 
 export function AssetCardGridSkeleton({ scope = 'library' }: { scope?: 'mine' | 'library' }) {
     return (
-        <div role="status">
+        <div role="status" className="@container">
             <span className="sr-only">Đang tải tài nguyên…</span>
             <div className={scope === 'mine' ? studioGridClass : gridClass} aria-hidden="true">
-                {['a', 'b', 'c', 'd'].map((item) => (
-                    <Card key={item} size="sm" className={cardClass}>
+                {['a', 'b', 'c', 'd'].map((item, index) => (
+                    <Card
+                        key={item}
+                        size="sm"
+                        className={cn(
+                            cardClass,
+                            (scope === 'mine'
+                                ? [
+                                      '',
+                                      '@max-[426px]:hidden',
+                                      '@max-[647px]:hidden',
+                                      '@max-[868px]:hidden',
+                                  ]
+                                : ['', '', 'max-md:hidden', 'max-xl:hidden'])[index],
+                        )}
+                    >
                         <Skeleton className="aspect-[1.45] rounded-none" />
                         <CardHeader className="gap-2 py-3 sm:px-4 sm:py-4">
                             <Skeleton className="h-5 w-3/4" />

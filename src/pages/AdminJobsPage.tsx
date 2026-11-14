@@ -377,7 +377,9 @@ export function AdminJobsPage() {
             )}
 
             {/* Trạng thái đang tải */}
-            {query && list.isPending && <LoadingState layout="rows">Đang tải tác vụ…</LoadingState>}
+            {query && list.isPending && (
+                <LoadingState layout="admin-rows">Đang tải tác vụ…</LoadingState>
+            )}
 
             {/* Báo lỗi khi truy vấn */}
             {query && list.isError && (

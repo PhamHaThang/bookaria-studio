@@ -4,6 +4,7 @@ export type SkeletonLayout =
     | 'books'
     | 'assets'
     | 'rows'
+    | 'admin-rows'
     | 'pages'
     | 'public-books'
     | 'profile'
@@ -44,7 +45,7 @@ function FormFields() {
 function Rows({ layout }: { layout: 'assets' | 'rows' | 'pages' | 'public-books' }) {
     return (
         <div className="flex flex-col border-border border-t">
-            {items.slice(0, 4).map((id) => (
+            {items.slice(0, 2).map((id) => (
                 <div key={id} className="flex items-center gap-5 border-border border-b py-5">
                     {layout === 'assets' && <Skeleton className="size-16 shrink-0" />}
                     {layout === 'pages' && <Skeleton className="h-22 w-16 shrink-0" />}
@@ -63,24 +64,34 @@ function Rows({ layout }: { layout: 'assets' | 'rows' | 'pages' | 'public-books'
 export function ContentSkeleton({ layout }: { layout: SkeletonLayout }) {
     if (layout === 'books')
         return (
-            <div className="mx-auto max-w-375">
-                <Skeleton className="mb-3 h-3 w-24" />
+            <div className="@container">
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,205px),1fr))] gap-4">
-                    {items.map((id) => (
-                        <div
-                            key={id}
-                            className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3"
-                        >
-                            <Skeleton className="aspect-[4/3] w-full rounded-md" />
-                            <Skeleton className="mt-2 h-4 w-4/5" />
-                            <Skeleton className="h-3 w-3/5" />
-                            <div className="mt-auto flex items-center justify-between">
-                                <Skeleton className="h-6 w-18" />
-                                <Skeleton className="size-5" />
+                    {['', '@max-[426px]:hidden', '@max-[647px]:hidden', '@max-[868px]:hidden'].map(
+                        (visibility) => (
+                            <div
+                                key={visibility}
+                                className={`min-w-0 overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface ${visibility}`}
+                            >
+                                <Skeleton className="aspect-[4/3] w-full rounded-none" />
+                                <div className="flex flex-col gap-2 p-3">
+                                    <Skeleton className="h-5 w-4/5" />
+                                    <Skeleton className="h-4 w-3/5" />
+                                    <Skeleton className="mt-1 h-8 w-full" />
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ),
+                    )}
                 </div>
+            </div>
+        );
+    if (layout === 'admin-rows')
+        return (
+            <div className="space-y-4">
+                <div className="flex h-10 items-center justify-between gap-4">
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-10 w-28 rounded-[var(--radius-control)]" />
+                </div>
+                <Rows layout="rows" />
             </div>
         );
     if (layout === 'assets' || layout === 'rows' || layout === 'pages' || layout === 'public-books')
@@ -120,7 +131,7 @@ export function ContentSkeleton({ layout }: { layout: SkeletonLayout }) {
     if (layout === 'stats-books')
         return (
             <div className="grid gap-2.5">
-                {items.slice(0, 4).map((id) => (
+                {items.slice(0, 2).map((id) => (
                     <div
                         key={id}
                         className="flex items-center gap-4 rounded-xl border border-border bg-surface p-3 sm:px-4"

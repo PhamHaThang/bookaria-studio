@@ -139,7 +139,7 @@ export function AuthorPage() {
                         {books.length > 0 ? (
                             <PublicBooks books={books} showAuthor={false} />
                         ) : (
-                            <Empty className="min-h-56">
+                            <Empty className="min-h-62 sm:min-h-80">
                                 <EmptyHeader>
                                     <EmptyMedia variant="icon">
                                         <BookOpen aria-hidden="true" />
@@ -164,16 +164,16 @@ export function AuthorPage() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Skeleton className="h-4 w-20" />
-                            <Skeleton className="h-5 w-full max-w-96" />
+                            <Skeleton className="h-6 w-20" />
+                            <Skeleton className="h-6.5 w-full max-w-96" />
                         </div>
                         <div className="flex gap-10 sm:gap-16">
-                            <Skeleton className="h-12 w-28" />
-                            <Skeleton className="h-12 w-20" />
+                            <Skeleton className="h-13 w-28" />
+                            <Skeleton className="h-13 w-20" />
                         </div>
                     </div>
                     <div className={shelfClass}>
-                        <Skeleton className="mb-4 h-8 w-44 sm:mb-5" />
+                        <Skeleton className="mb-4 h-9 w-44 sm:mb-5" />
                         <PublicBooksSkeleton showAuthor={false} />
                     </div>
                 </>

@@ -93,11 +93,17 @@ export function PublicBooks({
 
 export function PublicBooksSkeleton({ showAuthor = true }: { showAuthor?: boolean }) {
     return (
-        <div role="status" aria-busy="true">
+        <div role="status" aria-busy="true" className={showAuthor ? 'max-sm:min-h-70' : undefined}>
             <span className="sr-only">Đang tải sách…</span>
             <div className={gridClass} aria-hidden="true">
-                {['a', 'b', 'c', 'd'].map((item) => (
-                    <div key={item} className={cardClass}>
+                {['a', 'b', 'c', 'd'].map((item, index) => (
+                    <div
+                        key={item}
+                        className={cn(
+                            cardClass,
+                            ['', '', 'hidden md:block', 'hidden xl:block'][index],
+                        )}
+                    >
                         <div className={shelfClass}>
                             <Skeleton className="aspect-[3/4] w-[54%] rounded-sm" />
                         </div>

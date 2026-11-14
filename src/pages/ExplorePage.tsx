@@ -294,7 +294,7 @@ function ExploreBooks() {
                         <PublicBooks books={books} />
                     </div>
                 ) : (
-                    <Empty className="gap-5 px-4 py-9 sm:py-12">
+                    <Empty className="min-h-70 gap-5 px-4 py-9 sm:min-h-80 sm:py-12">
                         <EmptyHeader className="gap-2">
                             <EmptyMedia
                                 variant="icon"

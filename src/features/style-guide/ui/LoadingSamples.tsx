@@ -34,6 +34,7 @@ const skeletons: { value: SkeletonLayout; label: string }[] = [
     { value: 'books', label: 'Sách trong Studio' },
     { value: 'assets', label: 'Danh sách tài nguyên' },
     { value: 'rows', label: 'Hàng dữ liệu' },
+    { value: 'admin-rows', label: 'Danh sách quản trị' },
     { value: 'pages', label: 'Danh sách trang' },
     { value: 'public-books', label: 'Sách công khai' },
     { value: 'profile', label: 'Hồ sơ' },

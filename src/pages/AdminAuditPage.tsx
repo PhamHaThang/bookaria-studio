@@ -255,7 +255,7 @@ export function AdminAuditPage() {
             )}
 
             {query && list.isPending && (
-                <LoadingState layout="rows">Đang tải nhật ký…</LoadingState>
+                <LoadingState layout="admin-rows">Đang tải nhật ký…</LoadingState>
             )}
 
             {query && list.isError && <Feedback error={errorMessage(list.error)} />}

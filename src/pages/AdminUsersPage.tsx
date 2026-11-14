@@ -490,7 +490,9 @@ export function AdminUsersPage() {
             </form>
 
             {/* Trạng thái tải & Báo lỗi */}
-            {list.isPending && <LoadingState layout="rows">Đang tải người dùng…</LoadingState>}
+            {list.isPending && (
+                <LoadingState layout="admin-rows">Đang tải người dùng…</LoadingState>
+            )}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
 
             {/* Danh sách người dùng */}
