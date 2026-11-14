@@ -24,23 +24,23 @@ export function PublicBookQr({ slug }: { slug: string }) {
     return (
         <section
             aria-label="Mã QR mở sách"
-            className="col-span-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-4 border-border border-t pt-4 lg:col-span-1 lg:flex lg:flex-col lg:gap-2 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6 lg:text-center"
+            className="flex min-w-0 flex-wrap items-center justify-center gap-x-2.5 gap-y-1 rounded-xl bg-surface px-2 py-2.5 sm:px-3 md:grid md:grid-cols-[auto_minmax(0,1fr)] md:justify-start"
         >
             {qr.isPending ? (
                 <>
                     <Skeleton
-                        className="size-28 rounded-lg lg:size-36"
+                        className="size-[74px] shrink-0 rounded-md sm:size-22"
                         aria-label="Đang tạo mã QR"
                     />
-                    <Skeleton className="h-4 w-28 max-w-full" />
+                    <Skeleton className="h-4 w-20 max-w-full" />
                 </>
             ) : qr.isError ? (
                 <div
                     role="status"
-                    className="col-span-2 flex min-h-28 flex-col items-start justify-center gap-3 lg:min-h-36 lg:items-center"
+                    className="flex min-h-20 min-w-0 flex-col items-start justify-center gap-2 md:col-span-2"
                 >
                     <p className="text-muted-foreground text-xs">
-                        Chưa tạo được QR. Bạn vẫn có thể dùng nút Mở sách.
+                        Chưa tạo được QR. Bạn vẫn có thể dùng nút Trải nghiệm.
                     </p>
                     <Button variant="outline" size="sm" onClick={() => void qr.refetch()}>
                         <RotateCcw data-icon="inline-start" />
@@ -51,16 +51,21 @@ export function PublicBookQr({ slug }: { slug: string }) {
                 <>
                     <img
                         src={qr.data}
-                        width={144}
-                        height={144}
-                        className="size-28 rounded-lg lg:size-36"
+                        width={88}
+                        height={88}
+                        className="size-[74px] shrink-0 rounded-md bg-white sm:size-22"
                         alt="Mã QR mở sách trên điện thoại"
                     />
-                    <div className="flex min-w-0 flex-col items-start gap-1 lg:items-center">
-                        <p className="m-0 text-muted-foreground text-xs">
-                            Quét để mở trên điện thoại.
+                    <div className="flex min-w-0 flex-col items-center sm:items-start">
+                        <p className="m-0 text-center font-medium text-foreground text-xs sm:text-left">
+                            Quét để trải nghiệm trên điện thoại.
                         </p>
-                        <Button variant="link" size="sm" className="px-0" asChild>
+                        <Button
+                            variant="link"
+                            size="xs"
+                            className="px-0 text-muted-foreground"
+                            asChild
+                        >
                             <a href={qr.data} download={`${slug}-qr.png`}>
                                 <Download data-icon="inline-start" />
                                 Tải mã QR

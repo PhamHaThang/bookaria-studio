@@ -237,7 +237,7 @@ test('library labels its copied information link separately from the Viewer read
         name: 'Sao chép liên kết thông tin sách',
         exact: true,
     });
-    await expect(copy).toContainText('Sao chép liên kết thông tin');
+    await expect(copy).toContainText('Sao chép liên kết');
     await page.evaluate(() =>
         Object.defineProperty(navigator, 'clipboard', {
             configurable: true,
@@ -252,7 +252,11 @@ test('library labels its copied information link separately from the Viewer read
     const copied = new URL(await page.evaluate(() => window.__copiedLink));
     expect(copied.pathname).toBe('/library');
     expect(copied.searchParams.get('book')).toBe('link-audit');
-    const reader = new URL(await page.getByRole('link', { name: /Mở sách/ }).getAttribute('href'));
+    const reader = new URL(
+        await page
+            .getByRole('link', { name: 'Trải nghiệm trong tab mới', exact: true })
+            .getAttribute('href'),
+    );
     expect(reader.pathname).toBe('/b/link-audit');
     expect(reader.search).toBe('');
     await page.screenshot({ path: info.outputPath('library-information-link.png') });

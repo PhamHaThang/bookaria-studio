@@ -7,7 +7,6 @@ export type SkeletonLayout =
     | 'pages'
     | 'public-books'
     | 'profile'
-    | 'author'
     | 'detail'
     | 'stats'
     | 'stats-books'
@@ -104,17 +103,6 @@ export function ContentSkeleton({ layout }: { layout: SkeletonLayout }) {
                     </div>
                 </div>
                 <FormFields />
-            </div>
-        );
-    if (layout === 'author')
-        return (
-            <div className="flex flex-col gap-8 py-8">
-                <div className="flex items-center gap-4">
-                    <Skeleton className="size-16 shrink-0 rounded-full" />
-                    <TextLines />
-                </div>
-                <Skeleton className="h-4 w-4/5 max-w-180" />
-                <Rows layout="public-books" />
             </div>
         );
     if (layout === 'detail')

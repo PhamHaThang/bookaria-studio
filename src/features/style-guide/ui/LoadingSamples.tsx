@@ -37,7 +37,6 @@ const skeletons: { value: SkeletonLayout; label: string }[] = [
     { value: 'pages', label: 'Danh sách trang' },
     { value: 'public-books', label: 'Sách công khai' },
     { value: 'profile', label: 'Hồ sơ' },
-    { value: 'author', label: 'Tác giả' },
     { value: 'detail', label: 'Trang chi tiết' },
     { value: 'stats', label: 'Thống kê' },
     { value: 'editor', label: 'Khung editor' },
@@ -94,7 +93,7 @@ export function LoadingSamples() {
                     </div>
                     <Sample
                         title="Skeleton theo nội dung thực tế"
-                        source="LoadingState layout → ContentSkeleton (13 bố cục)"
+                        source="LoadingState layout → ContentSkeleton"
                     >
                         <Field className="max-w-80">
                             <FieldLabel htmlFor="guide-skeleton" className="mb-0">
