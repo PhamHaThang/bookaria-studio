@@ -1,6 +1,6 @@
 import { LogIn } from 'lucide-react';
+import { AssetCardGridSkeleton } from '@/features/assets/ui/AssetCardGrid';
 import { AssetCatalog } from '@/features/assets/ui/AssetCatalog';
-import { LibraryAssetGridSkeleton } from '@/features/assets/ui/LibraryAssetGrid';
 import { useAuth } from '@/features/auth';
 import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
 import { Button } from '@/shared/ui/Button';
@@ -26,7 +26,7 @@ export function ExploreAssetsPage() {
                 </p>
             </header>
             {status === 'loading' ? (
-                <LibraryAssetGridSkeleton />
+                <AssetCardGridSkeleton />
             ) : user ? (
                 <AssetCatalog scope="library" />
             ) : (

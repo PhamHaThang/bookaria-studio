@@ -2,7 +2,7 @@ import { Plus } from 'lucide-react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { libraryAssetLocation } from '@/features/assets/model/search';
 import { AssetCatalog } from '@/features/assets/ui/AssetCatalog';
-import { buttonStyles } from '@/shared/ui/Button';
+import { Button } from '@/shared/ui/Button';
 
 export function AssetsPage() {
     const [params] = useSearchParams();
@@ -10,21 +10,23 @@ export function AssetsPage() {
         return <Navigate to={libraryAssetLocation(params)} replace />;
     return (
         <>
-            <div className="mb-7 flex items-center justify-between gap-6">
+            <header className="mb-7 flex flex-wrap items-center justify-between gap-4 sm:mb-9">
                 <div className="min-w-0">
-                    <h1 className="font-semibold text-[28px] tracking-tight">Tài nguyên của tôi</h1>
-                    <p className="mt-2 text-muted-foreground text-sm">
-                        Quản lý hình ảnh, âm thanh, video và mô hình 3D của bạn.
+                    <h1 className="m-0 font-semibold text-3xl sm:text-4xl">Tài nguyên của tôi</h1>
+                    <p className="m-0 mt-2 text-muted-foreground text-sm">
+                        Quản lý hình ảnh, âm thanh, video và mô hình 3D dùng trong sách.
                     </p>
                 </div>
-                <Link
-                    to={{ pathname: '/assets/upload', search: params.toString() }}
-                    className={buttonStyles()}
-                >
-                    <Plus size={18} aria-hidden="true" />
-                    Tải tài nguyên
-                </Link>
-            </div>
+                <Button asChild>
+                    <Link
+                        to={{ pathname: '/assets/upload', search: params.toString() }}
+                        aria-haspopup="dialog"
+                    >
+                        <Plus data-icon="inline-start" aria-hidden="true" />
+                        Tải tài nguyên
+                    </Link>
+                </Button>
+            </header>
             <AssetCatalog scope="mine" />
         </>
     );

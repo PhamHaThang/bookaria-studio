@@ -9,12 +9,11 @@ import { errorMessage } from '@/shared/api/errors';
 import type { ListAssetsQuery } from '@/shared/contracts/api/assets.schema';
 import type { Asset, AssetCategory } from '@/shared/contracts/dto.schema';
 import { cn } from '@/shared/lib/cn';
-import { Button, buttonStyles } from '@/shared/ui/Button';
+import { Button } from '@/shared/ui/Button';
 import { Feedback } from '@/shared/ui/Feedback';
 import { FilterBar } from '@/shared/ui/FilterBar';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { SearchFilter } from '@/shared/ui/LiveFilters';
-import { LoadingState } from '@/shared/ui/LoadingState';
 import { Pagination } from '@/shared/ui/Pagination';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import {
@@ -26,15 +25,14 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { AssetCatalogRow } from './AssetCatalogRow';
-import { LibraryAssetGrid, LibraryAssetGridSkeleton } from './LibraryAssetGrid';
+import { AssetCardGrid, AssetCardGridSkeleton } from './AssetCardGrid';
 import { PersonalAssetDialog } from './PersonalAssetDialog';
 
 const assetTypes = [
     { value: 'IMAGE', label: 'Hình ảnh' },
     { value: 'AUDIO', label: 'Âm thanh' },
     { value: 'VIDEO', label: 'Video' },
-    { value: 'MODEL', label: '3D' },
+    { value: 'MODEL', label: 'Mô hình 3D' },
 ];
 
 function AssetFilters({
@@ -70,7 +68,7 @@ function AssetFilters({
                     className={
                         library
                             ? 'min-w-0 basis-full lg:w-auto lg:flex-1 lg:basis-0'
-                            : 'min-w-60 flex-1'
+                            : 'min-w-48 flex-1'
                     }
                 >
                     <FieldLabel htmlFor="asset-search" className="sr-only">
@@ -219,14 +217,6 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
     }
     return (
         <>
-            {!library && (
-                <FilterBar
-                    value={query.type || 'all'}
-                    onValueChange={(type) => change({ type: type === 'all' ? undefined : type })}
-                    options={[{ value: 'all', label: 'Tất cả' }, ...assetTypes]}
-                    label="Loại tài nguyên"
-                />
-            )}
             <AssetFilters
                 key={query.scope}
                 query={query}
@@ -237,6 +227,25 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                 clearFilters={clearFilters}
                 searchInput={searchInput}
             />
+            {!library && (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                    <FilterBar
+                        value={query.type || 'all'}
+                        onValueChange={(type) =>
+                            change({ type: type === 'all' ? undefined : type })
+                        }
+                        options={[{ value: 'all', label: 'Tất cả' }, ...assetTypes]}
+                        label="Loại tài nguyên"
+                        variant="pill"
+                    />
+                    <p
+                        className="m-0 ml-auto text-right text-muted-foreground text-xs tabular-nums"
+                        role="status"
+                    >
+                        {meta ? `${meta.total} tài nguyên` : listing.isPending ? 'Đang tải…' : null}
+                    </p>
+                </div>
+            )}
             {query.scope === 'library' && categories.isError && (
                 <div className="mb-6 flex flex-wrap items-start gap-3 [&_.feedback]:m-0">
                     <Feedback error="Chưa tải được danh mục. Bạn vẫn có thể tìm tài nguyên." />
@@ -252,11 +261,7 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                 </div>
             )}
             {listing.isPending ? (
-                library ? (
-                    <LibraryAssetGridSkeleton />
-                ) : (
-                    <LoadingState layout="assets">Đang tải tài nguyên…</LoadingState>
-                )
+                <AssetCardGridSkeleton scope={scope} />
             ) : listing.isError ? (
                 <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(listing.error)} />
@@ -275,18 +280,13 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                     aria-label={library ? 'Kết quả tài nguyên' : undefined}
                     className={library ? 'scroll-mt-24 outline-none' : undefined}
                 >
-                    <p
-                        className={
-                            library
-                                ? 'sr-only'
-                                : 'mx-0 mt-0 mb-3 flex list-summary justify-between gap-4 text-[length:12px] text-muted-foreground [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375'
-                        }
-                        role="status"
-                    >
-                        {library && listing.isFetching
-                            ? 'Đang cập nhật…'
-                            : `${meta?.total ?? 0} tài nguyên${query.q ? ` khớp “${query.q}”` : ''}${listing.isFetching ? ' — Đang cập nhật…' : ''}`}
-                    </p>
+                    {library && (
+                        <p className="sr-only" role="status">
+                            {listing.isFetching
+                                ? 'Đang cập nhật…'
+                                : `${meta?.total ?? 0} tài nguyên${query.q ? ` khớp “${query.q}”` : ''}`}
+                        </p>
+                    )}
                     {library && listing.data.data.length === 0 ? (
                         <Empty className="gap-5 px-4 py-9 sm:py-12">
                             <EmptyHeader className="gap-2">
@@ -377,7 +377,7 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                                     'motion-safe:fade-in-60 motion-safe:animate-in motion-safe:duration-200',
                             )}
                         >
-                            <LibraryAssetGrid
+                            <AssetCardGrid
                                 assets={listing.data.data}
                                 busy={listing.isFetching}
                                 onPreview={setPreview}
@@ -393,14 +393,18 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                                     <h2>
                                         {filtered
                                             ? 'Không tìm thấy tài nguyên phù hợp'
-                                            : 'Chưa có tài nguyên'}
+                                            : query.type
+                                              ? 'Chưa có tài nguyên thuộc loại này'
+                                              : 'Chưa có tài nguyên'}
                                     </h2>
                                 </EmptyTitle>
                                 <EmptyDescription>
                                     <p>
                                         {filtered
                                             ? 'Thử từ khóa khác hoặc xóa bộ lọc.'
-                                            : 'Tải tệp đầu tiên để chuẩn bị cho nội dung sách của bạn.'}
+                                            : query.type
+                                              ? 'Đổi loại tài nguyên hoặc tải thêm tệp.'
+                                              : 'Tải tệp đầu tiên để chuẩn bị cho nội dung sách của bạn.'}
                                     </p>
                                 </EmptyDescription>
                             </EmptyHeader>
@@ -409,29 +413,38 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                                     <Button variant="secondary" onClick={clearFilters}>
                                         Xóa bộ lọc
                                     </Button>
-                                ) : (
-                                    <Link
-                                        className={buttonStyles()}
-                                        to={{
-                                            pathname: '/assets/upload',
-                                            search: params.toString(),
+                                ) : query.type ? (
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => {
+                                            change({ type: undefined });
+                                            searchInput.current?.focus({ preventScroll: true });
                                         }}
                                     >
-                                        Tải tài nguyên đầu tiên
-                                    </Link>
+                                        Xem tất cả tài nguyên
+                                    </Button>
+                                ) : (
+                                    <Button asChild>
+                                        <Link
+                                            to={{
+                                                pathname: '/assets/upload',
+                                                search: params.toString(),
+                                            }}
+                                            aria-haspopup="dialog"
+                                        >
+                                            Tải tài nguyên đầu tiên
+                                        </Link>
+                                    </Button>
                                 )}
                             </EmptyContent>
                         </Empty>
                     ) : (
-                        <ul className="asset-list m-0 list-none border-t-[1px] border-t-border p-0 [border-top-style:solid]">
-                            {listing.data.data.map((asset) => (
-                                <AssetCatalogRow
-                                    key={asset.id}
-                                    asset={asset}
-                                    onPreview={() => setPreview(asset)}
-                                />
-                            ))}
-                        </ul>
+                        <AssetCardGrid
+                            scope={scope}
+                            assets={listing.data.data}
+                            busy={listing.isFetching}
+                            onPreview={setPreview}
+                        />
                     )}
                     {meta && meta.totalPages > 1 && (
                         <Pagination

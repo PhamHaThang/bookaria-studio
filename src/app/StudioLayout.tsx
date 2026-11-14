@@ -1,12 +1,21 @@
 import { ChartColumn, FolderOpen, Library, Palette, Trash2 } from 'lucide-react';
-import { Suspense, useRef } from 'react';
-import { matchPath, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Suspense } from 'react';
+import { Link, matchPath, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
 import { StudioStorageUsage } from '@/features/profile/ui/StudioStorageUsage';
+import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    SidebarProvider,
+} from '@/shared/ui/primitives/sidebar';
 import { getStudioSection } from './studio-navigation';
 
 const destinations = [
@@ -17,18 +26,10 @@ const destinations = [
     ...(import.meta.env.DEV ? [{ to: '/style-guide', label: 'Giao diện mẫu', icon: Palette }] : []),
 ];
 
+const navButtonClass = 'h-10 justify-center px-2 md:justify-start md:gap-3 md:px-3';
+
 export function StudioLayout() {
     const { pathname } = useLocation();
-    const navigate = useNavigate();
-    const navigationTarget = useRef(pathname);
-    navigationTarget.current = pathname;
-    const navigateSection = (to: string) => {
-        // Radix can activate through both pointer and focus in the same event.
-        // Keep one history entry per section change.
-        if (navigationTarget.current === to) return;
-        navigationTarget.current = to;
-        navigate(to);
-    };
     const editing = Boolean(
         matchPath('/books/:bookId/edit', pathname) ||
             matchPath('/books/:bookId/pages/:pageId', pathname),
@@ -43,57 +44,64 @@ export function StudioLayout() {
                 </Suspense>
             </main>
         );
+
     return (
-        <div className="studio-shell flex flex-1 flex-col">
-            <main
-                id="main"
-                className="studio-main mx-auto w-full min-w-0 max-w-[1328px] flex-1 px-6 pt-8 pb-16"
+        <SidebarProvider
+            data-stable-scroll-overlays
+            className="studio-shell mx-auto mt-6 w-[calc(100%-16px)] max-w-[1280px] gap-3 [--sidebar-width:3.5rem] sm:w-[calc(100%-48px)] md:mt-9 md:gap-7 md:[--sidebar-width:13rem] xl:[--sidebar-width:14rem]"
+        >
+            <Sidebar
+                collapsible="none"
+                className="sticky top-32 h-auto max-h-[calc(100dvh-9rem)] w-14 shrink-0 gap-3 self-start bg-transparent p-1.5 md:w-52 md:gap-4 md:px-1 md:py-0 xl:top-24 xl:max-h-[calc(100dvh-7rem)] xl:w-56"
             >
-                <Tabs
-                    value={activeSection || '/books'}
-                    onValueChange={navigateSection}
-                    className="gap-8"
-                >
-                    <div
-                        data-slot="studio-section-navigation"
-                        className="flex items-center justify-between gap-6"
-                    >
-                        <TabsList aria-label="Điều hướng Studio">
-                            {destinations.map(({ to, label, icon: Icon }) => (
-                                <TabsTrigger
-                                    key={to}
-                                    value={to}
-                                    onClick={() => {
-                                        if (activeSection === to && pathname !== to)
-                                            navigateSection(to);
-                                    }}
-                                >
-                                    <Icon aria-hidden="true" />
-                                    {label}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                        <div className="shrink-0 py-3">
-                            <StudioStorageUsage />
+                <SidebarContent>
+                    <nav aria-label="Điều hướng Studio">
+                        <SidebarMenu className="gap-1 md:gap-1.5">
+                            {destinations.map(({ to, label, icon: Icon }) => {
+                                const active = activeSection === to;
+                                return (
+                                    <SidebarMenuItem key={to}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            isActive={active}
+                                            className={cn(
+                                                navButtonClass,
+                                                'hover:bg-surface-dark hover:text-on-dark active:bg-surface-dark active:text-on-dark data-[active=true]:bg-surface-dark data-[active=true]:text-on-dark data-[active=true]:hover:bg-surface-dark',
+                                            )}
+                                        >
+                                            <Link
+                                                to={to}
+                                                aria-current={active ? 'page' : undefined}
+                                            >
+                                                <Icon aria-hidden="true" />
+                                                <span className="sr-only md:not-sr-only">
+                                                    {label}
+                                                </span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                );
+                            })}
+                        </SidebarMenu>
+                    </nav>
+                </SidebarContent>
+                <SidebarFooter className="hidden shrink-0 p-0 md:flex">
+                    <StudioStorageUsage />
+                </SidebarFooter>
+            </Sidebar>
+            <main id="main" tabIndex={-1} className="studio-main min-w-0 flex-1 pb-16 outline-none">
+                {!user?.emailVerified && (
+                    <Alert tone="info" className="mb-8">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                            <span>Xác minh email để có thể xuất bản sách.</span>
+                            <AuthDialogLink mode="check-email">Xác minh email</AuthDialogLink>
                         </div>
-                    </div>
-                    <TabsContent value={activeSection || '/books'}>
-                        {!user?.emailVerified && (
-                            <Alert tone="info" className="mb-8">
-                                <div className="flex items-center justify-between gap-4">
-                                    <span>Xác minh email để có thể xuất bản sách.</span>
-                                    <AuthDialogLink mode="check-email">
-                                        Xác minh email
-                                    </AuthDialogLink>
-                                </div>
-                            </Alert>
-                        )}
-                        <Suspense fallback={<LoadingScreen message="Đang mở trang…" />}>
-                            <Outlet />
-                        </Suspense>
-                    </TabsContent>
-                </Tabs>
+                    </Alert>
+                )}
+                <Suspense fallback={<LoadingScreen message="Đang mở trang…" />}>
+                    <Outlet />
+                </Suspense>
             </main>
-        </div>
+        </SidebarProvider>
     );
 }

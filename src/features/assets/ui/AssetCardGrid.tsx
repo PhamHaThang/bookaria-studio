@@ -16,20 +16,29 @@ import { assetDuration } from './AssetPreviewMedia';
 import { AssetThumbnail } from './AssetThumbnail';
 
 const gridClass = 'grid list-none grid-cols-2 gap-3 p-0 sm:gap-5 md:grid-cols-3 xl:grid-cols-4';
+const studioGridClass =
+    'm-0 grid list-none grid-cols-[repeat(auto-fill,minmax(min(100%,205px),1fr))] gap-4 p-0';
 const previewClass = 'relative block aspect-[1.45] overflow-hidden bg-muted';
 const cardClass = 'h-full gap-0 py-0';
 
-export function LibraryAssetGrid({
+export function AssetCardGrid({
     assets,
     busy,
     onPreview,
+    scope = 'library',
 }: {
     assets: Asset[];
     busy: boolean;
     onPreview: (asset: Asset) => void;
+    scope?: 'mine' | 'library';
 }) {
+    const personal = scope === 'mine';
     return (
-        <ul className={gridClass} aria-label="Tài nguyên trong thư viện" aria-busy={busy}>
+        <ul
+            className={personal ? studioGridClass : gridClass}
+            aria-label={personal ? 'Tài nguyên của tôi' : 'Tài nguyên trong thư viện'}
+            aria-busy={busy}
+        >
             {assets.map((asset) => (
                 <li key={asset.id} className="min-w-0">
                     <Card
@@ -45,10 +54,19 @@ export function LibraryAssetGrid({
                                 variant="card"
                                 className="bg-muted motion-safe:[&_img]:transition-transform motion-safe:[&_img]:duration-200 motion-safe:group-hover/asset:[&_img]:scale-[1.04] motion-safe:group-focus-within/asset:[&_img]:scale-[1.04]"
                             />
-                            {asset.status !== 'READY' && (
+                            {(personal || asset.status !== 'READY') && (
                                 <Badge
-                                    className="absolute top-2 left-2"
-                                    tone={asset.status === 'FAILED' ? 'danger' : 'warning'}
+                                    className={cn(
+                                        'absolute top-2',
+                                        personal ? 'right-2' : 'left-2',
+                                    )}
+                                    tone={
+                                        asset.status === 'READY'
+                                            ? 'success'
+                                            : asset.status === 'FAILED'
+                                              ? 'danger'
+                                              : 'warning'
+                                    }
                                 >
                                     {assetStatusLabels[asset.status]}
                                 </Badge>
@@ -66,6 +84,7 @@ export function LibraryAssetGrid({
                                         type="button"
                                         onClick={() => onPreview(asset)}
                                         aria-label={`Xem tài nguyên ${asset.name}`}
+                                        aria-haspopup="dialog"
                                         className="block w-full truncate text-left outline-none after:absolute after:inset-0 focus-visible:after:rounded-[var(--radius-card)] focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
                                     >
                                         {asset.name}
@@ -85,6 +104,14 @@ export function LibraryAssetGrid({
                                     Có hoạt ảnh
                                 </p>
                             )}
+                            {personal && asset.tags.length > 0 && (
+                                <p
+                                    className="m-0 truncate text-muted-foreground text-xs"
+                                    title={asset.tags.join(', ')}
+                                >
+                                    {asset.tags.map((tag) => `#${tag}`).join(' ')}
+                                </p>
+                            )}
                         </CardHeader>
                     </Card>
                 </li>
@@ -93,11 +120,11 @@ export function LibraryAssetGrid({
     );
 }
 
-export function LibraryAssetGridSkeleton() {
+export function AssetCardGridSkeleton({ scope = 'library' }: { scope?: 'mine' | 'library' }) {
     return (
         <div role="status">
             <span className="sr-only">Đang tải tài nguyên…</span>
-            <div className={gridClass} aria-hidden="true">
+            <div className={scope === 'mine' ? studioGridClass : gridClass} aria-hidden="true">
                 {['a', 'b', 'c', 'd'].map((item) => (
                     <Card key={item} size="sm" className={cardClass}>
                         <Skeleton className="aspect-[1.45] rounded-none" />

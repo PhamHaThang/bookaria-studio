@@ -18,17 +18,20 @@ export function StudioStorageUsage() {
     });
     const storage = profile.data?.storage;
     return (
-        <section aria-label="Dung lượng tài nguyên" className="w-64 shrink-0">
+        <section
+            aria-label="Dung lượng tài nguyên"
+            className="w-full rounded-[var(--radius-control)] border border-border bg-surface p-3"
+        >
             {storage ? (
                 <>
-                    <div className="flex items-center justify-between gap-3 text-xs">
+                    <div className="flex flex-col gap-1 text-xs">
                         <span className="font-medium">Dung lượng tài nguyên</span>
                         <span className="whitespace-nowrap text-muted-foreground tabular-nums">
                             {formatBytes(storage.usedBytes)} / {formatBytes(storage.quotaBytes)}
                         </span>
                     </div>
                     <Progress
-                        className="mt-1.5 h-1.5"
+                        className="mt-2.5 h-1.5 bg-border"
                         aria-label="Dung lượng đã sử dụng"
                         aria-valuetext={`${formatBytes(storage.usedBytes)} trên ${formatBytes(storage.quotaBytes)}`}
                         max={Math.max(1, storage.quotaBytes)}
@@ -54,8 +57,9 @@ export function StudioStorageUsage() {
                 </div>
             ) : (
                 <div role="status" aria-label="Đang tải dung lượng" className="flex flex-col gap-2">
-                    <Skeleton className="h-3 w-44" />
-                    <Skeleton className="h-1.5 w-full" />
+                    <Skeleton className="h-3 w-4/5" />
+                    <Skeleton className="h-3 w-3/5" />
+                    <Skeleton className="mt-0.5 h-1.5 w-full" />
                 </div>
             )}
         </section>
