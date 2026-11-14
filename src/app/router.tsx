@@ -108,6 +108,21 @@ const StatsBooksPage = lazy(() =>
     import('../pages/StatsBooksPage').then((module) => ({ default: module.StatsBooksPage })),
 );
 
+const StudioOverviewPage = lazy(() =>
+    import('../pages/StudioOverviewPage').then((module) => ({
+        default: module.StudioOverviewPage,
+    })),
+);
+const StudioBookCreateDialog = lazy(() =>
+    import('../features/books/ui/BookCreateDialog').then((module) => ({
+        default: module.BookCreateDialog,
+    })),
+);
+const StudioAssetUploadDialog = lazy(() =>
+    import('../features/assets/ui/AssetUploadDialog').then((module) => ({
+        default: module.AssetUploadDialog,
+    })),
+);
 const BooksPage = lazy(() =>
     import('../pages/BooksPage').then((module) => ({ default: module.BooksPage })),
 );
@@ -276,6 +291,16 @@ const router = createBrowserRouter(
                         <Route path="*" element={<AdminNotFoundPage />} />
                     </Route>
                     <Route id="studio-pages" element={<StudioLayout />}>
+                        <Route path="/studio" element={<StudioOverviewPage />}>
+                            <Route
+                                path="new-book"
+                                element={<StudioBookCreateDialog backTo="/studio" />}
+                            />
+                            <Route
+                                path="upload"
+                                element={<StudioAssetUploadDialog backTo="/studio" />}
+                            />
+                        </Route>
                         <Route path="/books" element={<BooksPage />} />
                         <Route path="/stats" element={<StatsBooksPage />} />
                         <Route path="/books/:bookId/stats" element={<StatsBooksPage />} />

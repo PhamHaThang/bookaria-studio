@@ -23,9 +23,9 @@ const types = [
     { value: 'VIDEO', label: 'Video', icon: Video },
 ] as const;
 
-export function AssetUploadDialog() {
+export function AssetUploadDialog({ backTo = '/assets' }: { backTo?: '/assets' | '/studio' }) {
     const navigate = useNavigate();
-    const { search } = useLocation();
+    const { pathname, search } = useLocation();
     const returnSearch = useRef(search).current;
     const [type, setType] = useState<AssetType>(() => {
         const selected = new URLSearchParams(search).get('type');
@@ -59,7 +59,10 @@ export function AssetUploadDialog() {
             });
             return;
         }
-        navigate({ pathname: '/assets', search: returnSearch }, { replace: true });
+        navigate(
+            { pathname: backTo, search: backTo === '/assets' ? returnSearch : '' },
+            { replace: true },
+        );
     }
 
     return (
@@ -78,7 +81,7 @@ export function AssetUploadDialog() {
                         event.preventDefault();
                         requestAnimationFrame(() => {
                             document
-                                .querySelector<HTMLAnchorElement>('a[href^="/assets/upload"]')
+                                .querySelector<HTMLAnchorElement>(`a[href^="${pathname}"]`)
                                 ?.focus({ preventScroll: true });
                         });
                     }}

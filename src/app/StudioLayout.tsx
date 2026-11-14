@@ -1,4 +1,4 @@
-import { ChartColumn, FolderOpen, Library, Palette, Trash2 } from 'lucide-react';
+import { ChartColumn, FolderOpen, LayoutDashboard, Library, Palette, Trash2 } from 'lucide-react';
 import { Suspense } from 'react';
 import { Link, matchPath, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
@@ -19,6 +19,7 @@ import {
 import { getStudioSection } from './studio-navigation';
 
 const destinations = [
+    { to: '/studio', label: 'Tổng quan', icon: LayoutDashboard },
     { to: '/books', label: 'Sách của tôi', icon: Library },
     { to: '/assets', label: 'Tài nguyên', icon: FolderOpen },
     { to: '/stats', label: 'Thống kê', icon: ChartColumn },

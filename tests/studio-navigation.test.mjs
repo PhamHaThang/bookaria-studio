@@ -12,6 +12,8 @@ test('studio navigation gives trash and book statistics their own active section
 test('nested creation and asset routes retain their owning section', () => {
     for (const path of ['/books', '/books/new', '/books/example', '/books/example/edit'])
         assert.equal(getStudioSection(path), '/books');
+    for (const path of ['/studio', '/studio/new-book', '/studio/upload'])
+        assert.equal(getStudioSection(path), '/studio');
     for (const path of ['/assets', '/assets/upload', '/assets/example'])
         assert.equal(getStudioSection(path), '/assets');
 });
@@ -24,6 +26,7 @@ test('public, profile and administration routes do not activate Studio', () => {
         '/bookshelf',
         '/assets-public',
         '/stats-public',
+        '/studio-public',
     ])
         assert.equal(getStudioSection(path), null);
 });

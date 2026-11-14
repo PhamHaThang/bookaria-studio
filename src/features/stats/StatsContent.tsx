@@ -1,16 +1,5 @@
 import { BarChart3, BookOpen, MousePointer2, ScanLine, Users } from 'lucide-react';
-import { useId } from 'react';
-import {
-    Area,
-    AreaChart,
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Pie,
-    PieChart,
-    XAxis,
-    YAxis,
-} from 'recharts';
+import { Bar, BarChart, CartesianGrid, Pie, PieChart, XAxis, YAxis } from 'recharts';
 import { Disclosure } from '@/shared/ui/Disclosure';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/primitives/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/shared/ui/primitives/chart';
@@ -30,6 +19,7 @@ import {
     TableRow,
 } from '@/shared/ui/primitives/table';
 import type { BookStats } from '../../shared/contracts/api/books.schema';
+import { BookOpensChart } from './BookOpensChart';
 
 const number = new Intl.NumberFormat('vi-VN');
 const percent = new Intl.NumberFormat('vi-VN', { style: 'percent', maximumFractionDigits: 1 });
@@ -48,7 +38,6 @@ const metrics = [
     { key: 'taps', label: 'Lượt chạm', icon: MousePointer2 },
     { key: 'scanTimeouts', label: 'Lần quét chưa nhận diện', icon: ScanLine },
 ] as const;
-const opensConfig = { opens: { label: 'Lượt mở', color: blue } };
 const pageConfig = {
     found: { label: 'Nhận diện AR', color: blue },
     taps: { label: 'Lượt chạm', color: orange },
@@ -65,7 +54,6 @@ const countAxis = {
 } as const;
 
 export function StatsContent({ stats }: { stats: BookStats }) {
-    const gradientId = useId();
     const days = [...stats.opensByDay].sort((a, b) => a.date.localeCompare(b.date));
     const first = days[0];
     const last = days.at(-1);
@@ -121,68 +109,7 @@ export function StatsContent({ stats }: { stats: BookStats }) {
                     </CardHeader>
                     <CardContent className="min-w-0">
                         {days.some((day) => day.opens > 0) ? (
-                            <ChartContainer
-                                config={opensConfig}
-                                className="aspect-auto h-64 w-full"
-                                aria-label="Biểu đồ lượt mở sách theo ngày"
-                            >
-                                <AreaChart
-                                    accessibilityLayer
-                                    data={days}
-                                    margin={{ top: 8, right: 12, left: 2 }}
-                                >
-                                    <defs>
-                                        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-                                            <stop
-                                                offset="0%"
-                                                stopColor="var(--color-opens)"
-                                                stopOpacity={0.28}
-                                            />
-                                            <stop
-                                                offset="100%"
-                                                stopColor="var(--color-opens)"
-                                                stopOpacity={0.025}
-                                            />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid
-                                        vertical={false}
-                                        stroke="var(--border-default)"
-                                        strokeDasharray="4 5"
-                                    />
-                                    <XAxis
-                                        dataKey="date"
-                                        tick={axisTick}
-                                        tickFormatter={(day: string) =>
-                                            `${day.slice(8, 10)}/${day.slice(5, 7)}`
-                                        }
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickMargin={10}
-                                        minTickGap={24}
-                                    />
-                                    <YAxis {...countAxis} />
-                                    <ChartTooltip
-                                        content={
-                                            <ChartTooltipContent
-                                                labelFormatter={(label) =>
-                                                    fullDate.format(dayDate(String(label)))
-                                                }
-                                            />
-                                        }
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="opens"
-                                        stroke="var(--color-opens)"
-                                        strokeWidth={2}
-                                        fill={`url(#${gradientId})`}
-                                        fillOpacity={1}
-                                        activeDot={{ r: 4, fill: 'var(--color-opens)' }}
-                                        isAnimationActive={false}
-                                    />
-                                </AreaChart>
-                            </ChartContainer>
+                            <BookOpensChart days={days} />
                         ) : (
                             <Empty className="px-3 py-8">
                                 <EmptyHeader>

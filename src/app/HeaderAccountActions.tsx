@@ -251,7 +251,7 @@ export function HeaderAccountActions({
             {showStudio && (
                 <Button asChild size="sm" className="min-h-10 max-sm:px-2">
                     <Link
-                        to="/books"
+                        to="/studio"
                         aria-label="Studio Editor"
                         aria-current={getStudioSection(pathname) ? 'page' : undefined}
                     >
