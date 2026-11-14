@@ -13,6 +13,7 @@ const toggleVariants = cva(
                 line: 'min-h-11 rounded-none border-b-2 border-transparent bg-transparent px-0 text-muted-foreground hover:not-disabled:bg-transparent hover:not-disabled:text-primary data-[state=on]:border-primary data-[state=on]:bg-transparent data-[state=on]:font-semibold data-[state=on]:text-primary',
                 outline:
                     'border border-input bg-surface text-primary data-[state=on]:hover:not-disabled:bg-primary-hover data-[state=on]:hover:not-disabled:text-primary-foreground',
+                pill: 'gap-2 rounded-full border border-border bg-surface text-muted-foreground data-[state=on]:border-primary data-[state=on]:hover:not-disabled:bg-primary-hover data-[state=on]:hover:not-disabled:text-primary-foreground',
             },
             size: {
                 default:
@@ -21,6 +22,7 @@ const toggleVariants = cva(
                 lg: 'h-9 min-w-9 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
             },
         },
+        compoundVariants: [{ variant: 'pill', className: 'px-4' }],
         defaultVariants: {
             variant: 'default',
             size: 'default',

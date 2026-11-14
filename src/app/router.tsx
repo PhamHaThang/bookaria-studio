@@ -107,12 +107,12 @@ const AuthorPage = lazy(() =>
 const StatsBooksPage = lazy(() =>
     import('../pages/StatsBooksPage').then((module) => ({ default: module.StatsBooksPage })),
 );
-const BookStatsPage = lazy(() =>
-    import('../pages/BookStatsPage').then((module) => ({ default: module.BookStatsPage })),
-);
 
 const BooksPage = lazy(() =>
     import('../pages/BooksPage').then((module) => ({ default: module.BooksPage })),
+);
+const TrashPage = lazy(() =>
+    import('../pages/TrashPage').then((module) => ({ default: module.TrashPage })),
 );
 const BookCreatePage = lazy(() =>
     import('../pages/BookCreatePage').then((module) => ({ default: module.BookCreatePage })),
@@ -276,14 +276,14 @@ const router = createBrowserRouter(
                         <Route path="*" element={<AdminNotFoundPage />} />
                     </Route>
                     <Route id="studio-pages" element={<StudioLayout />}>
-                        <Route path="/books" element={<BooksPage key="active" />} />
+                        <Route path="/books" element={<BooksPage />} />
                         <Route path="/stats" element={<StatsBooksPage />} />
-                        <Route path="/books/:bookId/stats" element={<BookStatsPage />} />
+                        <Route path="/books/:bookId/stats" element={<StatsBooksPage />} />
                         <Route
                             path="/notifications"
                             element={<Navigate to="/books?notifications=open" replace />}
                         />
-                        <Route path="/books/trash" element={<BooksPage key="trash" trash />} />
+                        <Route path="/books/trash" element={<TrashPage />} />
                         <Route path="/books/new" element={<BookCreatePage />} />
 
                         <Route path="/books/:bookId" element={<BookDetailPage />} />

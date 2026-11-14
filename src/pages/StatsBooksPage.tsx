@@ -1,23 +1,41 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { BookOpen, ChevronRight, SearchX } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { BookStatusBadge } from '@/features/books/ui/BookStatusBadge';
+import { BookStatusFilter } from '@/features/books/ui/BookStatusFilter';
+import { readStatsRange } from '@/features/stats';
+import { BookStatsDialog } from '@/features/stats/BookStatsDialog';
+import { BookCoverImage } from '@/shared/ui/BookCoverImage';
 import { Button } from '@/shared/ui/Button';
 import { SearchFilter } from '@/shared/ui/LiveFilters';
 import { LoadingState } from '@/shared/ui/LoadingState';
-import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
+import {
+    Empty,
+    EmptyContent,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { useAuth } from '../features/auth';
-import { bookKeys, booksApi, readBookSearch } from '../features/books';
+import { bookKeys, booksApi, readBookSearch, updateBookSearch } from '../features/books';
 import { errorMessage } from '../shared/api/errors';
 import { Feedback } from '../shared/ui/Feedback';
 import { Pagination } from '../shared/ui/Pagination';
 
 export function StatsBooksPage() {
     const { user } = useAuth();
+    const navigate = useNavigate();
+    const { bookId: linkedBookId } = useParams();
     const [params, setParams] = useSearchParams();
-    const query = readBookSearch(
-        new URLSearchParams({ q: params.get('q') || '', page: params.get('page') || '1' }),
+    const [selection, setSelection] = useState<{ bookId: string; opener: HTMLElement } | null>(
+        null,
     );
+    const selectedBookId = linkedBookId ?? selection?.bookId;
+    const query = readBookSearch(params);
+    const hasFilters = Boolean(query.q || query.status);
     const list = useQuery({
         queryKey: bookKeys.list(user?.id || '', 'stats-picker', query),
         queryFn: ({ signal }) => booksApi.list(query, signal),
@@ -43,32 +61,39 @@ export function StatsBooksPage() {
     }, [list.isSuccess, list.isFetching, meta, query.page, setParams]);
     return (
         <>
-            <div className="page-heading [&_h1]:wrap-anywhere mx-0 mt-0 mb-7 flex items-center justify-between gap-6 max-[760px]:mb-6 max-[700px]:flex-wrap max-[700px]:items-start max-[760px]:items-start max-[700px]:gap-3 max-[760px]:gap-4 max-[700px]:[&_>_.button]:max-w-full max-[700px]:[&_>_.button]:flex-[0_0_auto] [&_>_div]:min-w-0 max-[700px]:[&_>_div]:flex-[1_1_180px] [&_h1]:font-semibold [&_h1]:text-[length:28px] [&_h1]:tracking-[-0.025em] max-[700px]:[&_h1]:text-[length:25px] max-[760px]:[&_h1]:text-[length:var(--text-2xl)] [&_p]:mx-0 [&_p]:mt-2 [&_p]:mb-0 [&_p]:max-w-[64ch] [&_p]:text-[length:13px] [&_p]:text-muted-foreground max-[760px]:[&_p]:text-[length:var(--text-sm)] [.page-editor-screen[data-mode=content]_>_&]:hidden [.studio-editing_&]:mb-2 [.studio-editing_&_h1]:ml-4 [.studio-editing_&_h1]:inline [.studio-editing_&_h1]:text-[length:21px] max-[700px]:[.studio-editing_&_h1]:mx-0 max-[700px]:[.studio-editing_&_h1]:mt-[6px] max-[700px]:[.studio-editing_&_h1]:mb-0 max-[700px]:[.studio-editing_&_h1]:block [.studio-editing_&_p]:ml-[14px] [.studio-editing_&_p]:inline [.studio-editing_&_p]:text-[length:11px] max-[700px]:[.studio-editing_&_p]:mx-0 max-[700px]:[.studio-editing_&_p]:my-1 max-[700px]:[.studio-editing_&_p]:block [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375">
-                <div>
-                    <h1>Thống kê sách</h1>
-                    <p>Chọn sách để xem lượt mở, tương tác và thiết bị đọc.</p>
-                </div>
-            </div>
+            <header className="mb-7 sm:mb-9">
+                <h1 className="m-0 font-semibold text-3xl sm:text-4xl">Thống kê sách</h1>
+                <p className="m-0 mt-2 text-muted-foreground text-sm">
+                    Chọn sách để xem lượt mở, tương tác và thiết bị đọc.
+                </p>
+            </header>
             <form
-                className="insights-search mb-6 flex flex-wrap items-end gap-4 max-[640px]:flex-col max-[640px]:items-stretch [&_input]:w-full [&_label]:m-0 [&_label]:min-w-50 [&_label]:flex-[1] max-[640px]:[&_label]:min-w-0"
+                className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2"
+                aria-label="Tìm sách để xem thống kê"
                 onSubmit={(event) => event.preventDefault()}
             >
                 <FieldGroup className="contents">
-                    <Field className="w-auto min-w-50 flex-1 max-[640px]:min-w-0">
-                        <FieldLabel htmlFor="stats-book-search" className="m-0">
+                    <Field className="min-w-0 flex-1 basis-48">
+                        <FieldLabel htmlFor="stats-book-search" className="sr-only">
                             Tìm sách của tôi
                         </FieldLabel>
                         <SearchFilter
-                            className="mt-2"
                             id="stats-book-search"
                             name="q"
                             maxLength={100}
                             value={query.q || ''}
+                            loading={list.isFetching}
+                            placeholder="Tìm theo tên sách"
                         />
                     </Field>
                 </FieldGroup>
             </form>
-            {list.isPending && <LoadingState layout="rows">Đang tải sách…</LoadingState>}
+            <BookStatusFilter
+                status={query.status}
+                total={meta?.total}
+                onChange={(status) => setParams((current) => updateBookSearch(current, { status }))}
+            />
+            {list.isPending && <LoadingState layout="stats-books">Đang tải sách…</LoadingState>}
             {list.isError && (
                 <div className="list-state px-0 py-12">
                     <Feedback error={errorMessage(list.error)} />
@@ -79,49 +104,77 @@ export function StatsBooksPage() {
             )}
             {list.isSuccess && (
                 <>
-                    <p
-                        className="mx-0 mt-0 mb-3 flex list-summary justify-between gap-4 text-[length:12px] text-muted-foreground [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375"
-                        role="status"
-                    >
-                        {list.data.meta.total} cuốn sách
-                    </p>
                     {list.data.data.length ? (
-                        <ul className="insights-book-list [&_h2]:wrap-anywhere m-0 list-none p-0 [&_>_li]:flex [&_>_li]:items-center [&_>_li]:justify-between [&_>_li]:gap-5 [&_>_li]:border-b-[1px] [&_>_li]:border-b-border [&_>_li]:py-5 [&_>_li]:[border-bottom-style:solid] max-[640px]:[&_>_li]:flex-col max-[640px]:[&_>_li]:items-start max-[640px]:[&_>_li]:gap-3 [&_h2]:mx-0 [&_h2]:mt-0 [&_h2]:mb-2 [&_h2]:text-[length:var(--text-md)] [&_p]:m-0 [&_p]:text-[length:var(--text-sm)] [&_p]:text-muted-foreground">
+                        <ul
+                            className="m-0 grid list-none gap-2.5 p-0"
+                            aria-label="Sách có thể xem thống kê"
+                        >
                             {list.data.data.map((book) => (
                                 <li key={book.id}>
-                                    <div>
-                                        <h2>
-                                            <Link to={`/books/${book.id}/stats`}>{book.title}</Link>
-                                        </h2>
-                                        <p>{book.pageCount} trang</p>
-                                    </div>
-                                    <Button variant="secondary" asChild>
-                                        <Link to={`/books/${book.id}/stats`}>
-                                            Xem thống kê
-                                            <span className="sr-only [.editor-page-strip_a.strip-add-page_>_span:not(&)]:[position:static] [.editor-page-strip_a_>_span:not(&)]:absolute [.editor-page-strip_a_>_span:not(&)]:right-[-1px] [.editor-page-strip_a_>_span:not(&)]:bottom-[-1px] [.editor-page-strip_a_>_span:not(&)]:rounded-[3px] [.editor-page-strip_a_>_span:not(&)]:bg-surface [.editor-page-strip_a_>_span:not(&)]:px-[5px] [.editor-page-strip_a_>_span:not(&)]:py-0 [.editor-page-strip_a_>_span:not(&)]:text-[length:10px] [.editor-page-strip_a_>_span:not(&)]:text-foreground">
-                                                {' '}
+                                    <button
+                                        type="button"
+                                        aria-label={`Xem thống kê sách ${book.title}`}
+                                        aria-haspopup="dialog"
+                                        className="group flex w-full items-center gap-4 rounded-xl border border-border bg-surface p-3 text-left text-foreground hover:bg-hover focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 motion-safe:transition-colors sm:px-4"
+                                        onClick={(event) =>
+                                            setSelection({
+                                                bookId: book.id,
+                                                opener: event.currentTarget,
+                                            })
+                                        }
+                                    >
+                                        <span className="h-14 w-11 shrink-0 overflow-hidden rounded-md bg-muted">
+                                            <BookCoverImage url={book.coverUrl} />
+                                        </span>
+                                        <span className="flex min-w-0 flex-1 flex-col gap-1">
+                                            <span
+                                                className="truncate font-semibold text-sm"
+                                                title={book.title}
+                                            >
                                                 {book.title}
                                             </span>
-                                        </Link>
-                                    </Button>
+                                            <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-muted-foreground text-xs">
+                                                {book.pageCount} trang
+                                                <BookStatusBadge status={book.status} />
+                                            </span>
+                                        </span>
+                                        <span className="flex shrink-0 items-center gap-2 text-muted-foreground text-sm group-hover:text-foreground">
+                                            <span className="hidden sm:inline">Xem chi tiết</span>
+                                            <ChevronRight className="size-4" aria-hidden="true" />
+                                        </span>
+                                    </button>
                                 </li>
                             ))}
                         </ul>
                     ) : (
                         <Empty className="empty-state px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
                             <EmptyHeader>
+                                <EmptyMedia>
+                                    {hasFilters ? (
+                                        <SearchX aria-hidden="true" />
+                                    ) : (
+                                        <BookOpen aria-hidden="true" />
+                                    )}
+                                </EmptyMedia>
                                 <EmptyTitle>
                                     <h2>
-                                        {query.q
+                                        {hasFilters
                                             ? 'Không tìm thấy sách phù hợp'
                                             : 'Bạn chưa có sách'}
                                     </h2>
                                 </EmptyTitle>
+                                <EmptyDescription>
+                                    {hasFilters
+                                        ? 'Thử tên sách khác hoặc đổi bộ lọc trạng thái.'
+                                        : 'Sau khi tạo sách, bạn có thể xem số liệu đọc của sách tại đây.'}
+                                </EmptyDescription>
                             </EmptyHeader>
                             <EmptyContent>
-                                <Link to={query.q ? '/stats' : '/books/new'}>
-                                    {query.q ? 'Xóa tìm kiếm' : 'Tạo sách đầu tiên'}
-                                </Link>
+                                <Button variant="outline" asChild>
+                                    <Link to={hasFilters ? '/stats' : '/books/new'}>
+                                        {hasFilters ? 'Xóa bộ lọc' : 'Tạo sách đầu tiên'}
+                                    </Link>
+                                </Button>
                             </EmptyContent>
                         </Empty>
                     )}
@@ -133,6 +186,25 @@ export function StatsBooksPage() {
                         label="Phân trang chọn sách thống kê"
                     />
                 </>
+            )}
+            {selectedBookId && (
+                <BookStatsDialog
+                    key={selectedBookId}
+                    bookId={selectedBookId}
+                    initialRange={readStatsRange(params)}
+                    opener={selection?.opener}
+                    onClose={() => {
+                        setSelection(null);
+                        if (linkedBookId) {
+                            const search = new URLSearchParams(params);
+                            search.delete('range');
+                            void navigate(
+                                { pathname: '/stats', search: search.toString() },
+                                { replace: true },
+                            );
+                        }
+                    }}
+                />
             )}
         </>
     );
