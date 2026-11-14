@@ -2342,7 +2342,7 @@ export function SceneCanvas(props: Props) {
                     className="pointer-events-none absolute border border-primary bg-primary/10"
                 />
                 <div
-                    className="canvas-toolbar absolute top-[18px] left-[18px] z-2 flex max-w-[calc(100%_-_var(--inspector-offset,0px)_-_var(--sidebar-toolbar-offset,0px)_-_176px)] translate-x-[var(--sidebar-toolbar-offset,0px)] flex-wrap items-center gap-1 rounded-xl bg-surface p-1 shadow-[0_4px_14px_#00000014] transition-[translate] duration-200 ease-out motion-reduce:transition-none [&_button.primary:disabled]:bg-primary [&_button.primary:disabled]:text-primary-foreground [&_button:disabled]:border-transparent [.workbench-body[data-sidebar-expanded=false]_&]:duration-150"
+                    className="canvas-toolbar absolute top-[18px] left-[18px] z-2 flex max-w-[calc(100%_-_var(--inspector-offset,0px)_-_var(--sidebar-toolbar-offset,0px)_-_176px)] translate-x-[var(--sidebar-toolbar-offset,0px)] flex-wrap items-center gap-1 rounded-xl bg-surface p-1 shadow-[0_4px_14px_#00000014] transition-[translate] duration-(--sidebar-motion-duration) ease-(--sidebar-motion-ease) motion-reduce:transition-none [&_button.primary:disabled]:bg-primary [&_button.primary:disabled]:text-primary-foreground [&_button:disabled]:border-transparent"
                     role="toolbar"
                     aria-label="Công cụ canvas"
                 >
@@ -2464,7 +2464,7 @@ export function SceneCanvas(props: Props) {
                 )}
                 {loading > 0 && (
                     <p
-                        className="canvas-loading absolute bottom-2 left-[74px] m-0 max-w-[calc(100%_-_var(--inspector-offset,0px)_-_100px)] translate-x-[var(--sidebar-toolbar-offset,0px)] rounded-[5px] bg-surface px-[10px] py-[5px] text-[length:12px] transition-[translate] duration-200 ease-out motion-reduce:transition-none"
+                        className="canvas-loading absolute bottom-2 left-[74px] m-0 max-w-[calc(100%_-_var(--inspector-offset,0px)_-_100px)] translate-x-[var(--sidebar-toolbar-offset,0px)] rounded-[5px] bg-surface px-[10px] py-[5px] text-[length:12px] transition-[translate] duration-(--sidebar-motion-duration) ease-(--sidebar-motion-ease) motion-reduce:transition-none"
                         role="status"
                     >
                         Đang tải {loading} đối tượng…
