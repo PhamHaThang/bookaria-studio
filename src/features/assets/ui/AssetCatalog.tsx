@@ -60,7 +60,10 @@ function AssetFilters({
     return (
         <form
             aria-label="Bộ lọc tài nguyên"
-            className="asset-filters mb-6 flex flex-wrap items-center gap-3 [&_[data-slot=field-label]]:m-0 [&_[data-slot=input]]:m-0 [&_[data-slot=select-trigger]]:m-0"
+            className={cn(
+                'asset-filters flex flex-wrap items-center gap-3 [&_[data-slot=field-label]]:m-0 [&_[data-slot=input]]:m-0 [&_[data-slot=select-trigger]]:m-0',
+                library ? 'mb-6' : 'mb-5',
+            )}
             onSubmit={(event) => event.preventDefault()}
         >
             <FieldGroup className="contents">
@@ -228,23 +231,14 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                 searchInput={searchInput}
             />
             {!library && (
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                    <FilterBar
-                        value={query.type || 'all'}
-                        onValueChange={(type) =>
-                            change({ type: type === 'all' ? undefined : type })
-                        }
-                        options={[{ value: 'all', label: 'Tất cả' }, ...assetTypes]}
-                        label="Loại tài nguyên"
-                        variant="pill"
-                    />
-                    <p
-                        className="m-0 ml-auto text-right text-muted-foreground text-xs tabular-nums"
-                        role="status"
-                    >
-                        {meta ? `${meta.total} tài nguyên` : listing.isPending ? 'Đang tải…' : null}
-                    </p>
-                </div>
+                <FilterBar
+                    value={query.type || 'all'}
+                    onValueChange={(type) => change({ type: type === 'all' ? undefined : type })}
+                    options={[{ value: 'all', label: 'Tất cả' }, ...assetTypes]}
+                    label="Loại tài nguyên"
+                    variant="pill"
+                    resultCount={{ total: meta?.total, unit: 'tài nguyên' }}
+                />
             )}
             {query.scope === 'library' && categories.isError && (
                 <div className="mb-6 flex flex-wrap items-start gap-3 [&_.feedback]:m-0">

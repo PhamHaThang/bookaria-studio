@@ -56,13 +56,13 @@ export function TrashPage() {
 
     return (
         <>
-            <header className="mb-6">
+            <header className="mb-7 sm:mb-9">
                 <h1 className="m-0 font-semibold text-3xl sm:text-4xl">Thùng rác</h1>
                 <p className="m-0 mt-2 text-muted-foreground text-sm">
                     Khôi phục sách đã xóa để tiếp tục chỉnh sửa.
                 </p>
             </header>
-            <div className="mb-7 flex items-center gap-3 rounded-xl bg-muted px-4 py-3 text-sm">
+            <div className="mb-5 flex items-center gap-3 rounded-xl bg-muted px-4 py-3 text-sm">
                 <Clock3 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <p className="m-0">Bạn có thể khôi phục sách trong vòng 30 ngày kể từ khi xóa.</p>
             </div>

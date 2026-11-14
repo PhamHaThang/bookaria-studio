@@ -95,23 +95,26 @@ export function AssetCardGrid({
                                 <ArrowUpRight className="size-4 text-muted-foreground group-hover/asset:text-foreground" />
                             </CardAction>
                             <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                                <span>{assetTypeLabels[asset.type]}</span>
+                                <span>{asset.format.toUpperCase()}</span>
+                                <span aria-hidden="true">·</span>
                                 <span>{formatBytes(asset.sizeBytes)}</span>
                             </CardDescription>
-                            {asset.type === 'MODEL' && Boolean(asset.meta.animations?.length) && (
-                                <p className="m-0 flex items-center gap-1.5 text-muted-foreground text-xs">
-                                    <Clapperboard className="size-3.5" aria-hidden="true" />
-                                    Có hoạt ảnh
-                                </p>
-                            )}
-                            {personal && asset.tags.length > 0 && (
-                                <p
-                                    className="m-0 truncate text-muted-foreground text-xs"
-                                    title={asset.tags.join(', ')}
-                                >
-                                    {asset.tags.map((tag) => `#${tag}`).join(' ')}
-                                </p>
-                            )}
+                            <div className="col-span-full mt-1 flex h-5 min-w-0 flex-wrap content-start gap-1 overflow-clip *:h-5 *:whitespace-nowrap">
+                                <Badge className="py-0.5">{assetTypeLabels[asset.type]}</Badge>
+                                {asset.type === 'MODEL' &&
+                                    Boolean(asset.meta.animations?.length) && (
+                                        <Badge tone="info" className="py-0.5">
+                                            <Clapperboard aria-hidden="true" />
+                                            Có hoạt ảnh
+                                        </Badge>
+                                    )}
+                                {personal &&
+                                    asset.tags.map((tag) => (
+                                        <Badge key={tag} className="py-0.5">
+                                            {tag}
+                                        </Badge>
+                                    ))}
+                            </div>
                         </CardHeader>
                     </Card>
                 </li>
@@ -142,9 +145,10 @@ export function AssetCardGridSkeleton({ scope = 'library' }: { scope?: 'mine' | 
                         )}
                     >
                         <Skeleton className="aspect-[1.45] rounded-none" />
-                        <CardHeader className="gap-2 py-3 sm:px-4 sm:py-4">
+                        <CardHeader className="py-3 sm:px-4 sm:py-4">
                             <Skeleton className="h-5 w-3/4" />
                             <Skeleton className="h-4 w-1/2" />
+                            <Skeleton className="mt-1 h-5 w-16 rounded-full" />
                         </CardHeader>
                     </Card>
                 ))}
