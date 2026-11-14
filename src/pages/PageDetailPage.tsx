@@ -6,7 +6,7 @@ import { assetsApi } from '../features/assets';
 import { uploadFile } from '../features/assets/api/upload-file';
 import { auth, useAuth } from '../features/auth';
 import { bookDraftApi } from '../features/book-draft/api/book-draft-api';
-import { useBookDraft } from '../features/book-draft/ui/BookDraftProvider';
+import { useBookDraft } from '../features/book-draft/ui/book-draft-context';
 import { bookKeys, booksApi } from '../features/books';
 import { pageKeys, pagesApi } from '../features/pages';
 import { compileMarker } from '../features/pages/api/compile-marker';

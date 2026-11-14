@@ -41,7 +41,7 @@ import {
 import { BookariaLogo } from '../../../shared/ui/BookariaLogo';
 import { Button } from '../../../shared/ui/Button';
 import { Feedback } from '../../../shared/ui/Feedback';
-import { useBookDraft } from '../../book-draft/ui/BookDraftProvider';
+import { useBookDraft } from '../../book-draft/ui/book-draft-context';
 import { BookInfoDialog } from '../../books/ui/BookInfoDialog';
 import type { ImageAttachmentContext } from '../../pages/ui/PageImageForm';
 import type { PreviewView } from '../../preview/model/LocalPreviewStage';

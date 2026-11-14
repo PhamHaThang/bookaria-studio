@@ -11,7 +11,7 @@ import { BookariaLogo } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { assetsApi } from '../../assets';
-import { useOptionalBookDraft } from '../../book-draft/ui/BookDraftProvider';
+import { useOptionalBookDraft } from '../../book-draft/ui/book-draft-context';
 import { pagesApi } from '../../pages';
 import type { InteractionProblem } from '../../scene/model/interaction-health';
 import { LocalPreviewStage, type PreviewView } from '../model/LocalPreviewStage';

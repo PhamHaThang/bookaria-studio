@@ -5,8 +5,11 @@ import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { Feedback } from '@/shared/ui/Feedback';
 import { AlertDialogAction, AlertDialogCancel } from '@/shared/ui/primitives/alert-dialog';
 import { Button } from '../../../shared/ui/Button';
-import { draftPagePath, useOptionalBookDraft } from '../../book-draft/ui/BookDraftProvider';
+import { useOptionalBookDraft } from '../../book-draft/ui/book-draft-context';
 
+function draftPagePath(bookId: string, pathname: string) {
+    return new RegExp(`^/books/${bookId}/(?:pages/[0-9a-f-]+|edit)/?$`, 'i').test(pathname);
+}
 export function NavigationGuard({
     dirty,
     saving,

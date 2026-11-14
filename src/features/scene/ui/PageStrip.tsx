@@ -24,7 +24,7 @@ import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { assetKeys } from '../../assets';
 import { auth, useAuth } from '../../auth';
-import { useOptionalBookDraft } from '../../book-draft/ui/BookDraftProvider';
+import { useOptionalBookDraft } from '../../book-draft/ui/book-draft-context';
 import { bookKeys } from '../../books';
 import { pageKeys, pagesApi } from '../../pages';
 import { movedPageIds, uncertainWrite } from '../../pages/model/operations';

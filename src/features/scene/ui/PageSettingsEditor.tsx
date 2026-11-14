@@ -36,7 +36,7 @@ import { uploadFile } from '../../assets/api/upload-file';
 import { uploadRequest } from '../../assets/model/form';
 import { runAssetUpload, type UploadCheckpoint } from '../../assets/model/upload';
 import { auth, useAuth } from '../../auth';
-import { useOptionalBookDraft } from '../../book-draft/ui/BookDraftProvider';
+import { useOptionalBookDraft } from '../../book-draft/ui/book-draft-context';
 import { bookKeys } from '../../books';
 import { pageKeys, pagesApi } from '../../pages';
 import type { ImageAttachmentContext } from '../../pages/ui/PageImageForm';
