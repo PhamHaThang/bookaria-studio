@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { StrictMode, useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import {
@@ -17,6 +17,7 @@ import {
     InteractionEditor,
     type InteractionEditorHandle,
 } from '../../src/features/scene/ui/InteractionEditor';
+import { SceneAssistant } from '../../src/features/scene/ui/SceneAssistant';
 import { SceneUnitsProvider } from '../../src/features/scene/ui/SceneUnits';
 import { BookDetailSchema, PageSchema } from '../../src/shared/contracts/dto.schema';
 import {
@@ -132,18 +133,18 @@ function Harness() {
         JSON.parse(localStorage.getItem('interaction-ui-memory') || '[]'),
     );
     const [invalid, setInvalid] = useState(false),
+        [testing, setTesting] = useState(false),
         [design, setDesign] = useState(false),
         [updates, setUpdates] = useState(0);
     const editor = useRef<InteractionEditorHandle>(null);
+    const [assistantOpen, setAssistantOpen] = useState(false);
     const [requestedRule, setRequestedRule] = useState<{ id: string; request: number }>();
-    const past = useRef<Scene[]>([]);
-    const future = useRef<Scene[]>([]);
-    const undoChange = past.current.at(-1)
-        ? describeSceneChange(past.current.at(-1) as Scene, scene, id)
-        : null;
-    const redoChange = future.current.at(-1)
-        ? describeSceneChange(scene, future.current.at(-1) as Scene, id)
-        : null;
+    const past = useRef<{ scene: Scene; variables: WorkflowVariable[] }[]>([]);
+    const future = useRef<{ scene: Scene; variables: WorkflowVariable[] }[]>([]);
+    const undoTarget = past.current.at(-1);
+    const redoTarget = future.current.at(-1);
+    const undoChange = undoTarget ? describeSceneChange(undoTarget.scene, scene, id) : null;
+    const redoChange = redoTarget ? describeSceneChange(scene, redoTarget.scene, id) : null;
     const undo = useCallback(
         (redo = false) => {
             if (invalid) return;
@@ -152,16 +153,17 @@ function Harness() {
             const previous = from.pop();
             if (!previous) return;
             const change = redo
-                ? describeSceneChange(scene, previous, id)
-                : describeSceneChange(previous, scene, id);
-            to.push(scene);
-            setScene(previous);
+                ? describeSceneChange(scene, previous.scene, id)
+                : describeSceneChange(previous.scene, scene, id);
+            to.push({ scene, variables: workflowVariables });
+            setScene(previous.scene);
+            setWorkflowVariables(previous.variables);
             notifyHistoryFeedback(historyFeedback(change, redo), !design, (target) => {
                 setRequestedRule({ id: target.ruleId, request: Date.now() });
                 setDesign(false);
             });
         },
-        [invalid, scene, design],
+        [invalid, scene, workflowVariables, design],
     );
     useEffect(() => {
         function keyboard(event: KeyboardEvent) {
@@ -182,7 +184,16 @@ function Harness() {
         window.addEventListener('keydown', keyboard);
         return () => window.removeEventListener('keydown', keyboard);
     }, [invalid, undo]);
-    Object.assign(window, { __interaction: { scene, invalid, updates, workflowVariables } });
+    Object.assign(window, {
+        __interaction: { scene, invalid, updates, workflowVariables, replaceScene: setScene },
+    });
+    function changeScene(next: Scene, variables = workflowVariables) {
+        past.current.push({ scene, variables: workflowVariables });
+        future.current = [];
+        setUpdates((count) => count + 1);
+        setScene(next);
+        setWorkflowVariables(variables);
+    }
     return (
         <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-surface text-foreground">
             <header className="flex h-16 shrink-0 items-center justify-between border-border border-b px-5">
@@ -220,12 +231,14 @@ function Harness() {
                     </Button>
                 </div>
             </header>
-            <div className="min-h-0 flex-1">
+            <div className="relative min-h-0 flex-1">
                 {design ? (
                     <p>Đang ở thiết kế</p>
                 ) : (
                     <InteractionEditor
                         ref={editor}
+                        assistantOpen={assistantOpen}
+                        onEditFocus={() => setAssistantOpen(false)}
                         requestedRule={requestedRule}
                         scene={scene}
                         assets={{}}
@@ -234,14 +247,26 @@ function Harness() {
                         book={{ ...book, workflowVariables }}
                         onWorkflowVariablesChange={setWorkflowVariables}
                         onDirtyChange={setInvalid}
-                        onChange={(next) => {
-                            past.current.push(scene);
-                            future.current = [];
-                            setUpdates((count) => count + 1);
-                            setScene(next);
-                        }}
+                        onTestingChange={setTesting}
+                        onChange={changeScene}
                     />
                 )}
+                <SceneAssistant
+                    open={assistantOpen}
+                    onOpenChange={setAssistantOpen}
+                    active={!testing}
+                    surface={design ? 'design' : 'interactions'}
+                    scene={scene}
+                    assets={{}}
+                    page={page}
+                    book={{ ...book, workflowVariables }}
+                    variables={workflowVariables}
+                    disabled={invalid}
+                    onApply={(next, rule, variables) => {
+                        changeScene(next, variables);
+                        editor.current?.selectAppliedRule(next, rule);
+                    }}
+                />
             </div>
             <Toaster />
         </main>
@@ -250,15 +275,17 @@ function Harness() {
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing test root');
 createRoot(root).render(
-    <BrowserRouter>
-        <QueryClientProvider client={client}>
-            <ThemeProvider>
-                <TooltipProvider>
-                    <SceneUnitsProvider widthMm={210}>
-                        <Harness />
-                    </SceneUnitsProvider>
-                </TooltipProvider>
-            </ThemeProvider>
-        </QueryClientProvider>
-    </BrowserRouter>,
+    <StrictMode>
+        <BrowserRouter>
+            <QueryClientProvider client={client}>
+                <ThemeProvider>
+                    <TooltipProvider>
+                        <SceneUnitsProvider widthMm={210}>
+                            <Harness />
+                        </SceneUnitsProvider>
+                    </TooltipProvider>
+                </ThemeProvider>
+            </QueryClientProvider>
+        </BrowserRouter>
+    </StrictMode>,
 );

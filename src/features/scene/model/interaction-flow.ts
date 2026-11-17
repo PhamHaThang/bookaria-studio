@@ -1,10 +1,19 @@
 import type { Action, InteractionRule, Scene } from '@/shared/contracts/scene.schema';
 import { SCENE_LIMITS } from '@/shared/contracts/scene.schema';
 
-export type FlowStep = { id: string; position: { x: number; y: number }; action?: Action };
+export type FlowStep = {
+    id: string;
+    position: { x: number; y: number };
+    action?: Action;
+    movement?: NonNullable<InteractionRule['editorLayout']>[number]['movement'];
+};
 export type FlowPort = 'next' | 'true' | 'false';
 export type FlowLink = { id: string; source: string; target: string; port?: FlowPort };
-export type InteractionFlow = { nodes: FlowStep[]; edges: FlowLink[] };
+export type InteractionFlow = {
+    nodes: FlowStep[];
+    edges: FlowLink[];
+    movementLoop?: InteractionRule['movementLoop'];
+};
 export const START_NODE = 'start';
 export const flowLink = (source: string, target: string, port: FlowPort = 'next'): FlowLink => ({
     id: port === 'next' ? `${source}:${target}` : `${source}:${port}:${target}`,
@@ -22,6 +31,7 @@ export function sceneWithInteractionDraft(
     if (!rule || !graph) return scene;
     const current = {
         ...rule,
+        movementLoop: graph.movementLoop,
         actions: graph.nodes.flatMap((node) => (node.action ? [node.action] : [])),
     };
     return {
@@ -45,10 +55,14 @@ export function ruleToFlow(rule: InteractionRule): InteractionFlow {
                 y: rule.editorLayout?.[index + 1]?.y ?? 80,
             },
             action: structuredClone(action),
+            ...(rule.editorLayout?.[index + 1]?.movement
+                ? { movement: rule.editorLayout[index + 1].movement }
+                : {}),
         })),
     ];
     return {
         nodes,
+        ...(rule.movementLoop ? { movementLoop: rule.movementLoop } : {}),
         edges: rule.workflow
             ? rule.workflow.edges.map((edge) => flowLink(edge.source, edge.target, edge.port))
             : nodes.slice(1).map((node, index) => flowLink(nodes[index].id, node.id)),
@@ -137,8 +151,9 @@ export function orderedFlowSteps(graph: InteractionFlow): FlowStep[] {
 }
 export function flowToRule(graph: InteractionFlow, rule: InteractionRule): InteractionRule {
     const nodes = orderedFlowSteps(graph);
-    return {
+    const result: InteractionRule = {
         ...rule,
+        movementLoop: graph.movementLoop,
         workflow: {
             version: 1,
             edges: graph.edges.map((edge) => ({
@@ -151,9 +166,12 @@ export function flowToRule(graph: InteractionFlow, rule: InteractionRule): Inter
             id: node.id,
             x: node.position.x,
             y: node.position.y,
+            ...(node.movement ? { movement: node.movement } : {}),
         })),
         actions: nodes.slice(1).map((node) => structuredClone(node.action as Action)),
     };
+    if (!result.movementLoop) delete result.movementLoop;
+    return result;
 }
 
 /** Click-to-add inserts after the selected step; dropping a node leaves it available for manual wiring. */
@@ -183,6 +201,7 @@ export function insertFlowStep(
         (edge) => edge.source === afterId && (edge.port || 'next') === port,
     );
     return {
+        ...graph,
         nodes: [...graph.nodes, node],
         edges: [
             ...graph.edges.filter((edge) => edge !== next),
@@ -237,6 +256,12 @@ export function removeFlowStep(graph: InteractionFlow, id: string): InteractionF
     const before = graph.edges.filter((edge) => edge.target === id),
         after = graph.edges.filter((edge) => edge.source === id);
     return {
+        ...graph,
+        movementLoop:
+            graph.movementLoop &&
+            [graph.movementLoop.startId, graph.movementLoop.endId].includes(id)
+                ? undefined
+                : graph.movementLoop,
         nodes: graph.nodes.filter((node) => node.id !== id),
         edges: [
             ...graph.edges.filter((edge) => edge.source !== id && edge.target !== id),

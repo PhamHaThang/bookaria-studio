@@ -3,10 +3,12 @@ import type { InteractionRule, Scene } from '@/shared/contracts/scene.schema';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
+import { ruleToFlow } from '../model/interaction-flow';
 import { actionTitle } from '../model/interaction-palette';
 import type { InteractionTemplateId } from '../model/interaction-templates';
 import { actionSummary, updateTemplateActions } from '../model/interaction-templates';
 import { memoryDefinitions, memorySummary } from '../model/memory-variables';
+import { movementStartState } from '../model/movement-sequence';
 import { InteractionActionEditor } from './InteractionActionEditor';
 import { MemoryContext, useMemory } from './MemoryContext';
 import { WorkflowTriggerFields } from './WorkflowFields';
@@ -37,6 +39,14 @@ export function InteractionTemplateSetup({
         interactions: [...scene.interactions.filter((item) => item.id !== rule.id), rule],
     };
     const definitions = memoryDefinitions(memory.definitions, [draftScene]);
+    const flow = ruleToFlow(rule);
+    const starts = rule.actions.map((action, index) => {
+        const object =
+            action.type === 'transformTo'
+                ? scene.objects.find((object) => object.id === action.objectId)
+                : undefined;
+        return object ? movementStartState(flow, flow.nodes[index + 1].id, object) : undefined;
+    });
     const indices = rule.actions.flatMap((action, index) => {
         if (action.type === 'wait' && (action.ms === 0 || template === 'focus')) return [];
         if (action.type === 'setState' && ['quiz', 'once', 'unlock', 'count'].includes(template))
@@ -100,6 +110,8 @@ export function InteractionTemplateSetup({
                         </h3>
                         <InteractionActionEditor
                             action={rule.actions[index]}
+                            startTransform={starts[index]?.transform}
+                            transformWarning={starts[index]?.message}
                             scene={draftScene}
                             objects={scene.objects}
                             assets={assets}

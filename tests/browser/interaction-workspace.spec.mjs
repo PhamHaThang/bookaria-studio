@@ -1,6 +1,810 @@
 import { expect, test } from '@playwright/test';
 
+for (const theme of ['light', 'dark']) {
+    test(`movement ghost stays at the authored pose and drag guides use axis colors in ${theme}`, async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 1600, height: 950 });
+        await open(page, theme);
+        await recordTargetGizmo(page);
+        await chooseInNode(page, page.locator('[data-workflow-step="action-0"]'), 'Chuyển động');
+        const panel = page.getByRole('region', {
+            name: 'Đặt trạng thái đích trong scene',
+            exact: true,
+        });
+        const ghostToggle = panel.getByRole('checkbox', {
+            name: 'Hiện hình mờ ở trạng thái ban đầu',
+        });
+        await expect(ghostToggle).toBeChecked();
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () =>
+                        !!window.__targetStage?.scene.getObjectByName('interaction-initial-ghost'),
+                ),
+            )
+            .toBe(true);
+        const before = await page.evaluate(() =>
+            structuredClone(window.__interaction.scene.objects),
+        );
+        const colors = await page.evaluate(() => {
+            const gizmo = window.__targetGizmo;
+            const stage = window.__targetStage;
+            const root = gizmo.object;
+            const ghost = stage.scene.getObjectByName('interaction-initial-ghost');
+            const original = window.__interaction.scene.objects.find(
+                ({ id }) => id === root.userData.objectId,
+            );
+            root.position.x += 0.2;
+            gizmo.dispatchEvent({ type: 'mouseUp', mode: 'translate' });
+            const helpers = [];
+            gizmo.traverse((node) => {
+                if (
+                    node.tag !== 'helper' ||
+                    !['X', 'Y', 'Z'].includes(node.name) ||
+                    !node.material?.color
+                )
+                    return;
+                helpers.push({
+                    axis: node.name,
+                    color: `#${node.material.color.getHexString()}`,
+                    expected: getComputedStyle(document.documentElement)
+                        .getPropertyValue(`--editor-axis-${node.name.toLowerCase()}`)
+                        .trim(),
+                });
+            });
+            let faded = false;
+            ghost.traverse((node) => {
+                if (node.material?.opacity > 0 && node.material.opacity <= 0.2) faded = true;
+            });
+            return {
+                position: ghost.position.toArray(),
+                initial: original.transform.position,
+                helpers,
+                faded,
+            };
+        });
+        expect(colors.position).toEqual(colors.initial);
+        expect(colors.faded).toBe(true);
+        expect(colors.helpers.length).toBeGreaterThan(2);
+        for (const helper of colors.helpers)
+            expect(helper.color.toLowerCase()).toBe(helper.expected.toLowerCase());
+        expect(await page.evaluate(() => window.__interaction.scene.objects)).toEqual(before);
+        await ghostToggle.uncheck();
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () => !!window.__targetStage.scene.getObjectByName('interaction-initial-ghost'),
+                ),
+            )
+            .toBe(false);
+        await ghostToggle.check();
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () => !!window.__targetStage.scene.getObjectByName('interaction-initial-ghost'),
+                ),
+            )
+            .toBe(true);
+    });
+}
+
+test('movement loop runs and stops from the inspector without changing page objects', async ({
+    page,
+}, info) => {
+    await page.setViewportSize({ width: 1600, height: 950 });
+    await open(page);
+    await recordTargetGizmo(page);
+    await chooseInNode(page, page.locator('[data-workflow-step="action-0"]'), 'Chuyển động');
+    const before = await page.evaluate(() => structuredClone(window.__interaction.scene));
+    const settings = page.getByRole('region', { name: 'Thiết lập phát chuyển động', exact: true });
+    await settings.getByRole('checkbox', { name: 'Lặp vô hạn', exact: true }).check();
+    await settings
+        .getByRole('textbox', { name: 'Nghỉ giữa lượt (giây, 0–60)', exact: true })
+        .fill('0.2');
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.__interaction.scene.interactions[0].movementLoop.pauseMs),
+        )
+        .toBe(200);
+    await expect
+        .poll(() => page.evaluate(() => window.__interaction.scene.interactions[0].actions.length))
+        .toBe(3);
+    const saved = await page.evaluate(() => window.__interaction.scene.interactions[0]);
+    expect(saved.actions).toEqual(before.interactions[0].actions);
+    expect(saved.editorLayout).toEqual(before.interactions[0].editorLayout);
+    expect(saved.workflow).toEqual(before.interactions[0].workflow);
+    await page.getByRole('button', { name: 'Tùy chọn chạy thử', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Chạy riêng luồng đang chọn', exact: true }).click();
+    const preview = page.getByRole('region', { name: 'Chạy thử tương tác', exact: true });
+    const run = preview.getByRole('button', { name: 'Chạy', exact: true });
+    await expect(run).toBeEnabled({ timeout: 30000 });
+    await page.evaluate(() => {
+        const runner = window.__targetStage.runtime.runner;
+        window.__loopRunner = runner;
+        window.__movementCycles = 0;
+        const report = runner.onStep;
+        const endId = window.__interaction.scene.interactions[0].movementLoop.endId;
+        runner.onStep = (event) => {
+            report?.(event);
+            if (event.nodeId === endId && event.state === 'done') window.__movementCycles++;
+        };
+    });
+    await run.click();
+    await expect.poll(() => page.evaluate(() => window.__movementCycles)).toBeGreaterThanOrEqual(3);
+    await page.screenshot({ path: info.outputPath('movement-loop-preview.png') });
+    await preview.getByRole('button', { name: 'Dừng và đặt lại', exact: true }).click();
+    await expect(run).toBeEnabled({ timeout: 30000 });
+    expect(await page.evaluate(() => window.__loopRunner.active.size)).toBe(0);
+    expect(await page.evaluate(() => window.__interaction.scene.objects)).toEqual(before.objects);
+    await page.getByRole('button', { name: 'Đóng thử', exact: true }).click();
+    for (let index = 0; index < 2; index++) await page.getByTestId('scene-history-undo').click();
+    await expect
+        .poll(() => page.evaluate(() => window.__interaction.scene.interactions[0].actions))
+        .toEqual(before.interactions[0].actions);
+    expect(
+        await page.evaluate(() => window.__interaction.scene.interactions[0].movementLoop),
+    ).toBeUndefined();
+});
 const route = '/tests/browser/interaction.html';
+
+async function focusWorkflowNode(page, id) {
+    await page.getByRole('button', { name: 'Vừa toàn bộ luồng', exact: true }).click();
+    await page.locator(`[data-workflow-step="${id}"] .workflow-drag`).click();
+}
+
+test('second movement inherits the previous pose in fields, ghost, gizmo and reset without rewriting absolute destinations', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1600, height: 950 });
+    await open(page);
+    await recordTargetGizmo(page);
+    await page.evaluate(() => {
+        const scene = structuredClone(window.__interaction.scene);
+        const move = {
+            type: 'transformTo',
+            objectId: 'target',
+            durationMs: 500,
+            delayMsSchema: 0,
+            easing: 'linear',
+        };
+        const rule = scene.interactions[0];
+        rule.actions = [
+            { ...move, position: [0.4, 0.2, 0.15], rotation: [5, 10, 15], scale: [2, 3, 4] },
+            { ...move, rotation: [0, 0, 90] },
+            {
+                type: 'setVisible',
+                objectId: 'target',
+                value: true,
+                durationMs: 0,
+                delayMsSchema: 0,
+            },
+        ];
+        rule.editorLayout = ['start', 'first', 'second', 'third'].map((id, index) => ({
+            id,
+            x: 40 + index * 310,
+            y: 80,
+        }));
+        rule.workflow = {
+            version: 1,
+            edges: [
+                { source: 'start', target: 'first', port: 'next' },
+                { source: 'first', target: 'second', port: 'next' },
+                { source: 'second', target: 'third', port: 'next' },
+            ],
+        };
+        window.__interaction.replaceScene(scene);
+    });
+    await focusWorkflowNode(page, 'second');
+    const inspector = page.getByRole('complementary', {
+        name: 'Thiết lập bước tương tác',
+        exact: true,
+    });
+    const panel = page.getByRole('region', {
+        name: 'Đặt trạng thái đích trong scene',
+        exact: true,
+    });
+    const x = inspector.getByRole('textbox', { name: 'Vị trí cuối X (mm)', exact: true });
+    await expect(x).toHaveValue('84');
+    await expect(inspector.getByRole('textbox', { name: 'Tỉ lệ cuối X', exact: true })).toHaveValue(
+        '2',
+    );
+    await expect
+        .poll(() => page.evaluate(() => window.__targetGizmo?.object?.position.toArray()))
+        .toEqual([0.4, 0.2, 0.15]);
+    expect(await page.evaluate(() => window.__targetGizmo.object.scale.toArray())).toEqual([
+        2, 3, 4,
+    ]);
+    const authored = await page.evaluate(() => structuredClone(window.__interaction.scene.objects));
+    await expect
+        .poll(() =>
+            page.evaluate(() =>
+                window.__targetStage.scene
+                    .getObjectByName('interaction-initial-ghost')
+                    ?.position.toArray(),
+            ),
+        )
+        .toEqual([0.4, 0.2, 0.15]);
+    await panel.getByRole('radio', { name: 'Kích thước (R)', exact: true }).click();
+    await page.evaluate(() =>
+        window.__targetGizmo.dispatchEvent({ type: 'mouseUp', mode: 'scale' }),
+    );
+    expect(
+        await page.evaluate(() => window.__interaction.scene.interactions[0].actions[1].scale),
+    ).toBeUndefined();
+    await focusWorkflowNode(page, 'first');
+    await inspector.getByRole('textbox', { name: 'Vị trí cuối X (mm)', exact: true }).fill('105');
+    await focusWorkflowNode(page, 'second');
+    await expect(x).toHaveValue('105');
+    await expect
+        .poll(() => page.evaluate(() => window.__targetGizmo?.object?.position.x))
+        .toBeCloseTo(0.5);
+    await x.fill('126');
+    await inspector.getByRole('button', { name: 'Đặt lại vị trí cuối', exact: true }).click();
+    await expect(x).toHaveValue('105');
+    await page.getByTestId('scene-history-undo').click();
+    await expect(x).toHaveValue('126');
+    await inspector.getByRole('button', { name: 'Đặt lại góc cuối', exact: true }).click();
+    await expect(
+        inspector.getByRole('textbox', { name: 'Góc cuối Z (°)', exact: true }),
+    ).toHaveValue('15');
+    await page.getByRole('button', { name: 'Lưu sách', exact: true }).click();
+    await page.reload();
+    await focusWorkflowNode(page, 'second');
+    await expect(x).toHaveValue('126');
+    await expect(inspector.getByRole('textbox', { name: 'Tỉ lệ cuối X', exact: true })).toHaveValue(
+        '2',
+    );
+    await page.getByRole('button', { name: 'Vừa toàn bộ luồng', exact: true }).click();
+    await chooseInNode(page, page.locator('[data-workflow-step="third"]'), 'Chuyển động');
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.__interaction.scene.interactions[0].actions[2].position),
+        )
+        .toEqual([0.6, 0.2, 0.15]);
+    expect(await page.evaluate(() => window.__interaction.scene.objects)).toEqual(authored);
+});
+
+test('movement preview inherits its starting pose and preserves a saved return block', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1600, height: 950 });
+    await open(page);
+    await recordTargetGizmo(page);
+    await page.evaluate(() => {
+        const scene = structuredClone(window.__interaction.scene);
+        const move = {
+            type: 'transformTo',
+            objectId: 'target',
+            durationMs: 200,
+            delayMsSchema: 0,
+            easing: 'linear',
+        };
+        const rule = scene.interactions[0];
+        rule.actions = [
+            { ...move, position: [0.4, 0.2, 0.15], scale: [2, 3, 4] },
+            {
+                type: 'setVisible',
+                objectId: 'target',
+                value: true,
+                durationMs: 0,
+                delayMsSchema: 0,
+            },
+            { ...move, position: [0.7, 0.2, 0.15] },
+            { ...move, position: [0.55, 0.2, 0.15] },
+        ];
+        rule.editorLayout = ['start', 'first', 'between', 'last', 'return'].map((id, index) => ({
+            id,
+            x: 40 + index * 310,
+            y: 80,
+        }));
+        rule.editorLayout[3].movement = {
+            endId: 'return',
+            sourceEndId: 'last',
+            direction: 'alternate',
+            finish: 'last',
+        };
+        rule.workflow = {
+            version: 1,
+            edges: [
+                { source: 'start', target: 'first', port: 'next' },
+                { source: 'first', target: 'between', port: 'next' },
+                { source: 'between', target: 'last', port: 'next' },
+                { source: 'last', target: 'return', port: 'next' },
+            ],
+        };
+        window.__interaction.replaceScene(scene);
+    });
+    await focusWorkflowNode(page, 'last');
+    const inspector = page.getByRole('complementary', {
+        name: 'Thiết lập bước tương tác',
+        exact: true,
+    });
+    const panel = page.getByRole('region', {
+        name: 'Đặt trạng thái đích trong scene',
+        exact: true,
+    });
+    await expect(
+        panel.getByRole('button', { name: 'Chạy thử chuyển động', exact: true }),
+    ).toBeEnabled();
+    await inspector.getByRole('checkbox', { name: 'Lặp vô hạn', exact: true }).check();
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () => window.__interaction.scene.interactions[0].movementLoop.initial.position,
+            ),
+        )
+        .toEqual([0.4, 0.2, 0.15]);
+    expect(
+        await page.evaluate(
+            () => window.__interaction.scene.interactions[0].actions.at(-1).position,
+        ),
+    ).toEqual([0.55, 0.2, 0.15]);
+    await page.evaluate(() => {
+        const runtime = window.__targetStage.runtime;
+        const run = runtime.previewMovement.bind(runtime);
+        window.__inheritedStarts = [];
+        runtime.previewMovement = (actions, signal) => {
+            const root = runtime.nodes.get('target').root;
+            window.__inheritedStarts.push({
+                position: root.position.toArray(),
+                scale: root.scale.toArray(),
+            });
+            return run(actions, signal);
+        };
+    });
+    await panel.getByRole('button', { name: 'Chạy thử chuyển động', exact: true }).click();
+    await expect
+        .poll(() => page.evaluate(() => window.__inheritedStarts.length))
+        .toBeGreaterThanOrEqual(2);
+    expect(
+        await page.evaluate(() =>
+            window.__inheritedStarts.every(
+                (state) =>
+                    JSON.stringify(state) ===
+                    JSON.stringify({ position: [0.4, 0.2, 0.15], scale: [2, 3, 4] }),
+            ),
+        ),
+    ).toBe(true);
+    await panel.getByRole('button', { name: 'Dừng thử chuyển động', exact: true }).click();
+    await expect
+        .poll(() => page.evaluate(() => window.__targetGizmo.object?.position.x))
+        .toBeCloseTo(0.7);
+    await focusWorkflowNode(page, 'first');
+    await inspector.getByRole('textbox', { name: 'Vị trí cuối X (mm)', exact: true }).fill('105');
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () => window.__interaction.scene.interactions[0].movementLoop.initial.position[0],
+            ),
+        )
+        .toBeCloseTo(0.5);
+    expect(
+        await page.evaluate(
+            () => window.__interaction.scene.interactions[0].actions.at(-1).position,
+        ),
+    ).toEqual([0.55, 0.2, 0.15]);
+});
+
+test('merged branches show unknown inherited axes instead of original values and block an ambiguous preview', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1600, height: 950 });
+    await open(page);
+    await page.evaluate(() => {
+        const scene = structuredClone(window.__interaction.scene);
+        const move = {
+            type: 'transformTo',
+            objectId: 'target',
+            durationMs: 200,
+            delayMsSchema: 0,
+            easing: 'linear',
+        };
+        const rule = scene.interactions[0];
+        rule.actions = [
+            {
+                type: 'condition',
+                test: { type: 'visible', objectId: 'target', value: false },
+                delayMsSchema: 0,
+            },
+            { ...move, position: [0.2, 0, 0.1] },
+            { ...move, position: [0.6, 0, 0.1] },
+            { ...move, rotation: [0, 0, 90] },
+        ];
+        rule.editorLayout = ['start', 'condition', 'left', 'right', 'merged'].map((id, index) => ({
+            id,
+            x: 40 + index * 310,
+            y: 80,
+        }));
+        rule.workflow = {
+            version: 1,
+            edges: [
+                { source: 'start', target: 'condition', port: 'next' },
+                { source: 'condition', target: 'left', port: 'true' },
+                { source: 'condition', target: 'right', port: 'false' },
+                { source: 'left', target: 'merged', port: 'next' },
+                { source: 'right', target: 'merged', port: 'next' },
+            ],
+        };
+        window.__interaction.replaceScene(scene);
+    });
+    await focusWorkflowNode(page, 'merged');
+    const inspector = page.getByRole('complementary', {
+        name: 'Thiết lập bước tương tác',
+        exact: true,
+    });
+    const x = inspector.getByRole('textbox', { name: 'Vị trí cuối X (mm)', exact: true });
+    await expect(x).toHaveValue('');
+    await expect(x).toHaveAttribute('placeholder', 'Theo nhánh');
+    await expect(x).toHaveAttribute('aria-invalid', 'false');
+    await expect(
+        inspector.getByRole('textbox', { name: 'Vị trí cuối Y (mm)', exact: true }),
+    ).toHaveValue('0');
+    await expect(inspector.getByRole('alert')).toContainText('phụ thuộc nhánh');
+    const preview = page.getByRole('region', {
+        name: 'Đặt trạng thái đích trong scene',
+        exact: true,
+    });
+    await expect(
+        preview.getByRole('button', { name: 'Chạy thử chuyển động', exact: true }),
+    ).toBeDisabled();
+    expect(
+        await page.evaluate(() => window.__interaction.scene.interactions[0].actions[3].position),
+    ).toBeUndefined();
+    await x.fill('168');
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.__interaction.scene.interactions[0].actions[3].position),
+        )
+        .toEqual([0.8, 0, 0.1]);
+    await expect(
+        preview.getByRole('button', { name: 'Chạy thử chuyển động', exact: true }),
+    ).toBeDisabled();
+});
+
+for (const theme of ['light', 'dark']) {
+    test(`movement toolbar ${theme}: stays fixed in the corner when the object or camera moves`, async ({
+        page,
+    }, info) => {
+        await page.setViewportSize({ width: 1366, height: 768 });
+        await open(page, theme);
+        await recordTargetGizmo(page);
+        await chooseInNode(page, page.locator('[data-workflow-step="action-0"]'), 'Chuyển động');
+        const panel = page.getByRole('region', {
+            name: 'Đặt trạng thái đích trong scene',
+            exact: true,
+        });
+        const rail = panel.getByRole('toolbar', { name: 'Công cụ chỉnh chuyển động', exact: true });
+        await expect(rail).toBeVisible();
+        await expect(rail).toHaveAttribute('aria-orientation', 'horizontal');
+        await expect(rail.getByRole('separator')).toHaveCount(0);
+        await expect(
+            panel.getByRole('button', { name: 'Hướng dẫn chỉnh chuyển động', exact: true }),
+        ).toHaveCount(0);
+        const placement = () =>
+            rail.evaluate((element) => {
+                const box = element.getBoundingClientRect();
+                const canvas = window.__targetStage.renderer.domElement.getBoundingClientRect();
+                return {
+                    top: box.top - canvas.top,
+                    right: canvas.right - box.right,
+                    width: box.width,
+                    height: box.height,
+                };
+            });
+        const before = await placement();
+        expect(before).toMatchObject({ top: 12, right: 12, height: 48 });
+        expect(before.width).toBeGreaterThan(150);
+        await expect(panel.locator('header')).toHaveCount(0);
+        await expect(panel.locator('footer')).toContainText('0.5 giây');
+        await expect(
+            rail.getByRole('button', { name: 'Đặt lại góc nhìn trạng thái đích', exact: true }),
+        ).toBeVisible();
+        for (const x of [-0.7, 0.8]) {
+            await page.evaluate((x) => {
+                const stage = window.__targetStage;
+                const control = window.__targetGizmo;
+                const point = control.object.position.clone().project(stage.camera);
+                point.x = x;
+                point.y = 0;
+                point.unproject(stage.camera);
+                control.object.position.copy(point);
+                control.dispatchEvent({ type: 'mouseUp', mode: 'translate' });
+            }, x);
+            expect(await placement()).toEqual(before);
+        }
+        await page.evaluate(() => {
+            const stage = window.__targetStage;
+            stage.camera.position.x += 0.3;
+            stage.camera.position.z += 0.15;
+            stage.controls.target.z += 0.15;
+            stage.camera.lookAt(stage.controls.target);
+            stage.controls.update();
+        });
+        expect(await placement()).toEqual(before);
+        const cameraBeforeReset = await page.evaluate(() =>
+            window.__targetStage.camera.position.toArray(),
+        );
+        await rail
+            .getByRole('button', { name: 'Đặt lại góc nhìn trạng thái đích', exact: true })
+            .click();
+        expect(
+            await page.evaluate(() => window.__targetStage.camera.position.toArray()),
+        ).not.toEqual(cameraBeforeReset);
+        expect(await placement()).toEqual(before);
+        await page.setViewportSize({ width: 1600, height: 900 });
+        await expect.poll(placement).toEqual(before);
+        await page.evaluate(() =>
+            window.__targetGizmo.dispatchEvent({ type: 'dragging-changed', value: true }),
+        );
+        await expect(rail).toBeHidden();
+        await page.evaluate(() =>
+            window.__targetGizmo.dispatchEvent({ type: 'dragging-changed', value: false }),
+        );
+        await expect(rail).toBeVisible();
+        expect(await placement()).toEqual(before);
+        await page.screenshot({ path: info.outputPath(`movement-fixed-toolbar-${theme}.png`) });
+    });
+}
+for (const theme of ['light', 'dark']) {
+    test(`inline movement preview ${theme}: interpolates, stops, restores the target and never writes to the draft`, async ({
+        page,
+    }, info) => {
+        await page.setViewportSize({ width: 1366, height: 768 });
+        await open(page, theme);
+        await recordTargetGizmo(page);
+        await chooseInNode(page, page.locator('[data-workflow-step="action-0"]'), 'Chuyển động');
+        const inspector = page.getByRole('complementary', {
+            name: 'Thiết lập bước tương tác',
+            exact: true,
+        });
+        await inspector
+            .getByRole('textbox', { name: 'Vị trí cuối X (mm)', exact: true })
+            .fill('147');
+        await inspector
+            .getByRole('textbox', { name: 'Thời lượng chuyển đổi (giây, 0–10)', exact: true })
+            .fill('1');
+        const panel = page.getByRole('region', {
+            name: 'Đặt trạng thái đích trong scene',
+            exact: true,
+        });
+        const play = panel.getByRole('button', { name: 'Chạy thử chuyển động', exact: true });
+        await expect(play).toBeEnabled();
+        const before = await page.evaluate(() => ({
+            scene: structuredClone(window.__interaction.scene),
+            camera: window.__targetStage.camera.position.toArray(),
+            gizmo: window.__targetGizmo.uuid,
+        }));
+        await play.click();
+        const stop = panel.getByRole('button', { name: 'Dừng thử chuyển động', exact: true });
+        await expect(stop).toBeVisible();
+        await expect(
+            panel.getByRole('toolbar', { name: 'Công cụ chỉnh chuyển động', exact: true }),
+        ).toBeHidden();
+        const position = () =>
+            page.evaluate(() => window.__targetStage.runtime.nodes.get('target').root.position.x);
+        await expect.poll(position).toBeGreaterThan(0.25);
+        expect(await position()).toBeLessThan(0.7);
+        await page.screenshot({ path: info.outputPath(`inline-movement-${theme}.png`) });
+        await stop.click();
+        await expect(play).toBeEnabled();
+        await expect.poll(position).toBeCloseTo(0.7);
+        expect(await page.evaluate(() => window.__interaction.scene)).toEqual(before.scene);
+        await play.click();
+        await expect(stop).toBeVisible();
+        await expect(play).toBeVisible({ timeout: 5000 });
+        await expect.poll(position).toBeCloseTo(0.7);
+        expect(
+            await page.evaluate(() => ({
+                scene: window.__interaction.scene,
+                camera: window.__targetStage.camera.position.toArray(),
+                gizmo: window.__targetGizmo.uuid,
+            })),
+        ).toEqual(before);
+        await inspector
+            .getByRole('textbox', { name: 'Thời lượng chuyển đổi (giây, 0–10)', exact: true })
+            .fill('');
+        await expect(play).toBeDisabled();
+    });
+}
+
+test('inline movement preview loops existing blocks, cancels on editing and closes without leaving a timer', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await open(page);
+    await recordTargetGizmo(page);
+    await chooseInNode(page, page.locator('[data-workflow-step="action-0"]'), 'Chuyển động');
+    const inspector = page.getByRole('complementary', {
+        name: 'Thiết lập bước tương tác',
+        exact: true,
+    });
+    await inspector.getByRole('textbox', { name: 'Vị trí cuối X (mm)', exact: true }).fill('147');
+    await inspector
+        .getByRole('textbox', { name: 'Thời lượng chuyển đổi (giây, 0–10)', exact: true })
+        .fill('0.2');
+    const settings = inspector.getByRole('region', {
+        name: 'Thiết lập phát chuyển động',
+        exact: true,
+    });
+    await settings.getByRole('checkbox', { name: 'Lặp vô hạn', exact: true }).check();
+    const panel = page.getByRole('region', {
+        name: 'Đặt trạng thái đích trong scene',
+        exact: true,
+    });
+    await expect(
+        panel.getByRole('button', { name: 'Chạy thử chuyển động', exact: true }),
+    ).toBeEnabled();
+    const before = await page.evaluate(() => {
+        window.__inlineSignals = [];
+        window.__inlineRounds = [];
+        const runtime = window.__targetStage.runtime;
+        const run = runtime.previewMovement.bind(runtime);
+        runtime.previewMovement = (actions, signal) => {
+            window.__inlineSignals.push(signal);
+            window.__inlineRounds.push(actions.map(({ type }) => type));
+            return run(actions, signal);
+        };
+        return structuredClone(window.__interaction.scene);
+    });
+    await panel.getByRole('button', { name: 'Chạy thử chuyển động', exact: true }).click();
+    await expect
+        .poll(() => page.evaluate(() => window.__inlineRounds.length))
+        .toBeGreaterThanOrEqual(3);
+    expect(await page.evaluate(() => window.__inlineRounds[0])).toEqual(['transformTo']);
+    expect(await page.evaluate(() => window.__interaction.scene)).toEqual(before);
+    await inspector.getByRole('textbox', { name: 'Vị trí cuối X (mm)', exact: true }).fill('126');
+    await expect(
+        panel.getByRole('button', { name: 'Chạy thử chuyển động', exact: true }),
+    ).toBeEnabled();
+    expect(
+        await page.evaluate(() => window.__inlineSignals.every((signal) => signal.aborted)),
+    ).toBe(true);
+    await expect
+        .poll(() => page.evaluate(() => window.__targetGizmo.object?.position.x))
+        .toBeCloseTo(0.6);
+    await panel.getByRole('button', { name: 'Chạy thử chuyển động', exact: true }).click();
+    await expect(
+        panel.getByRole('button', { name: 'Dừng thử chuyển động', exact: true }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Đóng thiết lập bước', exact: true }).click();
+    await expect(panel).toHaveCount(0);
+    expect(
+        await page.evaluate(() => window.__inlineSignals.every((signal) => signal.aborted)),
+    ).toBe(true);
+});
+
+for (const [theme, width, height] of [
+    ['light', 1366, 768],
+    ['dark', 1600, 900],
+]) {
+    test(`compact movement inspector ${theme}: all transform groups fit and time fields share a row`, async ({
+        page,
+    }, info) => {
+        await page.setViewportSize({ width, height });
+        await open(page, theme);
+        await chooseInNode(page, page.locator('[data-workflow-step="action-0"]'), 'Chuyển động');
+        const inspector = page.getByRole('complementary', {
+            name: 'Thiết lập bước tương tác',
+            exact: true,
+        });
+
+        const content = inspector.getByRole('region', {
+            name: 'Thiết lập mục tiêu và thông số',
+            exact: true,
+        });
+        await content.evaluate((node) => {
+            node.scrollTop = 0;
+        });
+        const metrics = await content.evaluate((node) => ({
+            x: node.scrollWidth - node.clientWidth,
+            y: node.scrollHeight - node.clientHeight,
+        }));
+        expect(metrics.x).toBeLessThanOrEqual(1);
+        expect(metrics.y).toBeLessThanOrEqual(100);
+        const bounds = await content.boundingBox();
+        for (const name of ['Đặt lại vị trí cuối', 'Đặt lại góc cuối', 'Đặt lại tỉ lệ cuối']) {
+            const button = inspector.getByRole('button', { name, exact: true });
+            await expect(button).toBeVisible();
+            const box = await button.boundingBox();
+            expect(box.y + box.height).toBeLessThanOrEqual(bounds.y + bounds.height);
+        }
+        const duration = inspector.getByRole('textbox', {
+            name: 'Thời lượng chuyển đổi (giây, 0–10)',
+            exact: true,
+        });
+        const delay = inspector.getByRole('textbox', {
+            name: 'Chờ trước khi bắt đầu (giây, 0–60)',
+            exact: true,
+        });
+        const easing = inspector.getByRole('combobox', { name: 'Cách chuyển động', exact: true });
+        const [durationBox, delayBox, easingBox] = await Promise.all([
+            duration.boundingBox(),
+            delay.boundingBox(),
+            easing.boundingBox(),
+        ]);
+        expect(Math.abs(durationBox.y - delayBox.y)).toBeLessThanOrEqual(1);
+        expect(Math.abs(durationBox.y - easingBox.y)).toBeLessThanOrEqual(1);
+        expect(Math.abs(durationBox.height - easingBox.height)).toBeLessThanOrEqual(1);
+        expect(easingBox.x + easingBox.width).toBeLessThanOrEqual(bounds.x + bounds.width);
+        await page.screenshot({ path: info.outputPath(`compact-motion-${theme}.png`) });
+        await inspector.getByRole('textbox', { name: /^Góc cuối Z/ }).fill('30');
+        await inspector.getByRole('button', { name: 'Đặt lại góc cuối', exact: true }).click();
+        await expect(inspector.getByRole('textbox', { name: /^Góc cuối Z/ })).toHaveValue('0');
+        const loop = inspector.getByRole('checkbox', { name: 'Lặp vô hạn', exact: true });
+        await expect(loop).toBeVisible();
+        await expect(loop).not.toBeChecked();
+    });
+}
+
+test('movement loop persists after reload and never adds or rewrites blocks', async ({
+    page,
+}, info) => {
+    await page.setViewportSize({ width: 1600, height: 950 });
+    await open(page);
+    await chooseInNode(page, page.locator('[data-workflow-step="action-0"]'), 'Chuyển động');
+    const original = await page.evaluate(() => structuredClone(window.__interaction.scene.objects));
+    const settings = page
+        .getByRole('complementary', { name: 'Thiết lập bước tương tác', exact: true })
+        .getByRole('region', { name: 'Thiết lập phát chuyển động', exact: true });
+    await expect(settings).toBeVisible();
+    await expect
+        .poll(() => page.evaluate(() => window.__interaction.scene.interactions[0].actions.length))
+        .toBe(3);
+    await settings.getByRole('checkbox', { name: 'Lặp vô hạn', exact: true }).check();
+    const pause = settings.getByRole('textbox', {
+        name: 'Nghỉ giữa lượt (giây, 0–60)',
+        exact: true,
+    });
+    await pause.fill('-1');
+    await pause.blur();
+    await expect(settings.getByRole('alert')).toBeVisible();
+    expect(
+        await page.evaluate(() => window.__interaction.scene.interactions[0].movementLoop.pauseMs),
+    ).toBe(0);
+    await pause.fill('0.25');
+    await pause.blur();
+    await expect(settings.getByRole('alert')).toHaveCount(0);
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.__interaction.scene.interactions[0].movementLoop.pauseMs),
+        )
+        .toBe(250);
+    await expect(
+        page.getByRole('button', { name: 'Chỉnh chuỗi chuyển động', exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath('movement-settings-inspector.png') });
+    await page.getByRole('button', { name: 'Lưu sách', exact: true }).click();
+    await page.reload();
+    await expect(page.getByTestId('interaction-flow-canvas')).toBeVisible();
+    await page.locator('[data-workflow-step="action-0"] .workflow-drag').click();
+    await expect(settings.getByRole('checkbox', { name: 'Lặp vô hạn', exact: true })).toBeChecked();
+    await expect(settings.getByRole('combobox', { name: 'Hướng chạy', exact: true })).toHaveCount(
+        0,
+    );
+    await expect(settings.getByRole('combobox', { name: 'Khi kết thúc', exact: true })).toHaveCount(
+        0,
+    );
+    await expect(pause).toHaveValue('0.25');
+    await settings.getByRole('checkbox', { name: 'Lặp vô hạn', exact: true }).uncheck();
+    await expect
+        .poll(() => page.evaluate(() => window.__interaction.scene.interactions[0].movementLoop))
+        .toBeUndefined();
+    await expect
+        .poll(() => page.evaluate(() => window.__interaction.scene.interactions[0].actions.length))
+        .toBe(3);
+    await page.getByTestId('scene-history-undo').click();
+    await expect(settings.getByRole('checkbox', { name: 'Lặp vô hạn', exact: true })).toBeChecked();
+    await expect(settings.getByRole('combobox', { name: 'Hướng chạy', exact: true })).toHaveCount(
+        0,
+    );
+    await expect(settings.getByRole('combobox', { name: 'Khi kết thúc', exact: true })).toHaveCount(
+        0,
+    );
+    expect(await page.evaluate(() => window.__interaction.scene.objects)).toEqual(original);
+});
+
 async function chooseInNode(page, node, label) {
     await node.getByRole('combobox', { name: /^Chức năng khối/ }).click();
     await page.getByRole('option', { name: label, exact: true }).click();
@@ -100,8 +904,12 @@ test('runs the real scene runtime, reports wait/completion and restores authored
     await page.setViewportSize({ width: 1600, height: 900 });
     await open(page);
     const before = await page.evaluate(() => structuredClone(window.__interaction.scene.objects));
+    await page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true }).click();
+    const assistant = page.getByRole('complementary', { name: 'Trợ lý Bookaria' });
+    await assistant.getByLabel('Yêu cầu cho trợ lý').fill('Chỉnh luồng đang chọn');
     await page.getByRole('button', { name: 'Tùy chọn chạy thử', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Chạy riêng luồng đang chọn', exact: true }).click();
+    await expect(assistant).toBeHidden();
     await expect(page.getByRole('button', { name: 'Chạy', exact: true })).toBeEnabled({
         timeout: 30000,
     });
@@ -109,6 +917,8 @@ test('runs the real scene runtime, reports wait/completion and restores authored
     await expect(page.locator('[data-step-state="waiting"]')).toHaveCount(1);
     await expect(page.locator('[data-step-state="done"]')).toHaveCount(3);
     await page.getByRole('button', { name: 'Đóng thử', exact: true }).click();
+    await expect(assistant.getByLabel('Yêu cầu cho trợ lý')).toHaveValue('Chỉnh luồng đang chọn');
+    await assistant.getByRole('button', { name: 'Thu gọn chat' }).click();
     expect(await page.evaluate(() => window.__interaction.scene.objects)).toEqual(before);
     await page.getByRole('button', { name: 'Hành động', exact: true }).click();
     await chooseInNode(page, page.locator('[data-workflow-step]').last(), 'Chuyển động');
@@ -1302,16 +2112,27 @@ test('movement combines position rotation and scale in one node without changing
     const before = await page.evaluate(() =>
         structuredClone(window.__interaction.scene.interactions[0]),
     );
-    await page.getByRole('checkbox', { name: 'Thay đổi góc xoay', exact: true }).check();
-    await page.getByRole('checkbox', { name: 'Thay đổi kích thước', exact: true }).check();
+    await expect(
+        page.getByRole('checkbox', { name: /^Thay đổi (vị trí|góc xoay|kích thước)$/ }),
+    ).toHaveCount(0);
+    const rotation = page.getByRole('textbox', { name: 'Góc cuối Z (°)', exact: true });
+    await rotation.fill('30');
+    await expect(rotation).toBeFocused();
+    expect(
+        await page.evaluate(() => window.__interaction.scene.interactions[0].actions[0].scale),
+    ).toBeUndefined();
+    const scale = page.getByRole('textbox', { name: 'Tỉ lệ cuối X', exact: true });
+    await scale.fill('1.25');
+    await expect(scale).toBeFocused();
+
     await expect(first).toContainText('Di chuyển + xoay + đổi kích thước');
     const next = await page.evaluate(() => window.__interaction.scene.interactions[0]);
     expect(next.actions[0]).toMatchObject({
         type: 'transformTo',
         objectId: 'target',
         position: [0.2, 0, 0.1],
-        rotation: [0, 0, 0],
-        scale: [1, 1, 1],
+        rotation: [0, 0, 30],
+        scale: [1.25, 1, 1],
     });
     expect(next.workflow).toEqual(before.workflow);
     expect(next.editorLayout).toEqual(before.editorLayout);
@@ -2123,7 +2944,7 @@ async function recordTargetGizmo(page) {
     });
 }
 
-test('target transform opens beside settings, switches W E R and applies one gesture without rebuilding', async ({
+test('target transform opens beside settings, switches W E R and records each gesture without rebuilding', async ({
     page,
 }, info) => {
     await page.setViewportSize({ width: 1600, height: 900 });
@@ -2137,8 +2958,7 @@ test('target transform opens beside settings, switches W E R and applies one ges
     await recordTargetGizmo(page);
     const before = await page.evaluate(() => structuredClone(window.__interaction.scene.objects));
     await chooseInNode(page, page.locator('[data-workflow-step="action-0"]'), 'Chuyển động');
-    await page.getByRole('checkbox', { name: 'Thay đổi góc xoay', exact: true }).check();
-    await page.getByRole('checkbox', { name: 'Thay đổi kích thước', exact: true }).check();
+
     const panel = page.getByRole('region', {
         name: 'Đặt trạng thái đích trong scene',
         exact: true,
@@ -2158,11 +2978,15 @@ test('target transform opens beside settings, switches W E R and applies one ges
     const identity = await page.evaluate(() => {
         const gizmo = window.__targetGizmo;
         gizmo.object.position.set(0.35, 0.12, 0.18);
+        gizmo.dispatchEvent({ type: 'mouseUp', mode: gizmo.getMode() });
         return { gizmo: gizmo.uuid, object: gizmo.object.uuid };
     });
     await rotate.click();
     expect(await page.evaluate(() => window.__targetGizmo.getMode())).toBe('rotate');
-    await page.evaluate(() => window.__targetGizmo.object.rotation.set(0, 0, Math.PI / 2));
+    await page.evaluate(() => {
+        window.__targetGizmo.object.rotation.set(0, 0, Math.PI / 2);
+        window.__targetGizmo.dispatchEvent({ type: 'mouseUp', mode: 'rotate' });
+    });
     await scale.click();
     expect(await page.evaluate(() => window.__targetGizmo.getMode())).toBe('scale');
     await page.evaluate(() => window.__targetGizmo.object.scale.set(1.5, 1.25, 1.1));
@@ -2204,6 +3028,21 @@ test('target transform opens beside settings, switches W E R and applies one ges
     await page.getByTestId('scene-history-undo').click();
     await expect
         .poll(() =>
+            page.evaluate(() => window.__interaction.scene.interactions[0].actions[0].scale),
+        )
+        .toBeUndefined();
+    expect(
+        await page.evaluate(() => window.__interaction.scene.interactions[0].actions[0].position),
+    ).toEqual([0.35, 0.12, 0.18]);
+    await page.getByTestId('scene-history-undo').click();
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.__interaction.scene.interactions[0].actions[0].rotation),
+        )
+        .toBeUndefined();
+    await page.getByTestId('scene-history-undo').click();
+    await expect
+        .poll(() =>
             page.evaluate(() => window.__interaction.scene.interactions[0].actions[0].position),
         )
         .toEqual([0.2, 0, 0.1]);
@@ -2213,7 +3052,9 @@ test('target transform opens beside settings, switches W E R and applies one ges
     expect(await page.evaluate(() => window.__interaction.scene.objects)).toEqual(before);
 });
 
-test('target transform disables channels not selected in the action', async ({ page }) => {
+test('target transform tools work without checkboxes and only changed channels are recorded', async ({
+    page,
+}) => {
     await open(page);
     await recordTargetGizmo(page);
     await chooseInNode(page, page.locator('[data-workflow-step="action-0"]'), 'Chuyển động');
@@ -2222,11 +3063,31 @@ test('target transform disables channels not selected in the action', async ({ p
         exact: true,
     });
     await expect(panel.getByRole('radio', { name: 'Di chuyển (W)', exact: true })).toBeEnabled();
-    await expect(panel.getByRole('radio', { name: 'Xoay (E)', exact: true })).toBeDisabled();
-    await expect(panel.getByRole('radio', { name: 'Kích thước (R)', exact: true })).toBeDisabled();
+    await expect(panel.getByRole('radio', { name: 'Xoay (E)', exact: true })).toBeEnabled();
+    await expect(panel.getByRole('radio', { name: 'Kích thước (R)', exact: true })).toBeEnabled();
     await panel.getByRole('radio', { name: 'Di chuyển (W)', exact: true }).click();
     await page.keyboard.press('e');
-    expect(await page.evaluate(() => window.__targetGizmo.getMode())).toBe('translate');
+    expect(await page.evaluate(() => window.__targetGizmo.getMode())).toBe('rotate');
+    await page.evaluate(() =>
+        window.__targetGizmo.dispatchEvent({ type: 'mouseUp', mode: 'rotate' }),
+    );
+    expect(
+        await page.evaluate(() => window.__interaction.scene.interactions[0].actions[0].rotation),
+    ).toBeUndefined();
+    await page.evaluate(() => {
+        window.__targetGizmo.object.rotation.z = Math.PI / 4;
+        window.__targetGizmo.dispatchEvent({ type: 'mouseUp', mode: 'rotate' });
+    });
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () => window.__interaction.scene.interactions[0].actions[0].rotation?.[2],
+            ),
+        )
+        .toBeCloseTo(45);
+    expect(
+        await page.evaluate(() => window.__interaction.scene.interactions[0].actions[0].scale),
+    ).toBeUndefined();
     await page.getByRole('button', { name: 'Đóng thiết lập bước', exact: true }).click();
 });
 
@@ -2510,7 +3371,7 @@ test('camera-facing target locks rotation, preserves saved angles and still allo
     await expect(scale).toBeEnabled();
     await expect(
         page.getByRole('checkbox', { name: 'Thay đổi góc xoay', exact: true }),
-    ).toBeDisabled();
+    ).toHaveCount(0);
     for (const axis of ['X', 'Y', 'Z'])
         await expect(
             page.getByRole('textbox', { name: `Góc cuối ${axis} (°)`, exact: true }),
@@ -2539,14 +3400,13 @@ test('camera-facing target locks rotation, preserves saved angles and still allo
     expect(
         await page.evaluate(() => window.__interaction.scene.interactions[0].actions[0].rotation),
     ).toEqual([10, 20, 30]);
-    await page.getByRole('checkbox', { name: 'Thay đổi vị trí', exact: true }).uncheck();
-    await page.getByRole('checkbox', { name: 'Thay đổi kích thước', exact: true }).uncheck();
-    await expect.poll(() => page.evaluate(() => Boolean(window.__targetGizmo.object))).toBe(false);
+    await expect.poll(() => page.evaluate(() => Boolean(window.__targetGizmo.object))).toBe(true);
     await page.keyboard.press('e');
     await expect(rotate).not.toBeChecked();
     // A regular object remains rotatable, including after switching from a billboard target.
     await chooseNodeTarget(page, page.locator('[data-workflow-step="action-0"]'), 'Khủng long');
     await expect(rotate).toBeEnabled();
+    await rotate.click();
     await expect(rotate).toBeChecked();
     await expect(page.getByRole('textbox', { name: 'Góc cuối X (°)', exact: true })).toBeEnabled();
 });

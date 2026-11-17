@@ -17,10 +17,11 @@ export function SceneEditorHeader({ children }: { children: ReactNode }) {
     );
 }
 
-export function ScenePageDock({ children }: { children: ReactNode }) {
+export function ScenePageDock({ children, hidden }: { children: ReactNode; hidden?: boolean }) {
     return (
         <div
-            className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--canvas-hints-height,2.5rem)_+_16px)] z-5 grid [grid-template-columns:inherit] [.scene-editor[data-panel=interactions]_&]:hidden [.scene-editor[data-panel=preview]_&]:hidden"
+            className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--canvas-hints-height,2.5rem)_+_16px)] z-5 grid [grid-template-columns:inherit] [&[hidden]]:hidden [.scene-editor[data-panel=preview]_&]:hidden"
+            hidden={hidden}
             data-page-dock
         >
             <div className="col-start-1 flex min-w-0 -translate-x-[calc(var(--inspector-offset)/2)] justify-center px-4 transition-[translate] duration-200 ease-out motion-reduce:transition-none [.scene-editor[data-panel=preview]_&]:translate-x-0">

@@ -447,7 +447,7 @@ export class BookDraftStore {
                 .map((page, orderIndex) => ({ ...page, orderIndex })),
         });
     }
-    patchPage(id: string, patch: Partial<Page>, mind?: string) {
+    patchPage(id: string, patch: Partial<Page>, mind?: string, definitions?: WorkflowVariable[]) {
         const page = this.getPage(id);
         if (!page) throw new Error('Chưa đọc được trang.');
         const working = this.state.working as WorkingBook,
@@ -457,6 +457,9 @@ export class BookDraftStore {
             delete blankPages[id];
         this.change({
             ...working,
+            ...(definitions
+                ? { workflowVariables: WorkflowVariablesSchema.parse(definitions) }
+                : {}),
             blankPages,
             pages: working.pages.map((summary) =>
                 summary.id === id
@@ -472,11 +475,15 @@ export class BookDraftStore {
             minds: mind ? { ...working.minds, [id]: mind } : working.minds,
         });
     }
-    setScene(id: string, update: Scene | ((scene: Scene) => Scene)) {
+    setScene(
+        id: string,
+        update: Scene | ((scene: Scene) => Scene),
+        definitions?: WorkflowVariable[],
+    ) {
         const page = this.getPage(id);
         if (!page) return;
         const scene = typeof update === 'function' ? update(page.scene) : update;
-        this.patchPage(id, { scene, objectCount: scene.objects.length });
+        this.patchPage(id, { scene, objectCount: scene.objects.length }, undefined, definitions);
     }
     setWorkflowVariables(definitions: WorkflowVariable[]) {
         const working = this.state.working;

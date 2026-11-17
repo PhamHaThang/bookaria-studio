@@ -7,6 +7,7 @@
     "api/auth.schema.ts": "d1ed9f9265a39fcb10298bd76053ba6c405ad99b140c4032591952df8f4ce05e",
     "api/book-draft.schema.ts": "f5a4783cdd336e6420da3d5de31ddf7bee6da51d1fee897dcd36f74f21799407",
     "api/books.schema.ts": "1f9eeadfea47188c0a12a59a0e1aa72dc42baf1f744121e922da74c1dba77303",
+    "api/interaction-ai.schema.ts": "484d300fc0dc5a2cb9e50f1ed42b974f9362b57d779df7891279a157a29a54b6",
     "api/me.schema.ts": "09443bfa6b7363c9f115ab9fa04acdd7176a8190dc395ae4831cdb55bf43cfe6",
     "api/pages.schema.ts": "56849a3a39b9dbe3d41b0bb18dabfa8e15aa101e38f3d141d4c3ea1a685c78d0",
     "api/public.schema.ts": "a59ac9b613088c3dc2413b2eec5e798d73c1fb1b4b9b3fc48f2a4315aba259c6",
@@ -15,11 +16,11 @@
     "common.schema.ts": "b9bd7f84a0e43aab23b5397712cc47bc2dba218e78ef73c54d39b623ccdc1409",
     "dto.schema.ts": "0ec184449a62ad485392e43d89c5d703ff6c9ade01c413a7c46d18f1034da225",
     "enums.schema.ts": "735aab626ffdd48416de58e8e6a161683bb9a744a5f162e3b3351eff36640452",
-    "error.schema.ts": "da9a1ab3c8a3a8de6ce67c5b23bb905b0011e6376d368085a7eabd15b9299c9e",
+    "error.schema.ts": "702c4fcd301e6fccb82aa5060c60acef169a94668d7e2fdee2285825d9e359a4",
     "manifest.schema.ts": "4110bf4f041c72310bbb40bf29c1402c173062640a5d944dfbc997a63c529611",
     "marker-analysis.schema.ts": "8e2bdcdd3753349c5b386fee0b2d2bb676a7f4e707e9ad809aa5d8fa46b6a685",
     "marker.schema.ts": "c029bfd3c9311657c118d052c7ab9a84a4bcc46dedf2e556e860b4de3fed88fd",
-    "routes.schema.ts": "5b5e16e13c2b773cf18671539e6508f46752f2875bc1d0d5385c5c1d849de266",
-    "scene.schema.ts": "80bf21955156dded5b4ef5f2bef965fa5cece6981e31f4dfb486ef25626a3d06"
+    "routes.schema.ts": "2f34e51606f666483761c3eb8fc159e4c7407c97c2f58c247c368b3524507191",
+    "scene.schema.ts": "7cfca11e7c7131a69d505c2d76871a62bbda7c8609fd9331145b088e1e1a5a3f"
   }
 }

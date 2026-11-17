@@ -194,6 +194,29 @@ apiClient.defaults.adapter = async (config) => {
             ),
         };
         data = { snapshot, pages, warnings: [], jobs: [] };
+    } else if (
+        repair &&
+        config.method === 'post' &&
+        config.url?.endsWith('/interaction-proposals')
+    ) {
+        const body = JSON.parse(config.data);
+        data = {
+            status: 'edit_plan',
+            revision: body.revision,
+            usage: {
+                model: 'mock-openai',
+                promptVersion: 'bookaria-editor-v2',
+                attempts: 1,
+                latencyMs: 10,
+                inputTokens: 30,
+                outputTokens: 15,
+            },
+            plan: {
+                variables: [],
+                rules: [],
+                objectEdits: [{ objectId: 'target', text: 'Rùa biển' }],
+            },
+        };
     } else if (transformEditing && config.url === `/assets/${transformAsset.id}`)
         data = transformAsset;
     else if (config.url === `/books/${bookId}/draft`) data = snapshot;

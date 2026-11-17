@@ -15,8 +15,10 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/shared/ui/primitives/dropdown-menu';
+import { ruleToFlow } from '../model/interaction-flow';
 import { scopedAction } from '../model/interaction-scope';
-import { actionLabels, appendAction, moveItem, removeAction } from '../model/interactions';
+import { actionLabels, appendAction, moveItem, newRule, removeAction } from '../model/interactions';
+import { movementStartState } from '../model/movement-sequence';
 import { InteractionActionEditor } from './InteractionActionEditor';
 
 export function InteractionActionStack({
@@ -37,6 +39,14 @@ export function InteractionActionStack({
     onChange: (actions: Action[]) => void;
 }) {
     const keys = useRef(new WeakMap<Action, string>());
+    const flow = ruleToFlow({ ...newRule(ruleId), actions });
+    const starts = actions.map((action, index) => {
+        const object =
+            action.type === 'transformTo'
+                ? objects.find((object) => object.id === action.objectId)
+                : undefined;
+        return object ? movementStartState(flow, flow.nodes[index + 1].id, object) : undefined;
+    });
     function keyFor(action: Action) {
         let key = keys.current.get(action);
         if (!key) {
@@ -75,6 +85,8 @@ export function InteractionActionStack({
                                 <InteractionActionEditor
                                     id={`action-${ruleId}-${index}`}
                                     action={action}
+                                    startTransform={starts[index]?.transform}
+                                    transformWarning={starts[index]?.message}
                                     objects={objects}
                                     assets={assets}
                                     disabled={disabled}

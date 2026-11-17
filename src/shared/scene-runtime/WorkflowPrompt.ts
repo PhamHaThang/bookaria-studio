@@ -4,6 +4,7 @@ import type { WorkflowQuestion } from '../contracts/scene.schema';
 export function askWorkflowQuestion(
     question: WorkflowQuestion,
     signal: AbortSignal,
+    host: HTMLElement = document.body,
 ): Promise<string | null> {
     signal.throwIfAborted();
     return new Promise((resolve, reject) => {
@@ -143,7 +144,7 @@ export function askWorkflowQuestion(
             finish(selectedChoice);
         });
         dialog.append(header, choiceArea, footer);
-        document.body.append(dialog);
+        host.append(dialog);
         signal.addEventListener('abort', abort, { once: true });
         dialog.showModal();
         title.focus({ preventScroll: true });

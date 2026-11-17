@@ -46,7 +46,6 @@ import {
     type FlowPort,
     flowLink,
     type InteractionFlow,
-    orderedFlowSteps,
     START_NODE,
 } from '../model/interaction-flow';
 import {
@@ -627,12 +626,6 @@ export function InteractionWorkflowEditor({
             )?.port;
         onAdd(id, after || undefined, after ? undefined : position, port as FlowPort | undefined);
     };
-    let count = 0;
-    try {
-        count = orderedFlowSteps(graph).length - 1;
-    } catch {
-        count = graph.nodes.length - 1;
-    }
     return (
         <div
             className="relative min-h-0 min-w-0 flex-1 bg-[var(--editor-ground)]"
@@ -858,11 +851,6 @@ export function InteractionWorkflowEditor({
                             <LayoutGrid />
                         </Button>
                     </div>
-                </Panel>
-                <Panel position="bottom-right">
-                    <p className="m-0 rounded-md bg-surface px-3 py-2 text-muted-foreground text-xs">
-                        {count} bước · Kéo trái/phải để dịch · Cuộn để zoom
-                    </p>
                 </Panel>
             </ReactFlow>
         </div>

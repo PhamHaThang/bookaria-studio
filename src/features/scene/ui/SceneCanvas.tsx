@@ -322,8 +322,9 @@ export function SceneCanvas(props: Props) {
             const materials = Array.isArray(node.material) ? node.material : [node.material];
             for (const material of materials) {
                 if (!(material instanceof THREE.LineBasicMaterial)) continue;
-                material.color.copy(themeColor('--editor-transform-guide'));
-                material.opacity = 0.6;
+                const axis = ['X', 'Y', 'Z'].includes(node.name) ? node.name.toLowerCase() : 'z';
+                material.color.copy(themeColor(`--editor-axis-${axis}`));
+                material.opacity = 0.85;
             }
         });
         function applySnapping() {
@@ -1766,15 +1767,18 @@ export function SceneCanvas(props: Props) {
         });
         resize.observe(element);
         const viewport = element.parentElement;
+        const stage = viewport?.parentElement;
         const pageDock = element
             .closest('.scene-editor')
             ?.querySelector<HTMLElement>('[data-page-dock]');
         const workspace = element.closest<HTMLElement>('.scene-workspace');
         const workbench = workspace?.closest<HTMLElement>('.workbench-body');
         const hints = workbench?.querySelector<HTMLElement>('[data-canvas-hints-host]');
+        const footer = stage?.querySelector<HTMLElement>('[data-canvas-footer]');
+        const dockSurface = pageDock?.querySelector<HTMLElement>('.page-strip-region');
         // The page dock grows when unsaved changes or feedback appear.
         // Measure it on resize instead of guessing a fixed bottom offset.
-        const feedbackLayout = new ResizeObserver(() => {
+        const positionFeedback = () => {
             if (workspace && hints && hints.getBoundingClientRect().height > 0) {
                 const reserved =
                     workspace.getBoundingClientRect().bottom - hints.getBoundingClientRect().top;
@@ -1786,23 +1790,47 @@ export function SceneCanvas(props: Props) {
                 element.getBoundingClientRect().bottom - pageDock.getBoundingClientRect().top + 12,
             );
             viewport.style.setProperty('--transform-feedback-bottom', `${bottom}px`);
-            const dock = pageDock.querySelector<HTMLElement>('.page-strip-region');
-            if (workspace && dock) {
-                const area = element.getBoundingClientRect(),
-                    pages = dock.getBoundingClientRect();
-                const space = area.right - 18 - pages.right - 12;
-                const panelBottom =
-                    space >= 320
-                        ? 100
-                        : Math.max(100, workspace.getBoundingClientRect().bottom - pages.top + 12);
-                workspace.style.setProperty('--scene-layers-bottom', `${panelBottom}px`);
+            if (workspace && stage && dockSurface && footer) {
+                const tools = footer.getBoundingClientRect();
+                if (!tools.height) return;
+                const pages = dockSurface.getBoundingClientRect();
+                const workspaceBottom = workspace.getBoundingClientRect().bottom;
+                const dockInset = pages.height ? workspaceBottom - pages.top + 12 : 0;
+                const overlapsDock =
+                    pages.height > 0 &&
+                    tools.left < pages.right + 8 &&
+                    tools.right + 8 > pages.left;
+                const clearance = overlapsDock
+                    ? Math.max(0, stage.getBoundingClientRect().bottom - pages.top + 8)
+                    : 0;
+                footer.style.setProperty('--canvas-dock-clearance', `${clearance}px`);
+                const panelAnchor = workspaceBottom - footer.getBoundingClientRect().top + 12;
+                const dockClearance = tools.right - pages.right;
+                const panelBottom = Math.max(panelAnchor, dockClearance >= 408 ? 0 : dockInset);
+                const widePanelBottom = Math.max(panelAnchor, dockClearance >= 688 ? 0 : dockInset);
+                const layersBottom =
+                    tools.right - pages.right >= 332 ? 100 : Math.max(100, dockInset);
+                workspace.style.setProperty('--scene-assistant-panel-bottom', `${panelBottom}px`);
+                workspace.style.setProperty(
+                    '--scene-assistant-wide-panel-bottom',
+                    `${widePanelBottom}px`,
+                );
+                workspace.style.setProperty(
+                    '--scene-layers-bottom',
+                    `${Math.max(layersBottom, panelAnchor - 4)}px`,
+                );
             }
-        });
+        };
+        const feedbackLayout = new ResizeObserver(positionFeedback);
         feedbackLayout.observe(element);
         if (hints) feedbackLayout.observe(hints);
         if (pageDock) feedbackLayout.observe(pageDock);
-        const dockSurface = pageDock?.querySelector<HTMLElement>('.page-strip-region');
         if (dockSurface) feedbackLayout.observe(dockSurface);
+        if (footer) feedbackLayout.observe(footer);
+        footer?.addEventListener('transitionend', positionFeedback);
+        const inspectorLayout = new MutationObserver(positionFeedback);
+        if (workspace)
+            inspectorLayout.observe(workspace, { attributeFilter: ['data-inspector-visible'] });
         function positionSelectionTools() {
             const left = leftTools.current,
                 right = rightTools.current;
@@ -2145,8 +2173,12 @@ export function SceneCanvas(props: Props) {
                 for (const material of Array.isArray(node.material)
                     ? node.material
                     : [node.material]) {
-                    if (material instanceof THREE.LineBasicMaterial)
-                        material.color.copy(themeColor('--editor-transform-guide'));
+                    if (material instanceof THREE.LineBasicMaterial) {
+                        const axis = ['X', 'Y', 'Z'].includes(node.name)
+                            ? node.name.toLowerCase()
+                            : 'z';
+                        material.color.copy(themeColor(`--editor-axis-${axis}`));
+                    }
                 }
             });
         });
@@ -2166,6 +2198,8 @@ export function SceneCanvas(props: Props) {
             viewGizmo?.dispose();
             resize.disconnect();
             feedbackLayout.disconnect();
+            inspectorLayout.disconnect();
+            footer?.removeEventListener('transitionend', positionFeedback);
             workbench?.style.removeProperty('--canvas-hints-height');
             viewport?.style.removeProperty('--transform-feedback-bottom');
             renderer.domElement.removeEventListener('pointerdown', pointerDown, true);
@@ -2472,7 +2506,10 @@ export function SceneCanvas(props: Props) {
                 )}
             </div>
             {props.footer && (
-                <div className="canvas-footer absolute right-[18px] bottom-12 z-3 -translate-x-[var(--inspector-offset,0px)] transition-[translate] duration-200 ease-out motion-reduce:transition-none">
+                <div
+                    data-canvas-footer
+                    className="canvas-footer absolute right-[18px] bottom-[max(3rem,var(--canvas-dock-clearance,0px))] z-3 flex -translate-x-[var(--inspector-offset,0px)] items-center gap-1.5 transition-[translate] duration-200 ease-out motion-reduce:transition-none"
+                >
                     {props.footer}
                 </div>
             )}

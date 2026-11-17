@@ -678,6 +678,16 @@ export async function buildScene(
             group,
             runner,
             nodes,
+            async previewMovement(actions: Action[], signal: AbortSignal) {
+                for (const action of actions) {
+                    signal.throwIfAborted();
+                    if (action.type !== 'transformTo' && action.type !== 'wait')
+                        throw new Error('Chạy thử chuyển động chỉ hỗ trợ chuyển đổi và chờ.');
+                    const delay = action.type === 'wait' ? action.ms : action.delayMsSchema;
+                    if (delay) await sleep(delay, signal);
+                    if (action.type === 'transformTo') await execute(action, signal);
+                }
+            },
             modelControls,
             attachControls(host: HTMLElement, keyboardTarget: HTMLElement) {
                 modelControls?.attach(host, keyboardTarget);
