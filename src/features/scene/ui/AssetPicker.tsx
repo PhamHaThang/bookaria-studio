@@ -42,6 +42,7 @@ import {
     assetTypeLabels,
 } from '../../assets';
 import { flattenAssetPages } from '../../assets/model/asset-pages';
+import { NarrationGenerator } from '../../assets/ui/NarrationGenerator';
 import { useAuth } from '../../auth';
 import { importHint } from '../model/import-asset';
 import { AssetDeleteDialog } from './AssetDeleteDialog';
@@ -281,6 +282,17 @@ export function AssetPicker({
                     >
                         <RefreshCw />
                     </Button>
+                    {scope === 'mine' && type === 'AUDIO' && (
+                        <NarrationGenerator
+                            key={user?.id}
+                            disabled={blocked}
+                            guardNavigation={false}
+                            onSaved={() => {
+                                clearSearch();
+                                setError(null);
+                            }}
+                        />
+                    )}
                     {scope === 'mine' && (
                         <Button
                             variant="default"

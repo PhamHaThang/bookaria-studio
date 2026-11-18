@@ -2,10 +2,13 @@ import { Plus } from 'lucide-react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { libraryAssetLocation } from '@/features/assets/model/search';
 import { AssetCatalog } from '@/features/assets/ui/AssetCatalog';
+import { NarrationGenerator } from '@/features/assets/ui/NarrationGenerator';
+import { useAuth } from '@/features/auth';
 import { Button } from '@/shared/ui/Button';
 
 export function AssetsPage() {
-    const [params] = useSearchParams();
+    const [params, setParams] = useSearchParams();
+    const { user } = useAuth();
     if (params.get('scope') === 'library')
         return <Navigate to={libraryAssetLocation(params)} replace />;
     return (
@@ -17,15 +20,21 @@ export function AssetsPage() {
                         Quản lý hình ảnh, âm thanh, video và mô hình 3D dùng trong sách.
                     </p>
                 </div>
-                <Button asChild>
-                    <Link
-                        to={{ pathname: '/assets/upload', search: params.toString() }}
-                        aria-haspopup="dialog"
-                    >
-                        <Plus data-icon="inline-start" aria-hidden="true" />
-                        Tải tài nguyên
-                    </Link>
-                </Button>
+                <div className="flex flex-wrap items-center gap-3">
+                    <NarrationGenerator
+                        key={user?.id}
+                        onSaved={() => setParams({ type: 'AUDIO' }, { replace: true })}
+                    />
+                    <Button asChild>
+                        <Link
+                            to={{ pathname: '/assets/upload', search: params.toString() }}
+                            aria-haspopup="dialog"
+                        >
+                            <Plus data-icon="inline-start" aria-hidden="true" />
+                            Tải tài nguyên
+                        </Link>
+                    </Button>
+                </div>
             </header>
             <AssetCatalog scope="mine" />
         </>

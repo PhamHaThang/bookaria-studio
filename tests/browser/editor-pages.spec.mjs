@@ -19,6 +19,13 @@ async function selectedTitle(page) {
         return store.getPage(router.state.location.pathname.split('/').at(-1))?.title;
     });
 }
+
+test('page settings no longer offers text-to-speech generation', async ({ page }) => {
+    await open(page, 'pages=1');
+    await page.getByRole('button', { name: 'Thiết lập trang', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Tạo âm thanh', exact: true })).toHaveCount(0);
+});
+
 test('interaction mode shows control hints and hides the page strip', async ({ page }) => {
     await open(page, 'pages=2');
     await page.getByRole('radio', { name: 'Tương tác', exact: true }).click();

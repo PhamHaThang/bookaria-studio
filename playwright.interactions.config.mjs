@@ -10,6 +10,7 @@ export default defineConfig({
         'model-controls.spec.mjs',
         'cover-upload.spec.mjs',
         'editor-pages.spec.mjs',
+        'assets-narration.spec.mjs',
         'interaction-repair.spec.mjs',
         'marker-dialog-layout.spec.mjs',
         'transform-edit.spec.mjs',
