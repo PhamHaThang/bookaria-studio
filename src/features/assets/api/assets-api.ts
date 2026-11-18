@@ -1,4 +1,4 @@
-import type { AxiosInstance } from 'axios';
+import { type AxiosInstance, isAxiosError } from 'axios';
 import type { z } from 'zod';
 import { ContractError, expectStatus, readData, readPage } from '../../../shared/api/contract';
 import {
@@ -11,6 +11,12 @@ import {
     UploadSignatureBodySchema,
     UploadSignatureSchema,
 } from '../../../shared/contracts/api/assets.schema';
+import {
+    isNarrationMp3,
+    NARRATION_MAX_BYTES,
+    NarrationBodySchema,
+    NarrationVoicesSchema,
+} from '../../../shared/contracts/api/narration.schema';
 import { AssetUsageSchema } from '../../../shared/contracts/asset.schema';
 import { IdSchema } from '../../../shared/contracts/common.schema';
 import { AssetSchema } from '../../../shared/contracts/dto.schema';
@@ -21,6 +27,42 @@ type ListInput = Omit<z.input<typeof ListAssetsQuerySchema>, 'hasAnimation'> & {
 
 export function createAssetsApi(http: AxiosInstance) {
     return {
+        async narrationVoices(signal?: AbortSignal) {
+            return readData(
+                await http.get('/assets/narration/voices', { signal }),
+                NarrationVoicesSchema,
+            );
+        },
+        async generateNarration(body: z.input<typeof NarrationBodySchema>, signal: AbortSignal) {
+            try {
+                const response = await http.post(
+                    '/assets/narration/generate',
+                    NarrationBodySchema.parse(body),
+                    { signal, timeout: 190000, responseType: 'blob' },
+                );
+                expectStatus(response, 200);
+                const blob = response.data;
+                if (
+                    !(blob instanceof Blob) ||
+                    blob.type !== 'audio/mpeg' ||
+                    blob.size < 576 ||
+                    blob.size > NARRATION_MAX_BYTES
+                )
+                    throw new ContractError();
+                if (!isNarrationMp3(new Uint8Array(await blob.arrayBuffer())))
+                    throw new ContractError();
+                return new File([blob], 'loi-thuyet-minh.mp3', { type: 'audio/mpeg' });
+            } catch (cause) {
+                if (isAxiosError(cause) && cause.response?.data instanceof Blob) {
+                    try {
+                        cause.response.data = JSON.parse(await cause.response.data.text());
+                    } catch {
+                        /* Keep the original request error. */
+                    }
+                }
+                throw cause;
+            }
+        },
         async list(input: ListInput, signal?: AbortSignal) {
             const params = ListAssetsQuerySchema.parse({
                 ...input,
