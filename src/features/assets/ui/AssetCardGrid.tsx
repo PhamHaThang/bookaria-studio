@@ -52,9 +52,13 @@ export function AssetCardGrid({
                             <AssetThumbnail
                                 asset={asset}
                                 variant="card"
-                                className="bg-muted motion-safe:[&_img]:transition-transform motion-safe:[&_img]:duration-200 motion-safe:group-hover/asset:[&_img]:scale-[1.04] motion-safe:group-focus-within/asset:[&_img]:scale-[1.04]"
+                                className={cn(
+                                    'bg-muted',
+                                    asset.type !== 'IMAGE' &&
+                                        'motion-safe:[&_img]:transition-transform motion-safe:[&_img]:duration-200 motion-safe:group-hover/asset:[&_img]:scale-[1.04] motion-safe:group-focus-within/asset:[&_img]:scale-[1.04]',
+                                )}
                             />
-                            {(personal || asset.status !== 'READY') && (
+                            {((personal && asset.type !== 'IMAGE') || asset.status !== 'READY') && (
                                 <Badge
                                     className={cn(
                                         'absolute top-2',

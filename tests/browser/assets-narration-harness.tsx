@@ -21,7 +21,28 @@ const AssetPicker = lazy(() =>
 );
 const state = {
     writes: [] as { url: string; body: Record<string, unknown> }[],
-    assets: [] as ReturnType<typeof AssetSchema.parse>[],
+    assets: params.has('images')
+        ? ['portrait', 'landscape'].map((shape, index) =>
+              AssetSchema.parse({
+                  id: `44444444-4444-4444-8444-44444444444${index}`,
+                  type: 'IMAGE',
+                  name: shape,
+                  url: `${location.origin}/fixtures/${shape}.png`,
+                  thumbnailUrl: `${location.origin}/derived/v1/${'a'.repeat(64)}/${index === 0 ? 'thumbnail' : 'asset-preview'}.jpg`,
+                  meta: {},
+                  status: 'READY',
+                  sizeBytes: 1000,
+                  format: 'png',
+                  tags: [],
+                  license: null,
+                  authorName: null,
+                  sourceUrl: null,
+                  scope: 'mine',
+                  categoryId: null,
+                  createdAt: new Date().toISOString(),
+              }),
+          )
+        : ([] as ReturnType<typeof AssetSchema.parse>[]),
     failComplete: params.has('failComplete'),
     chosen: '',
 };

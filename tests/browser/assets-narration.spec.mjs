@@ -15,6 +15,36 @@ const writes = (page, path) =>
         path,
     );
 
+test('image cards preserve legacy portraits and use the compact thumbnail for new images', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await page.route(/(?:portrait\.png|asset-preview\.jpg)$/, (route) => {
+        const portrait = route.request().url().endsWith('portrait.png');
+        return route.fulfill({
+            contentType: 'image/svg+xml',
+            body: `<svg xmlns="http://www.w3.org/2000/svg" width="${portrait ? 160 : 320}" height="${portrait ? 320 : 160}"><rect width="100%" height="100%" fill="skyblue"/></svg>`,
+        });
+    });
+    await open(page, 'all&images');
+    const cards = page.getByRole('list', { name: 'Tài nguyên của tôi' });
+    const portrait = cards.locator('img[src$="/portrait.png"]');
+    const landscape = cards.locator('img[src$="/asset-preview.jpg"]');
+    for (const [image, width, height] of [
+        [portrait, 160, 320],
+        [landscape, 320, 160],
+    ]) {
+        await expect(image).toHaveCSS('object-fit', 'contain');
+        await expect
+            .poll(() => image.evaluate((element) => [element.naturalWidth, element.naturalHeight]))
+            .toEqual([width, height]);
+    }
+    expect((await portrait.boundingBox()).height).toBeCloseTo(
+        (await landscape.boundingBox()).height,
+    );
+    await expect(cards.getByText('Sẵn sàng', { exact: true })).toHaveCount(0);
+});
+
 for (const [width, height] of [
     [1366, 768],
     [390, 844],
