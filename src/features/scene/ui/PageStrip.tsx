@@ -458,7 +458,6 @@ export function PageStrip({
                                         )
                                             event.preventDefault();
                                         else if (
-                                            dirty &&
                                             page.id !== pageId &&
                                             !event.ctrlKey &&
                                             !event.metaKey &&
@@ -467,10 +466,16 @@ export function PageStrip({
                                             event.button === 0
                                         ) {
                                             event.preventDefault();
-                                            requestPageAction(
-                                                `Mở trang ${page.orderIndex + 1}`,
-                                                () => navigate(`/books/${bookId}/pages/${page.id}`),
-                                            );
+                                            const openPage = () =>
+                                                navigate(`/books/${bookId}/pages/${page.id}`, {
+                                                    flushSync: true,
+                                                });
+                                            if (dirty)
+                                                requestPageAction(
+                                                    `Mở trang ${page.orderIndex + 1}`,
+                                                    openPage,
+                                                );
+                                            else void openPage();
                                         }
                                     }}
                                     title={`${page.title || `Trang ${page.orderIndex + 1}`}${!dragLocked ? ' · Kéo để đổi thứ tự' : ''}`}

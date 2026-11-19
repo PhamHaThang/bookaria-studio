@@ -1273,11 +1273,21 @@ export function InteractionEditor({
             <section
                 aria-label="Workspace tương tác"
                 className="relative flex h-full min-h-0 flex-col overflow-hidden bg-surface"
-                onPointerDownCapture={() => {
-                    if (assistantOpen) onEditFocus?.();
+                onPointerDownCapture={(event) => {
+                    if (
+                        assistantOpen &&
+                        !test &&
+                        !(event.target as Element).closest('[data-interaction-test-controls]')
+                    )
+                        onEditFocus?.();
                 }}
-                onFocusCapture={() => {
-                    if (assistantOpen) onEditFocus?.();
+                onFocusCapture={(event) => {
+                    if (
+                        assistantOpen &&
+                        !test &&
+                        !(event.target as Element).closest('[data-interaction-test-controls]')
+                    )
+                        onEditFocus?.();
                 }}
                 onKeyDown={(event) => {
                     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') return;
@@ -1465,6 +1475,7 @@ export function InteractionEditor({
                                     ) : (
                                         <div className="ml-auto flex flex-wrap items-center gap-2">
                                             <fieldset
+                                                data-interaction-test-controls
                                                 aria-label="Chạy thử"
                                                 className="m-0 inline-flex min-w-0 items-stretch border-0 p-0"
                                             >
@@ -1494,6 +1505,7 @@ export function InteractionEditor({
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent
+                                                        data-interaction-test-controls
                                                         align="end"
                                                         className="w-72"
                                                     >
