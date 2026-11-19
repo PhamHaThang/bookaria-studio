@@ -1,22 +1,9 @@
 import axios from 'axios';
 import type { UploadSignature } from '../../../shared/contracts/api/assets.schema';
 
-// A separate transport: never attach the Studio bearer token or API cookies to Cloudinary.
-type UploadTarget = Pick<UploadSignature, 'uploadUrl' | 'fields'>;
-
+// R2 uploads never receive Studio credentials or API cookies.
+type UploadTarget = Pick<UploadSignature, 'uploadUrl' | 'method' | 'headers'>;
 const uploadHttp = axios.create({ withCredentials: false, timeout: 300_000 });
-
-export function uploadFormData(signature: UploadTarget, file: File) {
-    const form = new FormData();
-    for (const [key, value] of Object.entries(signature.fields)) {
-        if (typeof value !== 'string' && typeof value !== 'number') {
-            throw new Error('Tham số tải tệp chưa hợp lệ. Vui lòng thử lại.');
-        }
-        form.set(key, String(value));
-    }
-    form.set('file', file);
-    return form;
-}
 
 export async function uploadFile(
     signature: UploadTarget,
@@ -27,23 +14,35 @@ export async function uploadFile(
     const url = new URL(signature.uploadUrl);
     if (
         url.protocol !== 'https:' ||
-        url.hostname !== 'api.cloudinary.com' ||
+        !/^[a-z0-9]+(?:\.(?:eu|fedramp))?\.r2\.cloudflarestorage\.com$/.test(url.hostname) ||
         url.port ||
         url.username ||
-        url.password
-    ) {
+        url.password ||
+        signature.method !== 'PUT'
+    )
         throw new Error('Địa chỉ tải tệp không hợp lệ. Vui lòng liên hệ nhóm hỗ trợ.');
+    const allowed = new Set([
+        'content-type',
+        'if-none-match',
+        'x-amz-meta-format',
+        'cache-control',
+    ]);
+    for (const [key, value] of Object.entries(signature.headers)) {
+        if (!allowed.has(key.toLowerCase()) || typeof value !== 'string')
+            throw new Error('Tham số tải tệp chưa hợp lệ. Vui lòng thử lại.');
     }
     try {
-        await uploadHttp.post(url.href, uploadFormData(signature, file), {
+        await uploadHttp.put(url.href, file, {
             signal,
-            headers: { Authorization: undefined },
+            headers: signature.headers,
             onUploadProgress: ({ loaded, total }) => {
                 if (total) onProgress(Math.min(100, Math.round((loaded * 100) / total)));
             },
         });
     } catch (error) {
         if (signal.aborted || axios.isCancel(error)) throw error;
+        // A retry after a lost response may find the immutable object already uploaded.
+        if (axios.isAxiosError(error) && error.response?.status === 412) return;
         throw new Error('Chưa tải được tệp. Kiểm tra kết nối rồi bấm Thử lại.');
     }
 }

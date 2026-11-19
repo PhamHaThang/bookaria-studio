@@ -71,7 +71,7 @@ export async function prepareMarkerUpload({
         onCheckpoint(current);
     }
     // A .mind is not an Asset: there is deliberately no /complete request.
-    const publicId = current.signature?.fields.public_id;
+    const publicId = current.signature?.objectKey;
     if (typeof publicId !== 'string' || !publicId.endsWith('.mind'))
         throw new Error('Mã dữ liệu nhận diện chưa hợp lệ.');
     return publicId;

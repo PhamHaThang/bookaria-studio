@@ -103,8 +103,10 @@ apiClient.defaults.adapter = async (config) => {
     if (config.url === '/assets/upload-signature')
         return response({
             assetId,
-            uploadUrl: 'https://api.cloudinary.com/v1_1/test/video/upload',
-            fields: { api_key: 'test', public_id: 'narration', timestamp: 1, signature: 'test' },
+            uploadUrl: 'https://account.r2.cloudflarestorage.com/bookaria-test/narration',
+            method: 'PUT',
+            objectKey: 'narration',
+            headers: { 'Content-Type': 'audio/mpeg', 'If-None-Match': '*' },
             expiresAt: new Date(Date.now() + 60000).toISOString(),
         });
     if (config.url === `/assets/${assetId}/complete`) {

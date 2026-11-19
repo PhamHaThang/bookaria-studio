@@ -152,7 +152,7 @@ test('editor personal audio library can generate, save and choose audio without 
     page.on('console', (message) => {
         if (message.text().includes('one blocker')) errors.push(message.text());
     });
-    await page.route('https://api.cloudinary.com/**', (route) =>
+    await page.route('https://account.r2.cloudflarestorage.com/**', (route) =>
         route.fulfill({ status: 200, body: '{}' }),
     );
     await page.goto('/tests/browser/assets-narration.html?picker');
@@ -341,7 +341,14 @@ test('personal audio library generates a preview and saves only after review', a
 }, info) => {
     await page.setViewportSize({ width: 1366, height: 900 });
     let uploads = 0;
-    await page.route('https://api.cloudinary.com/**', (route) => {
+    await page.route('https://account.r2.cloudflarestorage.com/**', (route) => {
+        const upload = route.request();
+        expect(upload.method()).toBe('PUT');
+        expect(upload.headers()['content-type']).toBe('audio/mpeg');
+        expect(upload.headers()['if-none-match']).toBe('*');
+        expect(upload.headers().authorization).toBeUndefined();
+        expect(upload.headers().cookie).toBeUndefined();
+        expect(upload.postDataBuffer()?.length).toBe(3168);
         uploads++;
         return route.fulfill({ status: 200, body: '{}' });
     });
@@ -407,7 +414,7 @@ test('failed save retains preview and retries completion without uploading twice
     page,
 }) => {
     let uploads = 0;
-    await page.route('https://api.cloudinary.com/**', (route) => {
+    await page.route('https://account.r2.cloudflarestorage.com/**', (route) => {
         uploads++;
         return route.fulfill({ status: 200, body: '{}' });
     });

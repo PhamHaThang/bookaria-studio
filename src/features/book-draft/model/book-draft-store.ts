@@ -52,7 +52,7 @@ type Dependencies = {
     prepareBlankImage?: (
         aspect: number,
         checkpoint: UploadCheckpoint | null,
-        save: (value: UploadCheckpoint) => void,
+        save: (value: UploadCheckpoint | null) => void,
         signal: AbortSignal,
     ) => Promise<Asset>;
 };
@@ -707,7 +707,7 @@ export class BookDraftStore {
                 this.blankUpload,
                 (checkpoint) => {
                     this.blankUpload = checkpoint;
-                    this.temporaryImages.add(checkpoint.signature.assetId);
+                    if (checkpoint) this.temporaryImages.add(checkpoint.signature.assetId);
                     void this.flush();
                 },
                 this.controller.signal,

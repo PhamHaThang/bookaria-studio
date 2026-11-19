@@ -188,7 +188,9 @@ function markerFixture(overrides = {}) {
                 calls.push(['sign', body]);
                 return {
                     expiresAt: '2099-01-01T00:00:00Z',
-                    fields: { public_id: 'owned/page.mind' },
+                    method: 'PUT',
+                    objectKey: 'owned/page.mind',
+                    headers: { 'Content-Type': 'application/octet-stream', 'If-None-Match': '*' },
                 };
             },
         },

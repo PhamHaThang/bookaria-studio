@@ -119,7 +119,7 @@ export function createAssetsApi(http: AxiosInstance) {
             const response = await http.post(
                 `/assets/${IdSchema.parse(id)}/complete`,
                 CompleteAssetBodySchema.parse(body),
-                { signal },
+                { signal, timeout: 120_000 },
             );
             if (response.status === 200)
                 return {

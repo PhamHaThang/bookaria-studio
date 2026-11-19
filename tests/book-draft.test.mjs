@@ -629,12 +629,9 @@ describe('instant blank pages and background saves', () => {
                 signature: {
                     assetId: whiteId,
                     uploadUrl: 'https://fake.test/upload',
-                    fields: {
-                        api_key: 'test',
-                        public_id: 'draft/test',
-                        timestamp: 1,
-                        signature: 'test',
-                    },
+                    method: 'PUT',
+                    objectKey: 'draft/test',
+                    headers: { 'Content-Type': 'application/octet-stream', 'If-None-Match': '*' },
                     expiresAt: '2026-11-01T00:00:00.000Z',
                 },
                 uploaded: true,
