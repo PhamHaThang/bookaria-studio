@@ -76,27 +76,12 @@ function AdminMarkerItem({ marker, onViewDetail, onToggleStatus }: AdminMarkerIt
                                 {marker.isActive ? 'Đang bật' : 'Đã tắt'}
                             </Badge>
 
-                            {marker.markerScore !== null ? (
-                                <Badge
-                                    tone={
-                                        marker.markerScore >= 75
-                                            ? 'success'
-                                            : marker.markerScore >= 50
-                                              ? 'info'
-                                              : 'warning'
-                                    }
-                                    className="h-5 justify-center px-2 text-center font-normal text-[11px] leading-none"
-                                >
-                                    Điểm: {marker.markerScore}/100
-                                </Badge>
-                            ) : (
-                                <Badge
-                                    tone="neutral"
-                                    className="h-5 justify-center px-2 text-center font-normal text-[11px] leading-none"
-                                >
-                                    Chưa có điểm
-                                </Badge>
-                            )}
+                            <Badge
+                                tone="neutral"
+                                className="h-5 justify-center px-2 text-center font-normal text-[11px] leading-none"
+                            >
+                                Chưa đánh giá
+                            </Badge>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
@@ -207,7 +192,7 @@ export function AdminMarkersPage() {
                 <div className="flex shrink-0 items-center gap-2">
                     <Button variant="outline" onClick={() => setTestingOpen(true)}>
                         <ScanLine data-icon="inline-start" className="h-4 w-4" />
-                        Thử điểm marker
+                        Phân tích ảnh
                     </Button>
                     <Button onClick={handleOpenRegister}>
                         <Plus data-icon="inline-start" className="h-4 w-4" />

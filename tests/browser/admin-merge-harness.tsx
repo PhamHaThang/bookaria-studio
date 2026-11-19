@@ -73,7 +73,7 @@ const marker = {
     id: id(20),
     number: 1,
     imageUrl: `${location.origin}/tests/browser/page.png`,
-    markerScore: 80,
+    markerScore: params.has('legacyMarkerScore') ? 5 : null,
     isActive: true,
     validatedAt: time,
 };

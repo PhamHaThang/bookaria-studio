@@ -127,3 +127,24 @@ for (const setup of [
         await page.screenshot({ path: info.outputPath(`admin-${setup.name}.png`) });
     });
 }
+
+for (const legacy of [false, true]) {
+    test(`marker assessment is neutral across list/detail/toggle for ${legacy ? 'legacy stars' : 'unassessed markers'}`, async ({
+        page,
+    }) => {
+        await open(page, '/admin/markers', legacy ? '&legacyMarkerScore=1' : '');
+        await expect(page.getByText('Chưa đánh giá', { exact: true })).toBeVisible();
+        await expect(page.getByText(/Điểm:.*\/100|Điểm chất lượng:|Cần cải thiện/)).toHaveCount(0);
+        await page.getByRole('button', { name: 'Chi tiết', exact: true }).click();
+        const detail = page.getByRole('dialog');
+        await expect(detail.getByText('Chưa đánh giá', { exact: true })).toBeVisible();
+        await expect(detail.getByText(/Chưa có kết quả phân tích được lưu/)).toBeVisible();
+        await expect(detail.getByText(/\/100|Cần cải thiện/)).toHaveCount(0);
+        await detail.getByRole('button', { name: 'Đóng', exact: true }).first().click();
+        await page.getByRole('button', { name: 'Tắt marker', exact: true }).click();
+        const toggle = page.getByRole('dialog');
+        await expect(toggle.getByText('Chưa đánh giá', { exact: true })).toBeVisible();
+        await expect(toggle.getByText(/\/100|Điểm chất lượng:/)).toHaveCount(0);
+        expect(await page.evaluate(() => window.adminReview.writes)).toEqual([]);
+    });
+}
