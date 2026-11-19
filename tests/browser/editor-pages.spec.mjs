@@ -26,6 +26,50 @@ test('page settings no longer offers text-to-speech generation', async ({ page }
     await expect(page.getByRole('button', { name: 'Tạo âm thanh', exact: true })).toHaveCount(0);
 });
 
+test('audio can be picked and played from the design canvas while the reader player is off', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page, 'pages=1&audio=1');
+    await page.getByRole('button', { name: 'Âm thanh', exact: true }).click();
+    const library = page.getByRole('dialog', { name: 'Thư viện âm thanh', exact: true });
+    await library.getByRole('button', { name: 'Xem Nhạc rừng', exact: true }).click();
+    await page
+        .getByRole('dialog', { name: 'Nhạc rừng', exact: true })
+        .getByRole('button', { name: 'Thêm vào trang', exact: true })
+        .click();
+
+    const player = page.getByRole('switch', { name: 'Hiện nút phát cho người đọc' });
+    await expect(player).not.toBeChecked();
+    const listen = page.getByRole('button', { name: 'Nghe thử', exact: true });
+    await expect(listen).toBeEnabled();
+    await listen.click();
+    await expect(page.getByRole('button', { name: 'Tạm dừng', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Tạm dừng', exact: true }).click();
+
+    const canvas = page.locator('.scene-three-host canvas');
+    await canvas.focus();
+    await page.keyboard.press('Escape');
+    await expect(player).toBeHidden();
+    const bounds = await canvas.boundingBox();
+    await canvas.click({ position: { x: bounds.width * 0.44, y: bounds.height * 0.43 } });
+    await expect(player).toBeVisible();
+    await expect(player).not.toBeChecked();
+    await page.getByRole('button', { name: 'Tạm dừng', exact: true }).click();
+
+    await page.getByRole('checkbox', { name: 'Tự phát khi đọc trang' }).check();
+    await page.evaluate(() => {
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+            if (this.src.endsWith('/maichi.mp3')) window.testPreviewAudio = this;
+            return play.call(this);
+        };
+    });
+    await page.getByRole('radio', { name: 'Xem trước', exact: true }).click();
+    await page.getByRole('button', { name: 'Bắt đầu xem', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.testPreviewAudio?.paused)).toBe(false);
+});
+
 test('interaction mode shows control hints and hides the page strip', async ({ page }) => {
     await open(page, 'pages=2');
     await page.getByRole('radio', { name: 'Tương tác', exact: true }).click();

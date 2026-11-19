@@ -26,6 +26,7 @@ const count = Number(params.get('pages') ?? 1);
 const repair = params.has('repair');
 const markerLayout = params.has('marker');
 const transformEditing = params.has('transform');
+const audioEditing = params.has('audio');
 const transformAsset = AssetSchema.parse({
     id: '44444444-4444-4444-8444-444444444444',
     type: 'MODEL',
@@ -43,6 +44,14 @@ const transformAsset = AssetSchema.parse({
     scope: 'mine',
     categoryId: null,
     createdAt: new Date().toISOString(),
+});
+const audioAsset = AssetSchema.parse({
+    ...transformAsset,
+    id: '55555555-5555-4555-8555-555555555555',
+    type: 'AUDIO',
+    name: 'Nhạc rừng',
+    url: `${location.origin}/audio/voice-samples/maichi.mp3`,
+    format: 'mp3',
 });
 const markerReport = {
     analysis: {
@@ -173,6 +182,14 @@ auth.store.setState({
 
 // This fixture never sends requests to the live API or changes a real book.
 apiClient.defaults.adapter = async (config) => {
+    if (audioEditing && config.url === '/assets')
+        return {
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config,
+            data: { data: [audioAsset], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } },
+        };
     let data: unknown;
     if (config.url === `/books/${bookId}/draft` && config.method === 'put') {
         const body = JSON.parse(config.data);
@@ -219,6 +236,8 @@ apiClient.defaults.adapter = async (config) => {
         };
     } else if (transformEditing && config.url === `/assets/${transformAsset.id}`)
         data = transformAsset;
+    else if (audioEditing && config.url === `/assets/${audioAsset.id}`) data = audioAsset;
+    else if (audioEditing && config.url === '/asset-categories') data = [];
     else if (config.url === `/books/${bookId}/draft`) data = snapshot;
     else if (config.url === `/books/${bookId}`)
         data = { ...book, pages: snapshot.pages, pageCount: snapshot.pages.length };

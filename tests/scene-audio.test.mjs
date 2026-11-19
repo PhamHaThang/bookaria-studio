@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+    isVisibleInEditor,
     newObject,
     replaceObjectAsset,
     validatedScene,
@@ -20,6 +21,9 @@ test('insert/replace and JSON round-trip retain audio kind with safe authoring d
     assert.equal(object.audioKind, 'SFX');
     assert.equal(object.billboard, true);
     assert.equal(object.autoplay, false);
+    assert.equal(object.visible, false);
+    assert.equal(isVisibleInEditor(object), true);
+    assert.equal(isVisibleInEditor({ ...newObject('text', 'hidden'), visible: false }), false);
     assert.deepEqual(object.transform.scale, [1, 1, 1]);
     const next = replaceObjectAsset(object, { ...asset, tags: ['voice'] });
     assert.equal(next.audioKind, 'VOICE');
@@ -27,6 +31,35 @@ test('insert/replace and JSON round-trip retain audio kind with safe authoring d
         JSON.parse(JSON.stringify({ schemaVersion: 1, objects: [next], interactions: [] })),
     );
     assert.deepEqual(round.objects, [next]);
+});
+test('Studio starts one audio preview at a time', async () => {
+    const store = new SceneAudioStore();
+    const first = new FakeAudio();
+    const second = new FakeAudio();
+    const releaseFirst = store.register(
+        'first',
+        first,
+        () => {},
+        () => {},
+    );
+    const releaseSecond = store.register(
+        'second',
+        second,
+        () => {},
+        () => {},
+    );
+    try {
+        await store.toggle('first');
+        assert.equal(first.paused, false);
+        first.currentTime = 2;
+        await store.toggle('second');
+        assert.equal(first.paused, true);
+        assert.equal(first.currentTime, 2);
+        assert.equal(second.paused, false);
+    } finally {
+        releaseSecond();
+        releaseFirst();
+    }
 });
 test('Studio audio resumes without rewinding; removing a player ignores stale failures', async () => {
     const store = new SceneAudioStore(),

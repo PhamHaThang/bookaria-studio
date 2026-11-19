@@ -47,7 +47,7 @@ import {
 import { createFrontGuide } from '../model/front-guide';
 import { beginLocalDepthDrag, type LocalDepthDrag, localDepthPosition } from '../model/local-depth';
 import { createModelSelectionBounds } from '../model/model-selection-bounds';
-import { objectLabels } from '../model/objects';
+import { isVisibleInEditor, objectLabels } from '../model/objects';
 import { pageImageSize } from '../model/page-image-fit';
 import { fitPreviewCamera } from '../model/preview-fit';
 import { applyRenderTransform, canRenderTransform } from '../model/render-transform';
@@ -873,7 +873,7 @@ export function SceneCanvas(props: Props) {
                 if (!(dragging && latest.current.selectedIds.includes(spec.id))) {
                     applyTransform(node, spec);
                 }
-                node.root.visible = spec.visible;
+                node.root.visible = isVisibleInEditor(spec);
                 node.billboard.update(
                     camera,
                     facesCamera(spec),
@@ -894,7 +894,7 @@ export function SceneCanvas(props: Props) {
                 selected.every(
                     (node) =>
                         node.status === 'ready' &&
-                        node.spec.visible &&
+                        node.root.visible &&
                         !node.spec.locked &&
                         canRenderTransform(node.spec.transform),
                 ) &&
@@ -1100,7 +1100,7 @@ export function SceneCanvas(props: Props) {
                 selected[0].status === 'ready' &&
                 facesCamera(selected[0].spec) &&
                 !selected[0].spec.locked &&
-                selected[0].spec.visible &&
+                selected[0].root.visible &&
                 !latest.current.disabled
             );
         }

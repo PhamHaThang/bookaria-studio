@@ -63,6 +63,8 @@ export class SceneAudioStore {
             player.element.pause();
             return;
         }
+        for (const [otherId, other] of this.players)
+            if (otherId !== id && !other.element.paused) this.pause(otherId);
         if (player.element.error) player.element.load();
         try {
             await player.element.play();

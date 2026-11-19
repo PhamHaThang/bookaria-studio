@@ -6,7 +6,8 @@ import { Button } from '@/shared/ui/Button';
 import { ColorInput } from '@/shared/ui/ColorInput';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
-import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import { Field, FieldDescription, FieldLabel } from '@/shared/ui/primitives/field';
+import { Switch } from '@/shared/ui/primitives/switch';
 import type { SceneAudioStore } from '../model/scene-audio-store';
 import { NumericField, VectorFields } from './NumericField';
 import { SceneAudioControls } from './SceneAudioControls';
@@ -224,6 +225,11 @@ export function ObjectSpecificProperties({
             )}
             {object.type === 'audio' && (
                 <>
+                    <SceneAudioControls
+                        id={object.id}
+                        store={audioStore}
+                        disabled={disabled || unavailable}
+                    />
                     <Field>
                         <FieldLabel htmlFor={`${id}-audio-kind`}>Loại âm thanh</FieldLabel>
                         <FormSelect
@@ -237,11 +243,6 @@ export function ObjectSpecificProperties({
                             }
                         />
                     </Field>
-                    <SceneAudioControls
-                        id={object.id}
-                        store={audioStore}
-                        disabled={disabled || unavailable}
-                    />
                 </>
             )}
             {(object.type === 'audio' || object.type === 'video') && (
@@ -285,10 +286,32 @@ export function ObjectSpecificProperties({
                             </FieldLabel>
                         </Field>
                     )}
-                    <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
-                        Trình duyệt có thể yêu cầu người đọc chạm trước khi phát âm thanh hoặc
-                        video.
-                    </p>
+                    {object.type === 'audio' ? (
+                        <Field className="gap-1.5">
+                            <div className="flex items-center justify-between gap-3">
+                                <FieldLabel htmlFor={`${id}-reader-player`}>
+                                    Hiện nút phát cho người đọc
+                                </FieldLabel>
+                                <Switch
+                                    id={`${id}-reader-player`}
+                                    aria-describedby={`${id}-reader-player-hint`}
+                                    checked={object.visible}
+                                    onCheckedChange={(visible) => patch({ visible })}
+                                />
+                            </div>
+                            <FieldDescription
+                                id={`${id}-reader-player-hint`}
+                                className="m-0 text-xs"
+                            >
+                                Khi ẩn nút phát, dùng tự phát hoặc hành động “Phát âm thanh” để
+                                người đọc nghe được.
+                            </FieldDescription>
+                        </Field>
+                    ) : (
+                        <FieldDescription className="m-0 text-xs">
+                            Trình duyệt có thể yêu cầu người đọc chạm trước khi phát video có tiếng.
+                        </FieldDescription>
+                    )}
                 </>
             )}
             {object.type === 'hotspot' && (

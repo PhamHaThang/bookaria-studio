@@ -318,58 +318,57 @@ export function ObjectEditor({
                             />
                         </Disclosure>
                     )}
-                    <Disclosure
-                        value="display"
-                        title={
-                            <>
-                                <Eye size={17} />
-                                Hiển thị & hành vi
-                            </>
-                        }
-                        variant="panel"
-                        className="property-section"
-                    >
-                        <div>
-                            {' '}
-                            <div className="scene-flags grid gap-3 max-[1200px]:col-[1_/_-1]">
-                                {(
-                                    [
-                                        ['visible', 'Hiển thị đối tượng'],
-                                        ['billboard', 'Luôn hướng về camera'],
-                                    ] as const
-                                ).map(([key, label]) => (
-                                    <Field
-                                        orientation="horizontal"
-                                        className="items-center justify-between gap-3"
-                                        key={key}
-                                    >
-                                        <FieldLabel
-                                            htmlFor={`${id}-${key}`}
-                                            className="m-0 flex-1 font-normal"
+                    {object.type !== 'audio' && (
+                        <Disclosure
+                            value="display"
+                            title={
+                                <>
+                                    <Eye size={17} />
+                                    Hiển thị & hành vi
+                                </>
+                            }
+                            variant="panel"
+                            className="property-section"
+                        >
+                            <div>
+                                {' '}
+                                <div className="scene-flags grid gap-3 max-[1200px]:col-[1_/_-1]">
+                                    {(
+                                        [
+                                            ['visible', 'Hiển thị đối tượng'],
+                                            ['billboard', 'Luôn hướng về camera'],
+                                        ] as const
+                                    ).map(([key, label]) => (
+                                        <Field
+                                            orientation="horizontal"
+                                            className="items-center justify-between gap-3"
+                                            key={key}
                                         >
-                                            {label}
-                                        </FieldLabel>
-                                        <Switch
-                                            id={`${id}-${key}`}
-                                            checked={
-                                                key === 'billboard'
-                                                    ? facesCamera(object)
-                                                    : object[key]
-                                            }
-                                            disabled={
-                                                key === 'billboard' && object.type === 'audio'
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                key === 'billboard'
-                                                    ? onBillboardChange(checked)
-                                                    : patch({ [key]: checked })
-                                            }
-                                        />
-                                    </Field>
-                                ))}
+                                            <FieldLabel
+                                                htmlFor={`${id}-${key}`}
+                                                className="m-0 flex-1 font-normal"
+                                            >
+                                                {label}
+                                            </FieldLabel>
+                                            <Switch
+                                                id={`${id}-${key}`}
+                                                checked={
+                                                    key === 'billboard'
+                                                        ? facesCamera(object)
+                                                        : object[key]
+                                                }
+                                                onCheckedChange={(checked) =>
+                                                    key === 'billboard'
+                                                        ? onBillboardChange(checked)
+                                                        : patch({ [key]: checked })
+                                                }
+                                            />
+                                        </Field>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    </Disclosure>
+                        </Disclosure>
+                    )}
                     <Disclosure
                         value="transform"
                         title={
@@ -421,16 +420,12 @@ export function ObjectEditor({
                                 />
                             ))}
                             {facesCamera(object) && (
-                                <p className="m-0 text-muted-foreground text-xs">
+                                <p className="m-0 text-muted-foreground text-xs leading-relaxed">
                                     {object.type === 'audio'
-                                        ? 'Thẻ âm thanh luôn hướng về camera; góc xoay được khóa.'
+                                        ? 'Thẻ âm thanh luôn hướng về camera nên góc xoay được khóa.'
                                         : 'Tắt “Luôn hướng về camera” để chỉnh góc xoay.'}
                                 </p>
                             )}
-                            <p className="m-0 text-muted-foreground text-xs leading-relaxed">
-                                Tâm trang là (0, 0, 0) mm. X sang phải, Y lên trên, Z nhô khỏi
-                                trang.
-                            </p>
                         </div>
                     </Disclosure>
                 </fieldset>

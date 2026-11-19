@@ -53,6 +53,7 @@ import { createFittedAssetObject } from '../model/asset-insertion';
 import {
     addObject,
     duplicateObject,
+    isVisibleInEditor,
     moveObject,
     newObject,
     objectAssetTypes,
@@ -444,7 +445,13 @@ function SceneEditorContent({
     function flagChosen(flag: 'locked' | 'visible', value: boolean) {
         if (blocked) return;
         try {
-            editor.setDraft((current) => setSelectionFlag(current, activeIds, flag, value));
+            const ids =
+                flag === 'visible'
+                    ? selection
+                          .filter((object) => object.type !== 'audio')
+                          .map((object) => object.id)
+                    : activeIds;
+            editor.setDraft((current) => setSelectionFlag(current, ids, flag, value));
             setError(null);
         } catch (cause) {
             setError(errorMessage(cause));
@@ -567,7 +574,7 @@ function SceneEditorContent({
                 closeAssistant();
                 setSelectedIds(
                     state.editor.draft.objects
-                        .filter((object) => !object.locked && object.visible)
+                        .filter((object) => !object.locked && isVisibleInEditor(object))
                         .map((object) => object.id),
                 );
             }

@@ -1,6 +1,7 @@
 import { Copy, Eye, EyeOff, LockKeyhole, LockKeyholeOpen, Trash2 } from 'lucide-react';
 import type { SceneObject } from '../../../shared/contracts/scene.schema';
 import { Button } from '../../../shared/ui/Button';
+import { isVisibleInEditor } from '../model/objects';
 
 export function SelectionEditor({
     objects,
@@ -20,7 +21,8 @@ export function SelectionEditor({
     onClear: () => void;
 }) {
     const locked = objects.some((object) => object.locked);
-    const hidden = objects.some((object) => !object.visible);
+    const hidden = objects.some((object) => !isVisibleInEditor(object));
+    const canChangeVisibility = objects.some((object) => object.type !== 'audio');
     return (
         <section aria-labelledby="selection-heading" className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
@@ -54,18 +56,20 @@ export function SelectionEditor({
                     )}
                     {locked ? 'Mở khóa nhóm' : 'Khóa nhóm'}
                 </Button>
-                <Button
-                    variant="secondary"
-                    disabled={disabled || locked}
-                    onClick={() => onFlag('visible', hidden)}
-                >
-                    {hidden ? (
-                        <Eye data-icon="inline-start" />
-                    ) : (
-                        <EyeOff data-icon="inline-start" />
-                    )}
-                    {hidden ? 'Hiện nhóm' : 'Ẩn nhóm'}
-                </Button>
+                {canChangeVisibility && (
+                    <Button
+                        variant="secondary"
+                        disabled={disabled || locked}
+                        onClick={() => onFlag('visible', hidden)}
+                    >
+                        {hidden ? (
+                            <Eye data-icon="inline-start" />
+                        ) : (
+                            <EyeOff data-icon="inline-start" />
+                        )}
+                        {hidden ? 'Hiện nhóm' : 'Ẩn nhóm'}
+                    </Button>
+                )}
                 <Button
                     variant="secondary"
                     disabled={disabled || locked || !canDuplicate}
