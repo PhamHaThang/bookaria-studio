@@ -61,6 +61,8 @@
     --color-neutral-foreground: var(--status-neutral-text);
     --color-success: var(--status-success-bg);
     --color-success-foreground: var(--status-success-text);
+    --color-success-solid: var(--status-success-solid);
+    --color-danger-solid: var(--status-danger-solid);
     --color-warning: var(--status-warning-bg);
     --color-warning-foreground: var(--status-warning-text);
     --color-danger: var(--status-danger-bg);

@@ -127,23 +127,50 @@ for (const viewport of [
             await expect(openTips).toHaveAttribute('aria-expanded', 'true');
         }
         await expect(tips.getByRole('heading', { name: 'Một vật thể mỗi ảnh' })).toBeVisible();
-        if (dark) {
-            await expect(tips.getByRole('button', { name: 'Bật tự chuyển mẹo' })).toBeVisible();
-        } else {
+        await expect
+            .poll(() =>
+                tips
+                    .locator('img')
+                    .evaluateAll((images) =>
+                        images
+                            .filter((image) => !image.complete || image.naturalWidth === 0)
+                            .map((image) => image.src),
+                    ),
+            )
+            .toEqual([]);
+        expect(
+            await tips
+                .locator('img')
+                .evaluateAll((images) => new Set(images.map((image) => image.src)).size),
+        ).toBe(11);
+        await expect(tips.getByRole('button', { name: /tự chuyển mẹo/ })).toHaveCount(0);
+        if (!dark) {
             await page.screenshot({
                 path: info.outputPath('generate-3d-empty.png'),
                 animations: 'disabled',
             });
-            await expect(tips.getByRole('heading', { name: 'Giữ trọn hình dáng' })).toBeVisible();
-            await tips.getByRole('button', { name: 'Tạm dừng tự chuyển mẹo' }).click();
-            await expect(tips.getByRole('button', { name: 'Bật tự chuyển mẹo' })).toBeVisible();
+            await expect(tips.getByRole('heading', { name: 'Ưu tiên ảnh vuông' })).toBeVisible();
+            await tips.hover();
         }
+        await tips.getByRole('tab', { name: 'Tỉ lệ ảnh' }).click();
+        await tips.getByRole('tabpanel', { name: 'Tỉ lệ ảnh' }).scrollIntoViewIfNeeded();
+        await page.screenshot({
+            path: info.outputPath('generate-3d-tip-ratio.png'),
+            animations: 'disabled',
+        });
         const framing = tips.getByRole('tab', { name: 'Khung hình' });
         await framing.click();
         const tipPanel = tips.getByRole('tabpanel', { name: 'Khung hình' });
-        const caption = tipPanel.getByText('Thấy trọn vật thể', { exact: true });
-        await expect(caption).toBeVisible();
-        await expect(tipPanel).toHaveCSS('transition-duration', dark ? '0s' : '0.5s');
+        const illustration = tipPanel.getByRole('img', {
+            name: 'Giữ trọn hình dáng: Thấy trọn vật thể',
+            exact: true,
+        });
+        await expect(illustration).toBeVisible();
+        await expect(tipPanel.getByRole('img')).toHaveCount(2);
+        await expect
+            .poll(() => illustration.evaluate((element) => element.naturalWidth))
+            .toBeGreaterThan(0);
+        await expect(tipPanel.locator('figcaption')).toHaveCount(0);
         await expect(tipPanel).toHaveCSS('opacity', '1');
         await expect(tips.getByRole('tabpanel')).toHaveCount(1);
         await expect(tips.getByRole('tab', { name: 'Khung hình', selected: true })).toBeVisible();
@@ -151,7 +178,7 @@ for (const viewport of [
         await expect
             .poll(async () => {
                 const [label, navigation] = await Promise.all([
-                    caption.boundingBox(),
+                    illustration.boundingBox(),
                     indicators.boundingBox(),
                 ]);
                 return Boolean(label && navigation && navigation.y >= label.y + label.height);
@@ -163,15 +190,148 @@ for (const viewport of [
         await expect(focusedIndicator).toBeFocused();
         await expect(focusedIndicator).toHaveCSS('--tw-ring-offset-width', '0px');
         await expect(focusedIndicator.locator('span')).toHaveCSS('height', '4px');
+        async function swipeTip(name, direction = -1) {
+            const swipePanel = tips.getByRole('tabpanel', { name });
+            await swipePanel.scrollIntoViewIfNeeded();
+            const swipeBounds = await swipePanel.boundingBox();
+            expect(swipeBounds).not.toBeNull();
+            const swipeY = swipeBounds.y + swipeBounds.height / 2;
+            const swipeStart = swipeBounds.x + swipeBounds.width * (direction < 0 ? 0.8 : 0.2);
+            const swipeEnd = swipeBounds.x + swipeBounds.width * (direction < 0 ? 0.2 : 0.8);
+            if (dark) {
+                const touch = await page.context().newCDPSession(page);
+                await touch.send('Input.dispatchTouchEvent', {
+                    type: 'touchStart',
+                    touchPoints: [{ x: swipeStart, y: swipeY }],
+                });
+                for (let step = 1; step <= 8; step++) {
+                    await touch.send('Input.dispatchTouchEvent', {
+                        type: 'touchMove',
+                        touchPoints: [
+                            { x: swipeStart + ((swipeEnd - swipeStart) * step) / 8, y: swipeY },
+                        ],
+                    });
+                }
+                await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+                await touch.detach();
+            } else {
+                await page.mouse.move(swipeStart, swipeY);
+                await page.mouse.down();
+                await page.mouse.move(swipeEnd, swipeY, { steps: 12 });
+                await expect
+                    .poll(async () => {
+                        const dragged = await swipePanel.boundingBox();
+                        return dragged ? (dragged.x - swipeBounds.x) * direction : 0;
+                    })
+                    .toBeGreaterThan(80);
+                await page.mouse.up();
+            }
+        }
+        await swipeTip('Nền ảnh');
+        await expect(tips.getByRole('heading', { name: 'Chọn nội dung phù hợp' })).toBeVisible();
+        await expect(
+            tips.getByRole('tab', { name: 'Nội dung phù hợp', selected: true }),
+        ).toBeVisible();
+        await tips.getByRole('tabpanel', { name: 'Nội dung phù hợp' }).scrollIntoViewIfNeeded();
+        await expect(
+            tips.getByRole('tabpanel', { name: 'Nội dung phù hợp' }).getByRole('img'),
+        ).toHaveCount(1);
+        await page.screenshot({
+            path: info.outputPath('generate-3d-tip-content.png'),
+            animations: 'disabled',
+        });
+        await tips.getByRole('tab', { name: 'Kết quả AI' }).click();
+        await expect(
+            tips.getByRole('heading', { name: 'Kết quả có thể khác ảnh gốc' }),
+        ).toBeVisible();
+        await tips.getByRole('tabpanel', { name: 'Kết quả AI' }).scrollIntoViewIfNeeded();
+        await page.screenshot({
+            path: info.outputPath('generate-3d-tip-result.png'),
+            animations: 'disabled',
+        });
+        if (!dark) {
+            const track = tips.getByRole('tabpanel', { name: 'Kết quả AI' }).locator('..');
+            const trajectory = track.evaluate(async (element) => {
+                const samples = [];
+                const started = performance.now();
+                await new Promise((resolve) => {
+                    function frame() {
+                        samples.push(
+                            new DOMMatrixReadOnly(getComputedStyle(element).transform).m41,
+                        );
+                        if (performance.now() - started < 800) requestAnimationFrame(frame);
+                        else resolve();
+                    }
+                    requestAnimationFrame(frame);
+                });
+                return { samples, width: element.getBoundingClientRect().width };
+            });
+            await swipeTip('Kết quả AI');
+            const { samples, width } = await trajectory;
+            const deltas = samples.slice(1).map((value, index) => value - samples[index]);
+            expect(deltas.some((delta) => delta < -1)).toBe(true);
+            expect(deltas.filter((delta) => delta > 1 && delta < width / 2)).toEqual([]);
+        } else {
+            await swipeTip('Kết quả AI');
+        }
+        await expect(
+            tips.getByRole('heading', { name: 'Mẹo 1: Một vật thể mỗi ảnh', exact: true }),
+        ).toBeInViewport();
+        await swipeTip('Chủ thể', 1);
+        await expect(
+            tips.getByRole('heading', { name: 'Kết quả có thể khác ảnh gốc', exact: true }),
+        ).toBeInViewport();
         if (dark) await openTips.click();
         else await tips.getByRole('tab', { name: 'Chủ thể' }).click();
         await expect(submit).toBeDisabled();
         await expect(submit).toBeInViewport({ ratio: 1 });
+        await expect(dialog.getByRole('button', { name: 'Chọn ảnh', exact: true })).toHaveCount(0);
+        await expect(dialog.getByText(/16 megapixel/)).toHaveCount(0);
+        const uploadArea = dialog.getByRole('button', { name: 'Tải ảnh lên', exact: true });
+        await uploadArea.focus();
+        await expect(uploadArea).toBeFocused();
         const [chooser] = await Promise.all([
             page.waitForEvent('filechooser'),
-            dialog.getByRole('button', { name: 'Chọn ảnh', exact: true }).click(),
+            uploadArea.press('Enter'),
         ]);
-        await chooser.setFiles({ name: 'Rùa biển.png', mimeType: 'image/png', buffer: image });
+        await chooser.setFiles({ name: 'invalid.gif', mimeType: 'image/gif', buffer: image });
+        const uploadError = dialog.getByRole('alert');
+        await expect(uploadError).toBeVisible();
+        await expect
+            .poll(async () => {
+                const [alert, action] = await Promise.all([
+                    uploadError.boundingBox(),
+                    submit.boundingBox(),
+                ]);
+                return Boolean(
+                    alert &&
+                        action &&
+                        action.y >= alert.y + alert.height &&
+                        action.y - alert.y - alert.height <= 16,
+                );
+            })
+            .toBe(true);
+        await expect
+            .poll(async () => {
+                const [alert, modal] = await Promise.all([
+                    uploadError.boundingBox(),
+                    dialog.boundingBox(),
+                ]);
+                return Boolean(
+                    alert &&
+                        modal &&
+                        Math.round(alert.width) >= Math.round(modal.width - (dark ? 42 : 58)),
+                );
+            })
+            .toBe(true);
+        await page.screenshot({
+            path: info.outputPath('generate-3d-upload-error.png'),
+            animations: 'disabled',
+        });
+        await dialog
+            .locator('input[type=file]')
+            .setInputFiles({ name: 'Rùa biển.png', mimeType: 'image/png', buffer: image });
+        await expect(uploadError).toHaveCount(0);
         const preview = dialog.getByRole('img', { name: 'Xem trước hình ảnh' });
         await expect(preview).toBeVisible();
         await expect
@@ -238,6 +398,11 @@ for (const viewport of [
             message: 'Không tạo được mô hình. Hãy thử ảnh khác.',
         };
         await expect(page.getByText(job.error.message)).toBeVisible();
+        await page.goto(`/assets?type=MODEL&job=${job.id}`);
+        await expect(page.getByText(job.error.message)).toBeVisible();
+        await expect(
+            page.getByRole('heading', { name: '3D từ ảnh: Rùa biển' }).locator('..').locator('..'),
+        ).toBeFocused();
         expect(
             generationRequests.filter(
                 (request) => request === 'POST /api/v1/assets/model-generations',

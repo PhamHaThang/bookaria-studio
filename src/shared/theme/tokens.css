@@ -60,6 +60,8 @@
     --status-neutral-text: var(--palette-neutral-700);
     --status-success-bg: #ecfdf5;
     --status-success-text: #007a55;
+    --status-success-solid: #218c45;
+    --status-danger-solid: #df2635;
     --status-warning-bg: color-mix(in srgb, #ffb900 10%, var(--bg-surface));
     --status-warning-text: #973c00;
     --status-danger-bg: color-mix(in srgb, var(--action-danger) 8%, var(--bg-surface));

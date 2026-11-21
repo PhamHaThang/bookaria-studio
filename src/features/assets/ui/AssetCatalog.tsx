@@ -205,6 +205,7 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
     const results = useRef<HTMLElement>(null);
     const [selected, setPreview] = useState<Asset | null>(null);
     const personalAssets = useMatch('/assets');
+    const linkedModelJob = IdSchema.safeParse(params.get('job')).data;
     const assetId = IdSchema.safeParse(params.get('asset')).data;
     const linked = useQuery({
         queryKey: assetKeys.detail(user?.id ?? '', assetId ?? ''),
@@ -337,7 +338,7 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                     onPreview={setPreview}
                     scope={scope}
                     generating={generating}
-                    focusModelJob={state?.focusModelJob}
+                    focusModelJob={linkedModelJob ?? state?.focusModelJob}
                 />
             )}
             {listing.isPending ? (
@@ -523,7 +524,7 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                             scope={scope}
                             assets={listing.data.data}
                             generating={generating}
-                            focusModelJob={state?.focusModelJob}
+                            focusModelJob={linkedModelJob ?? state?.focusModelJob}
                             busy={listing.isFetching}
                             onPreview={setPreview}
                         />

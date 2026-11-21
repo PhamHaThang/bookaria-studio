@@ -102,9 +102,9 @@ export function ModelGenerationDialog() {
             <DialogContent
                 showCloseButton={false}
                 onInteractOutside={(event) => event.preventDefault()}
-                className="flex max-h-[calc(100dvh-24px)] max-w-[min(900px,calc(100vw-24px))] flex-col overflow-y-auto p-0"
+                className="flex max-h-[calc(100dvh-24px)] max-w-[min(1080px,calc(100vw-24px))] flex-col overflow-y-auto p-0"
             >
-                <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-3 bg-popover px-5 pt-5 pb-3 md:px-7 md:pt-7">
+                <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-3 bg-popover px-5 pt-5 pb-2 md:px-7 md:pt-7">
                     <DialogHeader className="min-w-0 gap-1">
                         <DialogTitle size="lg">Tạo 3D từ ảnh</DialogTitle>
                         <DialogDescription>
@@ -123,9 +123,9 @@ export function ModelGenerationDialog() {
                         </Button>
                     </DialogClose>
                 </div>
-                <div className="grid gap-4 px-5 pt-2 pb-5 md:grid-cols-2 md:grid-rows-[auto_auto] md:gap-x-6 md:gap-y-3 md:px-7 md:pb-7">
+                <div className="grid gap-4 px-5 pt-2 pb-5 md:grid-cols-[minmax(0,2fr)_minmax(0,2.8fr)] md:grid-rows-[auto_auto] md:gap-x-12 md:gap-y-3 md:px-7 md:pb-7">
                     <form
-                        className="flex min-w-0 flex-col gap-3 md:col-start-2 md:row-span-2 md:row-start-1 md:grid md:grid-rows-subgrid"
+                        className="contents"
                         onSubmit={(event) => {
                             event.preventDefault();
                             submit();
@@ -145,14 +145,16 @@ export function ModelGenerationDialog() {
                         <section
                             aria-label="Ảnh đầu vào"
                             className={cn(
-                                'relative flex h-52 min-w-0 flex-col overflow-hidden rounded-2xl border border-border transition-colors motion-reduce:transition-none md:row-start-1 md:h-auto md:min-h-80',
-                                url
-                                    ? 'bg-popover [&_img]:absolute [&_img]:inset-0 [&_img]:p-4'
-                                    : 'border-dashed bg-muted/45',
+                                'relative flex h-64 min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-popover transition-colors duration-200 ease-out motion-reduce:transition-none md:col-start-2 md:row-start-1 md:h-auto md:min-h-[min(420px,calc(100dvh-240px))]',
+                                url && '[&_img]:absolute [&_img]:inset-0 [&_img]:p-4',
+                                !url &&
+                                    !busy &&
+                                    'focus-within:border-ring hover:border-foreground/60',
                                 dragging && 'border-processing/60 bg-processing/10',
                             )}
                             onDragOver={(event) => {
                                 event.preventDefault();
+                                if (busy) return;
                                 setDragging(true);
                             }}
                             onDragLeave={(event) => {
@@ -166,6 +168,7 @@ export function ModelGenerationDialog() {
                             onDrop={(event) => {
                                 event.preventDefault();
                                 setDragging(false);
+                                if (busy) return;
                                 if (event.dataTransfer.files.length === 1)
                                     select(event.dataTransfer.files[0]);
                                 else setError('Chọn một ảnh để tạo mô hình 3D.');
@@ -174,32 +177,40 @@ export function ModelGenerationDialog() {
                             {url ? (
                                 <AssetMediaPreview type="IMAGE" url={url} />
                             ) : (
-                                <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-center md:gap-4">
-                                    <ImagePlus
-                                        className="size-8 text-muted-foreground"
-                                        strokeWidth={1.5}
-                                        aria-hidden="true"
-                                    />
-                                    <div className="space-y-1">
-                                        <p className="m-0 font-semibold text-sm">
-                                            Kéo thả ảnh vào đây
-                                        </p>
-                                        <p className="m-0 text-muted-foreground text-xs">
-                                            JPG hoặc PNG · Tối đa 6 MB · 16 megapixel
-                                        </p>
-                                    </div>
-                                    <Button
-                                        variant="outline"
-                                        disabled={busy}
-                                        onClick={() => input.current?.click()}
-                                    >
-                                        Chọn ảnh
-                                    </Button>
-                                </div>
+                                <Button
+                                    variant="plain"
+                                    aria-label="Tải ảnh lên"
+                                    disabled={busy}
+                                    onClick={() => input.current?.click()}
+                                    className="group flex flex-1 cursor-pointer flex-col p-6 text-center transition-colors duration-200 ease-out hover:not-disabled:bg-muted focus-visible:bg-muted focus-visible:outline-offset-[-3px] disabled:cursor-not-allowed motion-reduce:transition-none md:p-8"
+                                >
+                                    <span className="flex flex-1 flex-col items-center justify-center gap-5">
+                                        <span className="grid size-16 place-items-center rounded-2xl bg-muted/70 transition-[background-color,transform] duration-200 ease-out group-hover:bg-primary group-focus-visible:bg-primary motion-safe:group-focus-visible:-translate-y-1 motion-safe:group-hover:-translate-y-1 motion-reduce:transition-none">
+                                            <ImagePlus
+                                                className="size-8 text-muted-foreground transition-colors group-hover:text-primary-foreground group-focus-visible:text-primary-foreground motion-reduce:transition-none"
+                                                strokeWidth={1.5}
+                                                aria-hidden="true"
+                                            />
+                                        </span>
+                                        <span className="flex flex-col gap-1.5">
+                                            <span className="font-semibold text-base">
+                                                {dragging
+                                                    ? 'Thả ảnh để tải lên'
+                                                    : 'Nhấn để tải ảnh lên'}
+                                            </span>
+                                            <span className="text-muted-foreground text-sm">
+                                                hoặc kéo thả ảnh vào đây
+                                            </span>
+                                        </span>
+                                        <span className="text-muted-foreground text-xs">
+                                            JPG hoặc PNG · Tối đa 6 MB
+                                        </span>
+                                    </span>
+                                </Button>
                             )}
                         </section>
-                        <div className="flex min-w-0 flex-col gap-3 md:row-start-2">
-                            <Feedback error={error} />
+                        <div className="order-2 flex min-w-0 flex-col gap-3 md:col-span-2 md:row-start-2">
+                            <Feedback error={error} className="mb-0" />
                             <div className="flex flex-wrap items-center justify-end gap-2">
                                 {file && (
                                     <Button
