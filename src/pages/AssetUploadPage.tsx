@@ -1,11 +1,12 @@
 import { AssetUploadDialog } from '@/features/assets/ui/AssetUploadDialog';
+import { ModelGenerationDialog } from '@/features/assets/ui/ModelGenerationDialog';
 import { AssetsPage } from './AssetsPage';
 
-export function AssetUploadPage() {
+export function AssetUploadPage({ generateModel = false }: { generateModel?: boolean }) {
     return (
         <>
             <AssetsPage />
-            <AssetUploadDialog />
+            {generateModel ? <ModelGenerationDialog /> : <AssetUploadDialog />}
         </>
     );
 }

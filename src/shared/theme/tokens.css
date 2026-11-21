@@ -66,6 +66,7 @@
     --status-danger-text: #c10007;
     --status-info-bg: color-mix(in srgb, var(--action-highlight) 8%, var(--bg-surface));
     --status-info-text: var(--text-highlight);
+    --status-processing: #2563eb;
     --nav-ground: var(--bg-surface);
     --nav-ink: var(--palette-neutral-900);
     --nav-muted: var(--text-muted);
@@ -189,6 +190,7 @@
     --status-danger-text: #ff6467;
     --status-info-bg: color-mix(in srgb, var(--action-highlight) 12%, var(--bg-surface));
     --status-info-text: var(--text-highlight);
+    --status-processing: #60a5fa;
     --nav-ground: var(--bg-surface);
     --nav-ink: var(--text-primary);
     --nav-muted: var(--text-muted);

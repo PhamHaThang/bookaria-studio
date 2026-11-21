@@ -6,7 +6,9 @@ import {
     CompleteAssetBodySchema,
     CompleteAssetProcessingSchema,
     CompleteAssetReadySchema,
+    GenerateModelBodySchema,
     ListAssetsQuerySchema,
+    ModelGenerationSchema,
     UpdateAssetBodySchema,
     UploadSignatureBodySchema,
     UploadSignatureSchema,
@@ -27,6 +29,21 @@ type ListInput = Omit<z.input<typeof ListAssetsQuerySchema>, 'hasAnimation'> & {
 
 export function createAssetsApi(http: AxiosInstance) {
     return {
+        async modelGenerations(signal?: AbortSignal) {
+            return readData(
+                await http.get('/assets/model-generations', { signal }),
+                ModelGenerationSchema.array(),
+            );
+        },
+        async generateModel(inputId: string, signal?: AbortSignal) {
+            const response = await http.post(
+                '/assets/model-generations',
+                GenerateModelBodySchema.parse({ inputId }),
+                { signal },
+            );
+            expectStatus(response, 202);
+            return readData(response, ModelGenerationSchema);
+        },
         async narrationVoices(signal?: AbortSignal) {
             return readData(
                 await http.get('/assets/narration/voices', { signal }),

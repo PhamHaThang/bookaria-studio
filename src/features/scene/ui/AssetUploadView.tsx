@@ -27,6 +27,10 @@ const stageLabels = {
     uploading: 'Đang tải tệp…',
     completing: 'Đang xác nhận tài nguyên…',
 };
+export type AssetUploadCompletion = {
+    processing: boolean;
+};
+
 export function AssetUploadView({
     type,
     pending,
@@ -42,7 +46,7 @@ export function AssetUploadView({
     onBack: () => void;
     onBusyChange: (busy: boolean) => void;
     onDirtyChange?: (dirty: boolean) => void;
-    onUploaded?: (processing: boolean) => void;
+    onUploaded?: (completion: AssetUploadCompletion) => void;
 }) {
     const [dragging, setDragging] = useState(false);
     const [controlsTarget] = useState<HTMLDivElement | null>(null);
@@ -89,7 +93,7 @@ export function AssetUploadView({
             void cache.invalidateQueries({ queryKey: profileKey(user?.id || '') });
     }, [result.data?.status, cache, user?.id]);
     async function selectFile(selected: File | null) {
-        if (!selected || pending || active.current || assetId || checkpoint?.uploaded) return;
+        if (!selected || busy || active.current || assetId || checkpoint?.uploaded) return;
         const generation = ++version.current;
         setReading(true);
         setError(null);
@@ -111,7 +115,7 @@ export function AssetUploadView({
     }
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (!file || reading || pending || active.current || assetId) return;
+        if (!file || reading || busy || active.current || assetId) return;
         const form = new FormData(event.currentTarget),
             controller = new AbortController();
         active.current = controller;
@@ -150,7 +154,7 @@ export function AssetUploadView({
             if (!onUploaded) setAssetId(uploaded.asset.id);
             void cache.invalidateQueries({ queryKey: assetKeys.lists(user?.id || '') });
             void cache.invalidateQueries({ queryKey: profileKey(user?.id || '') });
-            onUploaded?.(uploaded.processing);
+            onUploaded?.({ processing: uploaded.processing });
         } catch (cause) {
             if (!controller.signal.aborted) setError(errorMessage(cause));
         } finally {
@@ -203,6 +207,7 @@ export function AssetUploadView({
                         onDrop={(event) => {
                             event.preventDefault();
                             setDragging(false);
+                            if (busy) return;
                             if (event.dataTransfer.files.length !== 1) {
                                 toast.error('Mỗi lần tải một tệp. Hãy chọn một tệp để tiếp tục.');
                                 return;
@@ -390,7 +395,7 @@ export function AssetUploadView({
                     </FieldGroup>
                 </div>
             </div>
-            <div className="flex shrink-0 items-center justify-between gap-4 border-border border-t px-6 py-3">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-border border-t px-6 py-3">
                 <p className="text-muted-foreground text-xs">
                     {assetId
                         ? 'Tài nguyên đã lưu trong thư viện của bạn.'
@@ -398,7 +403,7 @@ export function AssetUploadView({
                           ? 'Tệp được lưu vào tài nguyên cá nhân của bạn.'
                           : 'Tải lên trước, sau đó chọn thêm vào trang.'}
                 </p>
-                <div className="flex items-center gap-3">
+                <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
                     {stage && stage !== 'completing' && (
                         <Button variant="ghost" onClick={cancel}>
                             Dừng tải

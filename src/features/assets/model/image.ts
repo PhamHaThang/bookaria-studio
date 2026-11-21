@@ -1,6 +1,7 @@
 import { ContractError } from '../../../shared/api/contract';
 import { checkUploadRequest } from '../../../shared/contracts/api/assets.schema';
 import type { Asset } from '../../../shared/contracts/dto.schema';
+import type { AssetsApi } from '../api/assets-api';
 import { uploadRequest } from './form';
 import { runAssetUpload } from './upload';
 
@@ -24,7 +25,7 @@ export async function saveUploadedImage({
     prepareFile,
     onPreparing,
     ...upload
-}: Parameters<typeof runAssetUpload>[0] & {
+}: Parameters<typeof runAssetUpload<Awaited<ReturnType<AssetsApi['complete']>>>>[0] & {
     purpose: ImagePurpose;
     readyAsset: Asset | null;
     onReady: (asset: Asset) => void;

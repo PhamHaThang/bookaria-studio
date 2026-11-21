@@ -1,5 +1,5 @@
 import { Box, Image as ImageIcon, Music2, Video, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { AssetType } from '@/shared/contracts/enums.schema';
@@ -13,7 +13,7 @@ import {
     DialogTitle,
 } from '@/shared/ui/primitives/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
-import { AssetUploadView } from '../../scene/ui/AssetUploadView';
+import { type AssetUploadCompletion, AssetUploadView } from '../../scene/ui/AssetUploadView';
 import { NavigationGuard } from '../../scene/ui/NavigationGuard';
 
 const types = [
@@ -34,11 +34,8 @@ export function AssetUploadDialog({ backTo = '/assets' }: { backTo?: '/assets' |
     const [busy, setBusy] = useState(false);
     const [dirty, setDirty] = useState(false);
     const [nextType, setNextType] = useState<AssetType | null>(null);
-    const [uploaded, setUploaded] = useState<{ processing: boolean } | null>(null);
+    const [uploaded, setUploaded] = useState<AssetUploadCompletion | null>(null);
     const finished = useRef(false);
-    const complete = useCallback((processing: boolean) => {
-        setUploaded({ processing });
-    }, []);
 
     useEffect(() => {
         if (!uploaded || busy || finished.current) return;
@@ -54,7 +51,7 @@ export function AssetUploadDialog({ backTo = '/assets' }: { backTo?: '/assets' |
 
     function close() {
         if (busy) {
-            toast.info('Hãy đợi tải xong hoặc bấm Dừng tải trước khi đóng.', {
+            toast.info('Hãy đợi tệp xử lý xong trước khi đóng.', {
                 id: 'asset-upload-busy',
             });
             return;
@@ -65,6 +62,18 @@ export function AssetUploadDialog({ backTo = '/assets' }: { backTo?: '/assets' |
         );
     }
 
+    const upload = (
+        <AssetUploadView
+            key={type}
+            type={type}
+            pending={false}
+            onChoose={() => {}}
+            onBack={close}
+            onBusyChange={setBusy}
+            onDirtyChange={setDirty}
+            onUploaded={setUploaded}
+        />
+    );
     return (
         <>
             <Dialog
@@ -86,7 +95,7 @@ export function AssetUploadDialog({ backTo = '/assets' }: { backTo?: '/assets' |
                         });
                     }}
                 >
-                    <div className="flex shrink-0 items-start justify-between gap-6 border-border border-b px-6 py-5">
+                    <div className="flex shrink-0 items-start justify-between gap-3 border-border border-b px-4 py-4 sm:gap-6 sm:px-6 sm:py-5">
                         <DialogHeader>
                             <DialogTitle size="lg" className="m-0">
                                 Tải tài nguyên
@@ -125,16 +134,7 @@ export function AssetUploadDialog({ backTo = '/assets' }: { backTo?: '/assets' |
                             </TabsList>
                         </div>
                         <TabsContent value={type} className="flex min-h-0 flex-1 flex-col">
-                            <AssetUploadView
-                                key={type}
-                                type={type}
-                                pending={false}
-                                onChoose={() => {}}
-                                onBack={close}
-                                onBusyChange={setBusy}
-                                onDirtyChange={setDirty}
-                                onUploaded={complete}
-                            />
+                            {upload}
                         </TabsContent>
                     </Tabs>
                 </DialogContent>

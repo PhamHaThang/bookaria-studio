@@ -4,6 +4,7 @@ import { createAssetsApi } from '../api/assets-api';
 export const assetsApi = createAssetsApi(apiClient);
 export const assetKeys = {
     all: ['assets'] as const,
+    generationJobs: (userId: string) => ['assets', userId, 'generation-jobs'] as const,
     lists: (userId: string) => ['assets', userId, 'list'] as const,
     list: (userId: string, query: object) => ['assets', userId, 'list', query] as const,
     detail: (userId: string, id: string) => ['assets', userId, 'detail', id] as const,

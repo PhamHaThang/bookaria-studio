@@ -9,7 +9,9 @@ import {
     RouterProvider,
     useLocation,
     useMatches,
+    useParams,
 } from 'react-router-dom';
+import { IdSchema } from '@/shared/contracts/common.schema';
 import { FloatingThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
 import { RequireSession, SessionBoundary, useAuth } from '../features/auth';
 import { AuthDialog, LegacyAuthRoute } from '../features/auth/ui/AuthDialog';
@@ -160,9 +162,6 @@ const AssetsPage = lazy(() =>
 const AssetUploadPage = lazy(() =>
     import('../pages/AssetUploadPage').then((module) => ({ default: module.AssetUploadPage })),
 );
-const AssetDetailPage = lazy(() =>
-    import('../pages/AssetDetailPage').then((module) => ({ default: module.AssetDetailPage })),
-);
 const StyleGuidePage = import.meta.env.DEV
     ? lazy(() =>
           import('../pages/StyleGuidePage').then((module) => ({ default: module.StyleGuidePage })),
@@ -215,6 +214,12 @@ function RouterLayout() {
 function LegacyExploreRedirect() {
     const { search, hash } = useLocation();
     return <Navigate to={{ pathname: '/library', search, hash }} replace />;
+}
+
+function LegacyAssetRedirect() {
+    const { assetId } = useParams();
+    const id = IdSchema.safeParse(assetId);
+    return <Navigate to={id.success ? `/assets?asset=${id.data}` : '/assets'} replace />;
 }
 
 const router = createBrowserRouter(
@@ -321,7 +326,11 @@ const router = createBrowserRouter(
                         </Route>
                         <Route path="/assets" element={<AssetsPage />} />
                         <Route path="/assets/upload" element={<AssetUploadPage />} />
-                        <Route path="/assets/:assetId" element={<AssetDetailPage />} />
+                        <Route
+                            path="/assets/generate-3d"
+                            element={<AssetUploadPage generateModel />}
+                        />
+                        <Route path="/assets/:assetId" element={<LegacyAssetRedirect />} />
                     </Route>
                 </Route>
             </Route>

@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Box, Plus } from 'lucide-react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { libraryAssetLocation } from '@/features/assets/model/search';
 import { AssetCatalog } from '@/features/assets/ui/AssetCatalog';
@@ -25,6 +25,15 @@ export function AssetsPage() {
                         key={user?.id}
                         onSaved={() => setParams({ type: 'AUDIO' }, { replace: true })}
                     />
+                    <Button variant="outline" asChild>
+                        <Link
+                            to={{ pathname: '/assets/generate-3d', search: params.toString() }}
+                            aria-haspopup="dialog"
+                        >
+                            <Box data-icon="inline-start" aria-hidden="true" />
+                            Tạo 3D từ ảnh
+                        </Link>
+                    </Button>
                     <Button asChild>
                         <Link
                             to={{ pathname: '/assets/upload', search: params.toString() }}

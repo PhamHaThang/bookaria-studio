@@ -1,12 +1,19 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FolderOpen, RotateCcw, SearchX } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, type NavigateOptions, useSearchParams } from 'react-router-dom';
+import {
+    Link,
+    type NavigateOptions,
+    useLocation,
+    useMatch,
+    useSearchParams,
+} from 'react-router-dom';
 import { assetKeys, assetsApi, readAssetSearch, updateAssetSearch } from '@/features/assets';
 import { LibraryAssetPreview } from '@/features/assets/ui/LibraryAssetPreview';
 import { useAuth } from '@/features/auth';
 import { errorMessage } from '@/shared/api/errors';
 import type { ListAssetsQuery } from '@/shared/contracts/api/assets.schema';
+import { IdSchema } from '@/shared/contracts/common.schema';
 import type { Asset, AssetCategory } from '@/shared/contracts/dto.schema';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/Button';
@@ -158,14 +165,67 @@ function AssetFilters({
 
 export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
     const { user } = useAuth();
+    const userId = user?.id ?? '';
+    const cache = useQueryClient();
+    const { state } = useLocation();
     const [params, setParams] = useSearchParams();
     const scoped = new URLSearchParams(params);
     scoped.set('scope', scope);
     const query = readAssetSearch(scoped);
     const library = scope === 'library';
+    const modelJobs = useQuery({
+        queryKey: assetKeys.generationJobs(userId),
+        queryFn: ({ signal }) => assetsApi.modelGenerations(signal),
+        enabled: Boolean(user && !library),
+        retry: false,
+        refetchInterval: ({ state }) =>
+            state.data?.some((job) => job.status === 'QUEUED' || job.status === 'RUNNING')
+                ? 3000
+                : false,
+    });
+    const completed = (modelJobs.data ?? [])
+        .filter((job) => job.status === 'SUCCEEDED')
+        .map((job) => job.id)
+        .join(',');
+    useEffect(() => {
+        if (completed) void cache.invalidateQueries({ queryKey: assetKeys.lists(userId) });
+    }, [completed, cache, userId]);
+    const generating =
+        !library &&
+        query.page === 1 &&
+        (!query.type || query.type === 'MODEL') &&
+        query.hasAnimation !== true
+            ? (modelJobs.data ?? []).filter(
+                  (job) =>
+                      job.status !== 'SUCCEEDED' &&
+                      (!query.q || job.name.toLowerCase().includes(query.q.toLowerCase())),
+              )
+            : [];
     const searchInput = useRef<HTMLInputElement>(null);
     const results = useRef<HTMLElement>(null);
-    const [preview, setPreview] = useState<Asset | null>(null);
+    const [selected, setPreview] = useState<Asset | null>(null);
+    const personalAssets = useMatch('/assets');
+    const assetId = IdSchema.safeParse(params.get('asset')).data;
+    const linked = useQuery({
+        queryKey: assetKeys.detail(user?.id ?? '', assetId ?? ''),
+        queryFn: ({ signal }) => assetsApi.detail(assetId ?? '', signal),
+        enabled: Boolean(user && !library && personalAssets && assetId),
+        retry: false,
+    });
+    const preview = selected ?? (!library && personalAssets && assetId ? linked.data : undefined);
+    function closePreview() {
+        setPreview(null);
+        if (personalAssets && assetId) {
+            setParams(
+                (current) => {
+                    const next = new URLSearchParams(current);
+                    next.delete('asset');
+                    return next;
+                },
+                { replace: true },
+            );
+        }
+    }
     const listing = useQuery({
         queryKey: assetKeys.list(user?.id || '', query),
         queryFn: ({ signal }) => assetsApi.list(query, signal),
@@ -237,8 +297,24 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                     options={[{ value: 'all', label: 'Tất cả' }, ...assetTypes]}
                     label="Loại tài nguyên"
                     variant="pill"
-                    resultCount={{ total: meta?.total, unit: 'tài nguyên' }}
+                    resultCount={{
+                        total: meta?.total,
+                        unit: generating.length
+                            ? `tài nguyên · ${generating.length} tác vụ tạo 3D`
+                            : 'tài nguyên',
+                    }}
                 />
+            )}
+            {personalAssets && assetId && linked.isError && (
+                <Feedback error="Chưa mở được tài nguyên từ liên kết." />
+            )}
+            {!library && modelJobs.isError && (
+                <div className="mb-6 flex flex-wrap items-start gap-3 [&_.feedback]:m-0">
+                    <Feedback error="Chưa tải được tiến độ tạo 3D." />
+                    <Button variant="outline" size="sm" onClick={() => void modelJobs.refetch()}>
+                        Tải lại tiến độ
+                    </Button>
+                </div>
             )}
             {query.scope === 'library' && categories.isError && (
                 <div className="mb-6 flex flex-wrap items-start gap-3 [&_.feedback]:m-0">
@@ -253,6 +329,16 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                         Tải lại danh mục
                     </Button>
                 </div>
+            )}
+            {(listing.isPending || listing.isError) && generating.length > 0 && (
+                <AssetCardGrid
+                    assets={[]}
+                    busy={modelJobs.isFetching}
+                    onPreview={setPreview}
+                    scope={scope}
+                    generating={generating}
+                    focusModelJob={state?.focusModelJob}
+                />
             )}
             {listing.isPending ? (
                 <AssetCardGridSkeleton scope={scope} />
@@ -377,7 +463,7 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                                 onPreview={setPreview}
                             />
                         </div>
-                    ) : listing.data.data.length === 0 ? (
+                    ) : listing.data.data.length === 0 && generating.length === 0 ? (
                         <Empty className="empty-state px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
                             <EmptyHeader>
                                 <EmptyMedia>
@@ -436,6 +522,8 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                         <AssetCardGrid
                             scope={scope}
                             assets={listing.data.data}
+                            generating={generating}
+                            focusModelJob={state?.focusModelJob}
                             busy={listing.isFetching}
                             onPreview={setPreview}
                         />
@@ -462,7 +550,7 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
             )}
             {preview &&
                 (scope === 'mine' ? (
-                    <PersonalAssetDialog asset={preview} onClose={() => setPreview(null)} />
+                    <PersonalAssetDialog key={preview.id} asset={preview} onClose={closePreview} />
                 ) : (
                     <LibraryAssetPreview asset={preview} onClose={() => setPreview(null)} />
                 ))}

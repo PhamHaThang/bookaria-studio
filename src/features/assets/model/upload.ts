@@ -20,7 +20,7 @@ type Transfer = (
 ) => Promise<void>;
 
 /** Retry uncertain completions against the same immutable upload. */
-export async function runAssetUpload({
+export async function runAssetUpload<Completion>({
     api,
     transfer,
     file,
@@ -32,7 +32,14 @@ export async function runAssetUpload({
     onProgress,
     purpose = 'ASSET',
 }: {
-    api: Pick<AssetsApi, 'signature' | 'complete'>;
+    api: {
+        signature: AssetsApi['signature'];
+        complete: (
+            id: string,
+            metadata: CompleteAssetBody,
+            signal: AbortSignal,
+        ) => Promise<Completion>;
+    };
     transfer: Transfer;
     file: File;
     metadata: CompleteAssetBody;
@@ -41,7 +48,7 @@ export async function runAssetUpload({
     onCheckpoint: (checkpoint: UploadCheckpoint | null) => void;
     onStage: (stage: UploadStage) => void;
     onProgress: (percent: number) => void;
-    purpose?: 'ASSET' | 'AVATAR' | 'PAGE_IMAGE';
+    purpose?: Parameters<typeof uploadRequest>[1];
 }) {
     const request = uploadRequest(file, purpose);
     signal.throwIfAborted();

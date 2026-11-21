@@ -19,7 +19,7 @@ const fallbackMime: Record<string, string> = {
 };
 export function uploadRequest(
     file: Pick<File, 'name' | 'type' | 'size'>,
-    purpose: 'ASSET' | 'AVATAR' | 'PAGE_IMAGE' = 'ASSET',
+    purpose: 'ASSET' | 'AVATAR' | 'PAGE_IMAGE' | 'MODEL_INPUT' = 'ASSET',
 ) {
     if (file.size === 0) throw new Error('Tệp trống. Hãy chọn tệp có nội dung.');
     const mimeType =
@@ -35,7 +35,7 @@ export function uploadRequest(
         throw new Error(
             check.code === 'FILE_TOO_LARGE'
                 ? `Tệp vượt giới hạn ${formatBytes(check.maxBytes || 0)} cho loại tài nguyên này.`
-                : purpose === 'PAGE_IMAGE'
+                : purpose === 'PAGE_IMAGE' || purpose === 'MODEL_INPUT'
                   ? 'Ảnh trang chỉ hỗ trợ JPG hoặc PNG.'
                   : 'Chọn GLB/GLTF, JPG/PNG/WebP, MP3/WAV hoặc MP4.',
         );

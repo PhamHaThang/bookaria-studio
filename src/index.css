@@ -67,4 +67,5 @@
     --color-danger-foreground: var(--status-danger-text);
     --color-info: var(--status-info-bg);
     --color-info-foreground: var(--status-info-text);
+    --color-processing: var(--status-processing);
 }

@@ -635,7 +635,7 @@ export function NarrationGenerator({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            {guardNavigation && (
+            {guardNavigation && open && (
                 <NavigationGuard
                     dirty={Boolean(generated)}
                     saving={Boolean(stage)}

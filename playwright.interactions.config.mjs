@@ -11,6 +11,7 @@ export default defineConfig({
         'cover-upload.spec.mjs',
         'editor-pages.spec.mjs',
         'assets-narration.spec.mjs',
+        'assets-generate-3d.spec.mjs',
         'interaction-repair.spec.mjs',
         'marker-dialog-layout.spec.mjs',
         'transform-edit.spec.mjs',
