@@ -1,4 +1,4 @@
-import { ChartColumn, FolderOpen, LayoutDashboard, Library, Palette, Trash2 } from 'lucide-react';
+import { ChartColumn, FolderOpen, LayoutDashboard, Library, Trash2 } from 'lucide-react';
 import { Suspense } from 'react';
 import { Link, matchPath, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
@@ -24,7 +24,6 @@ const destinations = [
     { to: '/assets', label: 'Tài nguyên', icon: FolderOpen },
     { to: '/stats', label: 'Thống kê', icon: ChartColumn },
     { to: '/books/trash', label: 'Thùng rác', icon: Trash2 },
-    ...(import.meta.env.DEV ? [{ to: '/style-guide', label: 'Giao diện mẫu', icon: Palette }] : []),
 ];
 
 const navButtonClass = 'h-10 justify-center px-2 md:justify-start md:gap-3 md:px-3';

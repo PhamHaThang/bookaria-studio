@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { LogOut, PanelsTopLeft, ShieldCheck, UserRound } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { auth, useAuth } from '@/features/auth/model/session';
 import { NotificationsPopover } from '@/features/notifications/NotificationsPopover';
 import { profileApi, profileKey } from '@/features/profile';
@@ -11,6 +11,7 @@ import type { Me } from '@/shared/contracts/dto.schema';
 import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
 import { Avatar } from '@/shared/ui/Avatar';
+import { AvatarBadge } from '@/shared/ui/primitives/avatar';
 import { Button } from '@/shared/ui/primitives/button';
 import {
     DropdownMenu,
@@ -18,21 +19,22 @@ import {
     DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/shared/ui/primitives/dropdown-menu';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { getStudioSection } from './studio-navigation';
 
 type Panel = 'account' | 'notifications' | null;
-type AccountVariant = 'full' | 'compact';
+type AccountVariant = 'full' | 'compact' | 'menu';
 
 function SignedInActions({
     user,
     variant,
+    children,
 }: {
     user: AuthUser & Partial<Pick<Me, 'avatarUrl'>>;
     variant: AccountVariant;
+    children?: ReactNode;
 }) {
     const [panel, setPanel] = useState<Panel>(null);
     const [error, setError] = useState<string | null>(null);
@@ -45,7 +47,7 @@ function SignedInActions({
 
     useEffect(() => () => clearTimeout(timer.current), []);
     useEffect(() => {
-        if (params.get('notifications') !== 'open') return;
+        if (variant === 'menu' || params.get('notifications') !== 'open') return;
         setPanel('notifications');
         setParams(
             (current) => {
@@ -55,7 +57,7 @@ function SignedInActions({
             },
             { replace: true },
         );
-    }, [params, setParams]);
+    }, [params, setParams, variant]);
 
     function changePanel(name: Exclude<Panel, null>, open: boolean) {
         clearTimeout(timer.current);
@@ -81,6 +83,61 @@ function SignedInActions({
         }
     }
 
+    const accountMenuItems = (
+        <>
+            <DropdownMenuGroup>
+                <DropdownMenuLabel className="flex items-center gap-3 px-3 py-2 [&_[data-slot=avatar]]:size-10">
+                    <Avatar url={user.avatarUrl || null} name={user.displayName} />
+                    <span className="min-w-0">
+                        <span className="wrap-anywhere block font-semibold text-foreground text-sm">
+                            {user.displayName}
+                        </span>
+                        <span className="wrap-anywhere mt-1 block font-normal text-muted-foreground text-xs">
+                            {user.email}
+                        </span>
+                    </span>
+                </DropdownMenuLabel>
+            </DropdownMenuGroup>
+            {children}
+            <DropdownMenuGroup className="space-y-1">
+                <DropdownMenuItem asChild disabled={signingOut}>
+                    <NavLink to="/profile" onClick={() => changePanel('account', false)}>
+                        <UserRound aria-hidden="true" />
+                        Hồ sơ
+                    </NavLink>
+                </DropdownMenuItem>
+                {user.role === 'ADMIN' && (
+                    <DropdownMenuItem asChild disabled={signingOut}>
+                        <NavLink to="/admin" onClick={() => changePanel('account', false)}>
+                            <ShieldCheck aria-hidden="true" />
+                            Quản trị
+                        </NavLink>
+                    </DropdownMenuItem>
+                )}
+            </DropdownMenuGroup>
+            <DropdownMenuGroup>
+                {error && (
+                    <DropdownMenuLabel>
+                        <Alert tone="danger">{error}</Alert>
+                    </DropdownMenuLabel>
+                )}
+                <DropdownMenuItem
+                    variant="destructive"
+                    disabled={signingOut}
+                    onSelect={(event) => {
+                        event.preventDefault();
+                        void logout();
+                    }}
+                >
+                    {signingOut ? <Spinner aria-hidden="true" /> : <LogOut aria-hidden="true" />}
+                    {signingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}
+                </DropdownMenuItem>
+            </DropdownMenuGroup>
+        </>
+    );
+
+    if (variant === 'menu') return accountMenuItems;
+
     return (
         <div
             className={cn(
@@ -90,7 +147,6 @@ function SignedInActions({
         >
             <NotificationsPopover
                 userId={user.id}
-                triggerVariant={variant === 'compact' ? 'utility' : 'ghost'}
                 open={panel === 'notifications'}
                 preventCloseFocus={panel === 'account'}
                 onOpenChange={(open) => changePanel('notifications', open)}
@@ -103,13 +159,13 @@ function SignedInActions({
                 <DropdownMenuTrigger asChild>
                     <Button
                         type="button"
-                        variant={variant === 'compact' ? 'utility' : 'ghost'}
+                        variant="ghost"
                         size={variant === 'compact' ? 'icon' : 'default'}
                         className={cn(
                             'group/account',
                             variant === 'full'
                                 ? 'max-w-68 justify-start gap-3 px-2 py-1.5 focus-visible:bg-hover focus-visible:text-foreground data-[state=open]:bg-hover data-[state=open]:text-foreground'
-                                : 'rounded-full p-1 [&_[data-slot=avatar]]:after:border-0',
+                                : 'relative size-10 rounded-full p-0 max-lg:hidden [&_[data-slot=avatar]]:size-10 [&_[data-slot=avatar]]:after:border-0',
                         )}
                         data-account-variant={variant}
                         aria-label={`Tài khoản của ${user.displayName}`}
@@ -143,7 +199,13 @@ function SignedInActions({
                             }
                         }}
                     >
-                        <Avatar url={user.avatarUrl || null} transparent={variant === 'compact'} />
+                        <Avatar url={user.avatarUrl || null} name={user.displayName} />
+                        {variant === 'compact' && (
+                            <AvatarBadge
+                                className="size-2.5 bg-success-solid ring-surface"
+                                aria-hidden="true"
+                            />
+                        )}
                         {variant === 'full' && (
                             <span className="min-w-0 text-left max-sm:hidden" aria-hidden="true">
                                 <span className="block truncate font-semibold text-sm">
@@ -160,7 +222,10 @@ function SignedInActions({
                     ref={menu}
                     align="end"
                     sideOffset={8}
-                    className="w-64 max-w-[calc(100vw-32px)]"
+                    className={cn(
+                        'w-72 max-w-[calc(100vw-32px)] space-y-1 p-2 [&_[data-slot=dropdown-menu-item]]:gap-3 [&_[data-slot=dropdown-menu-item]]:rounded-lg [&_[data-slot=dropdown-menu-item]]:px-3',
+                        variant === 'compact' && 'max-lg:hidden',
+                    )}
                     aria-label="Menu tài khoản"
                     onPointerEnter={() => clearTimeout(timer.current)}
                     onPointerLeave={leave}
@@ -172,56 +237,7 @@ function SignedInActions({
                         if (hover.current || panel === 'notifications') event.preventDefault();
                     }}
                 >
-                    <DropdownMenuGroup>
-                        <DropdownMenuLabel>
-                            <span className="wrap-anywhere block font-semibold">
-                                {user.displayName}
-                            </span>
-                            <span className="wrap-anywhere mt-1 block font-normal text-muted-foreground">
-                                {user.email}
-                            </span>
-                        </DropdownMenuLabel>
-                    </DropdownMenuGroup>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                        <DropdownMenuItem asChild disabled={signingOut}>
-                            <Link to="/profile" onClick={() => changePanel('account', false)}>
-                                <UserRound aria-hidden="true" />
-                                Hồ sơ
-                            </Link>
-                        </DropdownMenuItem>
-                        {user.role === 'ADMIN' && (
-                            <DropdownMenuItem asChild disabled={signingOut}>
-                                <Link to="/admin" onClick={() => changePanel('account', false)}>
-                                    <ShieldCheck aria-hidden="true" />
-                                    Quản trị
-                                </Link>
-                            </DropdownMenuItem>
-                        )}
-                    </DropdownMenuGroup>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                        {error && (
-                            <DropdownMenuLabel>
-                                <Alert tone="danger">{error}</Alert>
-                            </DropdownMenuLabel>
-                        )}
-                        <DropdownMenuItem
-                            variant="destructive"
-                            disabled={signingOut}
-                            onSelect={(event) => {
-                                event.preventDefault();
-                                void logout();
-                            }}
-                        >
-                            {signingOut ? (
-                                <Spinner aria-hidden="true" />
-                            ) : (
-                                <LogOut aria-hidden="true" />
-                            )}
-                            {signingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}
-                        </DropdownMenuItem>
-                    </DropdownMenuGroup>
+                    {accountMenuItems}
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
@@ -231,9 +247,11 @@ function SignedInActions({
 export function HeaderAccountActions({
     variant = 'full',
     showStudio = false,
+    children,
 }: {
     variant?: AccountVariant;
     showStudio?: boolean;
+    children?: ReactNode;
 }) {
     const { user } = useAuth();
     const { pathname } = useLocation();
@@ -245,27 +263,33 @@ export function HeaderAccountActions({
         refetchOnWindowFocus: false,
     });
     const account = profile.data?.id === user?.id ? profile.data : user;
+    if (variant === 'menu')
+        return account ? (
+            <SignedInActions user={account} variant="menu">
+                {children}
+            </SignedInActions>
+        ) : null;
+
     return account ? (
         <div className="flex items-center gap-3 max-sm:gap-2">
-            <SignedInActions key={`${account.id}:${pathname}`} user={account} variant={variant} />
             {showStudio && (
-                <Button asChild size="sm" className="min-h-10 max-sm:px-2">
+                <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="studio-entry hidden min-h-10 rounded-full border-transparent px-4 lg:inline-flex"
+                >
                     <Link
                         to="/studio"
                         aria-label="Studio Editor"
                         aria-current={getStudioSection(pathname) ? 'page' : undefined}
                     >
-                        <PanelsTopLeft
-                            data-icon="inline-start"
-                            aria-hidden="true"
-                            className="max-[360px]:hidden"
-                        />
-                        <span>
-                            Studio<span className="max-sm:hidden"> Editor</span>
-                        </span>
+                        <PanelsTopLeft data-icon="inline-start" aria-hidden="true" />
+                        <span>Studio Editor</span>
                     </Link>
                 </Button>
             )}
+            <SignedInActions key={`${account.id}:${pathname}`} user={account} variant={variant} />
         </div>
     ) : null;
 }

@@ -5,6 +5,8 @@ for (const [width, theme, failOnce] of [
     [1440, 'light', true],
     [1440, 'dark', false],
     [390, 'light', false],
+    [1023, 'light', false],
+    [1024, 'light', false],
 ]) {
     test(`notifications scroll, filter, mark read and recover from errors: ${theme} ${width}`, async ({
         page,
@@ -15,7 +17,8 @@ for (const [width, theme, failOnce] of [
             calls = [],
             reads = [];
         let failedPage = false,
-            failedRead = false;
+            failedRead = false,
+            logoutCalls = 0;
         let rows = Array.from({ length: 33 }, (_, i) => ({
             id: `22222222-2222-4222-8222-${String(i + 1).padStart(12, '0')}`,
             type: i % 4 === 0 ? 'JOB_FAILED' : 'JOB_SUCCEEDED',
@@ -47,6 +50,15 @@ for (const [width, theme, failOnce] of [
                 return route.fulfill({
                     json: { data: { accessToken: 'test-token', expiresIn: 3600 } },
                 });
+            if (path.endsWith('/auth/logout')) {
+                logoutCalls++;
+                return logoutCalls === 1
+                    ? route.fulfill({
+                          status: 500,
+                          json: { error: { message: 'Chưa đăng xuất được.' } },
+                      })
+                    : route.fulfill({ status: 204 });
+            }
             if (path.endsWith('/me')) return route.fulfill({ json: { data: me } });
             if (path.endsWith('/me/notifications/read')) {
                 const body = req.postDataJSON();
@@ -93,7 +105,44 @@ for (const [width, theme, failOnce] of [
             return route.fulfill({ status: 404, json: { error: { code: 'NOT_FOUND' } } });
         });
         await page.goto('/help');
+        const account = page.getByRole('button', { name: `Tài khoản của ${me.displayName}` });
+        if (width >= 1024) {
+            await expect(account.locator('[data-slot="avatar-fallback"]')).toHaveText('NA');
+        } else {
+            await expect(account).toBeHidden();
+            await page.getByRole('button', { name: 'Mở điều hướng', exact: true }).click();
+            const mobileMenu = page.getByRole('menu');
+            for (const name of [
+                'Trang chủ',
+                'Khám phá sách',
+                'Thư viện tài nguyên',
+                'Hướng dẫn',
+                'Studio Editor',
+                'Hồ sơ',
+                'Đăng xuất',
+            ]) {
+                await expect(mobileMenu.getByRole('menuitem', { name, exact: true })).toBeVisible();
+            }
+            await expect(mobileMenu.getByText(me.displayName, { exact: true })).toBeVisible();
+            await expect(mobileMenu.locator('[aria-current="page"]')).toHaveText('Hướng dẫn');
+            await mobileMenu.getByRole('menuitem', { name: 'Hướng dẫn', exact: true }).click();
+            await expect(mobileMenu).toBeHidden();
+        }
         const bell = page.locator('header.site-header').getByRole('button', { name: /^Thông báo/ });
+        await expect(bell.locator('[data-variant="dot"]')).toBeVisible();
+        const [bellIcon, unreadDot] = await Promise.all([
+            bell.locator('svg').boundingBox(),
+            bell.locator('[data-variant="dot"]').boundingBox(),
+        ]);
+        assert.equal(bellIcon.width, 22);
+        assert(
+            unreadDot.x + unreadDot.width / 2 >= bellIcon.x &&
+                unreadDot.x + unreadDot.width / 2 <= bellIcon.x + bellIcon.width,
+        );
+        assert(
+            unreadDot.y + unreadDot.height / 2 >= bellIcon.y &&
+                unreadDot.y + unreadDot.height / 2 <= bellIcon.y + bellIcon.height,
+        );
         await bell.click();
         const dialog = page.getByRole('dialog', { name: 'Thông báo', exact: true });
         const list = dialog.getByRole('list', { name: 'Danh sách thông báo' });
@@ -162,6 +211,34 @@ for (const [width, theme, failOnce] of [
         ).toBeVisible();
         await expect(bell.locator('[data-variant="dot"]')).toHaveCount(0);
         await expect(bell).toHaveAttribute('aria-label', 'Thông báo, 0 chưa đọc');
+        if (width < 1024) {
+            await page.keyboard.press('Escape');
+            await page.getByRole('button', { name: 'Mở điều hướng', exact: true }).click();
+            const menu = page.getByRole('menu');
+            await expect(menu.locator('[aria-current="page"]')).toHaveText('Hồ sơ');
+            await menu.getByRole('menuitem', { name: 'Đăng xuất', exact: true }).click();
+            await expect(menu.getByRole('alert')).toBeVisible();
+            await expect(
+                menu.getByRole('menuitem', { name: 'Đăng xuất', exact: true }),
+            ).toBeEnabled();
+            await menu.getByRole('menuitem', { name: 'Đăng xuất', exact: true }).click();
+            await expect(page).toHaveURL(/\/$/);
+            await expect(menu).toBeHidden();
+            await expect(
+                page
+                    .locator('header.site-header')
+                    .getByRole('link', { name: 'Đăng nhập', exact: true }),
+            ).toBeHidden();
+            await page.getByRole('button', { name: 'Mở điều hướng', exact: true }).click();
+            const guestMenu = page.getByRole('menu');
+            await expect(
+                guestMenu.getByRole('menuitem', { name: 'Đăng nhập', exact: true }),
+            ).toBeVisible();
+            await expect(
+                guestMenu.getByRole('menuitem', { name: 'Đăng ký', exact: true }),
+            ).toBeVisible();
+            assert.equal(logoutCalls, 2);
+        }
         assert.deepEqual(errors, []);
     });
 }

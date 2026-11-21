@@ -225,7 +225,7 @@ function ARBookIllustration() {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="min-h-11 gap-2 rounded-full border-foreground/20 bg-[color-mix(in_srgb,var(--bg-surface)_88%,transparent)] font-medium shadow-lg backdrop-blur-[0.8rem] hover:not-disabled:bg-surface hover:not-disabled:shadow-xl motion-safe:animate-[touch-float_3s_ease-in-out_var(--motion-iterations)] motion-safe:transition-[background-color,box-shadow] data-[state=open]:[animation-play-state:paused]"
+                                            className="min-h-11 gap-2 rounded-full border-foreground/20 bg-[color-mix(in_srgb,var(--bg-surface)_78%,transparent)] font-medium shadow-lg backdrop-blur-[0.8rem] hover:not-disabled:bg-[color-mix(in_srgb,var(--bg-surface)_88%,transparent)] hover:not-disabled:shadow-xl motion-safe:animate-[touch-float_3s_ease-in-out_var(--motion-iterations)] motion-safe:transition-[background-color,box-shadow] dark:bg-[color-mix(in_srgb,var(--bg-surface)_88%,transparent)] dark:hover:not-disabled:bg-surface data-[state=open]:[animation-play-state:paused]"
                                             aria-label="Chạm thử: khám phá đại dương"
                                         >
                                             <span
