@@ -77,6 +77,10 @@ interface AdminJobItemProps {
 function AdminJobItem({ job, onRetry, retryDisabled }: AdminJobItemProps) {
     const statusTone = getJobStatusTone(job.status);
     const canRetry = canRetryJob(job);
+    const error =
+        job.type === 'GENERATE_MODEL' && job.error
+            ? { ...job.error, code: job.error.code.replace(/^RUNPOD_/, 'MODEL_SERVICE_') }
+            : job.error;
 
     return (
         <li className="group rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-all hover:border-primary/40 hover:shadow-xs space-y-4">
@@ -176,10 +180,10 @@ function AdminJobItem({ job, onRetry, retryDisabled }: AdminJobItemProps) {
             </div>
 
             {/* Hàng 3: Khối thông báo lỗi (nếu có) */}
-            {job.error && (
+            {error && (
                 <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
-                    <span className="font-semibold">Lỗi {job.error.code}:</span>{' '}
-                    <span className="font-mono whitespace-pre-wrap">{job.error.message}</span>
+                    <span className="font-semibold">Lỗi {error.code}:</span>{' '}
+                    <span className="font-mono whitespace-pre-wrap">{error.message}</span>
                 </div>
             )}
 
@@ -192,7 +196,7 @@ function AdminJobItem({ job, onRetry, retryDisabled }: AdminJobItemProps) {
                         status: job.status,
                         ref: job.ref,
                         result: job.result,
-                        error: job.error,
+                        error,
                     }}
                 />
             </Disclosure>

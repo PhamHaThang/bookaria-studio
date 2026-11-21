@@ -36,6 +36,7 @@ export const operationsKeys = {
 export const jobTypeLabel: Record<JobType, string> = {
     SCORE_MARKER: 'Chấm điểm marker',
     OPTIMIZE_ASSET: 'Tối ưu tài nguyên',
+    GENERATE_MODEL: 'Tạo 3D từ ảnh',
     BUILD_PREVIEW: 'Tạo bản xem thử',
     EXPORT_PDF: 'Xuất PDF',
     PUBLISH_BOOK: 'Xuất bản sách',
@@ -60,4 +61,5 @@ export function auditTargetLink(type: AuditTargetType, id: string) {
     return `/admin/audit-logs?${new URLSearchParams({ targetType: type, targetId: id })}`;
 }
 // Eligibility also depends on target ownership/state and concurrent jobs, checked by the server.
-export const canRetryJob = (job: AdminJob) => job.status === 'FAILED' && job.createdBy !== null;
+export const canRetryJob = (job: AdminJob) =>
+    job.status === 'FAILED' && job.createdBy !== null && job.type !== 'GENERATE_MODEL';
