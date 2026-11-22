@@ -400,77 +400,77 @@ export function AdminUsersPage() {
                     </Field>
 
                     {/* Lọc theo Vai trò */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="admin-user-role" className="font-medium text-xs">
                             Vai trò
-                            <SelectFilter
-                                name="role"
-                                id="admin-user-role"
-                                value={query.role || ''}
-                                options={[
-                                    { value: '', label: 'Tất cả vai trò' },
-                                    { value: 'AUTHOR', label: 'Tác giả' },
-                                    { value: 'ADMIN', label: 'Quản trị viên' },
-                                ]}
-                            />
                         </FieldLabel>
+                        <SelectFilter
+                            name="role"
+                            id="admin-user-role"
+                            value={query.role || ''}
+                            options={[
+                                { value: '', label: 'Tất cả vai trò' },
+                                { value: 'AUTHOR', label: 'Tác giả' },
+                                { value: 'ADMIN', label: 'Quản trị viên' },
+                            ]}
+                        />
                     </Field>
 
                     {/* Lọc theo Trạng thái */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="admin-user-status" className="font-medium text-xs">
                             Trạng thái
-                            <SelectFilter
-                                name="status"
-                                id="admin-user-status"
-                                value={query.status || ''}
-                                options={[
-                                    { value: '', label: 'Tất cả trạng thái' },
-                                    { value: 'ACTIVE', label: 'Đang hoạt động' },
-                                    { value: 'LOCKED', label: 'Đã khóa' },
-                                ]}
-                            />
                         </FieldLabel>
+                        <SelectFilter
+                            name="status"
+                            id="admin-user-status"
+                            value={query.status || ''}
+                            options={[
+                                { value: '', label: 'Tất cả trạng thái' },
+                                { value: 'ACTIVE', label: 'Đang hoạt động' },
+                                { value: 'LOCKED', label: 'Đã khóa' },
+                            ]}
+                        />
                     </Field>
 
                     {/* Sắp xếp */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="admin-user-sort" className="font-medium text-xs">
                             Sắp xếp
-                            <SelectFilter
-                                name="sort"
-                                id="admin-user-sort"
-                                value={query.sort}
-                                options={[
-                                    { value: '-createdAt', label: 'Mới nhất trước' },
-                                    { value: 'createdAt', label: 'Cũ nhất trước' },
-                                    { value: 'displayName', label: 'Tên A–Z' },
-                                    { value: '-displayName', label: 'Tên Z–A' },
-                                    { value: 'email', label: 'Email A–Z' },
-                                    { value: '-email', label: 'Email Z–A' },
-                                    { value: '-storageUsedBytes', label: 'Dung lượng nhiều nhất' },
-                                    { value: 'storageUsedBytes', label: 'Dung lượng ít nhất' },
-                                ]}
-                            />
                         </FieldLabel>
+                        <SelectFilter
+                            name="sort"
+                            id="admin-user-sort"
+                            value={query.sort}
+                            options={[
+                                { value: '-createdAt', label: 'Mới nhất trước' },
+                                { value: 'createdAt', label: 'Cũ nhất trước' },
+                                { value: 'displayName', label: 'Tên A–Z' },
+                                { value: '-displayName', label: 'Tên Z–A' },
+                                { value: 'email', label: 'Email A–Z' },
+                                { value: '-email', label: 'Email Z–A' },
+                                { value: '-storageUsedBytes', label: 'Dung lượng nhiều nhất' },
+                                { value: 'storageUsedBytes', label: 'Dung lượng ít nhất' },
+                            ]}
+                        />
                     </Field>
 
                     {/* Số lượng / trang */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="admin-user-limit" className="font-medium text-xs">
                             Hiển thị
-                            <SelectFilter
-                                name="limit"
-                                id="admin-user-limit"
-                                value={String(query.limit)}
-                                options={[
-                                    { value: '5', label: '5 tài khoản / trang' },
-                                    { value: '10', label: '10 tài khoản / trang' },
-                                    { value: '12', label: '12 tài khoản / trang' },
-                                    { value: '20', label: '20 tài khoản / trang' },
-                                ]}
-                            />
                         </FieldLabel>
+                        <SelectFilter
+                            name="limit"
+                            id="admin-user-limit"
+                            value={String(query.limit)}
+                            options={[
+                                { value: '5', label: '5 tài khoản / trang' },
+                                { value: '10', label: '10 tài khoản / trang' },
+                                { value: '12', label: '12 tài khoản / trang' },
+                                { value: '20', label: '20 tài khoản / trang' },
+                            ]}
+                        />
                     </Field>
                 </FieldGroup>
 

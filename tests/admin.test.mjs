@@ -262,11 +262,12 @@ test('moderation actions require takedown reason and validate each response shap
     status = 202;
     await assert.rejects(() => api.dismiss(id, {}), ContractError);
 });
-test('dashboard accepts honest zero metrics and refuses malformed aggregates', async () => {
+test('dashboard separates account and library storage and refuses malformed aggregates', async () => {
     let data = {
         users: 0,
         publishedBooks: 0,
         storageUsedBytes: 0,
+        libraryStorageUsedBytes: 0,
         failedJobs24h: 0,
         openReports: 0,
         publishedPerDay: [],
@@ -274,6 +275,13 @@ test('dashboard accepts honest zero metrics and refuses malformed aggregates', a
     };
     const http = axios.create({ adapter: async (config) => response(config, { data }) });
     assert.equal((await createAdminApi(http).dashboard()).users, 0);
+    data = { ...data, storageUsedBytes: 10275143, libraryStorageUsedBytes: 2097152 };
+    const dashboard = await createAdminApi(http).dashboard();
+    assert.equal(dashboard.storageUsedBytes, 10275143);
+    assert.equal(dashboard.libraryStorageUsedBytes, 2097152);
+    data = { ...data, libraryStorageUsedBytes: -1 };
+    await assert.rejects(() => createAdminApi(http).dashboard(), ContractError);
+    data = { ...data, libraryStorageUsedBytes: 0 };
     data = { ...data, users: -1 };
     await assert.rejects(() => createAdminApi(http).dashboard(), ContractError);
 });

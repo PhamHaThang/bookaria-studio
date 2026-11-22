@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { LogOut, PanelsTopLeft, ShieldCheck, UserRound } from 'lucide-react';
+import { ChevronDown, LogOut, PanelsTopLeft, ShieldCheck, UserRound } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { auth, useAuth } from '@/features/auth/model/session';
@@ -139,12 +139,7 @@ function SignedInActions({
     if (variant === 'menu') return accountMenuItems;
 
     return (
-        <div
-            className={cn(
-                'header-account-actions flex items-center',
-                variant === 'compact' ? 'gap-3 max-sm:gap-2' : 'gap-2',
-            )}
-        >
+        <div className="header-account-actions flex items-center gap-3 max-sm:gap-2">
             <NotificationsPopover
                 userId={user.id}
                 open={panel === 'notifications'}
@@ -164,7 +159,7 @@ function SignedInActions({
                         className={cn(
                             'group/account',
                             variant === 'full'
-                                ? 'max-w-68 justify-start gap-3 px-2 py-1.5 focus-visible:bg-hover focus-visible:text-foreground data-[state=open]:bg-hover data-[state=open]:text-foreground'
+                                ? 'h-11 max-w-60 justify-start gap-2.5 rounded-xl px-2 py-0.5 focus-visible:bg-hover focus-visible:text-foreground data-[state=open]:bg-hover data-[state=open]:text-foreground max-sm:size-11 max-sm:p-0.5 [&_[data-slot=avatar]]:size-9'
                                 : 'relative size-10 rounded-full p-0 max-lg:hidden [&_[data-slot=avatar]]:size-10 [&_[data-slot=avatar]]:after:border-0',
                         )}
                         data-account-variant={variant}
@@ -208,13 +203,19 @@ function SignedInActions({
                         )}
                         {variant === 'full' && (
                             <span className="min-w-0 text-left max-sm:hidden" aria-hidden="true">
-                                <span className="block truncate font-semibold text-sm">
+                                <span className="block truncate font-semibold text-sm leading-tight">
                                     {user.displayName}
                                 </span>
                                 <span className="mt-0.5 block truncate font-normal text-muted-foreground text-xs transition-colors group-hover/account:text-foreground group-focus-visible/account:text-foreground group-data-[state=open]/account:text-foreground">
                                     {user.email}
                                 </span>
                             </span>
+                        )}
+                        {variant === 'full' && (
+                            <ChevronDown
+                                className="size-3.5 text-muted-foreground transition-transform duration-150 group-data-[state=open]/account:rotate-180 motion-reduce:transition-none max-sm:hidden"
+                                aria-hidden="true"
+                            />
                         )}
                     </Button>
                 </DropdownMenuTrigger>

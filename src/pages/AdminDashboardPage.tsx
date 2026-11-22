@@ -143,7 +143,7 @@ export function AdminDashboardPage() {
             title: 'Thư viện dùng chung',
             description: 'Kho tài nguyên 3D, sticker và âm thanh dùng chung cho toàn bộ tác giả.',
             icon: LibraryBig,
-            badge: bytesLabel(data.storageUsedBytes),
+            badge: bytesLabel(data.libraryStorageUsedBytes),
             badgeTone: 'neutral' as BadgeTone,
             color: 'text-purple-600 bg-purple-500/10 dark:text-purple-400',
         },
@@ -248,11 +248,11 @@ export function AdminDashboardPage() {
 
                 {/* 3. Dung lượng lưu trữ */}
                 <Link
-                    to="/admin/library"
+                    to="/admin/users?sort=-storageUsedBytes"
                     className="group rounded-[var(--radius-lg)] border border-border bg-surface p-4 transition-all hover:border-primary/40 hover:bg-muted/30 hover:shadow-xs"
                 >
                     <div className="flex items-center justify-between text-muted-foreground">
-                        <span className="font-medium text-xs">Lưu trữ đã dùng</span>
+                        <span className="font-medium text-xs">Lưu trữ tài khoản</span>
                         <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-purple-500/10 text-purple-600 dark:text-purple-400">
                             <HardDrive className="h-4 w-4" />
                         </div>
@@ -263,7 +263,9 @@ export function AdminDashboardPage() {
                         </span>
                         <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                     </div>
-                    <p className="mt-1 text-muted-foreground text-xs">Tài nguyên & bản in</p>
+                    <p className="mt-1 text-muted-foreground text-xs">
+                        Tổng dung lượng các tài khoản
+                    </p>
                 </Link>
 
                 {/* 4. Báo cáo chờ xử lý */}
@@ -339,7 +341,7 @@ export function AdminDashboardPage() {
                             {data.failedJobs24h > 0 ? 'Kiểm tra' : 'Tốt'}
                         </Badge>
                     </div>
-                    <p className="mt-1 text-muted-foreground text-xs">Worker background jobs</p>
+                    <p className="mt-1 text-muted-foreground text-xs">Tác vụ nền</p>
                 </Link>
             </div>
 

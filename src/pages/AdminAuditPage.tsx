@@ -54,11 +54,11 @@ function AdminAuditItem({ log, onViewDetails }: AdminAuditItemProps) {
     const actionTone = getAuditActionTone(log.action);
 
     return (
-        <li className="group rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-all hover:border-primary/40 hover:shadow-xs space-y-3.5">
+        <li className="group space-y-3.5 rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-all hover:border-primary/40 hover:shadow-xs">
             {/* Hàng 1: Icon + Tên hành động + Mã log + Nút Xem chi tiết */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex min-w-0 flex-1 items-start gap-3.5">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-border bg-muted/40 shadow-xs text-primary">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-border bg-muted/40 text-primary shadow-xs">
                         <ScrollText className="h-5 w-5" />
                     </div>
 
@@ -76,7 +76,7 @@ function AdminAuditItem({ log, onViewDetails }: AdminAuditItemProps) {
                             </Badge>
                         </div>
 
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground text-xs">
                             Thời điểm:{' '}
                             <span className="text-foreground">{adminDate(log.createdAt)}</span>
                         </p>
@@ -101,16 +101,16 @@ function AdminAuditItem({ log, onViewDetails }: AdminAuditItemProps) {
             {/* Hàng 2: Chi tiết người thực hiện & đối tượng */}
             <div className="grid grid-cols-1 gap-2.5 rounded-lg border border-border/50 bg-muted/20 p-3 text-xs sm:grid-cols-2">
                 <div className="flex items-center gap-1.5 truncate">
-                    <span className="text-muted-foreground shrink-0">Người thực hiện:</span>
-                    <span className="font-medium text-foreground truncate">
+                    <span className="shrink-0 text-muted-foreground">Người thực hiện:</span>
+                    <span className="truncate font-medium text-foreground">
                         <AdminActor actor={log.actor} />
                     </span>
                 </div>
                 <div className="flex items-center gap-1.5 truncate">
-                    <span className="text-muted-foreground shrink-0">
+                    <span className="shrink-0 text-muted-foreground">
                         {targetLabel[log.target.type as keyof typeof targetLabel] || 'Đối tượng'}:
                     </span>
-                    <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground truncate">
+                    <code className="truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
                         {log.target.id}
                     </code>
                 </div>
@@ -163,73 +163,73 @@ export function AdminAuditPage() {
             >
                 <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {/* 1. Lọc theo Thao tác */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="audit-action" className="font-medium text-xs">
                             Thao tác
-                            <SelectFilter
-                                id="audit-action"
-                                name="action"
-                                value={params.get('action') || ''}
-                                options={[
-                                    { value: '', label: 'Tất cả thao tác' },
-                                    ...(AuditActionSchema.options.map((value) => ({
-                                        value,
-                                        label: auditLabel[value],
-                                    })) ?? []),
-                                ]}
-                            />
                         </FieldLabel>
+                        <SelectFilter
+                            id="audit-action"
+                            name="action"
+                            value={params.get('action') || ''}
+                            options={[
+                                { value: '', label: 'Tất cả thao tác' },
+                                ...(AuditActionSchema.options.map((value) => ({
+                                    value,
+                                    label: auditLabel[value],
+                                })) ?? []),
+                            ]}
+                        />
                     </Field>
 
                     {/* 2. Lọc theo Loại đối tượng */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="audit-target-type" className="font-medium text-xs">
                             Loại đối tượng
-                            <SelectFilter
-                                id="audit-target-type"
-                                name="targetType"
-                                value={params.get('targetType') || ''}
-                                options={[
-                                    { value: '', label: 'Tất cả đối tượng' },
-                                    ...(AuditTargetTypeSchema.options.map((value) => ({
-                                        value,
-                                        label: targetLabel[value],
-                                    })) ?? []),
-                                ]}
-                            />
                         </FieldLabel>
+                        <SelectFilter
+                            id="audit-target-type"
+                            name="targetType"
+                            value={params.get('targetType') || ''}
+                            options={[
+                                { value: '', label: 'Tất cả đối tượng' },
+                                ...(AuditTargetTypeSchema.options.map((value) => ({
+                                    value,
+                                    label: targetLabel[value],
+                                })) ?? []),
+                            ]}
+                        />
                     </Field>
 
                     {/* 3. Lọc theo Người thực hiện (Actor UUID) */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="audit-actor" className="font-medium text-xs">
                             Mã người thực hiện (UUID)
-                            <TextFilter
-                                id="audit-actor"
-                                name="actorId"
-                                placeholder="Nhập UUID..."
-                                pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-                                value={params.get('actorId') || ''}
-                                spellCheck={false}
-                                autoCapitalize="none"
-                            />
                         </FieldLabel>
+                        <TextFilter
+                            id="audit-actor"
+                            name="actorId"
+                            placeholder="Nhập UUID..."
+                            pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+                            value={params.get('actorId') || ''}
+                            spellCheck={false}
+                            autoCapitalize="none"
+                        />
                     </Field>
 
                     {/* 4. Lọc theo Đối tượng (Target UUID) */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="audit-target" className="font-medium text-xs">
                             Mã đối tượng (UUID)
-                            <TextFilter
-                                id="audit-target"
-                                name="targetId"
-                                placeholder="Nhập UUID..."
-                                pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-                                value={params.get('targetId') || ''}
-                                spellCheck={false}
-                                autoCapitalize="none"
-                            />
                         </FieldLabel>
+                        <TextFilter
+                            id="audit-target"
+                            name="targetId"
+                            placeholder="Nhập UUID..."
+                            pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+                            value={params.get('targetId') || ''}
+                            spellCheck={false}
+                            autoCapitalize="none"
+                        />
                     </Field>
                 </FieldGroup>
 

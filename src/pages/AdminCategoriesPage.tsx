@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Folder, FolderTree, Pencil, Plus, Save, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, Folder, FolderTree, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CategoryCreateModal } from '../features/admin';
@@ -30,6 +30,7 @@ import { LoadingState } from '../shared/ui/LoadingState';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '../shared/ui/primitives/field';
 import { Input } from '../shared/ui/primitives/input';
+import { SearchInput } from '../shared/ui/SearchInput';
 
 function useCategories() {
     const { user } = useAuth();
@@ -196,35 +197,29 @@ export function AdminCategoriesPage() {
                         <FieldLabel htmlFor="category-q" className="font-medium text-xs">
                             Tìm kiếm danh mục
                         </FieldLabel>
-                        <div className="relative mt-1.5">
-                            <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                id="category-q"
-                                placeholder="Tìm theo tên danh mục..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-8 text-xs placeholder:text-xs"
-                            />
-                        </div>
+                        <SearchInput
+                            id="category-q"
+                            placeholder="Tìm theo tên danh mục..."
+                            value={searchQuery}
+                            onValueChange={setSearchQuery}
+                        />
                     </Field>
 
                     {/* 2. Lọc theo cấp danh mục */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="category-level" className="font-medium text-xs">
                             Cấp danh mục
-                            <FormSelect
-                                id="category-level"
-                                value={levelFilter}
-                                onValueChange={(val) =>
-                                    setLevelFilter(val as 'all' | 'root' | 'child')
-                                }
-                                options={[
-                                    { value: 'all', label: 'Tất cả danh mục' },
-                                    { value: 'root', label: 'Chỉ danh mục gốc (không có cha)' },
-                                    { value: 'child', label: 'Chỉ danh mục con' },
-                                ]}
-                            />
                         </FieldLabel>
+                        <FormSelect
+                            id="category-level"
+                            value={levelFilter}
+                            onValueChange={(val) => setLevelFilter(val as 'all' | 'root' | 'child')}
+                            options={[
+                                { value: 'all', label: 'Tất cả danh mục' },
+                                { value: 'root', label: 'Chỉ danh mục gốc (không có cha)' },
+                                { value: 'child', label: 'Chỉ danh mục con' },
+                            ]}
+                        />
                     </Field>
                 </FieldGroup>
 
@@ -559,7 +554,7 @@ export function AdminCategoryEditPage() {
                         <h1 className="font-semibold text-base text-destructive">
                             Không tìm thấy danh mục
                         </h1>
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-1 text-muted-foreground text-xs">
                             Danh mục này có thể đã bị xóa hoặc đường dẫn không chính xác.
                         </p>
                     </div>

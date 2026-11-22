@@ -138,7 +138,7 @@ export function LibraryAssetDeleteModal({
                     />
                     <label
                         htmlFor="confirm-delete-library-asset"
-                        className="cursor-pointer select-none text-foreground text-xs leading-normal"
+                        className="m-0 cursor-pointer select-none text-foreground text-xs leading-normal"
                     >
                         Tôi xác nhận muốn xóa tài nguyên{' '}
                         <strong className="font-semibold text-foreground">{asset.name}</strong> khỏi

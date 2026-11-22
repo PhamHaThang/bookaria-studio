@@ -2,7 +2,7 @@
   "version": 1,
   "zod": "4.6.5",
   "files": {
-    "api/admin.schema.ts": "75fc01c3ba668a4aacbdd2fd6a64c972278b6200da95f2e263456a4af9e6a781",
+    "api/admin.schema.ts": "fbefbf796b55ec3d3760bc5aba041fb360dc182937f7c4eeecbb8ff9d353fbe5",
     "api/assets.schema.ts": "01a957b1213d003834c03b05254b57a2042f45abe5598702611122b1b2049dd1",
     "api/auth.schema.ts": "d1ed9f9265a39fcb10298bd76053ba6c405ad99b140c4032591952df8f4ce05e",
     "api/book-draft.schema.ts": "f5a4783cdd336e6420da3d5de31ddf7bee6da51d1fee897dcd36f74f21799407",
