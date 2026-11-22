@@ -28,6 +28,119 @@ const result = (body, extra = {}) => ({
     },
 });
 
+for (const surface of ['interaction', 'design']) {
+    for (const replyLength of ['short', 'long']) {
+        test(`chat scroll follows long conversations and preserves reading position: ${surface}, ${replyLength}`, async ({
+            page,
+        }) => {
+            await page.setViewportSize({ width: 1440, height: 900 });
+            let turn = 0;
+            let holdReply = false;
+            let releaseReply;
+            await page.route('**/pages/*/interaction-proposals', (route) => {
+                turn++;
+                const json = result(route.request().postDataJSON(), {
+                    status: 'answer',
+                    rule: undefined,
+                    message: `Trả lời lượt ${turn}.\n\n${'Bạn có thể chọn đối tượng trên trang, chỉnh nội dung rồi chạy thử để kiểm tra kết quả trước khi áp dụng thay đổi.\n\n'.repeat(replyLength === 'long' ? 10 : 1)}Kết thúc lượt ${turn}.`,
+                });
+                if (holdReply) {
+                    releaseReply = () => route.fulfill({ json });
+                    return;
+                }
+                return route.fulfill({ json });
+            });
+            await open(page);
+            if (surface === 'design')
+                await page.getByRole('button', { name: 'Thiết kế', exact: true }).click();
+            const input = page.getByLabel('Yêu cầu cho trợ lý');
+            const send = page.getByRole('button', { name: 'Gửi tin nhắn', exact: true });
+            const viewport = page.getByRole('region', { name: 'Lịch sử trao đổi' });
+            const bottomDistance = () =>
+                viewport.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop);
+            const tailGap = () =>
+                viewport.evaluate((el) => {
+                    const last = Array.from(
+                        el.querySelectorAll('[data-slot="message-scroller-item"]'),
+                    ).at(-1);
+                    const padding = Number.parseFloat(
+                        getComputedStyle(el.querySelector('[data-slot="message-scroller-content"]'))
+                            .paddingBottom,
+                    );
+                    return Math.abs(
+                        el.getBoundingClientRect().bottom -
+                            last.getBoundingClientRect().bottom -
+                            padding,
+                    );
+                });
+            for (let index = 1; index <= 12; index++) {
+                await input.fill(`Giải thích cách chỉnh trang, lượt ${index}`);
+                await send.click();
+                await expect(viewport.locator('[data-slot="message-scroller-item"]')).toHaveCount(
+                    index * 2,
+                );
+                await expect(viewport.getByRole('log')).toHaveAttribute('aria-busy', 'false');
+            }
+            await expect.poll(bottomDistance).toBeLessThan(3);
+            await expect.poll(tailGap).toBeLessThan(3);
+
+            holdReply = true;
+            await input.fill('Giải thích thêm trong lúc tôi xem lại tin cũ');
+            await send.click();
+            await expect.poll(() => typeof releaseReply).toBe('function');
+            await viewport.hover();
+            await page.mouse.wheel(0, -1400);
+            await expect.poll(bottomDistance).toBeGreaterThan(600);
+            const reading = await viewport.evaluate(async (el) => {
+                await new Promise(requestAnimationFrame);
+                await new Promise(requestAnimationFrame);
+                const top = el.getBoundingClientRect().top;
+                const item = Array.from(
+                    el.querySelectorAll('[data-slot="message-scroller-item"]'),
+                ).find((item) => item.getBoundingClientRect().bottom > top + 30);
+                return {
+                    id: item.getAttribute('data-message-id'),
+                    top: item.getBoundingClientRect().top - top,
+                };
+            });
+            await releaseReply();
+            await expect(viewport.getByRole('log')).toHaveAttribute('aria-busy', 'false');
+            await expect(viewport.locator('[data-slot="message-scroller-item"]')).toHaveCount(26);
+            await expect
+                .poll(() =>
+                    viewport.evaluate((el, reading) => {
+                        const item = el.querySelector(`[data-message-id="${reading.id}"]`);
+                        return Math.abs(
+                            item.getBoundingClientRect().top -
+                                el.getBoundingClientRect().top -
+                                reading.top,
+                        );
+                    }, reading),
+                )
+                .toBeLessThan(3);
+            const latest = page.getByRole('button', { name: 'Đến tin nhắn mới nhất', exact: true });
+            await expect(latest).toHaveAttribute('data-active', 'true');
+            await latest.click();
+            await expect.poll(bottomDistance).toBeLessThan(3);
+            await expect.poll(tailGap).toBeLessThan(3);
+            await page.getByRole('button', { name: 'Thu gọn chat', exact: true }).click();
+            await page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true }).click();
+            await expect.poll(bottomDistance).toBeLessThan(3);
+
+            await viewport.hover();
+            await page.mouse.wheel(0, -1400);
+            await expect.poll(bottomDistance).toBeGreaterThan(600);
+            holdReply = false;
+            await input.fill('Câu hỏi mới sau khi xem lại lịch sử');
+            await send.click();
+            await expect(viewport.getByRole('log')).toHaveAttribute('aria-busy', 'false');
+            await expect(viewport.locator('[data-slot="message-scroller-item"]')).toHaveCount(28);
+            await expect.poll(bottomDistance).toBeLessThan(3);
+            await expect.poll(tailGap).toBeLessThan(3);
+        });
+    }
+}
+
 test('library references can add an object while removal is confirmed and undone together', async ({
     page,
 }, info) => {

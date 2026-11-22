@@ -110,6 +110,7 @@ import {
     MessageScrollerItem,
     MessageScrollerProvider,
     MessageScrollerViewport,
+    useMessageScroller,
 } from '@/shared/ui/primitives/message-scroller';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/primitives/popover';
 import {
@@ -683,6 +684,14 @@ export function SceneAssistant({
             />
         </div>
     );
+}
+
+function FollowSentMessage({ messageId }: { messageId: string | undefined }) {
+    const { scrollToEnd } = useMessageScroller();
+    useEffect(() => {
+        if (messageId) scrollToEnd({ behavior: 'auto' });
+    }, [messageId, scrollToEnd]);
+    return null;
 }
 
 function AssistantChat({
@@ -1336,6 +1345,7 @@ function AssistantChat({
             <Separator />
             <div className="min-h-0 flex-1">
                 <MessageScrollerProvider autoScroll defaultScrollPosition="end">
+                    <FollowSentMessage messageId={last?.role === 'user' ? last.id : undefined} />
                     <MessageScroller>
                         <MessageScrollerViewport aria-label="Lịch sử trao đổi">
                             <MessageScrollerContent aria-busy={pending} className="gap-5 px-3 py-4">
@@ -1411,7 +1421,6 @@ function AssistantChat({
                                         <MessageScrollerItem
                                             key={message.id}
                                             messageId={message.id}
-                                            scrollAnchor={message.role === 'user'}
                                         >
                                             <Message align={isUser ? 'end' : 'start'}>
                                                 <MessageContent className="gap-2">
