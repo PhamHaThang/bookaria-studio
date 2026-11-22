@@ -33,6 +33,7 @@ import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/primitives/card';
 import { Progress } from '@/shared/ui/primitives/progress';
 import { Skeleton } from '@/shared/ui/primitives/skeleton';
+import { StudioPageHeader } from '@/shared/ui/StudioPageHeader';
 
 const countQuery = { page: 1, limit: 1 } as const;
 const assetCountQuery = { ...countQuery, scope: 'mine' } as const;
@@ -189,29 +190,26 @@ export function StudioOverviewPage() {
 
     return (
         <>
-            <header className="mb-7 flex flex-wrap items-center justify-between gap-4 sm:mb-9">
-                <div>
-                    <h1 className="m-0 font-semibold text-3xl sm:text-4xl">Tổng quan</h1>
-                    <p className="m-0 mt-2 text-muted-foreground text-sm">
-                        Tiếp tục dự án, quản lý công việc và nắm bắt những hoạt động mới nhất trong
-                        Studio
-                    </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" asChild>
-                        <Link to="/studio/upload" aria-haspopup="dialog">
-                            <Upload data-icon="inline-start" aria-hidden="true" />
-                            Tải tài nguyên
-                        </Link>
-                    </Button>
-                    <Button asChild>
-                        <Link to="/studio/new-book" aria-haspopup="dialog">
-                            <Plus data-icon="inline-start" aria-hidden="true" />
-                            Tạo sách
-                        </Link>
-                    </Button>
-                </div>
-            </header>
+            <StudioPageHeader
+                title="Tổng quan"
+                description="Tiếp tục dự án, quản lý công việc và theo dõi hoạt động mới nhất trong Studio."
+                actions={
+                    <>
+                        <Button variant="outline" asChild>
+                            <Link to="/studio/upload" aria-haspopup="dialog">
+                                <Upload data-icon="inline-start" aria-hidden="true" />
+                                Tải tài nguyên
+                            </Link>
+                        </Button>
+                        <Button asChild>
+                            <Link to="/studio/new-book" aria-haspopup="dialog">
+                                <Plus data-icon="inline-start" aria-hidden="true" />
+                                Tạo sách
+                            </Link>
+                        </Button>
+                    </>
+                }
+            />
 
             <section className="mb-6" aria-label="Số liệu Studio">
                 <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0 lg:grid-cols-4">

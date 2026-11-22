@@ -16,6 +16,7 @@ import {
     SidebarMenuItem,
     SidebarProvider,
 } from '@/shared/ui/primitives/sidebar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/primitives/tooltip';
 import { getStudioSection } from './studio-navigation';
 
 const destinations = [
@@ -26,7 +27,42 @@ const destinations = [
     { to: '/books/trash', label: 'Thùng rác', icon: Trash2 },
 ];
 
-const navButtonClass = 'h-10 justify-center px-2 md:justify-start md:gap-3 md:px-3';
+const activeNavClass =
+    'hover:bg-surface-dark hover:text-on-dark active:bg-surface-dark active:text-on-dark data-[active=true]:bg-surface-dark data-[active=true]:text-on-dark data-[active=true]:hover:bg-surface-dark data-[active=true]:hover:text-on-dark';
+const navButtonClass = cn(
+    'h-11 justify-center px-2 xl:justify-start xl:gap-3 xl:px-3 [&_svg]:size-5',
+    activeNavClass,
+);
+const mobileTabClass =
+    'flex size-12 items-center justify-center rounded-xl p-0 text-muted-foreground transition-none hover:bg-muted hover:text-foreground data-[active=true]:bg-surface-dark data-[active=true]:text-on-dark data-[active=true]:hover:bg-surface-dark data-[active=true]:hover:text-on-dark [&_svg]:size-[22px] [&_svg]:stroke-[1.8]';
+
+function StudioMobileNavigation({ activeSection }: { activeSection: string | null }) {
+    return (
+        <nav
+            aria-label="Điều hướng Studio dưới"
+            data-slot="studio-bottom-navigation"
+            className="fixed inset-x-0 bottom-0 z-30 border-border border-t bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
+        >
+            <div
+                data-slot="studio-bottom-tabs"
+                className="mx-auto grid h-16 w-full max-w-[640px] grid-cols-5 place-items-center gap-1 px-2"
+            >
+                {destinations.map(({ to, label, icon: Icon }) => (
+                    <Link
+                        key={to}
+                        to={to}
+                        aria-label={label}
+                        aria-current={activeSection === to ? 'page' : undefined}
+                        data-active={activeSection === to}
+                        className={mobileTabClass}
+                    >
+                        <Icon aria-hidden="true" />
+                    </Link>
+                ))}
+            </div>
+        </nav>
+    );
+}
 
 export function StudioLayout() {
     const { pathname } = useLocation();
@@ -48,48 +84,63 @@ export function StudioLayout() {
     return (
         <SidebarProvider
             data-stable-scroll-overlays
-            className="studio-shell mx-auto mt-6 w-[calc(100%-16px)] max-w-[1280px] gap-3 [--sidebar-width:3.5rem] sm:w-[calc(100%-48px)] md:mt-9 md:gap-7 md:[--sidebar-width:13rem] xl:[--sidebar-width:14rem]"
+            className="studio-shell mx-auto mt-6 w-[calc(100%-32px)] max-w-[1280px] gap-6 [--sidebar-width:2.75rem] sm:w-[calc(100%-64px)] xl:mt-9 xl:w-[calc(100%-48px)] xl:gap-7 xl:[--sidebar-width:14rem]"
         >
             <Sidebar
                 collapsible="none"
-                className="sticky top-32 h-auto max-h-[calc(100dvh-9rem)] w-14 shrink-0 gap-3 self-start bg-transparent p-1.5 md:w-52 md:gap-4 md:px-1 md:py-0 xl:top-24 xl:max-h-[calc(100dvh-7rem)] xl:w-56"
+                className="sticky top-[calc(var(--public-header-space,72px)+16px)] hidden h-auto max-h-[calc(100dvh-var(--public-header-space,72px)-32px)] w-11 shrink-0 gap-4 self-start bg-transparent p-0 sm:flex xl:w-56 xl:px-1"
             >
                 <SidebarContent>
                     <nav aria-label="Điều hướng Studio">
-                        <SidebarMenu className="gap-1 md:gap-1.5">
+                        <SidebarMenu className="gap-1.5">
                             {destinations.map(({ to, label, icon: Icon }) => {
                                 const active = activeSection === to;
                                 return (
                                     <SidebarMenuItem key={to}>
-                                        <SidebarMenuButton
-                                            asChild
-                                            isActive={active}
-                                            className={cn(
-                                                navButtonClass,
-                                                'hover:bg-surface-dark hover:text-on-dark active:bg-surface-dark active:text-on-dark data-[active=true]:bg-surface-dark data-[active=true]:text-on-dark data-[active=true]:hover:bg-surface-dark',
-                                            )}
-                                        >
-                                            <Link
-                                                to={to}
-                                                aria-current={active ? 'page' : undefined}
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <SidebarMenuButton
+                                                    asChild
+                                                    isActive={active}
+                                                    className={navButtonClass}
+                                                >
+                                                    <Link
+                                                        to={to}
+                                                        aria-current={active ? 'page' : undefined}
+                                                    >
+                                                        <Icon aria-hidden="true" />
+                                                        <span className="sr-only xl:not-sr-only">
+                                                            {label}
+                                                        </span>
+                                                    </Link>
+                                                </SidebarMenuButton>
+                                            </TooltipTrigger>
+                                            <TooltipContent
+                                                side="right"
+                                                sideOffset={8}
+                                                className="hidden sm:inline-flex xl:hidden"
                                             >
-                                                <Icon aria-hidden="true" />
-                                                <span className="sr-only md:not-sr-only">
-                                                    {label}
-                                                </span>
-                                            </Link>
-                                        </SidebarMenuButton>
+                                                {label}
+                                            </TooltipContent>
+                                        </Tooltip>
                                     </SidebarMenuItem>
                                 );
                             })}
                         </SidebarMenu>
                     </nav>
                 </SidebarContent>
-                <SidebarFooter className="hidden shrink-0 p-0 md:flex">
+                <SidebarFooter className="hidden shrink-0 p-0 xl:flex">
                     <StudioStorageUsage />
                 </SidebarFooter>
             </Sidebar>
-            <main id="main" tabIndex={-1} className="studio-main min-w-0 flex-1 pb-16 outline-none">
+            <main
+                id="main"
+                tabIndex={-1}
+                className="studio-main min-w-0 flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none sm:pb-16"
+            >
+                <div data-slot="studio-storage-summary" className="mb-6 xl:hidden">
+                    <StudioStorageUsage />
+                </div>
                 {!user?.emailVerified && (
                     <Alert tone="info" className="mb-8">
                         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -102,6 +153,7 @@ export function StudioLayout() {
                     <Outlet />
                 </Suspense>
             </main>
+            <StudioMobileNavigation activeSection={activeSection} />
         </SidebarProvider>
     );
 }

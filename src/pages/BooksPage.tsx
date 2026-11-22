@@ -28,6 +28,7 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { StudioPageHeader } from '@/shared/ui/StudioPageHeader';
 import { useAuth } from '../features/auth';
 import { bookKeys, booksApi, readBookSearch, updateBookSearch } from '../features/books';
 import { BookActionsDialog } from '../features/books/ui/BookActionsDialog';
@@ -85,20 +86,18 @@ export function BooksPage() {
     }
     return (
         <>
-            <header className="mb-7 flex flex-wrap items-center justify-between gap-4 sm:mb-9">
-                <div className="min-w-0">
-                    <h1 className="m-0 font-semibold text-3xl sm:text-4xl">Sách của tôi</h1>
-                    <p className="m-0 mt-2 text-muted-foreground text-sm">
-                        Tạo sách tương tác hoặc mở bản đang làm để chỉnh sửa tiếp.
-                    </p>
-                </div>
-                <Button asChild>
-                    <Link to={createBookTo} aria-haspopup="dialog">
-                        <Plus data-icon="inline-start" aria-hidden="true" />
-                        Tạo sách mới
-                    </Link>
-                </Button>
-            </header>
+            <StudioPageHeader
+                title="Sách của tôi"
+                description="Tạo sách tương tác hoặc mở bản đang làm để chỉnh sửa tiếp."
+                actions={
+                    <Button asChild>
+                        <Link to={createBookTo} aria-haspopup="dialog">
+                            <Plus data-icon="inline-start" aria-hidden="true" />
+                            Tạo sách mới
+                        </Link>
+                    </Button>
+                }
+            />
             <Feedback success={notice} />
             <form
                 aria-label="Bộ lọc sách"

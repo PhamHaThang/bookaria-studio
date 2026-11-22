@@ -19,6 +19,7 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { StudioPageHeader } from '@/shared/ui/StudioPageHeader';
 import { useAuth } from '../features/auth';
 import { bookKeys, booksApi, readBookSearch, updateBookSearch } from '../features/books';
 import { errorMessage } from '../shared/api/errors';
@@ -61,12 +62,10 @@ export function StatsBooksPage() {
     }, [list.isSuccess, list.isFetching, meta, query.page, setParams]);
     return (
         <>
-            <header className="mb-7 sm:mb-9">
-                <h1 className="m-0 font-semibold text-3xl sm:text-4xl">Thống kê sách</h1>
-                <p className="m-0 mt-2 text-muted-foreground text-sm">
-                    Chọn sách để xem lượt mở, tương tác và thiết bị đọc.
-                </p>
-            </header>
+            <StudioPageHeader
+                title="Thống kê sách"
+                description="Chọn sách để xem lượt mở, tương tác và thiết bị đọc."
+            />
             <form
                 className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2"
                 aria-label="Tìm sách để xem thống kê"

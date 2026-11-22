@@ -19,6 +19,7 @@ export default defineConfig({
         'admin-merge.spec.mjs',
         'viewer-links.spec.mjs',
         'notifications.spec.mjs',
+        'studio-navigation.spec.mjs',
     ],
     workers: 1,
     retries: 0,

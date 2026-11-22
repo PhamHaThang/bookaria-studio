@@ -304,6 +304,12 @@
     initial-value: 0deg;
 }
 
+@media (width < 640px) {
+    body:has([data-slot="studio-bottom-navigation"]) [data-slot="floating-theme-switcher"] {
+        bottom: calc(5rem + env(safe-area-inset-bottom));
+    }
+}
+
 .studio-entry {
     --studio-entry-fill-start: var(--palette-neutral-800);
     --studio-entry-fill: var(--surface-dark);

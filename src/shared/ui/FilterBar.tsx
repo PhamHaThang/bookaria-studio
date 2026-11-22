@@ -34,7 +34,11 @@ export function FilterBar({
             )}
         >
             {options.map((option) => (
-                <ToggleGroupItem key={option.value} value={option.value}>
+                <ToggleGroupItem
+                    key={option.value}
+                    value={option.value}
+                    className={variant === 'pill' ? 'min-h-11 px-3.5' : undefined}
+                >
                     {option.label}
                 </ToggleGroupItem>
             ))}
@@ -44,20 +48,22 @@ export function FilterBar({
 
     const { total, unit } = resultCount;
     return (
-        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-            {filters}
-            <p
-                className="m-0 ml-auto shrink-0 whitespace-nowrap text-right text-muted-foreground text-sm tabular-nums"
-                role="status"
-            >
-                {total === undefined ? (
-                    <span className="invisible" aria-hidden="true">
-                        0 {unit}
-                    </span>
-                ) : (
-                    `${total.toLocaleString('vi-VN')} ${unit}`
-                )}
-            </p>
+        <div data-slot="filter-bar" className="@container/filter-bar mb-4">
+            <div className="flex min-w-0 @min-[44rem]/filter-bar:flex-row flex-col items-start @min-[44rem]/filter-bar:items-center @min-[44rem]/filter-bar:justify-between gap-x-4 gap-y-2">
+                {filters}
+                <p
+                    className="m-0 shrink-0 @min-[44rem]/filter-bar:text-right text-muted-foreground text-xs tabular-nums leading-5"
+                    role="status"
+                >
+                    {total === undefined ? (
+                        <span className="invisible" aria-hidden="true">
+                            0 {unit}
+                        </span>
+                    ) : (
+                        `${total.toLocaleString('vi-VN')} ${unit}`
+                    )}
+                </p>
+            </div>
         </div>
     );
 }
