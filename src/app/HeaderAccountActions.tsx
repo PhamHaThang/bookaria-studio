@@ -278,7 +278,7 @@ export function HeaderAccountActions({
                     asChild
                     variant="outline"
                     size="sm"
-                    className="studio-entry hidden min-h-10 rounded-full border-transparent px-4 lg:inline-flex"
+                    className="studio-entry min-h-10 shrink-0 rounded-full border-transparent px-4 max-sm:size-10 max-sm:px-0"
                 >
                     <Link
                         to="/studio"
@@ -286,7 +286,7 @@ export function HeaderAccountActions({
                         aria-current={getStudioSection(pathname) ? 'page' : undefined}
                     >
                         <PanelsTopLeft data-icon="inline-start" aria-hidden="true" />
-                        <span>Studio Editor</span>
+                        <span className="max-sm:sr-only">Studio Editor</span>
                     </Link>
                 </Button>
             )}

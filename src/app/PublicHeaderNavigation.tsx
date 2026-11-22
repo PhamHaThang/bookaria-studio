@@ -1,8 +1,8 @@
 import { useMotionTokens, useShouldReduceMotion } from '@animate-ui/react/utils/motion';
-import { LogIn, type LucideIcon, Menu, PanelsTopLeft, UserPlus } from 'lucide-react';
+import { LogIn, type LucideIcon, Menu, UserPlus } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLayoutEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth/model/session';
 import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
 import { Button } from '@/shared/ui/primitives/button';
@@ -20,7 +20,6 @@ import {
     NavigationMenuList,
 } from '@/shared/ui/primitives/navigation-menu';
 import { HeaderAccountActions } from './HeaderAccountActions';
-import { getStudioSection } from './studio-navigation';
 
 export type PublicNavigationLink = {
     to: string;
@@ -120,7 +119,6 @@ export function PublicHeaderNavigation({ links, activePath }: PublicHeaderNaviga
 
 export function PublicMobileNavigation({ links, activePath }: PublicHeaderNavigationProps) {
     const { user } = useAuth();
-    const { pathname } = useLocation();
     const navigation = (
         <DropdownMenuGroup className="space-y-1">
             {links.map(({ to, label, icon: Icon }) => (
@@ -152,23 +150,7 @@ export function PublicMobileNavigation({ links, activePath }: PublicHeaderNaviga
                 className="w-72 max-w-[calc(100vw-32px)] space-y-1 p-2 lg:hidden [&_[data-slot=dropdown-menu-item]]:gap-3 [&_[data-slot=dropdown-menu-item]]:rounded-lg [&_[data-slot=dropdown-menu-item]]:px-3"
             >
                 {user ? (
-                    <HeaderAccountActions variant="menu">
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem
-                                asChild
-                                className="studio-entry border border-transparent font-medium"
-                            >
-                                <Link
-                                    to="/studio"
-                                    aria-current={getStudioSection(pathname) ? 'page' : undefined}
-                                >
-                                    <PanelsTopLeft className="-ml-px" aria-hidden="true" />
-                                    Studio Editor
-                                </Link>
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        {navigation}
-                    </HeaderAccountActions>
+                    <HeaderAccountActions variant="menu">{navigation}</HeaderAccountActions>
                 ) : (
                     <>
                         {navigation}

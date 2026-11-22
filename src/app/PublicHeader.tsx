@@ -70,7 +70,7 @@ export function PublicHeader() {
             transition={transition.reveal}
             className="site-header sticky top-0 z-20 w-full bg-background"
         >
-            <div className="mx-auto flex min-h-18 max-w-[1328px] items-center gap-3 px-4 sm:px-8 lg:gap-6">
+            <div className="mx-auto flex min-h-18 max-w-[1328px] items-center gap-3 px-4 max-sm:gap-2 sm:px-8 lg:gap-6">
                 <div className="flex min-w-0 items-center gap-2 justify-self-start">
                     <Link
                         to="/"

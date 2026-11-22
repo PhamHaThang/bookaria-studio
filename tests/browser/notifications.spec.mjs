@@ -5,6 +5,8 @@ for (const [width, theme, failOnce] of [
     [1440, 'light', true],
     [1440, 'dark', false],
     [390, 'light', false],
+    [320, 'dark', false],
+    [640, 'dark', false],
     [1023, 'light', false],
     [1024, 'light', false],
 ]) {
@@ -105,7 +107,25 @@ for (const [width, theme, failOnce] of [
             return route.fulfill({ status: 404, json: { error: { code: 'NOT_FOUND' } } });
         });
         await page.goto('/help');
+        const header = page.locator('header.site-header');
+        const studio = header.getByRole('link', { name: 'Studio Editor', exact: true });
+        await expect(studio).toBeVisible();
+        await expect(studio).toHaveAttribute('href', '/studio');
         const account = page.getByRole('button', { name: `Tài khoản của ${me.displayName}` });
+        const controls = [
+            header.getByRole('link', { name: 'Bookaria - Trang chủ', exact: true }),
+            studio,
+            header.getByRole('button', { name: /^Thông báo/ }),
+            width < 1024
+                ? page.getByRole('button', { name: 'Mở điều hướng', exact: true })
+                : account,
+        ];
+        const boxes = await Promise.all(controls.map((control) => control.boundingBox()));
+        const availableWidth = await page.evaluate(() => document.documentElement.clientWidth);
+        boxes.forEach((box, index) => {
+            assert(box.x >= 0 && box.x + box.width <= availableWidth);
+            if (index) assert(box.x >= boxes[index - 1].x + boxes[index - 1].width);
+        });
         if (width >= 1024) {
             await expect(account.locator('[data-slot="avatar-fallback"]')).toHaveText('NA');
         } else {
@@ -117,13 +137,15 @@ for (const [width, theme, failOnce] of [
                 'Khám phá sách',
                 'Thư viện tài nguyên',
                 'Hướng dẫn',
-                'Studio Editor',
                 'Hồ sơ',
                 'Đăng xuất',
             ]) {
                 await expect(mobileMenu.getByRole('menuitem', { name, exact: true })).toBeVisible();
             }
             await expect(mobileMenu.getByText(me.displayName, { exact: true })).toBeVisible();
+            await expect(
+                mobileMenu.getByRole('menuitem', { name: 'Studio Editor', exact: true }),
+            ).toHaveCount(0);
             await expect(mobileMenu.locator('[aria-current="page"]')).toHaveText('Hướng dẫn');
             await mobileMenu.getByRole('menuitem', { name: 'Hướng dẫn', exact: true }).click();
             await expect(mobileMenu).toBeHidden();
