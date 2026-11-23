@@ -324,7 +324,7 @@ function WorkflowConnection(props: EdgeProps<WorkflowEdge>) {
             <EdgeLabelRenderer>
                 {context && (
                     <div
-                        className="nodrag nopan pointer-events-auto absolute"
+                        className="nodrag nopan pointer-events-auto absolute grid rounded-[var(--radius-control)] bg-surface"
                         data-flow-after={props.source}
                         data-flow-port={props.data?.port || 'next'}
                         style={{ transform: `translate(-50%, -50%) translate(${x}px,${y}px)` }}
