@@ -6,6 +6,7 @@ import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
 import { StudioStorageUsage } from '@/features/profile/ui/StudioStorageUsage';
 import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
+import { LoadingBoundary } from '@/shared/ui/LoadingBoundary';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import {
     Sidebar,
@@ -149,9 +150,11 @@ export function StudioLayout() {
                         </div>
                     </Alert>
                 )}
-                <Suspense fallback={<LoadingScreen message="Đang mở trang…" />}>
-                    <Outlet />
-                </Suspense>
+                <LoadingBoundary>
+                    <Suspense fallback={<LoadingScreen message="Đang mở trang…" />}>
+                        <Outlet />
+                    </Suspense>
+                </LoadingBoundary>
             </main>
             <StudioMobileNavigation activeSection={activeSection} />
         </SidebarProvider>

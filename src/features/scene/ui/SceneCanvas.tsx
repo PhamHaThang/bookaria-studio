@@ -1800,10 +1800,13 @@ export function SceneCanvas(props: Props) {
                     pages.height > 0 &&
                     tools.left < pages.right + 8 &&
                     tools.right + 8 > pages.left;
-                const clearance = overlapsDock
-                    ? Math.max(0, stage.getBoundingClientRect().bottom - pages.top + 8)
-                    : 0;
-                footer.style.setProperty('--canvas-dock-clearance', `${clearance}px`);
+                const stageBottom = stage.getBoundingClientRect().bottom;
+                const inset = overlapsDock
+                    ? stageBottom - pages.top + 8
+                    : pages.height
+                      ? stageBottom - pages.bottom
+                      : 16;
+                footer.style.setProperty('--canvas-tools-inset', `${inset}px`);
                 const panelAnchor = workspaceBottom - footer.getBoundingClientRect().top + 12;
                 const dockClearance = tools.right - pages.right;
                 const panelBottom = Math.max(panelAnchor, dockClearance >= 408 ? 0 : dockInset);
@@ -2508,7 +2511,7 @@ export function SceneCanvas(props: Props) {
             {props.footer && (
                 <div
                     data-canvas-footer
-                    className="canvas-footer absolute right-[18px] bottom-[max(3rem,var(--canvas-dock-clearance,0px))] z-3 flex -translate-x-[var(--inspector-offset,0px)] items-center gap-1.5 transition-[translate] duration-200 ease-out motion-reduce:transition-none"
+                    className="canvas-footer absolute right-[18px] bottom-[calc(var(--canvas-tools-inset,3.5rem)_-_7px)] z-3 flex -translate-x-[var(--inspector-offset,0px)] items-end gap-1.5 transition-[translate] duration-200 ease-out motion-reduce:transition-none"
                 >
                     {props.footer}
                 </div>

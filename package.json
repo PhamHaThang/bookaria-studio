@@ -24,6 +24,8 @@
     },
     "dependencies": {
         "@animate-ui/react": "2.4.1",
+        "@bible-strong/avatar-core": "1.2.1",
+        "@bible-strong/avatar-react": "1.2.1",
         "@fontsource/be-vietnam-pro": "5.3.0",
         "@fontsource/bricolage-grotesque": "5.3.0",
         "@fontsource/inter": "5.3.0",

@@ -12,6 +12,8 @@ import {
     useParams,
 } from 'react-router-dom';
 import { IdSchema } from '@/shared/contracts/common.schema';
+import { LoadingBoundary } from '@/shared/ui/LoadingBoundary';
+import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { FloatingThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
 import { RequireSession, SessionBoundary, useAuth } from '../features/auth';
 import { AuthDialog, LegacyAuthRoute } from '../features/auth/ui/AuthDialog';
@@ -204,7 +206,9 @@ function RouterLayout() {
             >
                 Đến nội dung chính
             </a>
-            {showSiteLayout ? <SiteLayout /> : <Outlet />}
+            <LoadingBoundary fullScreen editor={inEditor}>
+                {showSiteLayout ? <SiteLayout /> : <Outlet />}
+            </LoadingBoundary>
             {!inEditor && <FloatingThemeSwitcher />}
             <AuthDialog />
         </>
@@ -245,15 +249,7 @@ const router = createBrowserRouter(
                     path="/style-guide"
                     element={
                         <Suspense
-                            fallback={
-                                <main
-                                    id="main"
-                                    className="session-state mx-auto my-[12vh] max-w-130 p-8 text-center"
-                                    role="status"
-                                >
-                                    Đang mở bộ giao diện…
-                                </main>
-                            }
+                            fallback={<LoadingScreen fullScreen message="Đang mở bộ giao diện…" />}
                         >
                             <StyleGuidePage />
                         </Suspense>

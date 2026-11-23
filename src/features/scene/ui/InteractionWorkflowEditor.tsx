@@ -806,7 +806,7 @@ export function InteractionWorkflowEditor({
                         color="color-mix(in srgb, var(--text-muted) 35%, transparent)"
                     />
                 )}
-                <Panel position="bottom-left">
+                <Panel position="bottom-left" style={{ marginBottom: '1rem' }}>
                     <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
                         <Button
                             variant="ghost"

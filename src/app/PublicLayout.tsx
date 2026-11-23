@@ -1,6 +1,7 @@
 import { Suspense, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { PublicBookDialog } from '@/features/discovery/PublicBookDialog';
+import { LoadingBoundary } from '@/shared/ui/LoadingBoundary';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { SiteFooter } from './SiteFooter';
 
@@ -41,9 +42,11 @@ export function PublicLayout() {
                             : 'public-main mx-auto w-full max-w-320 flex-1 px-6 py-12 outline-none sm:px-8'
                 }
             >
-                <Suspense fallback={<LoadingScreen message="Đang mở trang…" />}>
-                    <Outlet />
-                </Suspense>
+                <LoadingBoundary>
+                    <Suspense fallback={<LoadingScreen message="Đang mở trang…" />}>
+                        <Outlet />
+                    </Suspense>
+                </LoadingBoundary>
             </main>
             <SiteFooter />
             <PublicBookDialog />

@@ -904,8 +904,8 @@ test('runs the real scene runtime, reports wait/completion and restores authored
     await page.setViewportSize({ width: 1600, height: 900 });
     await open(page);
     const before = await page.evaluate(() => structuredClone(window.__interaction.scene.objects));
-    await page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true }).click();
-    const assistant = page.getByRole('complementary', { name: 'Trợ lý Bookaria' });
+    await page.getByRole('button', { name: 'Trợ lý Boki', exact: true }).click();
+    const assistant = page.getByRole('complementary', { name: 'Trợ lý Boki' });
     await assistant.getByLabel('Yêu cầu cho trợ lý').fill('Chỉnh luồng đang chọn');
     await page.getByRole('button', { name: 'Tùy chọn chạy thử', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Chạy riêng luồng đang chọn', exact: true }).click();

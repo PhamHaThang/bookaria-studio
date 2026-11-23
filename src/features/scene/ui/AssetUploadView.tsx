@@ -344,7 +344,7 @@ export function AssetUploadView({
                         {stage && (
                             <div role="status" className="flex flex-col gap-2 text-sm">
                                 <span className="flex items-center gap-2">
-                                    <Spinner />
+                                    <Spinner aria-hidden="true" />
                                     {stageLabels[stage]}
                                     {stage === 'uploading' && ` ${progress}%`}
                                 </span>
@@ -362,7 +362,7 @@ export function AssetUploadView({
                             <div role="status" className="flex flex-col gap-2 text-sm">
                                 {ready ? (
                                     <span className="flex items-center gap-2">
-                                        <Check className="size-4" />
+                                        <Check aria-hidden="true" className="size-4" />
                                         Tài nguyên đã sẵn sàng.
                                     </span>
                                 ) : failed ? (
@@ -382,7 +382,7 @@ export function AssetUploadView({
                                 ) : (
                                     <>
                                         <span className="flex items-center gap-2">
-                                            <Spinner />
+                                            <Spinner aria-hidden="true" />
                                             Đang xử lý tài nguyên…
                                         </span>
                                         <p className="text-muted-foreground text-xs">

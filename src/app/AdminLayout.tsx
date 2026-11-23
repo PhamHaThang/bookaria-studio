@@ -17,6 +17,7 @@ import { AdminAccess } from '@/features/admin/AdminAccess';
 import { cn } from '@/shared/lib/cn';
 import { BookariaLogo, bookariaLogoLinkStyles } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
+import { LoadingBoundary } from '@/shared/ui/LoadingBoundary';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import {
     Sidebar,
@@ -191,9 +192,13 @@ function AdminWorkspace() {
                         id="main"
                         className="admin-main min-w-0 flex-1 px-4 pt-8 pb-16 md:px-10 md:pt-10"
                     >
-                        <Suspense fallback={<LoadingScreen message="Đang mở trang quản trị…" />}>
-                            <Outlet />
-                        </Suspense>
+                        <LoadingBoundary>
+                            <Suspense
+                                fallback={<LoadingScreen message="Đang mở trang quản trị…" />}
+                            >
+                                <Outlet />
+                            </Suspense>
+                        </LoadingBoundary>
                     </main>
                 </div>
             </AdminAccess>

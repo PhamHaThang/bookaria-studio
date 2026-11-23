@@ -147,8 +147,10 @@ export function BookDraftProvider({ bookId, children }: { bookId: string; childr
     }, [state.storageWarning]);
     return (
         <BookDraftContext.Provider value={store}>
-            {state.loading || state.recovery ? (
+            {state.loading ? (
                 <LoadingScreen fullScreen message="Đang mở bản nháp sách…" />
+            ) : state.recovery ? (
+                <div className="min-h-dvh bg-surface" />
             ) : state.base ? (
                 children
             ) : (

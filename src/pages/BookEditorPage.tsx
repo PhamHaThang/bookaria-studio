@@ -117,7 +117,10 @@ function BookEditorContent({ bookId }: { bookId: string }) {
         undefined,
     );
     return firstPage ? (
-        <Navigate to={`/books/${bookId}/pages/${firstPage.id}`} replace />
+        <>
+            <LoadingScreen fullScreen message="Đang mở editor…" />
+            <Navigate to={`/books/${bookId}/pages/${firstPage.id}`} replace />
+        </>
     ) : (
         <EmptyBookEditor
             book={{

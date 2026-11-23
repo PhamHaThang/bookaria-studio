@@ -420,10 +420,10 @@ export function PublicationDialog({
                         {preparing ? (
                             <div
                                 role="status"
-                                className="flex min-h-72 flex-col items-center justify-center gap-4"
+                                className="flex min-h-72 items-center justify-center text-sm"
                             >
-                                <Spinner className="size-7" />
-                                <p>
+                                <p className="m-0 flex items-center gap-2">
+                                    <Spinner aria-hidden="true" />
                                     {phase === 'saving'
                                         ? 'Đang lưu bản nháp…'
                                         : 'Đang kiểm tra sách…'}

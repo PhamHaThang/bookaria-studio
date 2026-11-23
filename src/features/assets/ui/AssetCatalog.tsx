@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FolderOpen, RotateCcw, SearchX } from 'lucide-react';
+import { CircleAlert, FolderOpen, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Link,
@@ -32,6 +32,7 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { SearchActivity } from '@/shared/ui/SearchActivity';
 import { AssetCardGrid, AssetCardGridSkeleton } from './AssetCardGrid';
 import { PersonalAssetDialog } from './PersonalAssetDialog';
 
@@ -341,10 +342,12 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                     focusModelJob={linkedModelJob ?? state?.focusModelJob}
                 />
             )}
+            <SearchActivity query={query.q} fetching={listing.isFetching} />
             {listing.isPending ? (
                 <AssetCardGridSkeleton scope={scope} />
             ) : listing.isError ? (
                 <div className="list-state px-0 py-12">
+                    <CircleAlert aria-hidden="true" className="size-6 text-destructive" />
                     <Feedback error={errorMessage(listing.error)} />
                     <Button
                         onClick={() => {
@@ -371,16 +374,11 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                     {library && listing.data.data.length === 0 ? (
                         <Empty className="min-h-48 gap-5 px-4 py-9 sm:min-h-70 sm:py-12">
                             <EmptyHeader className="gap-2">
-                                <EmptyMedia
-                                    variant="icon"
-                                    className="mb-2 size-12 rounded-xl"
-                                    aria-hidden="true"
-                                >
-                                    {filtered ? (
-                                        <SearchX className="size-6" />
-                                    ) : (
-                                        <FolderOpen className="size-6" />
-                                    )}
+                                <EmptyMedia>
+                                    <FolderOpen
+                                        aria-hidden="true"
+                                        className="size-10 text-muted-foreground"
+                                    />
                                 </EmptyMedia>
                                 <EmptyTitle>
                                     <h2>
@@ -468,7 +466,10 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                         <Empty className="empty-state px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
                             <EmptyHeader>
                                 <EmptyMedia>
-                                    <FolderOpen size={38} aria-hidden="true" />
+                                    <FolderOpen
+                                        aria-hidden="true"
+                                        className="size-10 text-muted-foreground"
+                                    />
                                 </EmptyMedia>
                                 <EmptyTitle>
                                     <h2>

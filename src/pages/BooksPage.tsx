@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, MoreHorizontal, Pencil, Plus, SearchX, Trash2 } from 'lucide-react';
+import { BookOpen, CircleAlert, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/shared/ui/Badge';
@@ -28,6 +28,7 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { SearchActivity } from '@/shared/ui/SearchActivity';
 import { StudioPageHeader } from '@/shared/ui/StudioPageHeader';
 import { useAuth } from '../features/auth';
 import { bookKeys, booksApi, readBookSearch, updateBookSearch } from '../features/books';
@@ -143,9 +144,11 @@ export function BooksPage() {
                 total={meta?.total}
                 onChange={(status) => change({ status })}
             />
+            <SearchActivity query={query.q} fetching={listing.isFetching} />
             {listing.isPending && <LoadingState layout="books">Đang tải sách…</LoadingState>}
             {listing.isError && (
                 <div className="list-state px-0 py-12">
+                    <CircleAlert aria-hidden="true" className="size-6 text-destructive" />
                     <Feedback error={errorMessage(listing.error)} />
                     <Button
                         type="button"
@@ -283,12 +286,11 @@ export function BooksPage() {
             {listing.isSuccess && meta?.total === 0 && (
                 <Empty className="py-12">
                     <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                            {hasFilters ? (
-                                <SearchX aria-hidden="true" />
-                            ) : (
-                                <BookOpen aria-hidden="true" />
-                            )}
+                        <EmptyMedia>
+                            <BookOpen
+                                aria-hidden="true"
+                                className="size-10 text-muted-foreground"
+                            />
                         </EmptyMedia>
                         <EmptyTitle>
                             <h2>

@@ -1,4 +1,4 @@
-import { Focus, RotateCcw, Smartphone, Volume2, VolumeX } from 'lucide-react';
+import { Focus, Play, RotateCcw, Smartphone, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { BookDetail, Page } from '@/shared/contracts/dto.schema';
@@ -7,8 +7,9 @@ import { cn } from '@/shared/lib/cn';
 import { buildScene, type PageRuntime } from '@/shared/scene-runtime/buildScene';
 import { WorkflowState } from '@/shared/scene-runtime/WorkflowState';
 import { Alert } from '@/shared/ui/Alert';
-import { BookariaLogo } from '@/shared/ui/BookariaLogo';
+import { Boki } from '@/shared/ui/Boki';
 import { Button } from '@/shared/ui/Button';
+import { LoadingBoundary } from '@/shared/ui/LoadingBoundary';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { assetsApi } from '../../assets';
 import { useOptionalBookDraft } from '../../book-draft/ui/book-draft-context';
@@ -92,6 +93,10 @@ function ActivePreview({
         [book.pages],
     );
     const [previewPageId, setPreviewPageId] = useState(() => pages[0]?.id || page.id);
+    const previewIndex = Math.max(
+        0,
+        pages.findIndex((item) => item.id === previewPageId),
+    );
     const loadedPageId = useRef(previewPageId);
     const progress = useRef(new WorkflowState(undefined, book.workflowVariables || []));
     const retiring = useRef<Promise<void>>(Promise.resolve());
@@ -305,126 +310,146 @@ function ActivePreview({
                 </Alert>
             )}
             <div className="relative min-h-0 flex-1" data-testid="local-preview-stage">
-                <div
-                    ref={host}
-                    inert={state !== 'playing'}
-                    className={cn(
-                        'absolute inset-0 transition-opacity duration-150 motion-reduce:transition-none',
-                        state === 'loading' ? 'opacity-0' : 'opacity-100',
-                    )}
-                />
-                <div
-                    inert={state !== 'playing'}
-                    className="pointer-events-none absolute inset-x-4 bottom-4 flex justify-center"
-                >
-                    <PreviewPageStrip
-                        pages={pages}
-                        currentPageId={previewPageId}
-                        loading={state === 'loading'}
-                        onSelect={(id) => {
-                            if (id === previewPageId) return;
-                            setState('loading');
-                            setPreviewPageId(id);
-                        }}
+                <LoadingBoundary compact message="Đang chuẩn bị bản xem trước…">
+                    <div
+                        ref={host}
+                        inert={state !== 'playing'}
+                        className={cn(
+                            'absolute inset-0 transition-opacity duration-150 motion-reduce:transition-none',
+                            state === 'loading' ? 'opacity-0' : 'opacity-100',
+                        )}
                     />
-                </div>
-                <fieldset
-                    aria-label="Công cụ xem trước"
-                    inert={state !== 'playing'}
-                    className="absolute top-4 right-4 flex items-center gap-1 rounded-2xl border border-border bg-surface p-1.5"
-                >
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={isMuted ? 'Bật tiếng xem trước' : 'Tắt tiếng xem trước'}
-                        title={isMuted ? 'Bật tiếng' : 'Tắt tiếng'}
-                        disabled={state === 'loading' || state === 'error'}
-                        onClick={() => {
-                            muted.current = !muted.current;
-                            setIsMuted(muted.current);
-                            runtime.current?.mute(muted.current);
-                        }}
+                    <div
+                        inert={state !== 'playing'}
+                        className="pointer-events-none absolute inset-x-4 bottom-4 flex justify-center"
                     >
-                        {isMuted ? <VolumeX /> : <Volume2 />}
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Khôi phục góc nhìn xem trước"
-                        title="Góc nhìn ban đầu"
-                        onClick={() => stage.current?.resetView()}
-                        disabled={state === 'loading'}
-                    >
-                        <Focus />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={state === 'loading'}
-                        onClick={() => {
-                            autoStart.current = state === 'playing';
-                            setRevision((v) => v + 1);
-                        }}
-                    >
-                        <RotateCcw />
-                        Chạy lại
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setPhone(true)}>
-                        <Smartphone />
-                        Thử AR
-                    </Button>
-                </fieldset>
-                {state !== 'playing' && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-surface p-6">
-                        <div className="flex max-w-96 flex-col items-center gap-8 text-center">
-                            {state === 'loading' ? (
-                                <LoadingScreen compact message="Đang chuẩn bị bản xem trước…" />
-                            ) : state === 'error' ? (
-                                <>
-                                    <p role="alert" className="m-0 text-sm leading-6">
-                                        {error}
-                                    </p>
-                                    {failure?.repair && onRepair && (
-                                        <Button
-                                            onClick={() =>
-                                                onRepair(
-                                                    failure.repair as PreviewRepair,
-                                                    previewPageId,
-                                                )
-                                            }
-                                        >
-                                            {failure.repair.kind === 'memory'
-                                                ? 'Sửa thông tin ghi nhớ'
-                                                : failure.repair.kind === 'interaction'
-                                                  ? 'Sửa tương tác'
-                                                  : 'Về Thiết kế'}
-                                        </Button>
-                                    )}
-                                    {failure?.retryable !== false && (
-                                        <Button onClick={() => setRevision((v) => v + 1)}>
-                                            <RotateCcw />
-                                            Thử lại
-                                        </Button>
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    <BookariaLogo symbol className="w-30" />
-                                    <Button className="min-w-40" onClick={start}>
-                                        Bắt đầu xem
-                                    </Button>
-                                </>
-                            )}
-                        </div>
+                        <PreviewPageStrip
+                            pages={pages}
+                            currentPageId={previewPageId}
+                            loading={state === 'loading'}
+                            onSelect={(id) => {
+                                if (id === previewPageId) return;
+                                setState('loading');
+                                setPreviewPageId(id);
+                            }}
+                        />
                     </div>
-                )}
+                    <fieldset
+                        aria-label="Công cụ xem trước"
+                        inert={state !== 'playing'}
+                        className="absolute top-4 right-4 flex items-center gap-1 rounded-2xl border border-border bg-surface p-1.5"
+                    >
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={isMuted ? 'Bật tiếng xem trước' : 'Tắt tiếng xem trước'}
+                            title={isMuted ? 'Bật tiếng' : 'Tắt tiếng'}
+                            disabled={state === 'loading' || state === 'error'}
+                            onClick={() => {
+                                muted.current = !muted.current;
+                                setIsMuted(muted.current);
+                                runtime.current?.mute(muted.current);
+                            }}
+                        >
+                            {isMuted ? <VolumeX /> : <Volume2 />}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Khôi phục góc nhìn xem trước"
+                            title="Góc nhìn ban đầu"
+                            onClick={() => stage.current?.resetView()}
+                            disabled={state === 'loading'}
+                        >
+                            <Focus />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={state === 'loading'}
+                            onClick={() => {
+                                autoStart.current = state === 'playing';
+                                setRevision((v) => v + 1);
+                            }}
+                        >
+                            <RotateCcw />
+                            Chạy lại
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setPhone(true)}>
+                            <Smartphone />
+                            Thử AR
+                        </Button>
+                    </fieldset>
+                    {state !== 'playing' && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-surface p-6">
+                            <div className="flex max-w-96 flex-col items-center gap-8 text-center">
+                                {state === 'loading' ? (
+                                    <LoadingScreen compact message="Đang chuẩn bị bản xem trước…" />
+                                ) : state === 'error' ? (
+                                    <>
+                                        <p role="alert" className="m-0 text-sm leading-6">
+                                            {error}
+                                        </p>
+                                        {failure?.repair && onRepair && (
+                                            <Button
+                                                onClick={() =>
+                                                    onRepair(
+                                                        failure.repair as PreviewRepair,
+                                                        previewPageId,
+                                                    )
+                                                }
+                                            >
+                                                {failure.repair.kind === 'memory'
+                                                    ? 'Sửa thông tin ghi nhớ'
+                                                    : failure.repair.kind === 'interaction'
+                                                      ? 'Sửa tương tác'
+                                                      : 'Về Thiết kế'}
+                                            </Button>
+                                        )}
+                                        {failure?.retryable !== false && (
+                                            <Button onClick={() => setRevision((v) => v + 1)}>
+                                                <RotateCcw />
+                                                Thử lại
+                                            </Button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div
+                                        data-preview-ready
+                                        className="flex w-full max-w-sm flex-col items-center"
+                                    >
+                                        <Boki state="idle" size={80} className="mb-5" />
+                                        <h2 className="m-0 text-balance font-semibold text-xl leading-7">
+                                            Sẵn sàng xem trước
+                                        </h2>
+                                        <p className="mt-2 mb-0 max-w-full break-words text-muted-foreground text-sm leading-[22px]">
+                                            Trang {previewIndex + 1}
+                                            {' · '}
+                                            {pages[previewIndex]?.title ||
+                                                page.title ||
+                                                'Trang sách'}
+                                        </p>
+                                        <Button
+                                            className="mt-6 min-h-11 min-w-48 gap-2"
+                                            onClick={start}
+                                        >
+                                            <Play aria-hidden="true" />
+                                            Bắt đầu xem
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </LoadingBoundary>
             </div>
             <div className="flex h-10 shrink-0 items-center justify-between gap-4 border-border border-t bg-surface px-5 text-muted-foreground text-xs">
-                <span>
+                <span className="hidden sm:block">
                     Nhấp: tương tác · Kéo trái: xoay · Phải / Space + kéo: dịch · Giữa + kéo / Cuộn:
                     zoom
                 </span>
-                <span>Về editor để tiếp tục chỉnh sửa</span>
+                <span className="sm:hidden">Chạm để tương tác · Kéo để xoay</span>
+                <span className="hidden lg:block">Về editor để tiếp tục chỉnh sửa</span>
             </div>
             {phone && (
                 <PhonePreviewDialog

@@ -1073,6 +1073,7 @@ function SceneEditorContent({
                                     size="sm"
                                     aria-expanded={layersOpen}
                                     aria-controls="scene-object-layers"
+                                    className="mb-[7px]"
                                     onKeyDown={(event) => {
                                         if (event.key !== 'Escape' || !layersOpen) return;
                                         event.preventDefault();

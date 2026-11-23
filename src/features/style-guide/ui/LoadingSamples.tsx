@@ -78,7 +78,7 @@ export function LoadingSamples() {
                     <div className="grid grid-cols-2 gap-8 max-[800px]:grid-cols-1">
                         <Sample title="Mở ứng dụng" source="@/shared/ui/LoadingScreen">
                             <div className="rounded-lg border border-border">
-                                <LoadingScreen message="Đang mở Bookaria…" />
+                                <LoadingScreen message="Đang tải tài nguyên…" />
                             </div>
                         </Sample>
                         <Sample

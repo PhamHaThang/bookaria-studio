@@ -7,6 +7,7 @@ export type ChatMessage = {
     role: 'user' | 'assistant';
     content: string;
     wireContent?: string;
+    failed?: boolean;
     result?: InteractionAiResult;
     snapshot?: string;
     targetRuleId?: string;

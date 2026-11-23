@@ -124,7 +124,7 @@ for (const surface of ['interaction', 'design']) {
             await expect.poll(bottomDistance).toBeLessThan(3);
             await expect.poll(tailGap).toBeLessThan(3);
             await page.getByRole('button', { name: 'Thu gọn chat', exact: true }).click();
-            await page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true }).click();
+            await page.getByRole('button', { name: 'Trợ lý Boki', exact: true }).click();
             await expect.poll(bottomDistance).toBeLessThan(3);
 
             await viewport.hover();
@@ -247,7 +247,7 @@ test('library references can add an object while removal is confirmed and undone
 
 async function open(page) {
     await page.goto('/tests/browser/interaction.html');
-    await page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true }).click();
+    await page.getByRole('button', { name: 'Trợ lý Boki', exact: true }).click();
     await page.getByLabel('Yêu cầu cho trợ lý').fill('Chạm Khủng long thì hiện Thông tin');
 }
 
@@ -370,7 +370,7 @@ test('chat scope switches between the page and an explicit flow and blocks a pro
         .toBe(1);
     await expect(scope).toContainText('Chạm để khám phá');
     await page.getByRole('button', { name: 'Thu gọn chat' }).click();
-    await page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true }).click();
+    await page.getByRole('button', { name: 'Trợ lý Boki', exact: true }).click();
     await expect(scope).toContainText('Chạm để khám phá');
     await scope.click();
     await page.getByRole('option', { name: 'Trang hiện tại', exact: true }).click();
@@ -394,7 +394,7 @@ test('reference picker opens after chat is reopened and explains an empty page',
     await page.getByRole('combobox', { name: 'Tìm đối tượng hoặc âm thanh' }).press('Escape');
     await expect(picker).toHaveCount(0);
     await page.getByRole('button', { name: 'Thu gọn chat' }).click();
-    await page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true }).click();
+    await page.getByRole('button', { name: 'Trợ lý Boki', exact: true }).click();
     await trigger.click();
     await expectPickerAboveComposer(page);
     await page.getByRole('combobox', { name: 'Tìm đối tượng hoặc âm thanh' }).press('Escape');
@@ -499,7 +499,7 @@ test('clarifications and API failure preserve the instruction, allow retry and n
     await expect(page.getByLabel('Yêu cầu cho trợ lý')).toHaveValue(
         'Chạm Khủng long thì hiện Thông tin',
     );
-    await page.getByRole('button', { name: 'Thử lại', exact: true }).click();
+    await page.getByRole('button', { name: 'Gửi tin nhắn', exact: true }).click();
     await expect(page.getByText('Bạn muốn dùng thẻ nào?')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Thêm vào trang' })).toHaveCount(0);
     expect(calls).toBe(2);
@@ -518,7 +518,7 @@ test('closing cancels the request and a late result cannot reopen or mutate the 
     await held.fulfill({ json: result(held.request().postDataJSON()) }).catch(() => {});
     await expect(page.getByRole('dialog')).toHaveCount(0);
     expect(await page.evaluate(() => window.__interaction.scene.interactions.length)).toBe(1);
-    await page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true }).click();
+    await page.getByRole('button', { name: 'Trợ lý Boki', exact: true }).click();
     await expect(page.getByLabel('Yêu cầu cho trợ lý')).toHaveValue(
         'Chạm Khủng long thì hiện Thông tin',
     );
@@ -527,7 +527,7 @@ test('closing cancels the request and a late result cannot reopen or mutate the 
 test('AI dialog fits a narrow viewport and supports keyboard dismissal', async ({ page }) => {
     await open(page);
     await page.setViewportSize({ width: 390, height: 844 });
-    const dialog = page.getByRole('dialog', { name: 'Trợ lý Bookaria' });
+    const dialog = page.getByRole('dialog', { name: 'Trợ lý Boki' });
     await expect(dialog).toBeVisible();
     const bounds = await dialog.boundingBox();
     expect(bounds.x).toBeGreaterThanOrEqual(0);
@@ -733,7 +733,7 @@ test('chat retains clarification context, edits the applied rule and safely undo
     await page.getByRole('button', { name: 'Thêm vào trang' }).click();
     await expect(page.getByText('Đã áp dụng vào bản nháp')).toBeVisible();
     await page.getByRole('button', { name: 'Thu gọn chat' }).click();
-    await page.getByRole('button', { name: 'Trợ lý Bookaria' }).click();
+    await page.getByRole('button', { name: 'Trợ lý Boki' }).click();
     await expect(page.getByText('Đã áp dụng vào bản nháp')).toBeVisible();
     await page.getByLabel('Yêu cầu cho trợ lý').fill('Thêm chờ 5 giây');
     await page.getByRole('button', { name: 'Gửi tin nhắn' }).click();
@@ -892,10 +892,10 @@ test('starter prompts remain editable and closing chat returns keyboard focus', 
         return route.fulfill({ json: result(route.request().postDataJSON()) });
     });
     await page.goto('/tests/browser/interaction.html');
-    const launcher = page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true });
+    const launcher = page.getByRole('button', { name: 'Trợ lý Boki', exact: true });
     const canvas = await page.getByRole('application').boundingBox();
     await launcher.click();
-    const panel = page.getByRole('complementary', { name: 'Trợ lý Bookaria' });
+    const panel = page.getByRole('complementary', { name: 'Trợ lý Boki' });
     const compact = await panel.boundingBox();
     const toggle = page.getByRole('button', { name: 'Thu gọn trợ lý AI', exact: true });
     await expect(toggle).toBeVisible();

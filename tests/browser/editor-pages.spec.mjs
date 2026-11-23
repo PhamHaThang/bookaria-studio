@@ -73,7 +73,7 @@ test('audio can be picked and played from the design canvas while the reader pla
 test('interaction mode shows control hints and hides the page strip', async ({ page }) => {
     await open(page, 'pages=2');
     await page.getByRole('radio', { name: 'Tương tác', exact: true }).click();
-    const ai = page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true });
+    const ai = page.getByRole('button', { name: 'Trợ lý Boki', exact: true });
     const pages = page.getByRole('navigation', { name: 'Các trang trong sách' });
     const hints = page.getByRole('note', { name: 'Hướng dẫn điều khiển tương tác' });
     await expect(ai.locator('.lucide-sparkles')).toBeVisible();
@@ -93,10 +93,10 @@ test('chat docks beside the editor and keeps separate drafts when changing pages
     await open(page, 'pages=2');
     const showChat = async () => {
         await page.getByRole('radio', { name: 'Tương tác', exact: true }).click();
-        await page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true }).click();
+        await page.getByRole('button', { name: 'Trợ lý Boki', exact: true }).click();
     };
     await showChat();
-    const chat = page.getByRole('complementary', { name: 'Trợ lý Bookaria' });
+    const chat = page.getByRole('complementary', { name: 'Trợ lý Boki' });
     await expect(chat).toBeVisible();
     await page.getByLabel('Yêu cầu cho trợ lý').fill('Lời đọc cho trang đầu');
     const hints = await page
@@ -108,7 +108,7 @@ test('chat docks beside the editor and keeps separate drafts when changing pages
     await page.screenshot({ path: info.outputPath('chat-desktop.png') });
     await page.getByRole('radio', { name: 'Thiết kế', exact: true }).click();
     await expect(chat).toBeHidden();
-    await page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true }).click();
+    await page.getByRole('button', { name: 'Trợ lý Boki', exact: true }).click();
     await expect(chat.getByText('Thiết kế trang', { exact: true })).toBeVisible();
     await expect(page.getByLabel('Yêu cầu cho trợ lý')).toHaveValue('Lời đọc cho trang đầu');
     await page.getByRole('link', { name: /^Trang 2:/ }).click();
@@ -126,7 +126,7 @@ test('design assistant edits the page and carries its proposal and undo across b
 }, info) => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await open(page, 'pages=2&repair', 'dark');
-    const launcher = page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true });
+    const launcher = page.getByRole('button', { name: 'Trợ lý Boki', exact: true });
     const objects = page.getByRole('button', { name: /^Đối tượng \(/ });
     await expect(launcher).toHaveText('');
     await expect(launcher.locator('.lucide-sparkles')).toBeVisible();
@@ -142,7 +142,7 @@ test('design assistant edits the page and carries its proposal and undo across b
         .toBe(true);
     await page.screenshot({ path: info.outputPath('assistant-design-launcher.png') });
     await launcher.click();
-    const chat = page.getByRole('complementary', { name: 'Trợ lý Bookaria' });
+    const chat = page.getByRole('complementary', { name: 'Trợ lý Boki' });
     await expect(chat.getByText('Thiết kế trang', { exact: true })).toBeVisible();
     await expect(chat.getByRole('button', { name: 'Ẩn đối tượng khi mở trang' })).toBeVisible();
     const bounds = await chat.boundingBox();
@@ -205,7 +205,7 @@ test('design assistant edits the page and carries its proposal and undo across b
     await expect.poll(readText).toBe('Rùa biển');
     await page.getByRole('radio', { name: 'Tương tác', exact: true }).click();
     await expect(chat).toBeHidden();
-    await page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true }).click();
+    await page.getByRole('button', { name: 'Trợ lý Boki', exact: true }).click();
     await expect(chat.getByText('Tương tác', { exact: true })).toBeVisible();
     await expect(proposal.getByText('Đã áp dụng vào bản nháp')).toBeVisible();
     await page.getByTestId('scene-history-undo').click();
@@ -215,7 +215,7 @@ test('design assistant edits the page and carries its proposal and undo across b
 test('design assistant and Objects stay together around a wide page strip', async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 768 });
     await open(page, 'pages=9');
-    const launcher = page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true });
+    const launcher = page.getByRole('button', { name: 'Trợ lý Boki', exact: true });
     const objects = page.getByRole('button', { name: /^Đối tượng \(/ });
     await expect(launcher).toBeVisible();
     await expect
@@ -243,8 +243,8 @@ test('chat yields to design and interaction inspectors and keeps the typed draft
 }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, 'pages=2&repair');
-    const launcher = page.getByRole('button', { name: 'Trợ lý Bookaria', exact: true });
-    const chat = page.getByRole('complementary', { name: 'Trợ lý Bookaria', exact: true });
+    const launcher = page.getByRole('button', { name: 'Trợ lý Boki', exact: true });
+    const chat = page.getByRole('complementary', { name: 'Trợ lý Boki', exact: true });
     const objects = page.getByRole('button', { name: /^Đối tượng \(/ });
     const layers = page.locator('#scene-object-layers');
     const inspector = page.locator('aside[aria-label="Bảng chỉnh sửa"]');

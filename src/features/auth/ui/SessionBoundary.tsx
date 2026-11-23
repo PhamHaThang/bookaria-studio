@@ -14,11 +14,7 @@ export function SessionBoundary() {
     if (status === 'loading')
         return (
             <main id="main">
-                <LoadingScreen fullScreen message="Đang kiểm tra phiên đăng nhập…">
-                    <Link className="text-muted-foreground text-sm underline" to="/">
-                        Về trang chủ
-                    </Link>
-                </LoadingScreen>
+                <LoadingScreen fullScreen message="Đang kiểm tra phiên đăng nhập…" />
             </main>
         );
     if (status === 'error')

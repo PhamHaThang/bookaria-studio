@@ -71,3 +71,8 @@
     --color-info-foreground: var(--status-info-text);
     --color-processing: var(--status-processing);
 }
+
+[data-loading-completing] {
+    opacity: 0;
+    transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}

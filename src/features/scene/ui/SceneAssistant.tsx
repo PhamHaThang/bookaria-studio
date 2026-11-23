@@ -16,7 +16,6 @@ import {
     Play,
     Plus,
     Search,
-    Sparkles,
     Square,
     Tag,
     Trash2,
@@ -57,7 +56,7 @@ import type {
 } from '@/shared/contracts/scene.schema';
 import { useIsMobile } from '@/shared/hooks/use-mobile';
 import { cn } from '@/shared/lib/cn';
-import { BookariaLogo } from '@/shared/ui/BookariaLogo';
+import { Boki } from '@/shared/ui/Boki';
 import { Alert, AlertDescription } from '@/shared/ui/primitives/alert';
 import {
     AlertDialog,
@@ -123,7 +122,6 @@ import {
     SelectValue,
 } from '@/shared/ui/primitives/select';
 import { Separator } from '@/shared/ui/primitives/separator';
-import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/primitives/tooltip';
 import { assetsApi, assetTypeLabels } from '../../assets';
 import { useAuth } from '../../auth';
@@ -141,6 +139,9 @@ import { aiPlanState, proposalSnapshot, stageAiPlan } from '../model/ai-proposal
 import { ruleTriggerLabel } from '../model/interaction-scope';
 import { actionSummary, objectName } from '../model/interaction-templates';
 import { sceneObjectLabel, searchable } from '../model/object-list';
+import { AssistantActivity, type AssistantActivityHandle } from './AssistantActivity';
+import { AssistantLauncher, type LauncherReaction } from './AssistantLauncher';
+import { AssistantTurn } from './AssistantTurn';
 import { InteractionTestPanel } from './InteractionTestPanel';
 
 const api = createSceneApi(apiClient);
@@ -630,40 +631,38 @@ export function SceneAssistant({
     onOpenChange,
     designLauncherHost,
     ...props
-}: Omit<ComponentProps<typeof AssistantChat>, 'open' | 'sessionKey' | 'onClose'> & {
+}: Omit<ComponentProps<typeof AssistantChat>, 'open' | 'sessionKey' | 'onClose' | 'onReaction'> & {
     active?: boolean;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     designLauncherHost?: HTMLElement | null;
 }) {
     const launcher = useRef<HTMLButtonElement>(null);
+    const [reaction, setReaction] = useState<LauncherReaction>();
+    const reactToResult = useCallback((state: LauncherReaction['state']) => {
+        setReaction({ state, id: crypto.randomUUID() });
+    }, []);
     const { user } = useAuth();
     const sessionKey = `bookaria:workflow-draft:${user?.id || 'local'}:${props.page.id}`;
     const inDesignFooter = surface === 'design' && designLauncherHost !== undefined;
     const button = (
-        <Button
+        <AssistantLauncher
             ref={launcher}
-            size="icon"
             className={cn(
-                'pointer-events-auto rounded-full shadow-md',
                 !inDesignFooter && 'absolute right-(--assistant-edge) bottom-(--assistant-bottom)',
-                surface === 'interactions' && 'size-12',
             )}
-            aria-label={open ? 'Thu gọn trợ lý AI' : 'Trợ lý Bookaria'}
-            title={open ? 'Thu gọn trợ lý AI' : 'Trợ lý Bookaria'}
-            aria-expanded={open}
+            open={open}
+            reaction={reaction}
             disabled={!open && props.disabled}
-            onClick={() => onOpenChange(!open)}
-        >
-            <Sparkles className="size-4" aria-hidden="true" />
-        </Button>
+            onToggle={() => onOpenChange(!open)}
+        />
     );
 
     return (
         <div
             hidden={!active}
             className={cn(
-                'pointer-events-none absolute inset-0 z-30 col-start-1 col-end-2 row-start-1 row-end-2 [--assistant-bottom:1rem] [--assistant-edge:1rem] [--assistant-panel-bottom:calc(var(--assistant-bottom)_+_4rem)]',
+                'pointer-events-none absolute inset-0 z-30 col-start-1 col-end-2 row-start-1 row-end-2 [--assistant-bottom:calc(1rem_-_7px)] [--assistant-edge:1rem] [--assistant-panel-bottom:calc(var(--assistant-bottom)_+_4.5rem)]',
                 surface === 'design' &&
                     'right-[var(--inspector-offset,0px)] [--assistant-bottom:8rem] [--assistant-edge:18px] [--assistant-panel-bottom:var(--scene-assistant-panel-bottom,12rem)]',
             )}
@@ -677,6 +676,7 @@ export function SceneAssistant({
                 surface={surface}
                 open={active && open}
                 sessionKey={sessionKey}
+                onReaction={reactToResult}
                 onClose={() => {
                     onOpenChange(false);
                     requestAnimationFrame(() => launcher.current?.focus());
@@ -686,10 +686,15 @@ export function SceneAssistant({
     );
 }
 
-function FollowSentMessage({ messageId }: { messageId: string | undefined }) {
+function FollowLatestMessage({ messageId }: { messageId: string | undefined }) {
     const { scrollToEnd } = useMessageScroller();
     useEffect(() => {
-        if (messageId) scrollToEnd({ behavior: 'auto' });
+        if (messageId)
+            scrollToEnd({
+                behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+                    ? 'auto'
+                    : 'smooth',
+            });
     }, [messageId, scrollToEnd]);
     return null;
 }
@@ -706,6 +711,7 @@ function AssistantChat({
     sessionKey,
     onClose,
     onApply,
+    onReaction,
 }: {
     surface: 'design' | 'interactions';
     scene: Scene;
@@ -718,10 +724,13 @@ function AssistantChat({
     sessionKey: string;
     onClose: () => void;
     onApply: (scene: Scene, rule: InteractionRule | null, variables: WorkflowVariable[]) => void;
+    onReaction: (state: LauncherReaction['state']) => void;
 }) {
     const [session, setSession] = useState<ChatSession>(() => readChat(sessionKey));
     const latestSession = useRef(session);
     const [pending, setPending] = useState(false);
+    const activity = useRef<AssistantActivityHandle>(null);
+    const [freshReply, setFreshReply] = useState<string>();
     const [error, setError] = useState('');
     const [confirmRemoval, setConfirmRemoval] = useState<string>();
     const [preview, setPreview] = useState<{
@@ -802,6 +811,7 @@ function AssistantChat({
         pendingBefore.current = null;
         request.current = null;
         setPending(false);
+        setFreshReply(undefined);
     }, [update]);
     function close() {
         cancel();
@@ -900,6 +910,15 @@ function AssistantChat({
     const targetObject = scene.objects.find((object) => object.id === session.targetObjectId);
     const missingTarget =
         (session.targetRuleId && !targetRule) || (session.targetObjectId && !targetObject);
+    const notice =
+        error ||
+        (missingTarget ? 'Nội dung đã chọn không còn trên trang. Hãy chọn lại phạm vi.' : '');
+    // UI notices live in the transcript, without becoming AI history or consuming composer space.
+    const chatMessages: ChatMessage[] = pending
+        ? [...session.messages, { id: 'pending', role: 'assistant', content: '' }]
+        : notice
+          ? [...session.messages, { id: 'notice', role: 'assistant', content: notice }]
+          : session.messages;
     const sameScope =
         proposalMessage?.targetRuleId === session.targetRuleId &&
         proposalMessage?.targetObjectId === session.targetObjectId;
@@ -1053,15 +1072,23 @@ function AssistantChat({
         setPending(true);
         setError('');
         setPreview(null);
+        const previous = before.messages.at(-1);
+        const resending =
+            previous?.role === 'user' &&
+            previous.failed &&
+            previous.wireContent === wireContent &&
+            previous.targetRuleId === before.targetRuleId &&
+            previous.targetObjectId === before.targetObjectId;
+        const history = resending ? before.messages.slice(0, -1) : before.messages;
         const userMessage: ChatMessage = {
-            id: crypto.randomUUID(),
+            id: resending ? previous.id : crypto.randomUUID(),
             role: 'user',
             content: text.trim(),
             wireContent,
             targetRuleId: before.targetRuleId,
             targetObjectId: before.targetObjectId,
         };
-        update({ ...before, messages: [...before.messages, userMessage] });
+        update({ ...before, messages: [...history, userMessage] });
         try {
             const result = await api.propose(
                 page.id,
@@ -1073,7 +1100,7 @@ function AssistantChat({
                         .filter(([, asset]) => asset.type === 'AUDIO')
                         .map(([id]) => id)
                         .slice(0, 60),
-                    history: before.messages.slice(-20).map((message) => ({
+                    history: history.slice(-20).map((message) => ({
                         role: message.role,
                         content: message.wireContent ?? message.content,
                     })),
@@ -1107,6 +1134,11 @@ function AssistantChat({
                 controller.signal,
             );
             if (controller.signal.aborted) return;
+            await activity.current?.finish(controller.signal);
+            if (controller.signal.aborted) return;
+            const replyId = crypto.randomUUID();
+            setFreshReply(replyId);
+            onReaction('success');
             const content =
                 result.status === 'proposal' || result.status === 'edit_plan'
                     ? currentPlan
@@ -1118,10 +1150,10 @@ function AssistantChat({
                 input: '',
                 references: [],
                 messages: [
-                    ...before.messages,
+                    ...history,
                     userMessage,
                     {
-                        id: crypto.randomUUID(),
+                        id: replyId,
                         role: 'assistant',
                         content,
                         result,
@@ -1132,9 +1164,18 @@ function AssistantChat({
                 ],
             });
         } catch (cause) {
-            if (!controller.signal.aborted) setError(errorMessage(cause));
-            // A failed/cancelled turn remains in the composer and can be retried without duplicating history.
-            if (latestSession.current.messages.at(-1)?.id === userMessage.id) update(retry);
+            if (controller.signal.aborted) return;
+            try {
+                await activity.current?.finish(controller.signal);
+            } catch {
+                if (controller.signal.aborted) return;
+            }
+            if (controller.signal.aborted) return;
+            // Keep the sent bubble on failure; resending the unchanged instruction reuses its ID.
+            update({ ...retry, messages: [...history, { ...userMessage, failed: true }] });
+            setFreshReply('notice');
+            setError(errorMessage(cause));
+            onReaction('error');
         } finally {
             if (
                 controller.signal.aborted &&
@@ -1188,6 +1229,7 @@ function AssistantChat({
             else {
                 accepting.current = true;
                 onApply(next.scene, rule, next.variables);
+                onReaction('success');
                 update({
                     ...active,
                     targetObjectId: plan.removeObjectIds?.includes(active.targetObjectId ?? '')
@@ -1210,6 +1252,7 @@ function AssistantChat({
             }
         } catch (cause) {
             setError(errorMessage(cause));
+            onReaction('error');
         } finally {
             accepting.current = false;
         }
@@ -1298,14 +1341,11 @@ function AssistantChat({
     const body = (
         <>
             <header className="flex min-h-14 shrink-0 items-center gap-2.5 px-4 py-2">
-                <span
-                    aria-hidden="true"
-                    className="grid size-8 shrink-0 place-items-center rounded-full bg-primary [--logo-filter:var(--logo-on-primary-filter)]"
-                >
-                    <BookariaLogo symbol className="w-5" />
+                <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center">
+                    <Boki state="idle" size={36} />
                 </span>
                 <div className="min-w-0 flex-1">
-                    <h2 className="m-0 font-semibold text-sm">Trợ lý Bookaria</h2>
+                    <h2 className="m-0 font-semibold text-sm">Trợ lý Boki</h2>
                     <p className="m-0 text-muted-foreground text-xs">
                         {surface === 'design' ? 'Thiết kế trang' : 'Tương tác'}
                     </p>
@@ -1345,11 +1385,11 @@ function AssistantChat({
             <Separator />
             <div className="min-h-0 flex-1">
                 <MessageScrollerProvider autoScroll defaultScrollPosition="end">
-                    <FollowSentMessage messageId={last?.role === 'user' ? last.id : undefined} />
+                    <FollowLatestMessage messageId={chatMessages.at(-1)?.id} />
                     <MessageScroller>
                         <MessageScrollerViewport aria-label="Lịch sử trao đổi">
                             <MessageScrollerContent aria-busy={pending} className="gap-5 px-3 py-4">
-                                {!session.messages.length && (
+                                {!session.messages.length && !notice && (
                                     <MessageScrollerItem messageId="welcome">
                                         <Empty className="gap-5 px-0 pt-7 pb-2">
                                             <EmptyHeader className="gap-2 px-2">
@@ -1414,261 +1454,332 @@ function AssistantChat({
                                         </Empty>
                                     </MessageScrollerItem>
                                 )}
-                                {session.messages.map((message) => {
+                                {chatMessages.map((message, index) => {
                                     const archived = resultPlan(message.result);
                                     const isUser = message.role === 'user';
+                                    const isPending = message.id === 'pending';
+                                    const isNotice = message.id === 'notice';
+                                    const slotId =
+                                        isNotice && chatMessages[index - 1]?.role !== 'user'
+                                            ? 'notice'
+                                            : isUser
+                                              ? message.id
+                                              : `reply-${chatMessages[index - 1]?.id ?? message.id}`;
                                     return (
                                         <MessageScrollerItem
-                                            key={message.id}
-                                            messageId={message.id}
+                                            key={slotId}
+                                            messageId={slotId}
+                                            className={
+                                                isPending || message.id === freshReply
+                                                    ? '[content-visibility:visible]'
+                                                    : undefined
+                                            }
                                         >
-                                            <Message align={isUser ? 'end' : 'start'}>
-                                                <MessageContent className="gap-2">
-                                                    {!isUser && (
-                                                        <MessageHeader className="gap-2 px-0">
-                                                            <span
-                                                                aria-hidden="true"
-                                                                className="grid size-6 shrink-0 place-items-center rounded-full bg-primary [--logo-filter:var(--logo-on-primary-filter)]"
-                                                            >
-                                                                <BookariaLogo
-                                                                    symbol
-                                                                    className="w-4"
-                                                                />
-                                                            </span>
-                                                            Bookaria
-                                                        </MessageHeader>
-                                                    )}
-                                                    {!archived && (
-                                                        <Bubble
-                                                            variant={isUser ? 'secondary' : 'ghost'}
-                                                        >
-                                                            <BubbleContent className="whitespace-pre-wrap">
-                                                                {isUser && (
-                                                                    <span className="sr-only">
-                                                                        Bạn{' '}
-                                                                    </span>
-                                                                )}
-                                                                {message.content}
-                                                            </BubbleContent>
-                                                        </Bubble>
-                                                    )}
-                                                    {plan && message.id === proposalMessage?.id && (
-                                                        <Card
-                                                            size="sm"
-                                                            role="region"
-                                                            aria-label={
-                                                                editingProposal
-                                                                    ? 'Đề xuất chỉnh sửa'
-                                                                    : 'Đề xuất tương tác'
-                                                            }
-                                                            className="data-[size=sm]:[--card-spacing:--spacing(4)]"
-                                                        >
-                                                            <CardHeader>
-                                                                <CardTitle className="flex items-center gap-2">
-                                                                    {editingProposal
-                                                                        ? 'Đề xuất chỉnh sửa'
-                                                                        : 'Đề xuất tương tác'}
-                                                                </CardTitle>
-                                                                <CardDescription>
-                                                                    {[
-                                                                        objectCount > 0 &&
-                                                                            `${objectCount} đối tượng`,
-                                                                        ruleCount > 0 &&
-                                                                            `${ruleCount} luồng`,
-                                                                    ]
-                                                                        .filter(Boolean)
-                                                                        .join(' · ')}
-                                                                </CardDescription>
-                                                            </CardHeader>
-                                                            <CardContent>
-                                                                <details open={!appliedMessage}>
-                                                                    <summary
-                                                                        hidden={!appliedMessage}
-                                                                        className="cursor-pointer text-muted-foreground text-xs"
+                                            <AssistantTurn pending={isPending}>
+                                                {isPending ? (
+                                                    <AssistantActivity
+                                                        ref={activity}
+                                                        paused={pickerOpen || Boolean(preview)}
+                                                    />
+                                                ) : (
+                                                    <Message
+                                                        align={isUser ? 'end' : 'start'}
+                                                        className={
+                                                            message.id === freshReply
+                                                                ? 'fade-in slide-in-from-bottom-2 animate-in duration-[360ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none'
+                                                                : undefined
+                                                        }
+                                                        data-assistant-reply={
+                                                            isUser || isNotice
+                                                                ? undefined
+                                                                : message.id
+                                                        }
+                                                        data-assistant-notice={
+                                                            isNotice || undefined
+                                                        }
+                                                    >
+                                                        <MessageContent className="gap-2">
+                                                            {!isUser && (
+                                                                <MessageHeader className="gap-2 px-0">
+                                                                    <span
+                                                                        aria-hidden="true"
+                                                                        className="grid size-6 shrink-0 place-items-center"
                                                                     >
-                                                                        Xem chi tiết thay đổi
-                                                                    </summary>
-                                                                    <PlanDetails
-                                                                        plan={plan}
-                                                                        scene={scene}
-                                                                        variables={variables}
-                                                                        libraryAssets={
-                                                                            libraryAssets
-                                                                        }
-                                                                        widthMm={widthMm}
-                                                                        beforeObjects={
-                                                                            appliedEdit
-                                                                                ? [
-                                                                                      ...(appliedEdit.objects?.flatMap(
-                                                                                          ({
-                                                                                              before,
-                                                                                          }) =>
-                                                                                              before
-                                                                                                  ? [
-                                                                                                        before,
-                                                                                                    ]
-                                                                                                  : [],
-                                                                                      ) ?? []),
-                                                                                      ...(appliedEdit.removedObjects?.map(
-                                                                                          ({
-                                                                                              item,
-                                                                                          }) =>
-                                                                                              item,
-                                                                                      ) ?? []),
-                                                                                  ]
+                                                                        <Boki
+                                                                            state="idle"
+                                                                            size={24}
+                                                                        />
+                                                                    </span>
+                                                                    Trợ lý Boki
+                                                                </MessageHeader>
+                                                            )}
+                                                            {!archived && (
+                                                                <Bubble
+                                                                    variant={
+                                                                        isUser
+                                                                            ? 'secondary'
+                                                                            : 'ghost'
+                                                                    }
+                                                                >
+                                                                    <BubbleContent
+                                                                        className="whitespace-pre-wrap"
+                                                                        role={
+                                                                            isNotice
+                                                                                ? 'alert'
                                                                                 : undefined
                                                                         }
-                                                                        beforeRules={beforeRules}
-                                                                    />
-                                                                </details>
-                                                                {stale && !appliedMessage && (
-                                                                    <Alert className="mt-3">
-                                                                        <AlertDescription>
-                                                                            {!sameScope
-                                                                                ? 'Phạm vi đã thay đổi. Gửi yêu cầu tiếp để tạo đề xuất cho phạm vi mới.'
-                                                                                : 'Trang hoặc tài nguyên đã thay đổi. Gửi yêu cầu tiếp để kiểm tra lại đề xuất.'}
-                                                                        </AlertDescription>
-                                                                    </Alert>
-                                                                )}
-                                                            </CardContent>
-                                                            <CardFooter className="flex flex-wrap gap-2 border-border border-t bg-muted/30 px-4 py-3">
-                                                                {appliedMessage ? (
-                                                                    <div className="flex flex-col gap-1.5">
-                                                                        <Badge
-                                                                            variant={
-                                                                                applicationState ===
-                                                                                'undone'
-                                                                                    ? 'neutral'
-                                                                                    : 'success'
-                                                                            }
-                                                                        >
-                                                                            {applicationState !==
-                                                                                'undone' && (
-                                                                                <Check />
-                                                                            )}
-                                                                            {applicationState ===
-                                                                            'undone'
-                                                                                ? 'Đã hoàn tác'
-                                                                                : applicationState ===
-                                                                                    'changed'
-                                                                                  ? 'Đã áp dụng · Có chỉnh sửa tiếp'
-                                                                                  : 'Đã áp dụng vào bản nháp'}
-                                                                        </Badge>
-                                                                        <p className="m-0 text-muted-foreground text-xs">
-                                                                            {applicationState ===
-                                                                            'undone'
-                                                                                ? 'Dùng Redo để làm lại hoặc nhắn yêu cầu mới.'
-                                                                                : 'Dùng Undo trên thanh công cụ để lùi thay đổi gần nhất.'}
-                                                                        </p>
-                                                                    </div>
-                                                                ) : (
-                                                                    <>
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            onClick={() =>
-                                                                                accept(true)
-                                                                            }
-                                                                            disabled={
-                                                                                stale ||
-                                                                                disabled ||
-                                                                                pending ||
-                                                                                !canUseProposal
-                                                                            }
-                                                                        >
-                                                                            <Play data-icon="inline-start" />
-                                                                            {hasObjectEdits
-                                                                                ? 'Xem thử'
-                                                                                : 'Chạy thử'}
-                                                                        </Button>
-                                                                        <Button
-                                                                            size="sm"
-                                                                            onClick={() =>
-                                                                                accept(false)
-                                                                            }
-                                                                            disabled={
-                                                                                stale ||
-                                                                                disabled ||
-                                                                                pending ||
-                                                                                !canUseProposal
-                                                                            }
-                                                                        >
-                                                                            {editingProposal ||
-                                                                            plan.rules.length > 1 ||
-                                                                            plan.variables.length >
-                                                                                0
-                                                                                ? 'Áp dụng thay đổi'
-                                                                                : plan.rules[0]
-                                                                                        ?.replaceId ||
-                                                                                    legacyTarget
-                                                                                  ? 'Cập nhật luồng'
-                                                                                  : 'Thêm vào trang'}
-                                                                        </Button>
-                                                                    </>
-                                                                )}
-                                                            </CardFooter>
-                                                        </Card>
-                                                    )}
-                                                    {archived &&
-                                                        message.id !== proposalMessage?.id && (
-                                                            <details className="rounded-lg border border-border px-3 py-2.5">
-                                                                <summary className="cursor-pointer text-muted-foreground text-xs">
-                                                                    Xem đề xuất trước
-                                                                    {message.application &&
-                                                                        ` · ${aiPlanState(scene, variables, message.application) === 'undone' ? 'Đã hoàn tác' : 'Đã áp dụng'}`}
-                                                                </summary>
-                                                                <PlanDetails
-                                                                    plan={archived}
-                                                                    scene={scene}
-                                                                    variables={variables}
-                                                                    libraryAssets={libraryAssets}
-                                                                    widthMm={widthMm}
-                                                                />
-                                                            </details>
-                                                        )}
-                                                    {message.id === last?.id &&
-                                                    message.result &&
-                                                    message.result.status !== 'proposal' &&
-                                                    message.result.status !== 'edit_plan' &&
-                                                    'choices' in message.result &&
-                                                    message.result.choices?.length ? (
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {message.result.choices.map(
-                                                                (choice) => (
-                                                                    <Button
-                                                                        key={choice}
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        className="h-auto min-h-8 whitespace-normal text-left"
-                                                                        disabled={
-                                                                            pending || disabled
-                                                                        }
-                                                                        onClick={() =>
-                                                                            void send(choice)
-                                                                        }
                                                                     >
-                                                                        {choice}
-                                                                    </Button>
-                                                                ),
+                                                                        {isUser && (
+                                                                            <span className="sr-only">
+                                                                                Bạn{' '}
+                                                                            </span>
+                                                                        )}
+                                                                        {message.content}
+                                                                    </BubbleContent>
+                                                                </Bubble>
                                                             )}
-                                                        </div>
-                                                    ) : null}
-                                                </MessageContent>
-                                            </Message>
+                                                            {plan &&
+                                                                message.id ===
+                                                                    proposalMessage?.id && (
+                                                                    <Card
+                                                                        size="sm"
+                                                                        role="region"
+                                                                        aria-label={
+                                                                            editingProposal
+                                                                                ? 'Đề xuất chỉnh sửa'
+                                                                                : 'Đề xuất tương tác'
+                                                                        }
+                                                                        className="data-[size=sm]:[--card-spacing:--spacing(4)]"
+                                                                    >
+                                                                        <CardHeader>
+                                                                            <CardTitle className="flex items-center gap-2">
+                                                                                {editingProposal
+                                                                                    ? 'Đề xuất chỉnh sửa'
+                                                                                    : 'Đề xuất tương tác'}
+                                                                            </CardTitle>
+                                                                            <CardDescription>
+                                                                                {[
+                                                                                    objectCount >
+                                                                                        0 &&
+                                                                                        `${objectCount} đối tượng`,
+                                                                                    ruleCount > 0 &&
+                                                                                        `${ruleCount} luồng`,
+                                                                                ]
+                                                                                    .filter(Boolean)
+                                                                                    .join(' · ')}
+                                                                            </CardDescription>
+                                                                        </CardHeader>
+                                                                        <CardContent>
+                                                                            <details
+                                                                                open={
+                                                                                    !appliedMessage
+                                                                                }
+                                                                            >
+                                                                                <summary
+                                                                                    hidden={
+                                                                                        !appliedMessage
+                                                                                    }
+                                                                                    className="cursor-pointer text-muted-foreground text-xs"
+                                                                                >
+                                                                                    Xem chi tiết
+                                                                                    thay đổi
+                                                                                </summary>
+                                                                                <PlanDetails
+                                                                                    plan={plan}
+                                                                                    scene={scene}
+                                                                                    variables={
+                                                                                        variables
+                                                                                    }
+                                                                                    libraryAssets={
+                                                                                        libraryAssets
+                                                                                    }
+                                                                                    widthMm={
+                                                                                        widthMm
+                                                                                    }
+                                                                                    beforeObjects={
+                                                                                        appliedEdit
+                                                                                            ? [
+                                                                                                  ...(appliedEdit.objects?.flatMap(
+                                                                                                      ({
+                                                                                                          before,
+                                                                                                      }) =>
+                                                                                                          before
+                                                                                                              ? [
+                                                                                                                    before,
+                                                                                                                ]
+                                                                                                              : [],
+                                                                                                  ) ??
+                                                                                                      []),
+                                                                                                  ...(appliedEdit.removedObjects?.map(
+                                                                                                      ({
+                                                                                                          item,
+                                                                                                      }) =>
+                                                                                                          item,
+                                                                                                  ) ??
+                                                                                                      []),
+                                                                                              ]
+                                                                                            : undefined
+                                                                                    }
+                                                                                    beforeRules={
+                                                                                        beforeRules
+                                                                                    }
+                                                                                />
+                                                                            </details>
+                                                                            {stale &&
+                                                                                !appliedMessage && (
+                                                                                    <Alert className="mt-3">
+                                                                                        <AlertDescription>
+                                                                                            {!sameScope
+                                                                                                ? 'Phạm vi đã thay đổi. Gửi yêu cầu tiếp để tạo đề xuất cho phạm vi mới.'
+                                                                                                : 'Trang hoặc tài nguyên đã thay đổi. Gửi yêu cầu tiếp để kiểm tra lại đề xuất.'}
+                                                                                        </AlertDescription>
+                                                                                    </Alert>
+                                                                                )}
+                                                                        </CardContent>
+                                                                        <CardFooter className="flex flex-wrap gap-2 border-border border-t bg-muted/30 px-4 py-3">
+                                                                            {appliedMessage ? (
+                                                                                <div className="flex flex-col gap-1.5">
+                                                                                    <Badge
+                                                                                        variant={
+                                                                                            applicationState ===
+                                                                                            'undone'
+                                                                                                ? 'neutral'
+                                                                                                : 'success'
+                                                                                        }
+                                                                                    >
+                                                                                        {applicationState !==
+                                                                                            'undone' && (
+                                                                                            <Check />
+                                                                                        )}
+                                                                                        {applicationState ===
+                                                                                        'undone'
+                                                                                            ? 'Đã hoàn tác'
+                                                                                            : applicationState ===
+                                                                                                'changed'
+                                                                                              ? 'Đã áp dụng · Có chỉnh sửa tiếp'
+                                                                                              : 'Đã áp dụng vào bản nháp'}
+                                                                                    </Badge>
+                                                                                    <p className="m-0 text-muted-foreground text-xs">
+                                                                                        {applicationState ===
+                                                                                        'undone'
+                                                                                            ? 'Dùng Redo để làm lại hoặc nhắn yêu cầu mới.'
+                                                                                            : 'Dùng Undo trên thanh công cụ để lùi thay đổi gần nhất.'}
+                                                                                    </p>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <Button
+                                                                                        variant="outline"
+                                                                                        size="sm"
+                                                                                        onClick={() =>
+                                                                                            accept(
+                                                                                                true,
+                                                                                            )
+                                                                                        }
+                                                                                        disabled={
+                                                                                            stale ||
+                                                                                            disabled ||
+                                                                                            pending ||
+                                                                                            !canUseProposal
+                                                                                        }
+                                                                                    >
+                                                                                        <Play data-icon="inline-start" />
+                                                                                        {hasObjectEdits
+                                                                                            ? 'Xem thử'
+                                                                                            : 'Chạy thử'}
+                                                                                    </Button>
+                                                                                    <Button
+                                                                                        size="sm"
+                                                                                        onClick={() =>
+                                                                                            accept(
+                                                                                                false,
+                                                                                            )
+                                                                                        }
+                                                                                        disabled={
+                                                                                            stale ||
+                                                                                            disabled ||
+                                                                                            pending ||
+                                                                                            !canUseProposal
+                                                                                        }
+                                                                                    >
+                                                                                        {editingProposal ||
+                                                                                        plan.rules
+                                                                                            .length >
+                                                                                            1 ||
+                                                                                        plan
+                                                                                            .variables
+                                                                                            .length >
+                                                                                            0
+                                                                                            ? 'Áp dụng thay đổi'
+                                                                                            : plan
+                                                                                                    .rules[0]
+                                                                                                    ?.replaceId ||
+                                                                                                legacyTarget
+                                                                                              ? 'Cập nhật luồng'
+                                                                                              : 'Thêm vào trang'}
+                                                                                    </Button>
+                                                                                </>
+                                                                            )}
+                                                                        </CardFooter>
+                                                                    </Card>
+                                                                )}
+                                                            {archived &&
+                                                                message.id !==
+                                                                    proposalMessage?.id && (
+                                                                    <details className="rounded-lg border border-border px-3 py-2.5">
+                                                                        <summary className="cursor-pointer text-muted-foreground text-xs">
+                                                                            Xem đề xuất trước
+                                                                            {message.application &&
+                                                                                ` · ${aiPlanState(scene, variables, message.application) === 'undone' ? 'Đã hoàn tác' : 'Đã áp dụng'}`}
+                                                                        </summary>
+                                                                        <PlanDetails
+                                                                            plan={archived}
+                                                                            scene={scene}
+                                                                            variables={variables}
+                                                                            libraryAssets={
+                                                                                libraryAssets
+                                                                            }
+                                                                            widthMm={widthMm}
+                                                                        />
+                                                                    </details>
+                                                                )}
+                                                            {message.id === last?.id &&
+                                                            message.result &&
+                                                            message.result.status !== 'proposal' &&
+                                                            message.result.status !== 'edit_plan' &&
+                                                            'choices' in message.result &&
+                                                            message.result.choices?.length ? (
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {message.result.choices.map(
+                                                                        (choice) => (
+                                                                            <Button
+                                                                                key={choice}
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                className="h-auto min-h-8 whitespace-normal text-left"
+                                                                                disabled={
+                                                                                    pending ||
+                                                                                    disabled
+                                                                                }
+                                                                                onClick={() =>
+                                                                                    void send(
+                                                                                        choice,
+                                                                                    )
+                                                                                }
+                                                                            >
+                                                                                {choice}
+                                                                            </Button>
+                                                                        ),
+                                                                    )}
+                                                                </div>
+                                                            ) : null}
+                                                        </MessageContent>
+                                                    </Message>
+                                                )}
+                                            </AssistantTurn>
                                         </MessageScrollerItem>
                                     );
                                 })}
-                                {pending && (
-                                    <MessageScrollerItem messageId="pending">
-                                        <p
-                                            role="status"
-                                            className="m-0 flex items-center gap-2 py-1 text-muted-foreground text-sm"
-                                        >
-                                            <Spinner />
-                                            Đang xem yêu cầu…
-                                        </p>
-                                    </MessageScrollerItem>
-                                )}
                             </MessageScrollerContent>
                         </MessageScrollerViewport>
                         <MessageScrollerButton aria-label="Đến tin nhắn mới nhất" />
@@ -1676,14 +1787,6 @@ function AssistantChat({
                 </MessageScrollerProvider>
             </div>
             <div className="flex shrink-0 flex-col gap-2 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                {(error || missingTarget) && (
-                    <Alert variant="destructive">
-                        <AlertDescription>
-                            {error ||
-                                'Nội dung đã chọn không còn trên trang. Hãy chọn lại phạm vi.'}
-                        </AlertDescription>
-                    </Alert>
-                )}
                 <form
                     onSubmit={(event) => {
                         event.preventDefault();
@@ -1763,7 +1866,11 @@ function AssistantChat({
                                         <InputGroupButton
                                             size="icon-xs"
                                             aria-label="Dừng phản hồi"
-                                            onClick={cancel}
+                                            onClick={(event) => {
+                                                // The same button becomes submit after cancel; suppress this click's default action.
+                                                event.preventDefault();
+                                                cancel();
+                                            }}
                                         >
                                             <Square />
                                         </InputGroupButton>
@@ -1772,7 +1879,7 @@ function AssistantChat({
                                             type="submit"
                                             size="icon-xs"
                                             variant="default"
-                                            aria-label={error ? 'Thử lại' : 'Gửi tin nhắn'}
+                                            aria-label="Gửi tin nhắn"
                                             disabled={
                                                 disabled || missingTarget || !session.input.trim()
                                             }
@@ -2196,7 +2303,7 @@ function AssistantChat({
                         }}
                         className="flex h-dvh max-h-dvh w-screen max-w-none flex-col overflow-hidden rounded-none p-0"
                     >
-                        <DialogTitle className="sr-only">Trợ lý Bookaria</DialogTitle>
+                        <DialogTitle className="sr-only">Trợ lý Boki</DialogTitle>
                         <DialogDescription className="sr-only">
                             Chỉnh bố cục và tương tác cho trang sách.
                         </DialogDescription>
@@ -2205,7 +2312,7 @@ function AssistantChat({
                 </Dialog>
             ) : (
                 <aside
-                    aria-label="Trợ lý Bookaria"
+                    aria-label="Trợ lý Boki"
                     className={cn(
                         'pointer-events-auto absolute right-(--assistant-edge) bottom-(--assistant-panel-bottom) flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-xl [--assistant-height:calc(100%_-_var(--assistant-panel-bottom)_-_1rem)]',
                         expanded

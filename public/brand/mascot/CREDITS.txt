@@ -1,0 +1,5 @@
+Boki / Bookaria: authored Grok bot adaptation.
+Source character: https://avatars.bible-strong.app/characters/grok-bot.avatar.json
+Runtime/source author: Stephane Montlouis-Calixte and contributors.
+Two user-selected skins: light black body/white eyes+outline, dark white body/black eyes+outline.
+Outline width 4. Static states rendered from the authored library with Avatar Web 1.2.1.
