@@ -92,7 +92,7 @@ export function VoicePicker({
                     <div
                         role="radiogroup"
                         aria-label="Giọng đọc có sẵn"
-                        className="max-h-100 min-h-0 overflow-y-auto"
+                        className="no-scrollbar max-h-100 min-h-0 overflow-y-auto"
                     >
                         {voices.map((voice) => {
                             const style = voiceStyles[voice.id];

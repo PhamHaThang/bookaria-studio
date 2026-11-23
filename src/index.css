@@ -6,6 +6,15 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@utility no-scrollbar {
+    @media (forced-colors: none) {
+        scrollbar-width: none;
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+}
+
 /* Product tokens are shared by utilities and shadcn primitives. */
 @theme inline {
     --font-sans: var(--font-body);

@@ -170,7 +170,7 @@ function ReferenceHighlights({
         <div
             ref={mirrorRef}
             aria-hidden="true"
-            className="wrap-break-word pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap px-4 py-2 font-normal text-[length:var(--text-md)] text-transparent leading-[var(--leading-normal)] [scrollbar-gutter:stable]"
+            className="wrap-break-word no-scrollbar pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap px-4 py-2 font-normal text-[length:var(--text-md)] text-transparent leading-[var(--leading-normal)] [scrollbar-gutter:stable]"
         >
             {references
                 .toSorted((a, b) => a.start - b.start)
@@ -1813,7 +1813,7 @@ function AssistantChat({
                                         maxLength={1200}
                                         value={session.input}
                                         disabled={disabled || pending}
-                                        className="relative max-h-40 min-h-20 overflow-y-auto [field-sizing:content] [scrollbar-gutter:stable] placeholder:text-muted-foreground placeholder:opacity-100"
+                                        className="no-scrollbar relative max-h-40 min-h-20 overflow-y-auto [field-sizing:content] [scrollbar-gutter:stable] placeholder:text-muted-foreground placeholder:opacity-100"
                                         placeholder={
                                             targetRule
                                                 ? 'Sửa luồng hoặc hỏi cách hoạt động…'
@@ -2066,7 +2066,7 @@ function AssistantChat({
                                             ? 'Đối tượng và âm thanh'
                                             : 'Tài nguyên thư viện'
                                     }
-                                    className="min-h-0 overflow-y-auto overscroll-contain px-2 pb-2"
+                                    className="no-scrollbar min-h-0 overflow-y-auto overscroll-contain px-2 pb-2"
                                 >
                                     {filteredChoices.map((choice, index) => {
                                         const Icon = choice.icon;

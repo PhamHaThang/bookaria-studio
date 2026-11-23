@@ -351,7 +351,7 @@ export function PageStrip({
                 aria-label="Các trang trong sách"
             >
                 <section
-                    className="m-0 flex min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain border-0 p-1 [scrollbar-width:thin] [&[hidden]]:hidden"
+                    className="no-scrollbar m-0 flex min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain border-0 p-1 [&[hidden]]:hidden"
                     hidden={listing.data?.length === 0}
                     aria-label="Sắp xếp các trang"
                     data-page-scroll

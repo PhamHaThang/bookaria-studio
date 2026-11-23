@@ -182,7 +182,11 @@ function SceneObjectsPanelContent({
                 </div>
             </div>
             <Separator />
-            <div className="min-h-0 overflow-y-auto px-2 py-2" data-object-list-scroll ref={list}>
+            <div
+                className="no-scrollbar min-h-0 overflow-y-auto px-2 py-2"
+                data-object-list-scroll
+                ref={list}
+            >
                 {filtered.length ? (
                     <ol
                         className="m-0 flex list-none flex-col gap-1 p-0"

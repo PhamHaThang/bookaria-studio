@@ -51,7 +51,7 @@ export function PreviewPageStrip({
             <div
                 ref={scroll}
                 data-preview-page-scroll
-                className="flex min-w-0 items-center gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain p-1 [scrollbar-width:thin]"
+                className="no-scrollbar flex min-w-0 items-center gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain p-1"
             >
                 {pages.map((page, pageIndex) => (
                     <PrimitiveButton

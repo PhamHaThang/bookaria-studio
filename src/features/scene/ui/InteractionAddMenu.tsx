@@ -65,7 +65,7 @@ export function ActionPalette({
 }) {
     const groups = blockGroups.filter((group) => group.id !== 'trigger' || onTrigger);
     return (
-        <div className="flex min-h-0 flex-col gap-1 overflow-y-auto overscroll-contain">
+        <div className="no-scrollbar flex min-h-0 flex-col gap-1 overflow-y-auto overscroll-contain">
             {groups.map((group) => {
                 const Icon =
                     group.id === 'trigger'

@@ -176,7 +176,7 @@ export function MemoryVariablesPanel({
                     onValueChange={setQuery}
                 />
             </div>
-            <ul className="m-0 flex min-h-0 flex-1 list-none flex-col gap-1 overflow-y-auto overscroll-contain px-2 pb-1">
+            <ul className="no-scrollbar m-0 flex min-h-0 flex-1 list-none flex-col gap-1 overflow-y-auto overscroll-contain px-2 pb-1">
                 {matches.map((definition) => {
                     const { icon: Icon, label } = kinds[definition.type];
                     const used = memoryUses(definition.key, pages).length;
