@@ -70,13 +70,51 @@ test('audio can be picked and played from the design canvas while the reader pla
     await expect.poll(() => page.evaluate(() => window.testPreviewAudio?.paused)).toBe(false);
 });
 
+test('losing pointer capture ends middle-button canvas zoom and allows the next gesture', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page, 'pages=1');
+    const canvas = page.locator('.scene-three-host canvas');
+    await expect(canvas).toBeVisible();
+    const { x, y, width, height } = await canvas.boundingBox();
+    const point = { x: x + width * 0.4, y: y + height * 0.4 };
+    await canvas.evaluate((element) => {
+        window.addEventListener(
+            'pointerdown',
+            (event) => {
+                element.dataset.testPointerId = String(event.pointerId);
+            },
+            { capture: true, once: true },
+        );
+    });
+    await page.mouse.move(point.x, point.y);
+    await page.mouse.down({ button: 'middle' });
+    await expect(canvas).toHaveCSS('cursor', 'ns-resize');
+    await page.mouse.move(point.x, point.y + 1);
+    const captured = await canvas.evaluate((element) => {
+        const id = Number(element.dataset.testPointerId);
+        if (!element.hasPointerCapture(id)) return false;
+        element.releasePointerCapture(id);
+        return true;
+    });
+    expect(captured).toBe(true);
+    await page.mouse.move(point.x, point.y + 8);
+    await expect.poll(() => canvas.evaluate((element) => element.style.cursor)).toBe('');
+    await page.mouse.up({ button: 'middle' });
+    await page.mouse.down({ button: 'middle' });
+    await expect(canvas).toHaveCSS('cursor', 'ns-resize');
+    await page.mouse.up({ button: 'middle' });
+    await expect.poll(() => canvas.evaluate((element) => element.style.cursor)).toBe('');
+});
+
 test('interaction mode shows control hints and hides the page strip', async ({ page }) => {
     await open(page, 'pages=2');
     await page.getByRole('radio', { name: 'Tương tác', exact: true }).click();
     const ai = page.getByRole('button', { name: 'Trợ lý Boki', exact: true });
     const pages = page.getByRole('navigation', { name: 'Các trang trong sách' });
     const hints = page.getByRole('note', { name: 'Hướng dẫn điều khiển tương tác' });
-    await expect(ai.locator('.lucide-sparkles')).toBeVisible();
+    await expect(ai.locator('[data-boki-state]')).toBeVisible();
     await expect(pages).toBeHidden();
     const buttonBounds = await ai.boundingBox();
     expect(buttonBounds.width).toBe(buttonBounds.height);
@@ -129,14 +167,14 @@ test('design assistant edits the page and carries its proposal and undo across b
     const launcher = page.getByRole('button', { name: 'Trợ lý Boki', exact: true });
     const objects = page.getByRole('button', { name: /^Đối tượng \(/ });
     await expect(launcher).toHaveText('');
-    await expect(launcher.locator('.lucide-sparkles')).toBeVisible();
+    await expect(launcher.locator('[data-boki-state]')).toBeVisible();
     await expect
         .poll(async () => {
             const ai = await launcher.boundingBox();
             const layers = await objects.boundingBox();
             return (
                 Math.abs(ai.x - layers.x - layers.width - 6) < 1 &&
-                Math.abs(ai.y + ai.height / 2 - layers.y - layers.height / 2) < 2
+                Math.abs(ai.y + ai.height - (layers.y + layers.height) - 7) < 1
             );
         })
         .toBe(true);
@@ -147,7 +185,7 @@ test('design assistant edits the page and carries its proposal and undo across b
     await expect(chat.getByRole('button', { name: 'Ẩn đối tượng khi mở trang' })).toBeVisible();
     const bounds = await chat.boundingBox();
     const toggle = page.getByRole('button', { name: 'Thu gọn trợ lý AI', exact: true });
-    await expect(toggle.locator('.lucide-sparkles')).toBeVisible();
+    await expect(toggle.locator('[data-boki-state]')).toBeVisible();
     await expect(toggle).toHaveText('');
     const toggleBounds = await toggle.boundingBox();
     const dock = page.getByRole('navigation', { name: 'Các trang trong sách' });
@@ -224,7 +262,7 @@ test('design assistant and Objects stay together around a wide page strip', asyn
             const layers = await objects.boundingBox();
             return (
                 Math.abs(ai.x - layers.x - layers.width - 6) < 1 &&
-                Math.abs(ai.y + ai.height / 2 - layers.y - layers.height / 2) < 2
+                Math.abs(ai.y + ai.height - (layers.y + layers.height) - 7) < 1
             );
         })
         .toBe(true);
@@ -233,7 +271,7 @@ test('design assistant and Objects stay together around a wide page strip', asyn
     expect(ai.x >= dock.x + dock.width || ai.y + ai.height <= dock.y).toBe(true);
     await launcher.click();
     await expect(
-        page.getByRole('button', { name: 'Thu gọn trợ lý AI' }).locator('.lucide-sparkles'),
+        page.getByRole('button', { name: 'Thu gọn trợ lý AI' }).locator('[data-boki-state]'),
     ).toBeVisible();
     await expect(page.getByLabel('Yêu cầu cho trợ lý')).toBeVisible();
 });
