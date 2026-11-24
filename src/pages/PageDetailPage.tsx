@@ -16,6 +16,7 @@ import { ArMarkerDialog } from '../features/pages/ui/ArMarkerDialog';
 import type { ImageAttachmentContext } from '../features/pages/ui/PageImageForm';
 import { SceneEditor } from '../features/scene';
 import { EmptyBookEditor } from '../features/scene/ui/EmptyBookEditor';
+import { SceneRendererProvider } from '../features/scene/ui/SceneRendererProvider';
 import { errorMessage } from '../shared/api/errors';
 import { IdSchema } from '../shared/contracts/common.schema';
 import type { Asset, BookDetail, Page } from '../shared/contracts/dto.schema';
@@ -244,5 +245,9 @@ export function PageDetailPage() {
     const { bookId = '', pageId = '' } = useParams();
     if (!IdSchema.safeParse(bookId).success || !IdSchema.safeParse(pageId).success)
         return <Link to="/books">Về Studio</Link>;
-    return <PageDetailContent bookId={bookId} pageId={pageId} />;
+    return (
+        <SceneRendererProvider key={bookId}>
+            <PageDetailContent bookId={bookId} pageId={pageId} />
+        </SceneRendererProvider>
+    );
 }

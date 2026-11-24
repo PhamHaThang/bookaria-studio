@@ -51,6 +51,7 @@ import { SceneAssetLoading } from './SceneAssetLoading';
 import { SceneCanvasHints } from './SceneCanvasHints';
 import { SceneCanvasToolbar } from './SceneCanvasToolbar';
 import { SceneDepthGizmo } from './SceneDepthGizmo';
+import { useBookSceneRenderer } from './SceneRendererProvider';
 import { SceneSelectionTools, type SelectionActions } from './SceneSelectionTools';
 import { useSceneWidthMm } from './SceneUnits';
 import { SceneViewGizmo } from './SceneViewGizmo';
@@ -94,6 +95,7 @@ type Props = {
 };
 
 export function SceneCanvas(props: Props) {
+    const bookRenderer = useBookSceneRenderer();
     const widthMm = useSceneWidthMm();
     const widthMmRef = useRef(widthMm);
     const host = useRef<HTMLDivElement>(null),
@@ -172,7 +174,9 @@ export function SceneCanvas(props: Props) {
         if (!element) return;
         let renderer: THREE.WebGLRenderer;
         try {
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer =
+                bookRenderer?.current ?? new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            if (bookRenderer) bookRenderer.current = renderer;
         } catch {
             setFailure(
                 'Không mở được canvas 3D. Hãy bật tăng tốc đồ họa hoặc dùng bảng thuộc tính để tiếp tục chỉnh sửa.',
@@ -248,7 +252,8 @@ export function SceneCanvas(props: Props) {
         };
         const controls = createSceneCanvasControls(camera, renderer.domElement, themeColor);
         scene.add(controls);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        const pixelRatio = Math.min(window.devicePixelRatio, 2);
+        if (renderer.getPixelRatio() !== pixelRatio) renderer.setPixelRatio(pixelRatio);
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.domElement.setAttribute(
             'aria-label',
@@ -488,13 +493,18 @@ export function SceneCanvas(props: Props) {
             trackScalePointer,
             finishTransform,
         });
-        const resize = new ResizeObserver(() => {
+        const viewportSize = new THREE.Vector2();
+        const fitViewport = () => {
             const rect = element.getBoundingClientRect();
             if (!rect.width || !rect.height) return;
-            renderer.setSize(rect.width, rect.height);
+            renderer.getSize(viewportSize);
+            if (viewportSize.x !== rect.width || viewportSize.y !== rect.height)
+                renderer.setSize(rect.width, rect.height);
             camera.aspect = rect.width / rect.height;
             camera.updateProjectionMatrix();
-        });
+        };
+        fitViewport();
+        const resize = new ResizeObserver(fitViewport);
         resize.observe(element);
         const stopLayout = observeSceneCanvasLayout(element);
         const { positionSelectionTools, positionDepthHandle, positionLoadingCards } =
@@ -720,7 +730,6 @@ export function SceneCanvas(props: Props) {
             });
         });
         api.current.mode(mode, snap, space, snapSteps);
-        sync();
         tick();
         return () => {
             stopTheme();
@@ -746,10 +755,11 @@ export function SceneCanvas(props: Props) {
             editorGrid.dispose();
             outline.geometry.dispose();
             (outline.material as THREE.Material).dispose();
-            renderer.dispose();
+            if (!bookRenderer) renderer.dispose();
+            renderer.domElement.style.cursor = '';
             renderer.domElement.remove();
         };
-    }, [props.page.id, props.aspect]);
+    }, [props.page.id, props.aspect, bookRenderer]);
     useEffect(() => {
         if (!props.suspended) api.current?.sync();
     });
@@ -898,7 +908,7 @@ export function SceneCanvas(props: Props) {
                 )}
                 {loading > 0 && (
                     <p
-                        className="canvas-loading absolute bottom-2 left-[74px] m-0 max-w-[calc(100%_-_var(--inspector-offset,0px)_-_100px)] translate-x-[var(--sidebar-toolbar-offset,0px)] rounded-[5px] bg-surface px-[10px] py-[5px] text-[length:12px] transition-[translate] duration-(--sidebar-motion-duration) ease-(--sidebar-motion-ease) motion-reduce:transition-none"
+                        className="canvas-loading pointer-events-none absolute @max-[72rem]:bottom-[var(--transform-feedback-bottom,148px)] bottom-4 left-[18px] m-0 max-w-[calc(100%_-_var(--inspector-offset,0px)_-_var(--sidebar-toolbar-offset,0px)_-_36px)] translate-x-[var(--sidebar-toolbar-offset,0px)] rounded-[5px] bg-surface px-[10px] py-[5px] text-[length:12px] transition-[translate] duration-(--sidebar-motion-duration) ease-(--sidebar-motion-ease) motion-reduce:transition-none"
                         role="status"
                     >
                         Đang tải {loading} đối tượng…

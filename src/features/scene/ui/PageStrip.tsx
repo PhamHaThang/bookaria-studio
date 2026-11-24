@@ -78,6 +78,7 @@ export function PageStrip({
     const dragSession = useRef<{ id: string; ids: string[] } | null>(null);
     const dragX = useRef<number | null>(null);
     const suppressClickUntil = useRef(0);
+    const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dropTarget, setDropTarget] = useState<PageDropTarget | null>(null);
     const [pendingOrder, setPendingOrder] = useState<string[] | null>(null);
@@ -106,6 +107,16 @@ export function PageStrip({
             : pendingOrder;
     usePageReorderMotion(pageScroll, listing.data, previewOrder);
     const locked = disabled || busy || uncertain;
+    function cancelPagePrefetch() {
+        clearTimeout(hoverTimer.current);
+    }
+    function preparePage(id: string, hover = false) {
+        cancelPagePrefetch();
+        if (!bookDraft || id === pageId || locked || dragSession.current || bookDraft.getPage(id))
+            return;
+        if (hover) hoverTimer.current = setTimeout(() => void bookDraft.prefetchPage(id), 120);
+        else void bookDraft.prefetchPage(id);
+    }
     const dragLocked = locked || listing.isPending || listing.isError || listing.isFetching;
     const clearDrag = useCallback(() => {
         dragSession.current = null;
@@ -196,6 +207,7 @@ export function PageStrip({
         alive.current = true;
         return () => {
             alive.current = false;
+            clearTimeout(hoverTimer.current);
             onBusyChange(false);
         };
     }, [onBusyChange]);
@@ -418,7 +430,17 @@ export function PageStrip({
                                     className="relative grid size-14 grid-rows-[minmax(0,1fr)] place-items-center overflow-hidden rounded-xl border border-border bg-surface p-1 no-underline transition-[transform,border-color,box-shadow] duration-200 ease-out hover:border-input focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-[current=page]:border-primary aria-[current=page]:ring-1 aria-[current=page]:ring-primary data-[reorderable=true]:cursor-grab data-[reorderable=true]:active:cursor-grabbing group-data-[dragging=true]:scale-95 motion-reduce:transform-none motion-reduce:transition-none"
                                     draggable={!dragLocked}
                                     data-reorderable={!dragLocked}
+                                    onPointerEnter={(event) => {
+                                        if (event.pointerType === 'mouse')
+                                            preparePage(page.id, true);
+                                    }}
+                                    onPointerLeave={cancelPagePrefetch}
+                                    onFocus={() => preparePage(page.id)}
+                                    onPointerDown={(event) => {
+                                        if (event.button === 0) preparePage(page.id);
+                                    }}
                                     onDragStart={(event) => {
+                                        cancelPagePrefetch();
                                         if (dragLocked || menu) {
                                             event.preventDefault();
                                             return;

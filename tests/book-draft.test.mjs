@@ -132,6 +132,32 @@ function withText(text) {
         objects: [{ ...newObject('text', 'text'), text }],
     });
 }
+it('opening a page joins its pending thumbnail request', async () => {
+    const { store, deps } = await fixture();
+    let resolvePage;
+    deps.page.mock.mockImplementationOnce(
+        () =>
+            new Promise((resolve) => {
+                resolvePage = resolve;
+            }),
+    );
+    const warming = store.prefetchPage(p2);
+    const opening = store.loadPage(p2);
+    resolvePage(page(p2, 1));
+    await warming;
+    assert.equal((await opening).id, p2);
+    assert.equal(deps.page.mock.calls.filter(({ arguments: args }) => args[0] === p2).length, 1);
+});
+
+it('hovering a stale page does not put the active draft into conflict', async () => {
+    const { store, remote } = await fixture();
+    remote.set(p2, { ...page(p2, 1), revision: 1 });
+    await store.prefetchPage(p2);
+    assert.equal(store.getPage(p2), undefined);
+    assert.equal(store.getSnapshot().conflict, false);
+    await store.loadPage(p2);
+    assert.equal(store.getSnapshot().conflict, true);
+});
 it('deleting an object with its workflows restores both in one undo, even after saving', async () => {
     const { store } = await fixture();
     const scene = SceneSchema.parse({

@@ -20,6 +20,65 @@ async function selectedTitle(page) {
     });
 }
 
+test('opening pages in the same book reuses the design canvas', async ({ page }) => {
+    await open(page, 'pages=2');
+    const canvas = page.locator('.scene-three-host canvas');
+    await expect(canvas).toBeVisible();
+    const original = await canvas.elementHandle();
+    for (const number of [2, 1]) {
+        const link = page.getByRole('link', { name: new RegExp(`^Trang ${number}:`) });
+        await link.click();
+        await expect(link).toHaveAttribute('aria-current', 'page');
+        await expect(canvas).toBeVisible();
+        expect(await canvas.evaluate((current, first) => current === first, original)).toBe(true);
+    }
+    const context = await original.evaluateHandle(
+        (element) => element.getContext('webgl2') || element.getContext('webgl'),
+    );
+    await page.evaluate(() => window.__editorPages.router.navigate('/books'));
+    await expect.poll(() => context.evaluate((gl) => gl.isContextLost())).toBe(true);
+});
+
+test('focusing a page thumbnail prepares its data before navigation', async ({ page }) => {
+    await open(page, 'pages=2');
+    const link = page.getByRole('link', { name: /^Trang 2:/ });
+    const id = (await link.getAttribute('href')).split('/').at(-1);
+    await link.focus();
+    await expect
+        .poll(() => page.evaluate((id) => Boolean(window.__editorPages.store.getPage(id)), id))
+        .toBe(true);
+    await expect(page.getByRole('link', { name: /^Trang 1:/ })).toHaveAttribute(
+        'aria-current',
+        'page',
+    );
+    await link.press('Enter');
+    await expect(link).toHaveAttribute('aria-current', 'page');
+});
+
+test('the canvas loading status aligns with the toolbar and clears the page strip', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.route('**/skinned-transform.gltf', () => {});
+    await open(page, 'pages=8&transform=1');
+    const status = page.locator('.canvas-loading');
+    const toolbar = page.getByRole('toolbar', { name: 'Công cụ canvas' });
+    await expect(status).toBeVisible();
+    const viewport = await page.locator('.canvas-viewport').boundingBox();
+    const badge = await status.boundingBox();
+    expect(badge.x).toBeCloseTo((await toolbar.boundingBox()).x, 0);
+    expect(viewport.y + viewport.height - badge.y - badge.height).toBeCloseTo(16, 0);
+
+    await page.setViewportSize({ width: 900, height: 768 });
+    await expect
+        .poll(async () => {
+            const badge = await status.boundingBox();
+            const dock = await page.locator('.page-strip-region').boundingBox();
+            return dock.y - (badge.y + badge.height);
+        })
+        .toBeGreaterThanOrEqual(11);
+});
+
 test('page settings no longer offers text-to-speech generation', async ({ page }) => {
     await open(page, 'pages=1');
     await page.getByRole('button', { name: 'Thiết lập trang', exact: true }).click();
