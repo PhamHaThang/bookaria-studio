@@ -207,12 +207,6 @@
     }
 }
 
-@keyframes bookaria-signal-orbit {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
 @keyframes touch-float {
     0%,
     100% {
