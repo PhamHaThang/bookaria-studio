@@ -67,3 +67,44 @@ test('page texture loads discard late responses after changing the source or dis
     complete('pending');
     assert.deepEqual(releases, ['old', 'current', 'pending']);
 });
+
+for (const outcome of ['success', 'error']) {
+    test(`returning to the same page image ignores a stale ${outcome} from its first load`, (t) => {
+        const requests = [];
+        t.mock.method(TextureLoader.prototype, 'load', (_url, onLoad, _progress, onError) => {
+            requests.push({ onLoad, onError });
+        });
+        const scene = new Scene();
+        let issues = {};
+        const paper = createSceneCanvasPaper({
+            scene,
+            getAspect: () => 1,
+            isDisposed: () => false,
+            setIssues: (update) => {
+                issues = update(issues);
+            },
+        });
+        t.after(() => paper.dispose());
+        for (const source of ['A', 'B', 'A']) paper.updatePaperImage(source);
+        const latest = requests[2];
+        const first = requests[0];
+        const image = scene.getObjectByName('bookaria-page-image');
+        if (outcome === 'error') {
+            const texture = new Texture({ width: 1, height: 1 });
+            latest.onLoad(texture);
+            first.onError();
+            assert.equal(issues.page, undefined);
+            assert.equal(image.material.map, texture);
+        } else {
+            latest.onError();
+            const message = issues.page;
+            assert.ok(message);
+            const stale = new Texture({ width: 1, height: 1 });
+            const dispose = t.mock.method(stale, 'dispose');
+            first.onLoad(stale);
+            assert.equal(image.material.map, null);
+            assert.equal(issues.page, message);
+            assert.equal(dispose.mock.callCount(), 1);
+        }
+    });
+}

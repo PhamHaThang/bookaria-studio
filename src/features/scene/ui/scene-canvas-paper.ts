@@ -33,13 +33,15 @@ export function createSceneCanvasPaper({ scene, getAspect, isDisposed, setIssues
     const paperTexture = new THREE.TextureLoader();
     paperTexture.setCrossOrigin('anonymous');
     let paperSource = '';
+    let latestRequest = 0;
     function updatePaperImage(source: string) {
         if (source === paperSource) return;
         paperSource = source;
+        const request = ++latestRequest;
         paperTexture.load(
             source,
             (texture) => {
-                if (isDisposed() || source !== paperSource) {
+                if (isDisposed() || request !== latestRequest) {
                     texture.dispose();
                     return;
                 }
@@ -64,7 +66,7 @@ export function createSceneCanvasPaper({ scene, getAspect, isDisposed, setIssues
             },
             undefined,
             () => {
-                if (!isDisposed() && source === paperSource)
+                if (!isDisposed() && request === latestRequest)
                     setIssues((current) => ({
                         ...current,
                         page: 'Không tải được ảnh trang. Kiểm tra kết nối và chọn lại ảnh.',
