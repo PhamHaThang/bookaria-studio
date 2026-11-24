@@ -1,12 +1,16 @@
-import { type ReactNode, useLayoutEffect } from 'react';
+import axios from 'axios';
+import { type ReactNode, StrictMode, useLayoutEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createMemoryRouter, Link, Outlet, RouterProvider, useLocation } from 'react-router-dom';
 import { PublicHeader } from '../../src/app/PublicHeader';
 import { AppProviders } from '../../src/app/providers';
 import { StudioLayout } from '../../src/app/StudioLayout';
 import { auth } from '../../src/features/auth';
+import { AuthDialog, LegacyAuthRoute } from '../../src/features/auth/ui/AuthDialog';
 import { AssetsPage } from '../../src/pages/AssetsPage';
 import { BooksPage } from '../../src/pages/BooksPage';
+import { ExploreAssetsPage } from '../../src/pages/ExploreAssetsPage';
+import { ProfilePage } from '../../src/pages/ProfilePage';
 import { StatsBooksPage } from '../../src/pages/StatsBooksPage';
 import { StudioOverviewPage } from '../../src/pages/StudioOverviewPage';
 import { TrashPage } from '../../src/pages/TrashPage';
@@ -15,6 +19,7 @@ import { AssetSchema, BookSummarySchema, MeSchema } from '../../src/shared/contr
 import { FloatingThemeSwitcher } from '../../src/shared/ui/ThemeSwitcher';
 import '../../src/index.css';
 
+const params = new URLSearchParams(location.search);
 const user = MeSchema.parse({
     id: '11111111-1111-4111-8111-111111111111',
     email: 'author@example.test',
@@ -23,11 +28,15 @@ const user = MeSchema.parse({
     organization: null,
     bio: null,
     role: 'AUTHOR',
-    emailVerified: true,
+    emailVerified: !params.has('unverified'),
     storage: { usedBytes: 10485760, quotaBytes: 524288000 },
     createdAt: '2026-11-20T00:00:00Z',
 });
-auth.store.setState({ status: 'authenticated', user });
+auth.store.setState(
+    params.has('anonymous')
+        ? { status: 'anonymous', user: null }
+        : { status: 'authenticated', user },
+);
 const book = BookSummarySchema.parse({
     id: '22222222-2222-4222-8222-222222222222',
     title: 'Sách thử nghiệm',
@@ -59,10 +68,17 @@ const assets = Array.from({ length: 9 }, (_, index) =>
     }),
 );
 // These layout tests never contact the live API.
+let emailVerified = user.emailVerified;
+window.addEventListener('verify-fixture-email', () => {
+    emailVerified = true;
+});
 apiClient.defaults.adapter = async (config) => {
     let data: unknown;
-    if (config.url === '/me') data = { data: user };
-    else if (config.url === '/me/notifications')
+    if (config.url === '/me') data = { data: { ...user, emailVerified } };
+    else if (config.url === '/auth/resend-verification') {
+        if (params.has('mock-resend-http')) return axios.getAdapter('xhr')(config);
+        return { data: null, config, status: 204, statusText: 'No Content', headers: {} };
+    } else if (config.url === '/me/notifications')
         data = { data: [], meta: { page: 1, limit: 12, total: 0, totalPages: 0 } };
     else if (config.url === '/books' || config.url === '/books/trash' || config.url === '/assets') {
         const rows =
@@ -132,6 +148,7 @@ function Shell() {
             <PublicHeader />
             <Outlet />
             <FloatingThemeSwitcher />
+            <AuthDialog />
         </div>
     );
 }
@@ -140,6 +157,10 @@ const router = createMemoryRouter(
         {
             element: <Shell />,
             children: [
+                { path: '/', element: <main>Bookaria</main> },
+                { path: '/resources', element: <ExploreAssetsPage /> },
+                { path: '/profile', element: <ProfilePage /> },
+                { path: '/verify-email', element: <LegacyAuthRoute mode="verify" /> },
                 {
                     element: <StudioLayout />,
                     children: Object.keys(labels).map((path) => ({
@@ -162,12 +183,13 @@ const router = createMemoryRouter(
             ],
         },
     ],
-    { initialEntries: [new URLSearchParams(location.search).get('path') || '/books'] },
+    { initialEntries: [params.get('path') || '/books'] },
 );
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing layout test root');
-createRoot(root).render(
+const app = (
     <AppProviders>
         <RouterProvider router={router} />
-    </AppProviders>,
+    </AppProviders>
 );
+createRoot(root).render(params.has('strict') ? <StrictMode>{app}</StrictMode> : app);

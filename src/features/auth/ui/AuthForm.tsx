@@ -92,7 +92,7 @@ export function AuthForm({
     if (mode === 'reset' && !token)
         return (
             <>
-                <DialogHeader className="mb-6 pr-5">
+                <DialogHeader>
                     <DialogTitle size="lg" className="m-0">
                         Thiếu liên kết đặt lại
                     </DialogTitle>
@@ -107,7 +107,7 @@ export function AuthForm({
         );
     return (
         <>
-            <DialogHeader className="mb-6 pr-5">
+            <DialogHeader>
                 <DialogTitle size="lg" className="m-0">
                     {title}
                 </DialogTitle>
@@ -121,7 +121,7 @@ export function AuthForm({
             {!(mode === 'reset' && success) && (
                 <form onSubmit={submit} aria-busy={request.busy}>
                     <fieldset disabled={request.disabled} className="m-0 min-w-0 border-0 p-0">
-                        <FieldGroup>
+                        <FieldGroup className="gap-3 [&>[data-slot=field]]:gap-1.5">
                             {mode === 'register' && (
                                 <Field>
                                     <FieldLabel className="mb-0" htmlFor="auth-name">
@@ -197,7 +197,7 @@ export function AuthForm({
                                 </Field>
                             )}
                             {mode === 'login' && (
-                                <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                                     <Field orientation="horizontal" className="w-auto">
                                         <Checkbox id="auth-remember" name="remember" value="on" />
                                         <FieldLabel className="mb-0" htmlFor="auth-remember">
@@ -223,7 +223,7 @@ export function AuthForm({
                     </fieldset>
                 </form>
             )}
-            <p className="mt-6 mb-0 text-center text-muted-foreground text-sm">
+            <p className="m-0 text-center text-muted-foreground text-sm">
                 {mode === 'login' ? (
                     <>
                         Chưa có tài khoản?{' '}

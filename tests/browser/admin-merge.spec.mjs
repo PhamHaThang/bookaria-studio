@@ -2,6 +2,58 @@ import { expect, test } from '@playwright/test';
 
 test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
 
+test('admin resources require email verification before requesting protected categories', async ({
+    page,
+}) => {
+    let emailVerified = false;
+    let categoryRequests = 0;
+    await page.route('**/api/v1/**', async (route) => {
+        const path = new URL(route.request().url()).pathname.slice('/api/v1'.length);
+        const reply = (data) => route.fulfill({ json: { data } });
+        if (path === '/auth/refresh') return reply({ accessToken: 'test-token', expiresIn: 3600 });
+        if (path === '/me')
+            return reply({
+                id: '11111111-1111-4111-8111-111111111111',
+                email: 'admin@example.test',
+                displayName: 'Quản trị kiểm thử',
+                avatarUrl: null,
+                organization: null,
+                bio: null,
+                role: 'ADMIN',
+                emailVerified,
+                storage: { usedBytes: 0, quotaBytes: 500000000 },
+                createdAt: '2026-11-20T00:00:00Z',
+            });
+        if (path === '/admin/dashboard')
+            return reply({
+                users: 1,
+                publishedBooks: 0,
+                storageUsedBytes: 0,
+                libraryStorageUsedBytes: 0,
+                failedJobs24h: 0,
+                openReports: 0,
+                publishedPerDay: [],
+                auditActionsToday: [],
+            });
+        if (path === '/asset-categories') {
+            categoryRequests++;
+            return reply([]);
+        }
+        return route.abort();
+    });
+    await page.goto('/admin');
+    await expect(page.getByRole('heading', { name: 'Tổng quan quản trị' })).toBeVisible();
+    await page.getByRole('link', { name: 'Danh mục', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Kiểm tra email của bạn' });
+    await expect(dialog).toBeVisible();
+    expect(categoryRequests).toBe(0);
+    emailVerified = true;
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(page).toHaveURL(/\/admin\/categories$/);
+    await expect(page.getByRole('heading', { name: 'Danh mục tài nguyên' })).toBeVisible();
+    await expect.poll(() => categoryRequests).toBeGreaterThan(0);
+});
+
 test.describe('stable admin overlays', () => {
     for (const theme of ['light', 'dark']) {
         test(`marker details keep the scrolled admin sidebar and header in place: ${theme}`, async ({

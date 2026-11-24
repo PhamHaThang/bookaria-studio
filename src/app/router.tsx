@@ -17,6 +17,7 @@ import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { FloatingThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
 import { RequireSession, SessionBoundary, useAuth } from '../features/auth';
 import { AuthDialog, LegacyAuthRoute } from '../features/auth/ui/AuthDialog';
+import { RequireVerifiedEmail } from '../features/auth/ui/SessionBoundary';
 import { HomePage } from '../pages/HomePage';
 import { AdminLayout, AdminNotFoundPage } from './AdminLayout';
 import { PublicHeader } from './PublicHeader';
@@ -268,12 +269,17 @@ const router = createBrowserRouter(
                         <Route path="jobs" element={<AdminJobsPage />} />
                         <Route path="audit-logs" element={<AdminAuditPage />} />
                         <Route path="audit-logs/:logId" element={<AdminAuditDetailPage />} />
-                        <Route path="library" element={<AdminLibraryPage />} />
-                        <Route path="library/new" element={<AdminLibraryNewPage />} />
-                        <Route path="library/:assetId" element={<AdminLibraryDetailPage />} />
-                        <Route path="categories" element={<AdminCategoriesPage />} />
-                        <Route path="categories/new" element={<AdminCategoryEditPage />} />
-                        <Route path="categories/:categoryId" element={<AdminCategoryEditPage />} />
+                        <Route element={<RequireVerifiedEmail />}>
+                            <Route path="library" element={<AdminLibraryPage />} />
+                            <Route path="library/new" element={<AdminLibraryNewPage />} />
+                            <Route path="library/:assetId" element={<AdminLibraryDetailPage />} />
+                            <Route path="categories" element={<AdminCategoriesPage />} />
+                            <Route path="categories/new" element={<AdminCategoryEditPage />} />
+                            <Route
+                                path="categories/:categoryId"
+                                element={<AdminCategoryEditPage />}
+                            />
+                        </Route>
                         <Route path="markers" element={<AdminMarkersPage />} />
                         <Route
                             path="markers/new"

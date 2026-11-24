@@ -1,11 +1,10 @@
 import { ChartColumn, FolderOpen, LayoutDashboard, Library, Trash2 } from 'lucide-react';
 import { Suspense } from 'react';
-import { Link, matchPath, Outlet, useLocation } from 'react-router-dom';
+import { Link, matchPath, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
-import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
+import { requireEmailVerification } from '@/features/auth/model/dialog';
 import { StudioStorageUsage } from '@/features/profile/ui/StudioStorageUsage';
 import { cn } from '@/shared/lib/cn';
-import { Alert } from '@/shared/ui/Alert';
 import { LoadingBoundary } from '@/shared/ui/LoadingBoundary';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import {
@@ -66,13 +65,16 @@ function StudioMobileNavigation({ activeSection }: { activeSection: string | nul
 }
 
 export function StudioLayout() {
-    const { pathname } = useLocation();
+    const location = useLocation();
+    const { pathname } = location;
     const editing = Boolean(
         matchPath('/books/:bookId/edit', pathname) ||
             matchPath('/books/:bookId/pages/:pageId', pathname),
     );
     const activeSection = pathname === '/style-guide' ? '/style-guide' : getStudioSection(pathname);
     const { user } = useAuth();
+    if (user && !user.emailVerified)
+        return <Navigate to={requireEmailVerification(location)} replace />;
     if (editing)
         return (
             <main id="main" className="studio-editor-root min-h-dvh bg-surface">
@@ -142,14 +144,6 @@ export function StudioLayout() {
                 <div data-slot="studio-storage-summary" className="mb-6 xl:hidden">
                     <StudioStorageUsage />
                 </div>
-                {!user?.emailVerified && (
-                    <Alert tone="info" className="mb-8">
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                            <span>Xác minh email để có thể xuất bản sách.</span>
-                            <AuthDialogLink mode="check-email">Xác minh email</AuthDialogLink>
-                        </div>
-                    </Alert>
-                )}
                 <LoadingBoundary>
                     <Suspense fallback={<LoadingScreen message="Đang mở trang…" />}>
                         <Outlet />

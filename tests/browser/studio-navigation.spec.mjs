@@ -5,6 +5,224 @@ async function open(page, path = '/books') {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 }
 
+test('unverified authors must confirm email before returning to a Studio deep link', async ({
+    page,
+}) => {
+    await page.goto('/tests/browser/studio-navigation.html?unverified&path=%2Fassets');
+    const dialog = page.getByRole('dialog', { name: 'Kiểm tra email của bạn' });
+    await expect(dialog).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Tài nguyên', exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Tôi đã xác minh' })).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Gửi lại email', exact: true }).click();
+    const toasts = page.locator('[data-sonner-toast]');
+    await expect(toasts.getByText('Đã gửi email xác minh.')).toBeVisible();
+    await page.evaluate(() => {
+        window.dispatchEvent(new Event('verify-fixture-email'));
+        window.dispatchEvent(new Event('focus'));
+    });
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Tài nguyên', exact: true })).toBeVisible();
+});
+
+test('the resource library opens email verification and restores its search after verification', async ({
+    page,
+}) => {
+    const path = encodeURIComponent('/resources?q=demo');
+    await page.goto(`/tests/browser/studio-navigation.html?unverified&path=${path}`);
+    const dialog = page.getByRole('dialog', { name: 'Kiểm tra email của bạn' });
+    const search = page.getByPlaceholder('Tìm theo tên tài nguyên');
+    await expect(dialog).toBeVisible();
+    await expect(search).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Gửi lại email', exact: true }).click();
+    await expect(
+        page.locator('[data-sonner-toast]').getByText('Đã gửi email xác minh.'),
+    ).toBeVisible();
+    await page.evaluate(() => {
+        window.dispatchEvent(new Event('verify-fixture-email'));
+        window.dispatchEvent(new Event('focus'));
+    });
+    await expect(dialog).toBeHidden();
+    await expect(
+        page.getByRole('heading', { name: 'Thư viện tài nguyên', exact: true }),
+    ).toBeVisible();
+    await expect(search).toHaveValue('demo');
+});
+
+test('avatar upload prompts for verification without discarding profile edits', async ({
+    page,
+}) => {
+    await page.goto('/tests/browser/studio-navigation.html?unverified&path=%2Fprofile');
+    const name = page.getByLabel('Họ tên');
+    await name.fill('Tên đang chỉnh sửa');
+    const choose = page.getByRole('button', { name: 'Chọn ảnh đại diện', exact: true });
+    await choose.click();
+    const dialog = page.getByRole('dialog', { name: 'Kiểm tra email của bạn' });
+    await expect(dialog).toContainText('để tải ảnh đại diện');
+    await dialog.getByRole('button', { name: 'Gửi lại email', exact: true }).click();
+    await expect(
+        page.locator('[data-sonner-toast]').getByText('Đã gửi email xác minh.'),
+    ).toBeVisible();
+    await page.evaluate(() => {
+        window.dispatchEvent(new Event('verify-fixture-email'));
+        window.dispatchEvent(new Event('focus'));
+    });
+    await expect(dialog).toBeHidden();
+    await expect(name).toHaveValue('Tên đang chỉnh sửa');
+    await expect(page.getByText('Email đã được xác minh.', { exact: true })).toBeVisible();
+    await Promise.all([page.waitForEvent('filechooser'), choose.click()]);
+});
+
+test('opening the verification link submits the token once and opens Studio', async ({ page }) => {
+    let requests = 0;
+    await page.route('**/api/v1/auth/verify-email', async (route) => {
+        requests++;
+        expect(route.request().method()).toBe('POST');
+        expect(route.request().postDataJSON()).toEqual({ token: 'fixture-email-token' });
+        await page.evaluate(() => window.dispatchEvent(new Event('verify-fixture-email')));
+        await route.fulfill({ json: { data: { emailVerified: true } } });
+    });
+    const link = encodeURIComponent('/verify-email?token=fixture-email-token&next=%2Fassets');
+    await page.goto(`/tests/browser/studio-navigation.html?strict&unverified&path=${link}`);
+    await expect(page.getByRole('heading', { name: 'Tài nguyên', exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(requests).toBe(1);
+});
+
+test('an unsuccessful verification link reports the error and lets the user sign out', async ({
+    page,
+}) => {
+    await page.route('**/api/v1/auth/verify-email', (route) =>
+        route.fulfill({
+            status: 400,
+            json: {
+                error: {
+                    code: 'TOKEN_INVALID',
+                    message: 'Liên kết xác minh đã hết hạn.',
+                    requestId: 'test',
+                },
+            },
+        }),
+    );
+    const link = encodeURIComponent('/verify-email?token=expired-fixture');
+    await page.goto(`/tests/browser/studio-navigation.html?unverified&path=${link}`);
+    const dialog = page.getByRole('dialog', { name: 'Chưa xác minh được email' });
+    const resend = dialog.getByRole('button', { name: 'Gửi lại email', exact: true });
+    await expect(resend).toBeEnabled();
+    const error = 'Liên kết xác minh đã hết hạn.';
+    await expect(page.locator('[data-sonner-toast]').getByText(error)).toBeVisible();
+    await expect(dialog.getByText(error)).toHaveCount(0);
+    await resend.click();
+    await expect(
+        page.locator('[data-sonner-toast]').getByText('Đã gửi email xác minh.'),
+    ).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /Gửi lại sau/ })).toBeDisabled();
+    await page.route('**/api/v1/auth/logout', (route) => route.fulfill({ status: 204 }));
+    const logout = page.waitForRequest((request) => request.url().endsWith('/auth/logout'));
+    await dialog.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+    expect((await logout).method()).toBe('POST');
+    await expect(dialog).toBeHidden();
+});
+
+test('a verification link without a session offers login before requesting another email', async ({
+    page,
+}) => {
+    const path = encodeURIComponent('/verify-email');
+    await page.goto(`/tests/browser/studio-navigation.html?anonymous&path=${path}`);
+    const dialog = page.getByRole('dialog', { name: 'Chưa xác minh được email' });
+    await dialog.getByRole('link', { name: 'Đăng nhập để gửi lại email' }).click();
+    await expect(page.getByRole('dialog', { name: 'Chào mừng trở lại' })).toBeVisible();
+});
+
+test('email verification respects the server retry time before allowing another send', async ({
+    page,
+}) => {
+    let requests = 0;
+    await page.route('**/api/v1/auth/resend-verification', (route) => {
+        requests++;
+        return requests === 1
+            ? route.fulfill({
+                  status: 429,
+                  json: {
+                      error: {
+                          code: 'RATE_LIMITED',
+                          message: 'Vui lòng đợi.',
+                          details: { retryAfterSeconds: 12 },
+                          requestId: 'test',
+                      },
+                  },
+              })
+            : route.fulfill({ status: 204 });
+    });
+    await page.clock.install();
+    await page.goto(
+        '/tests/browser/studio-navigation.html?unverified&mock-resend-http&path=%2Fassets',
+    );
+    const dialog = page.getByRole('dialog', { name: 'Kiểm tra email của bạn' });
+    const resend = dialog.getByRole('button', { name: 'Gửi lại email', exact: true });
+    await resend.click();
+    await expect(dialog.getByRole('button', { name: /Gửi lại sau 12 giây/ })).toBeDisabled();
+    await page.clock.fastForward(12_000);
+    await resend.click();
+    await expect(
+        page.locator('[data-sonner-toast]').getByText('Đã gửi email xác minh.'),
+    ).toBeVisible();
+    expect(requests).toBe(2);
+});
+
+test('a registration email failure keeps the account in the verification dialog', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.route('**/api/v1/auth/register', (route) =>
+        route.fulfill({
+            status: 201,
+            json: {
+                data: {
+                    user: {
+                        id: '11111111-1111-4111-8111-111111111111',
+                        displayName: 'Tác giả',
+                        email: 'author@example.test',
+                        role: 'AUTHOR',
+                        emailVerified: false,
+                    },
+                    accessToken: 'fixture-access-token',
+                    expiresIn: 600,
+                    verificationEmailSent: false,
+                },
+            },
+        }),
+    );
+    const location = encodeURIComponent('/?auth=register&next=%2Fstudio');
+    await page.goto(`/tests/browser/studio-navigation.html?anonymous&unverified&path=${location}`);
+    const register = page.getByRole('dialog', { name: 'Tạo tài khoản', exact: true });
+    await expect(register).toBeVisible();
+    expect(
+        await register.evaluate((dialog) => dialog.scrollHeight - dialog.clientHeight),
+    ).toBeLessThanOrEqual(1);
+    await register.getByLabel('Họ tên').fill('Tác giả');
+    await register.getByLabel('Email', { exact: true }).fill('author@example.test');
+    await register.getByLabel('Mật khẩu', { exact: true }).fill('Fixture-password-12');
+    await register.getByLabel('Nhập lại mật khẩu').fill('Fixture-password-12');
+    await register.getByRole('button', { name: 'Tạo tài khoản', exact: true }).click();
+    const verify = page.getByRole('dialog', { name: 'Kiểm tra email của bạn' });
+    const error = 'Chưa gửi được email xác minh.';
+    await expect(
+        page.locator('[data-sonner-toast]').getByText(error, { exact: false }),
+    ).toBeVisible();
+    await expect(verify.getByText(error, { exact: false })).toHaveCount(0);
+    const resend = verify.getByRole('button', { name: 'Gửi lại email', exact: true });
+    await resend.click();
+    await expect(
+        page.locator('[data-sonner-toast]').getByText('Đã gửi email xác minh.'),
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Tổng quan Studio' })).toHaveCount(0);
+    await page.route('**/api/v1/auth/logout', (route) => route.fulfill({ status: 204 }));
+    const logout = page.waitForRequest((request) => request.url().endsWith('/auth/logout'));
+    await verify.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+    expect((await logout).method()).toBe('POST');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
 for (const reducedMotion of ['no-preference', 'reduce']) {
     test(`Studio bottom navigation shows accessible icons without animation: ${reducedMotion}`, async ({
         page,

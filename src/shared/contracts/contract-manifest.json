@@ -4,7 +4,7 @@
   "files": {
     "api/admin.schema.ts": "fbefbf796b55ec3d3760bc5aba041fb360dc182937f7c4eeecbb8ff9d353fbe5",
     "api/assets.schema.ts": "01a957b1213d003834c03b05254b57a2042f45abe5598702611122b1b2049dd1",
-    "api/auth.schema.ts": "d1ed9f9265a39fcb10298bd76053ba6c405ad99b140c4032591952df8f4ce05e",
+    "api/auth.schema.ts": "7b227ba99c21fa7eb81f96cf6ed81cca477299d21706fb558ea514fecfd48b46",
     "api/book-draft.schema.ts": "f5a4783cdd336e6420da3d5de31ddf7bee6da51d1fee897dcd36f74f21799407",
     "api/books.schema.ts": "1f9eeadfea47188c0a12a59a0e1aa72dc42baf1f744121e922da74c1dba77303",
     "api/interaction-ai.schema.ts": "484d300fc0dc5a2cb9e50f1ed42b974f9362b57d779df7891279a157a29a54b6",
@@ -21,7 +21,7 @@
     "manifest.schema.ts": "4110bf4f041c72310bbb40bf29c1402c173062640a5d944dfbc997a63c529611",
     "marker-analysis.schema.ts": "8e2bdcdd3753349c5b386fee0b2d2bb676a7f4e707e9ad809aa5d8fa46b6a685",
     "marker.schema.ts": "c029bfd3c9311657c118d052c7ab9a84a4bcc46dedf2e556e860b4de3fed88fd",
-    "routes.schema.ts": "24b426d757f4d4323cb99144874e538ccd04cfd765ffc2c9be5d72525e152222",
+    "routes.schema.ts": "b0fa73b057695a5d9a15d1eaa9b4ea2e2f85cadec86ed2618af4e16883382aed",
     "scene.schema.ts": "7cfca11e7c7131a69d505c2d76871a62bbda7c8609fd9331145b088e1e1a5a3f"
   }
 }

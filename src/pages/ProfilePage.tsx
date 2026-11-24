@@ -41,6 +41,8 @@ function ProfileForm({
     onBusyChange: (busy: boolean) => void;
 }) {
     const cache = useQueryClient();
+    const { user } = useAuth();
+    const emailVerified = user?.emailVerified ?? me.emailVerified;
     const [values, setValues] = useState({
         displayName: me.displayName,
         organization: me.organization || '',
@@ -156,13 +158,13 @@ function ProfileForm({
                                         id="profile-email-note"
                                         className="flex items-center gap-1.5"
                                     >
-                                        {me.emailVerified && (
+                                        {emailVerified && (
                                             <BadgeCheck
                                                 aria-hidden="true"
                                                 className="size-3.5 shrink-0 text-success-foreground"
                                             />
                                         )}
-                                        {me.emailVerified
+                                        {emailVerified
                                             ? 'Email đã được xác minh.'
                                             : 'Email chưa được xác minh.'}
                                     </FieldDescription>

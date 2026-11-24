@@ -10,11 +10,18 @@ import {
     DialogTitle,
 } from '@/shared/ui/primitives/dialog';
 import { Spinner } from '@/shared/ui/primitives/spinner';
-import { type AuthMode, legacyAuthLocation, readAuthMode, withoutAuth } from '../model/dialog';
+import {
+    type AuthMode,
+    authLocation,
+    legacyAuthLocation,
+    readAuthMode,
+    withoutAuth,
+} from '../model/dialog';
 import { safeReturnPath } from '../model/form';
 import { auth, useAuth } from '../model/session';
 import { AuthForm } from './AuthForm';
 import { CheckEmail, VerifyEmail } from './EmailPages';
+import { useAuthRequest } from './useAuthRequest';
 
 export function LegacyAuthRoute({ mode }: { mode: AuthMode }) {
     const location = useLocation();
@@ -28,6 +35,15 @@ export function AuthDialog() {
     const mode = readAuthMode(location.search);
     const params = new URLSearchParams(location.search);
     const next = params.get('next');
+    const verificationPath = (next ?? location.pathname).split(/[?#]/, 1)[0] ?? '';
+    const verificationPurpose =
+        verificationPath === '/profile'
+            ? 'tải ảnh đại diện'
+            : verificationPath === '/resources'
+              ? 'xem thư viện'
+              : verificationPath.startsWith('/admin/')
+                ? 'quản lý tài nguyên'
+                : 'vào Studio';
     const [pending, setPending] = useState(0);
     const [destination, setDestination] = useState<string | null>(null);
     const origin = useRef<HTMLElement | null>(null);
@@ -64,24 +80,67 @@ export function AuthDialog() {
         navigate(destination, { replace: true, state: null });
     }, [destination, mode, navigate]);
     const complete = () => {
+        const currentUser = auth.store.getState().user;
+        if (currentUser && !currentUser.emailVerified) {
+            navigate(authLocation(location, 'check-email'), {
+                replace: true,
+                state: location.state,
+            });
+            return;
+        }
         if (next) routeAfterAuth(safeReturnPath(next));
         else close();
     };
     const continueInPlace = !next && safeReturnPath(location.pathname) === location.pathname;
-    const continueLabel = continueInPlace ? 'Tiếp tục làm việc' : 'Vào Studio';
-    const continueWorkspace = () => {
+    const continueWorkspace = useCallback(() => {
         if (continueInPlace) close();
         else routeAfterAuth(safeReturnPath(next));
-    };
+    }, [continueInPlace, close, next, routeAfterAuth]);
+    const waitingForEmail = mode === 'check-email' && user?.emailVerified === false;
+    useEffect(() => {
+        if (!waitingForEmail) return;
+        let checking = false;
+        const recheck = () => {
+            if (checking || document.hidden) return;
+            checking = true;
+            void auth
+                .profile()
+                .catch(() => undefined)
+                .finally(() => {
+                    checking = false;
+                });
+        };
+        window.addEventListener('focus', recheck);
+        document.addEventListener('visibilitychange', recheck);
+        recheck();
+        return () => {
+            window.removeEventListener('focus', recheck);
+            document.removeEventListener('visibilitychange', recheck);
+        };
+    }, [waitingForEmail]);
+    useEffect(() => {
+        if (mode === 'check-email' && user?.emailVerified && !busy) continueWorkspace();
+    }, [mode, user?.emailVerified, busy, continueWorkspace]);
     useEffect(() => {
         if (mode && auth.store.getState().status === 'loading') void auth.restore();
     }, [mode]);
     useEffect(() => {
         if (user && next && !busy && (mode === 'login' || mode === 'register')) {
-            routeAfterAuth(safeReturnPath(next));
+            if (user.emailVerified) routeAfterAuth(safeReturnPath(next));
+            else
+                navigate(authLocation(location, 'check-email'), {
+                    replace: true,
+                    state: location.state,
+                });
         }
-    }, [user, next, busy, mode, routeAfterAuth]);
+    }, [user, next, busy, mode, routeAfterAuth, location, navigate]);
     const requestProps = { locked: busy, onPending };
+    // Keep the logout request mounted when clearing the session replaces CheckEmail.
+    const signOut = useAuthRequest(requestProps);
+    const { setError: setSignOutError } = signOut;
+    useEffect(() => {
+        if (!mode) setSignOutError(null);
+    }, [mode, setSignOutError]);
     const formMode = mode === 'check-email' && !user ? 'login' : mode;
     return (
         <Dialog
@@ -92,7 +151,7 @@ export function AuthDialog() {
         >
             <DialogContent
                 showCloseButton={false}
-                className="max-h-[calc(100dvh-48px)] max-w-[min(416px,calc(100vw-32px))] overflow-y-auto p-8 [--control-height:48px] [&_.button]:min-h-11"
+                className="max-h-[calc(100dvh-48px)] max-w-[min(416px,calc(100vw-32px))] gap-y-4 overflow-y-auto p-5 sm:p-6 [&>[data-slot=dialog-header]]:gap-1 [&>[data-slot=dialog-header]]:pr-7 [&_.button]:min-h-11"
                 onCloseAutoFocus={(event) => {
                     event.preventDefault();
                     if (origin.current?.isConnected) origin.current.focus({ preventScroll: true });
@@ -119,20 +178,18 @@ export function AuthDialog() {
                     <X />
                 </Button>
                 {status === 'loading' ? (
-                    <>
-                        <DialogHeader className="mb-6 pr-5">
-                            <DialogTitle size="lg" className="m-0">
-                                Đang kiểm tra phiên
-                            </DialogTitle>
-                            <DialogDescription className="m-0">
-                                Vui lòng đợi trong giây lát.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <Spinner aria-label="Đang tải" />
-                    </>
+                    <DialogHeader>
+                        <DialogTitle size="lg" className="m-0">
+                            Đang kiểm tra đăng nhập
+                        </DialogTitle>
+                        <DialogDescription className="m-0 flex items-center gap-2">
+                            <Spinner className="shrink-0" aria-hidden="true" />
+                            Vui lòng đợi trong giây lát.
+                        </DialogDescription>
+                    </DialogHeader>
                 ) : user && !busy && (mode === 'login' || mode === 'register') ? (
                     <>
-                        <DialogHeader className="mb-6 pr-5">
+                        <DialogHeader>
                             <DialogTitle size="lg" className="m-0">
                                 Bạn đã đăng nhập
                             </DialogTitle>
@@ -141,7 +198,7 @@ export function AuthDialog() {
                                 tạo của bạn.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-2">
                             <Button disabled={busy} onClick={complete}>
                                 Tiếp tục xem trang
                             </Button>
@@ -166,16 +223,19 @@ export function AuthDialog() {
                     />
                 ) : mode === 'check-email' ? (
                     <CheckEmail
+                        key={user?.id}
                         {...requestProps}
-                        onContinue={continueWorkspace}
-                        continueLabel={continueLabel}
+                        signOut={signOut}
+                        onSignOut={close}
+                        purpose={verificationPurpose}
                     />
                 ) : mode === 'verify' ? (
                     <VerifyEmail
                         key={params.get('token') || ''}
                         {...requestProps}
                         onContinue={continueWorkspace}
-                        continueLabel={continueLabel}
+                        signOut={signOut}
+                        onSignOut={close}
                     />
                 ) : null}
             </DialogContent>

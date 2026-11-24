@@ -1,10 +1,11 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
-import { errorMessage } from '../../../shared/api/errors';
+import { errorMessage, retryAfterSeconds } from '../../../shared/api/errors';
 import { createHttpClient } from '../../../shared/api/http';
-import type {
-    AuthResponse,
-    LoginBody,
-    RegisterBody,
+import {
+    type AuthResponse,
+    type LoginBody,
+    RESEND_COOLDOWN_SECONDS,
+    type RegisterBody,
 } from '../../../shared/contracts/api/auth.schema';
 import type { Me } from '../../../shared/contracts/dto.schema';
 import { createAuthApi } from '../api/auth-api';
@@ -32,6 +33,8 @@ export function createAuthClient(
             token: null,
             message,
             signingOut: false,
+            verificationEmailFailed: false,
+            verificationResendAt: 0,
         });
     }
     function refresh(): Promise<string> {
@@ -125,7 +128,9 @@ export function createAuthClient(
         });
         return restoreFlight;
     }
-    async function authenticate(request: () => Promise<AuthResponse>) {
+    async function authenticate(
+        request: () => Promise<AuthResponse & { verificationEmailSent?: boolean }>,
+    ) {
         if (refreshFlight) await refreshFlight.catch(() => undefined);
         const started = ++epoch;
         const data = await request();
@@ -136,6 +141,10 @@ export function createAuthClient(
             token: data.accessToken,
             message: null,
             signingOut: false,
+            verificationEmailFailed: data.verificationEmailSent === false,
+            verificationResendAt: data.verificationEmailSent
+                ? Date.now() + RESEND_COOLDOWN_SECONDS * 1000
+                : 0,
         });
         return data.user;
     }
@@ -160,7 +169,22 @@ export function createAuthClient(
         register: (body: RegisterBody) => authenticate(() => endpoints.register(body)),
         forgotPassword: endpoints.forgotPassword,
         verifyEmail: endpoints.verifyEmail,
-        resendVerification: endpoints.resendVerification,
+        resendVerification: async () => {
+            const started = epoch;
+            try {
+                await endpoints.resendVerification();
+                if (started === epoch)
+                    store.setState({
+                        verificationEmailFailed: false,
+                        verificationResendAt: Date.now() + RESEND_COOLDOWN_SECONDS * 1000,
+                    });
+            } catch (error) {
+                const seconds = retryAfterSeconds(error);
+                if (started === epoch && seconds !== undefined)
+                    store.setState({ verificationResendAt: Date.now() + seconds * 1000 });
+                throw error;
+            }
+        },
         resetPassword: async (token: string, newPassword: string) => {
             await endpoints.resetPassword(token, newPassword);
             clear(); // The backend revokes all sessions; 204 has no JSON body to parse.

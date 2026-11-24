@@ -3,7 +3,7 @@ import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { Feedback } from '../../../shared/ui/Feedback';
-import { protectedLogin } from '../model/dialog';
+import { protectedLogin, requireEmailVerification } from '../model/dialog';
 import { auth, useAuth } from '../model/session';
 
 export function SessionBoundary() {
@@ -40,4 +40,12 @@ export function RequireSession() {
     const { user } = useAuth();
     const location = useLocation();
     return user ? <Outlet /> : <Navigate to={protectedLogin(location)} replace />;
+}
+
+export function RequireVerifiedEmail() {
+    const { user } = useAuth();
+    const location = useLocation();
+    if (user && !user.emailVerified)
+        return <Navigate to={requireEmailVerification(location)} replace />;
+    return <Outlet />;
 }
