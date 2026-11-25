@@ -5,6 +5,70 @@ async function open(page, path = '/books') {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 }
 
+test('Studio recovers from a failed overview import and renders its chart after reload', async ({
+    page,
+}) => {
+    await page.route('**/api/v1/**', (route) => {
+        const { pathname, searchParams } = new URL(route.request().url());
+        const reply = (data) => route.fulfill({ json: { data } });
+        switch (pathname) {
+            case '/api/v1/auth/refresh':
+                return reply({ accessToken: 'test-token', expiresIn: 3600 });
+            case '/api/v1/me':
+                return reply({
+                    id: '11111111-1111-4111-8111-111111111111',
+                    email: 'author@example.test',
+                    displayName: 'Tác giả kiểm thử',
+                    avatarUrl: null,
+                    organization: null,
+                    bio: null,
+                    role: 'AUTHOR',
+                    emailVerified: true,
+                    storage: { usedBytes: 0, quotaBytes: 500000000 },
+                    createdAt: '2026-11-20T00:00:00Z',
+                });
+            case '/api/v1/studio/reading-stats':
+                return reply({
+                    opensLast7Days: 3,
+                    opensPrevious7Days: 0,
+                    opensByDay: Array.from({ length: 14 }, (_, index) => ({
+                        date: `2026-11-${index + 10}`,
+                        opens: index === 13 ? 3 : 0,
+                    })),
+                    topBooks: [],
+                });
+            case '/api/v1/books':
+            case '/api/v1/assets':
+            case '/api/v1/me/notifications':
+                return route.fulfill({
+                    json: {
+                        data: [],
+                        meta: {
+                            page: 1,
+                            limit: Number(searchParams.get('limit') || 12),
+                            total: 0,
+                            totalPages: 0,
+                        },
+                    },
+                });
+            default:
+                return route.abort();
+        }
+    });
+    await page.route(
+        /\/StudioOverviewPage(?:\.tsx|-[\w-]+\.js)(?:\?|$)/,
+        (route) => route.abort(),
+        { times: 1 },
+    );
+    await page.goto('/studio');
+    await expect(page.getByRole('heading', { name: 'Không mở được trang' })).toBeVisible();
+    await page.getByRole('button', { name: 'Tải lại trang' }).click();
+    await expect(page.getByRole('heading', { name: 'Tổng quan', exact: true })).toBeVisible();
+    await expect(
+        page.getByLabel('Biểu đồ lượt mở sách theo ngày').locator('svg.recharts-surface').first(),
+    ).toBeVisible();
+});
+
 test('unverified authors must confirm email before returning to a Studio deep link', async ({
     page,
 }) => {

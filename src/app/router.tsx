@@ -12,6 +12,7 @@ import {
     useParams,
 } from 'react-router-dom';
 import { IdSchema } from '@/shared/contracts/common.schema';
+import { Button } from '@/shared/ui/Button';
 import { LoadingBoundary } from '@/shared/ui/LoadingBoundary';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { FloatingThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
@@ -216,6 +217,22 @@ function RouterLayout() {
     );
 }
 
+function RouteErrorPage() {
+    return (
+        <LoadingBoundary fullScreen>
+            <main id="main" className="grid min-h-dvh place-items-center bg-background px-6 py-12">
+                <div className="max-w-sm text-center">
+                    <h1 className="m-0 font-semibold text-2xl">Không mở được trang</h1>
+                    <p className="mt-3 mb-6 text-muted-foreground text-sm">
+                        Hãy tải lại để mở trang này.
+                    </p>
+                    <Button onClick={() => window.location.reload()}>Tải lại trang</Button>
+                </div>
+            </main>
+        </LoadingBoundary>
+    );
+}
+
 function LegacyExploreRedirect() {
     const { search, hash } = useLocation();
     return <Navigate to={{ pathname: '/library', search, hash }} replace />;
@@ -229,7 +246,7 @@ function LegacyAssetRedirect() {
 
 const router = createBrowserRouter(
     createRoutesFromElements(
-        <Route element={<RouterLayout />}>
+        <Route element={<RouterLayout />} errorElement={<RouteErrorPage />}>
             <Route id="public-pages" element={<PublicLayout />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/library" element={<ExplorePage />} />

@@ -6,6 +6,10 @@ import { defineConfig, loadEnv } from 'vite';
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
     plugins: [react(), tailwindcss()],
+    cacheDir:
+        process.env.PLAYWRIGHT_TEST === '1'
+            ? 'node_modules/.vite-playwright'
+            : 'node_modules/.vite-studio',
     optimizeDeps: { entries: ['src/main.tsx'] },
     resolve: {
         alias: {
