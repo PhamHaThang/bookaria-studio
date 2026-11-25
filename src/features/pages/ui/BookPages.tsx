@@ -108,7 +108,7 @@ export function BookPages({
                 warningMode="toast"
             />
             {uncertain && (
-                <Alert tone="warning" className="my-4">
+                <Alert tone="warning" className="my-2">
                     <p>
                         Chưa xác nhận được kết quả. Yêu cầu có thể đã được nhận; hãy tải lại danh
                         sách trước khi thao tác tiếp.
@@ -116,6 +116,7 @@ export function BookPages({
                     <Button
                         variant="secondary"
                         aria-busy={busy}
+                        className="mt-2"
                         onClick={async () => {
                             setBusy(true);
                             setError(null);

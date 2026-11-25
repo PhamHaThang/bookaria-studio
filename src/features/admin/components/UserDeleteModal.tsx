@@ -190,7 +190,7 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                         </p>
                     </Alert>
                 ) : (
-                    <Alert tone="danger" className="-mb-2 py-2.5 text-xs">
+                    <Alert tone="danger" className="text-xs">
                         <span>
                             Hành động này không thể hoàn tác trực tiếp trên giao diện. Xin vui lòng
                             kiểm tra kỹ lưỡng trước khi xác nhận.

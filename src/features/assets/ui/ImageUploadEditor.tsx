@@ -184,7 +184,7 @@ export function ImageUploadEditor({
                 !embedded &&
                     (avatar
                         ? 'p-6 [&_h2]:m-0 [&_h2]:font-semibold [&_h2]:text-lg'
-                        : 'editor-form mb-6 max-w-180 p-8 max-[760px]:px-5 max-[760px]:py-6 [&_.feedback]:mb-6 [&_h2]:mt-0 [&_h2]:text-[length:var(--text-xl)]'),
+                        : 'editor-form mb-6 max-w-180 p-8 max-[760px]:px-5 max-[760px]:py-6 [&_h2]:mt-0 [&_h2]:text-[length:var(--text-xl)]'),
             )}
             aria-labelledby={`${id}-title`}
         >

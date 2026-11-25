@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { cn } from '@/shared/lib/cn';
 
 const alertVariants = cva(
-    'feedback mb-6 rounded-[var(--radius-md)] px-4 py-3 text-[length:var(--text-sm)] wrap-anywhere',
+    'feedback mb-2 min-w-0 rounded-[var(--radius-md)] px-3 py-2 text-[length:var(--text-sm)] wrap-anywhere last:mb-0',
     {
         variants: {
             variant: {
