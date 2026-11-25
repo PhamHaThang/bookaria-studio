@@ -280,13 +280,15 @@ export function BookInfoDialog({
                         <X data-icon="inline-start" />
                     </ActionButton>
                     <div className="flex min-h-0 flex-col gap-6 overflow-y-auto px-7 pb-6 [overscroll-behavior:contain] [scrollbar-color:var(--border-input)_var(--bg-surface)] [scrollbar-width:thin]">
-                        {!valid && <Feedback error="Đường dẫn sách không hợp lệ." />}
+                        {!valid && (
+                            <Feedback error="Đường dẫn sách không hợp lệ." errorMode="toast" />
+                        )}
                         {valid && detail.isPending && (
                             <LoadingState layout="profile">Đang tải thông tin sách…</LoadingState>
                         )}
                         {detail.isError && (
                             <div>
-                                <Feedback error={errorMessage(detail.error)} />
+                                <Feedback error={errorMessage(detail.error)} errorMode="toast" />
                                 <Button
                                     variant="secondary"
                                     disabled={busy || detail.isFetching}

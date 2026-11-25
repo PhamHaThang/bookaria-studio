@@ -49,7 +49,7 @@ export function BookForm({
             onChange={() => onDirtyChange?.(true)}
             aria-busy={busy}
         >
-            <Feedback error={error} success={success} />
+            <Feedback error={error} errorMode="toast" success={success} />
             <FieldSet disabled={busy} className="m-0 min-w-0 gap-5 border-0 p-0">
                 <FieldGroup className="gap-5 [container-type:normal]">
                     <Field>

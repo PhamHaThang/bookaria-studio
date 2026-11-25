@@ -56,7 +56,7 @@ function UserEditor({
     return (
         <section className="admin-section mt-8">
             <h2>Thay đổi tài khoản</h2>
-            <Feedback error={error || action.error} />
+            <Feedback error={error || action.error} errorMode="toast" />
             {action.uncertain && (
                 <Button
                     type="button"
@@ -188,7 +188,6 @@ function UserEditor({
                         </p>
                     )}
                     {draft.reason && <p>Lý do: {draft.reason}</p>}
-                    <Feedback error={action.error} />
                     <div className="admin-actions flex flex-wrap items-center gap-3 max-[640px]:flex-col max-[640px]:items-stretch [.admin-confirm_&]:mt-5">
                         <AlertDialogCancel variant="plain" asChild>
                             <Button
@@ -258,7 +257,7 @@ export function AdminUserDetailPage() {
             {query.isPending && <LoadingState layout="detail">Đang tải tài khoản…</LoadingState>}
             {query.isError && (
                 <>
-                    <Feedback error={errorMessage(query.error)} />
+                    <Feedback error={errorMessage(query.error)} errorMode="toast" />
                     <AdminReload retry={() => void query.refetch()} busy={query.isFetching} />
                 </>
             )}

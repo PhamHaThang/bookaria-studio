@@ -348,15 +348,7 @@ export function AddPagesDialog({
                                 )}
                             </div>
                         )}
-                        <Feedback
-                            error={locked || checkpoint.current.uncertain ? null : error}
-                            errorMode="toast"
-                        />
-                        {error && (locked || checkpoint.current.uncertain) && (
-                            <div className="mt-4 [&_.feedback]:m-0">
-                                <Feedback error={error} />
-                            </div>
-                        )}
+                        <Feedback error={error} errorMode="toast" />
                         {checkpoint.current.uncertain && (
                             <div className="mt-4 flex flex-col items-start gap-3">
                                 <p className="m-0 text-sm">

@@ -15,6 +15,7 @@ import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { Feedback } from '@/shared/ui/Feedback';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/primitives/avatar';
 import {
     Dialog,
@@ -235,11 +236,7 @@ export function UserUpdateModal({ user, isOpen, onClose, onSuccess }: UserUpdate
                     </Alert>
                 )}
 
-                {apiError && (
-                    <Alert tone="danger" className="text-xs">
-                        {apiError}
-                    </Alert>
-                )}
+                <Feedback error={apiError} errorMode="toast" />
 
                 <form onSubmit={handleSubmit} className="space-y-5 pt-1">
                     <FieldGroup className="gap-5">

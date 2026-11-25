@@ -8,13 +8,20 @@ import { PasswordInput } from '@/shared/ui/PasswordInput';
 import { Button } from '@/shared/ui/primitives/button';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/shared/ui/primitives/dialog';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import {
+    Field,
+    FieldDescription,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+} from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { AuthDialogLink } from './AuthDialogLink';
 import { type AuthRequestProps, useAuthRequest } from './useAuthRequest';
 
 type Mode = 'login' | 'register' | 'forgot' | 'reset';
+type FieldIssue = { field: 'displayName' | 'password' | 'confirmation'; message: string };
 const copy = {
     login: ['Chào mừng trở lại', 'Đăng nhập để tiếp tục với Bookaria.', 'Đăng nhập'],
     register: ['Tạo tài khoản', 'Bắt đầu không gian sáng tạo của riêng bạn.', 'Tạo tài khoản'],
@@ -34,6 +41,7 @@ export function AuthForm({
     const [params] = useSearchParams();
     const token = params.get('token') || '';
     const [success, setSuccess] = useState<string | null>(null);
+    const [fieldIssue, setFieldIssue] = useState<FieldIssue | null>(null);
     const navigate = useNavigate();
     const location = useLocation();
     const session = useAuth();
@@ -55,15 +63,19 @@ export function AuthForm({
         const displayName = String(form.get('displayName') || '').trim();
         setSuccess(null);
         request.setError(null);
+        setFieldIssue(null);
         if (newPassword) {
             const invalid = validateNewPassword(password, String(form.get('confirmation') || ''));
             if (invalid) {
-                request.setError(invalid);
+                setFieldIssue({
+                    field: validateNewPassword(password, password) ? 'password' : 'confirmation',
+                    message: invalid,
+                });
                 return;
             }
         }
         if (mode === 'register' && !displayName) {
-            request.setError('Vui lòng nhập họ tên.');
+            setFieldIssue({ field: 'displayName', message: 'Vui lòng nhập họ tên.' });
             return;
         }
         await request.run(
@@ -115,11 +127,23 @@ export function AuthForm({
             </DialogHeader>
             <Feedback
                 error={request.error || (mode === 'login' ? session.message : null)}
+                errorMode="toast"
                 success={success}
-                successMode="inline"
             />
             {!(mode === 'reset' && success) && (
-                <form onSubmit={submit} aria-busy={request.busy}>
+                <form
+                    onSubmit={submit}
+                    aria-busy={request.busy}
+                    onChange={(event) => {
+                        if (!fieldIssue || !(event.target instanceof HTMLInputElement)) return;
+                        const { name } = event.target;
+                        if (
+                            name === fieldIssue.field ||
+                            (name === 'password' && fieldIssue.field === 'confirmation')
+                        )
+                            setFieldIssue(null);
+                    }}
+                >
                     <fieldset disabled={request.disabled} className="m-0 min-w-0 border-0 p-0">
                         <FieldGroup className="gap-3 [&>[data-slot=field]]:gap-1.5">
                             {mode === 'register' && (
@@ -135,7 +159,20 @@ export function AuthForm({
                                         autoComplete="name"
                                         maxLength={100}
                                         required
+                                        aria-invalid={
+                                            fieldIssue?.field === 'displayName' || undefined
+                                        }
+                                        aria-describedby={
+                                            fieldIssue?.field === 'displayName'
+                                                ? 'auth-name-error'
+                                                : undefined
+                                        }
                                     />
+                                    {fieldIssue?.field === 'displayName' && (
+                                        <FieldError id="auth-name-error">
+                                            {fieldIssue.message}
+                                        </FieldError>
+                                    )}
                                 </Field>
                             )}
                             {mode !== 'reset' && (
@@ -170,14 +207,25 @@ export function AuthForm({
                                         minLength={newPassword ? 8 : 1}
                                         maxLength={72}
                                         required
+                                        aria-invalid={fieldIssue?.field === 'password' || undefined}
                                         aria-describedby={
-                                            newPassword ? 'auth-password-help' : undefined
+                                            fieldIssue?.field === 'password'
+                                                ? 'auth-password-error'
+                                                : newPassword
+                                                  ? 'auth-password-help'
+                                                  : undefined
                                         }
                                     />
-                                    {newPassword && (
-                                        <FieldDescription id="auth-password-help">
-                                            Mật khẩu phải có ít nhất 8 ký tự.
-                                        </FieldDescription>
+                                    {fieldIssue?.field === 'password' ? (
+                                        <FieldError id="auth-password-error">
+                                            {fieldIssue.message}
+                                        </FieldError>
+                                    ) : (
+                                        newPassword && (
+                                            <FieldDescription id="auth-password-help">
+                                                Mật khẩu phải có ít nhất 8 ký tự.
+                                            </FieldDescription>
+                                        )
                                     )}
                                 </Field>
                             )}
@@ -193,7 +241,20 @@ export function AuthForm({
                                         visibilityLabel="mật khẩu nhập lại"
                                         autoComplete="new-password"
                                         required
+                                        aria-invalid={
+                                            fieldIssue?.field === 'confirmation' || undefined
+                                        }
+                                        aria-describedby={
+                                            fieldIssue?.field === 'confirmation'
+                                                ? 'auth-confirmation-error'
+                                                : undefined
+                                        }
                                     />
+                                    {fieldIssue?.field === 'confirmation' && (
+                                        <FieldError id="auth-confirmation-error">
+                                            {fieldIssue.message}
+                                        </FieldError>
+                                    )}
                                 </Field>
                             )}
                             {mode === 'login' && (

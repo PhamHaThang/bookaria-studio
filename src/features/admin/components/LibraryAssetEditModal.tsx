@@ -183,11 +183,7 @@ export function LibraryAssetEditModal({
                     </div>
                 </div>
 
-                {apiError && (
-                    <div className="rounded-md border border-destructive/20 bg-destructive/10 p-2.5 text-destructive text-xs">
-                        {apiError}
-                    </div>
-                )}
+                <Feedback error={apiError} errorMode="toast" />
 
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <FieldGroup className="space-y-3">
@@ -375,3 +371,5 @@ export function LibraryAssetEditModal({
         </Dialog>
     );
 }
+
+import { Feedback } from '@/shared/ui/Feedback';

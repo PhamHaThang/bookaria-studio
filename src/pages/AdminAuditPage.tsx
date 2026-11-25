@@ -251,14 +251,19 @@ export function AdminAuditPage() {
             </form>
 
             {!parsed.success && (
-                <Feedback error="Bộ lọc không hợp lệ. Mã người thực hiện và mã đối tượng phải là định dạng UUID hợp lệ; hãy sửa hoặc xóa bộ lọc." />
+                <Feedback
+                    error="Bộ lọc không hợp lệ. Mã người thực hiện và mã đối tượng phải là định dạng UUID hợp lệ; hãy sửa hoặc xóa bộ lọc."
+                    errorMode="toast"
+                />
             )}
 
             {query && list.isPending && (
                 <LoadingState layout="admin-rows">Đang tải nhật ký…</LoadingState>
             )}
 
-            {query && list.isError && <Feedback error={errorMessage(list.error)} />}
+            {query && list.isError && (
+                <Feedback error={errorMessage(list.error)} errorMode="toast" />
+            )}
 
             {query && list.isSuccess && (
                 <div className="space-y-4">

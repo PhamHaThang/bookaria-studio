@@ -432,7 +432,12 @@ export default function ModelPreview({
                     </div>
                 )}
                 {error ? (
-                    <Feedback error={error} />
+                    <>
+                        <Feedback error={error} errorMode="toast" />
+                        <span className="text-muted-foreground text-sm">
+                            Chưa đọc được mô hình.
+                        </span>
+                    </>
                 ) : !info ? (
                     <span
                         role="status"

@@ -328,10 +328,13 @@ export function AdminJobsPage() {
 
             {/* Thông báo lỗi bộ lọc URL không hợp lệ */}
             {!parsed.success && (
-                <Feedback error="Bộ lọc trong URL không hợp lệ. Chọn lại bộ lọc hoặc xóa bộ lọc để tiếp tục." />
+                <Feedback
+                    error="Bộ lọc trong URL không hợp lệ. Chọn lại bộ lọc hoặc xóa bộ lọc để tiếp tục."
+                    errorMode="toast"
+                />
             )}
 
-            <Feedback error={action.error} />
+            <Feedback error={action.error} errorMode="toast" />
 
             {action.uncertain && (
                 <Button type="button" variant="secondary" onClick={() => window.location.reload()}>
@@ -472,8 +475,6 @@ export function AdminJobsPage() {
                             xử lý.
                         </p>
                     </div>
-
-                    <Feedback error={action.error} />
 
                     <div className="mt-5 flex flex-wrap items-center justify-end gap-2.5">
                         <AlertDialogCancel variant="plain" asChild>

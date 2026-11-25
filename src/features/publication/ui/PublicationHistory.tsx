@@ -1,8 +1,8 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 import { apiClient } from '@/shared/api/client';
-import { Alert } from '@/shared/ui/Alert';
 import { Button } from '@/shared/ui/Button';
+import { Feedback } from '@/shared/ui/Feedback';
 import { Badge } from '@/shared/ui/primitives/badge';
 import { ScrollArea } from '@/shared/ui/primitives/scroll-area';
 import { Spinner } from '@/shared/ui/primitives/spinner';
@@ -62,12 +62,19 @@ export function PublicationHistory({
                         Đang tải phiên bản…
                     </div>
                 ) : (
-                    <Alert tone="danger">
-                        Không tải được lịch sử.{' '}
-                        <Button variant="link" onClick={() => void versions.refetch()}>
-                            Thử lại
+                    <>
+                        <Feedback
+                            error={versions.isFetching ? null : 'Không tải được lịch sử.'}
+                            errorMode="toast"
+                        />
+                        <Button
+                            variant="outline"
+                            disabled={versions.isFetching}
+                            onClick={() => void versions.refetch()}
+                        >
+                            {versions.isFetching ? 'Đang tải…' : 'Thử tải lại lịch sử'}
                         </Button>
-                    </Alert>
+                    </>
                 )
             ) : items.length === 0 ? (
                 <p className="py-4 text-muted-foreground text-sm">Chưa có phiên bản xuất bản.</p>

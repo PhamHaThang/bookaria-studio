@@ -79,13 +79,17 @@ export function AdminAuditDetailPage() {
                 )}
             </div>
 
-            {id === null && <Feedback error="Mã nhật ký phải là số nguyên dương hợp lệ." />}
+            {id === null && (
+                <Feedback error="Mã nhật ký phải là số nguyên dương hợp lệ." errorMode="toast" />
+            )}
 
             {id !== null && detail.isPending && (
                 <LoadingState layout="detail">Đang tải nhật ký…</LoadingState>
             )}
 
-            {id !== null && detail.isError && <Feedback error={errorMessage(detail.error)} />}
+            {id !== null && detail.isError && (
+                <Feedback error={errorMessage(detail.error)} errorMode="toast" />
+            )}
 
             {log && (
                 <div className="space-y-6">

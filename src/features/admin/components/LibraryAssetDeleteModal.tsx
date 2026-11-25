@@ -8,6 +8,7 @@ import type { Asset } from '@/shared/contracts/dto.schema';
 import { formatBytes } from '@/shared/lib/format';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { Feedback } from '@/shared/ui/Feedback';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/primitives/alert';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import {
@@ -146,11 +147,7 @@ export function LibraryAssetDeleteModal({
                     </label>
                 </div>
 
-                {apiError && (
-                    <div className="rounded-md border border-destructive/20 bg-destructive/10 p-2.5 text-destructive text-xs leading-relaxed">
-                        {apiError}
-                    </div>
-                )}
+                <Feedback error={apiError} errorMode="toast" />
 
                 <DialogFooter className="mt-1 flex-row justify-end gap-2 border-border/60 border-t pt-2">
                     <Button

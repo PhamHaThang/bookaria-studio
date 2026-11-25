@@ -65,7 +65,7 @@ export function AuthorPage() {
                     </EmptyHeader>
                     {!notFound && (
                         <>
-                            <Feedback error={errorMessage(profile.error)} />
+                            <Feedback error={errorMessage(profile.error)} errorMode="toast" />
                             <EmptyContent>
                                 <Button
                                     type="button"

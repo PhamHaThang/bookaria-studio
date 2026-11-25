@@ -9,6 +9,7 @@ import { cn } from '@/shared/lib/cn';
 import { Alert } from '@/shared/ui/Alert';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { Feedback } from '@/shared/ui/Feedback';
 import {
     AlertDialog,
     AlertDialogContent,
@@ -198,11 +199,7 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                     </Alert>
                 )}
 
-                {apiError && (
-                    <Alert tone="danger" className="py-2 text-xs">
-                        {apiError}
-                    </Alert>
-                )}
+                <Feedback error={apiError} errorMode="toast" />
 
                 {!isSelf && (
                     <form onSubmit={handleSubmit} className="space-y-3.5 pt-0.5">

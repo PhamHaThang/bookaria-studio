@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { errorMessage } from '../../../shared/api/errors';
-import { Alert } from '../../../shared/ui/Alert';
 import { Button } from '../../../shared/ui/Button';
+import { Feedback } from '../../../shared/ui/Feedback';
 import {
     Dialog,
     DialogContent,
@@ -84,9 +84,7 @@ export function ImportPreviewDialog({
                 <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto rounded-lg bg-muted p-3">
                     {error ? (
                         <div className="flex w-full flex-col items-start gap-3">
-                            <Alert tone="danger" className="mb-0">
-                                {error}
-                            </Alert>
+                            <Feedback error={error} errorMode="toast" />
                             <Button
                                 variant="outline"
                                 onClick={() => setAttempt((value) => value + 1)}

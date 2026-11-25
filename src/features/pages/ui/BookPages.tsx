@@ -104,7 +104,7 @@ export function BookPages({
                 error={deleting ? null : error}
                 success={notice}
                 warning={warning}
-                errorMode={uncertain ? 'inline' : 'toast'}
+                errorMode="toast"
                 warningMode="toast"
             />
             {uncertain && (
@@ -146,7 +146,7 @@ export function BookPages({
             )}
             {pages.isError && (
                 <>
-                    <Feedback error={errorMessage(pages.error)} />
+                    <Feedback error={errorMessage(pages.error)} errorMode="toast" />
                     <Button
                         variant="secondary"
                         onClick={() => {
@@ -353,7 +353,7 @@ export function BookPages({
                         if (!busy) setDeleting(null);
                     }}
                 >
-                    <Feedback error={error} errorMode={uncertain ? 'inline' : 'toast'} />
+                    <Feedback error={error} errorMode="toast" />
                     <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                         <AlertDialogCancel variant="plain" asChild>
                             <Button

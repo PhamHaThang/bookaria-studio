@@ -493,7 +493,7 @@ export function AdminUsersPage() {
             {list.isPending && (
                 <LoadingState layout="admin-rows">Đang tải người dùng…</LoadingState>
             )}
-            {list.isError && <Feedback error={errorMessage(list.error)} />}
+            {list.isError && <Feedback error={errorMessage(list.error)} errorMode="toast" />}
 
             {/* Danh sách người dùng */}
             {list.isSuccess && (

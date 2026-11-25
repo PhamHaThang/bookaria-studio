@@ -21,7 +21,7 @@ export function SessionBoundary() {
         return (
             <main className="session-state mx-auto my-[12vh] max-w-130 p-8 text-center">
                 <h1>Chưa kết nối được</h1>
-                <Feedback error={message} />
+                <Feedback error={message} errorMode="toast" />
                 <Button
                     fullWidth
                     type="button"

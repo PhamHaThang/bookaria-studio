@@ -73,7 +73,7 @@ function BookActions({
                 báo cáo.
             </p>
 
-            <Feedback error={error || action.error} />
+            <Feedback error={error || action.error} errorMode="toast" />
 
             {action.uncertain && (
                 <Button
@@ -190,7 +190,6 @@ function BookActions({
                             Lý do / ghi chú: {draft.note}
                         </div>
                     )}
-                    <Feedback error={action.error} />
                     <div className="flex items-center justify-end gap-2.5 border-border border-t pt-4">
                         <AlertDialogAction
                             variant="plain"
@@ -306,7 +305,7 @@ export function AdminBookDetailPage() {
             {query.isPending && <LoadingState layout="detail">Đang tải sách…</LoadingState>}
             {query.isError && (
                 <>
-                    <Feedback error={errorMessage(query.error)} />
+                    <Feedback error={errorMessage(query.error)} errorMode="toast" />
                     <AdminReload retry={() => void query.refetch()} busy={query.isFetching} />
                 </>
             )}

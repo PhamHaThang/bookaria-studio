@@ -10,7 +10,7 @@ import { createBillboard } from '@/shared/scene/billboard';
 import { buildScene, type PageRuntime } from '@/shared/scene-runtime/buildScene';
 import { sleep } from '@/shared/scene-runtime/InteractionRunner';
 import { observeTheme } from '@/shared/theme/observe-theme';
-import { Alert, AlertDescription } from '@/shared/ui/primitives/alert';
+import { Feedback } from '@/shared/ui/Feedback';
 import { Button } from '@/shared/ui/primitives/button';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
@@ -625,9 +625,7 @@ export function InteractionTargetPreview({
                 )}
                 {state === 'error' && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-surface p-4">
-                        <Alert variant="destructive" className="m-0">
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
+                        <Feedback error={error} errorMode="toast" />
                         <Button
                             variant="outline"
                             size="sm"

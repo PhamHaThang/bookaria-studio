@@ -77,7 +77,9 @@ export function AuditLogDetailModal({ logId, isOpen, onClose }: AuditLogDetailMo
                     <LoadingState layout="detail">Đang tải chi tiết nhật ký…</LoadingState>
                 )}
 
-                {detailQuery.isError && <Feedback error={errorMessage(detailQuery.error)} />}
+                {detailQuery.isError && (
+                    <Feedback error={errorMessage(detailQuery.error)} errorMode="toast" />
+                )}
 
                 {log && (
                     <div className="space-y-4">

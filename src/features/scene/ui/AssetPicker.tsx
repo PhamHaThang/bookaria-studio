@@ -580,31 +580,30 @@ export function AssetPicker({
                     ))}
                 </ul>
             )}
-            {list.data && assets.length > 0 && (list.hasNextPage || list.isError) && (
+            {list.data && assets.length > 0 && list.isError && (
+                <Feedback
+                    error={list.isFetching ? null : errorMessage(list.error)}
+                    errorMode="toast"
+                />
+            )}
+            {list.data && assets.length > 0 && list.hasNextPage && (
                 <section
                     className="flex flex-col items-center gap-3 py-6"
                     aria-label="Tải thêm tài nguyên"
                 >
-                    {list.isError && <Feedback error={errorMessage(list.error)} />}
-                    {list.hasNextPage && (
-                        <Button
-                            variant="secondary"
-                            disabled={blocked || pendingSearch || list.isFetching}
-                            aria-busy={list.isFetchingNextPage}
-                            onClick={() => void loadMore()}
-                        >
-                            {list.isFetchingNextPage ? (
-                                <Spinner />
-                            ) : (
-                                <Plus data-icon="inline-start" />
-                            )}
-                            {list.isFetchingNextPage
-                                ? 'Đang tải thêm…'
-                                : list.isFetchNextPageError
-                                  ? 'Thử tải thêm'
-                                  : 'Tải thêm'}
-                        </Button>
-                    )}
+                    <Button
+                        variant="secondary"
+                        disabled={blocked || pendingSearch || list.isFetching}
+                        aria-busy={list.isFetchingNextPage}
+                        onClick={() => void loadMore()}
+                    >
+                        {list.isFetchingNextPage ? <Spinner /> : <Plus data-icon="inline-start" />}
+                        {list.isFetchingNextPage
+                            ? 'Đang tải thêm…'
+                            : list.isFetchNextPageError
+                              ? 'Thử tải thêm'
+                              : 'Tải thêm'}
+                    </Button>
                 </section>
             )}
         </>

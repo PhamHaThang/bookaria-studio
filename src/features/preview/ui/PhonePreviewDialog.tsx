@@ -8,6 +8,7 @@ import { JobResultsSchema } from '@/shared/contracts/dto.schema';
 import { ApiErrorSchema } from '@/shared/contracts/error.schema';
 import { Alert } from '@/shared/ui/Alert';
 import { Button } from '@/shared/ui/Button';
+import { Feedback } from '@/shared/ui/Feedback';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import {
     Dialog,
@@ -225,9 +226,10 @@ function PhonePreviewSession({ bookId, pageId, unsaved, onClose }: PhonePreviewP
                             ]}
                         />
                     </Field>
-                    {(configError || error) && (
+                    <Feedback error={configError ? null : error} errorMode="toast" />
+                    {configError && (
                         <Alert tone="danger" className="mb-0">
-                            {configError || error}
+                            {configError}
                         </Alert>
                     )}
                     {!link && (

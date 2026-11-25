@@ -650,12 +650,20 @@ export function ArMarkerDialog({
                     <footer className="flex shrink-0 flex-col gap-3 border-border border-t px-6 py-4">
                         <Feedback success={notice} />
                         {mode === 'CUSTOM_MARKER' && jobError && (
-                            <Alert tone="danger" className="mb-0">
-                                Chưa đọc được tiến độ đánh giá.{' '}
-                                <Button type="button" variant="link" size="sm" onClick={onCheckJob}>
-                                    Kiểm tra lại
+                            <>
+                                <Feedback
+                                    error="Chưa đọc được tiến độ đánh giá."
+                                    errorMode="toast"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={onCheckJob}
+                                >
+                                    Kiểm tra lại tiến độ
                                 </Button>
-                            </Alert>
+                            </>
                         )}
                         {mode === 'CUSTOM_MARKER' && job?.status === 'FAILED' && (
                             <Alert tone="warning" className="mb-0">

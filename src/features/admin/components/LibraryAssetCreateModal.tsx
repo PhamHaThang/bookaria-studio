@@ -22,6 +22,7 @@ import { AUDIO_TAG_OPTIONS, audioKindFromTags } from '@/shared/scene/audio-kind'
 import { Alert } from '@/shared/ui/Alert';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { Feedback } from '@/shared/ui/Feedback';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import {
@@ -235,11 +236,7 @@ export function LibraryAssetCreateModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                {apiError && (
-                    <Alert tone="danger" className="text-xs">
-                        {apiError}
-                    </Alert>
-                )}
+                <Feedback error={apiError} errorMode="toast" />
 
                 {/* BƯỚC 1: Chọn tài nguyên cá nhân */}
                 {!selectedAsset && (

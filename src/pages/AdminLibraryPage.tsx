@@ -426,9 +426,11 @@ export function AdminLibraryPage() {
             </form>
 
             {/* Trạng thái tải & Báo lỗi */}
-            {categories.isError && <Feedback error={errorMessage(categories.error)} />}
+            {categories.isError && (
+                <Feedback error={errorMessage(categories.error)} errorMode="toast" />
+            )}
             {list.isPending && <LoadingState layout="admin-rows">Đang tải thư viện…</LoadingState>}
-            {list.isError && <Feedback error={errorMessage(list.error)} />}
+            {list.isError && <Feedback error={errorMessage(list.error)} errorMode="toast" />}
 
             {/* Danh sách tài nguyên */}
             {list.isSuccess && (
