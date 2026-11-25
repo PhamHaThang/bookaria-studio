@@ -21,7 +21,6 @@ export * from './components/LibraryAssetEditModal';
 export * from './components/MarkerDetailModal';
 export * from './components/MarkerToggleModal';
 export * from './components/UserCreateModal';
-export * from './components/UserDeleteModal';
 export * from './components/UserDetailModal';
 export * from './components/UserLockModal';
 export * from './components/UserUpdateModal';

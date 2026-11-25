@@ -93,18 +93,19 @@ apiClient.defaults.adapter = async (config) => {
         if (path === '/admin/users') {
             status = 201;
             data = { data: { ...author, ...payload, id: id(4) } };
-        } else if (path.startsWith('/admin/users/'))
+        } else if (path.startsWith('/admin/users/')) {
+            author.status = payload.status ?? author.status;
             data = {
                 data: {
                     user: {
                         id: author.id,
                         role: author.role,
-                        status: payload.status || author.status,
+                        status: author.status,
                         storageQuotaBytes: 1073741824,
                     },
                 },
             };
-        else if (path.startsWith('/admin/bookaria-markers/'))
+        } else if (path.startsWith('/admin/bookaria-markers/'))
             data = { data: { ...marker, ...payload } };
         else throw new Error(`Unexpected fixture write: ${path}`);
     } else {
