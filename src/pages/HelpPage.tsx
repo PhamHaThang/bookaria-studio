@@ -435,7 +435,7 @@ export function HelpPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <Button asChild>
-                        <AuthRequiredLink to="/books">
+                        <AuthRequiredLink to="/studio">
                             Mở Studio <ArrowRight aria-hidden="true" data-icon="inline-end" />
                         </AuthRequiredLink>
                     </Button>

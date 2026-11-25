@@ -2,28 +2,28 @@
     "source": "bookaria-viewer/src/scene-core",
     "files": {
         "buildScene.ts": {
-            "source": "10318497df6565789d923e53f8ed11b01f2de9e97c9a37ff0d15142275a28461",
-            "snapshot": "32b8cbb5bc182947d679ccacac5e8b7d025806f0b5b8d2a5b3013e2b2e339a88"
+            "source": "32d5be9286f4cf5be4c73274c11f963584e7abcaf12f227647da192d1199819c",
+            "snapshot": "0344481104c33b0b6fbe20b0281c19da6ee112bb2283825ad089d4b30e95ddd4"
         },
         "InteractionRunner.ts": {
-            "source": "fede022bdc384faeafc432a608298506a710fd176e5de839f0955d2c7eca54f0",
-            "snapshot": "e47951b1349ad79e7e8ddeba9ed3d15cf765f51580ca9e71507a2b00a077a7ce"
+            "source": "dba2d0a153c413293605e3b4408ddce548badcc1787017875fc901f49bad3299",
+            "snapshot": "a2afe43860009008b787de86d0583effbf7593756a8305b1cacb133ccdd1996f"
         },
         "WorkflowState.ts": {
             "source": "3c4114fb92df0d8407d5649993545296bf9e44e6b3a42590d1b0024dce1941fe",
             "snapshot": "91aefde694495a8e99b4ac6d0392adad8badee7b5b6988f6f902043a61eba1db"
         },
         "WorkflowPrompt.ts": {
-            "source": "5f0d9bc761c1a7120cdd44dcff7ad72f2ac7818fdbcb919edeb01ff012d3144b",
-            "snapshot": "8833134d767498ea3b414772e40250e8ebdc8b3393f3832f99dd03622a807e78"
+            "source": "d56c86b1f75a1b67ab2bf097fbb242570cf7f8ea863822d960d6666e725cf2cb",
+            "snapshot": "778c30dd7cc86606a0bd913ffce6453bf5d28b5ec292ec09472e7e8b237c6d86"
         },
         "MediaElementPool.ts": {
             "source": "00915bb96f79c0c98d4ee4312be915f4d4df3ffe44e5d7db80d5f6a8f30be085",
             "snapshot": "00915bb96f79c0c98d4ee4312be915f4d4df3ffe44e5d7db80d5f6a8f30be085"
         },
         "ModelControls.ts": {
-            "source": "83f80b00c02b4ed48be2f15cb3204893e8079fc8a5d76518dea1fd0c4cdcad9a",
-            "snapshot": "1e4a48aba676bab04fd1a18edcb8e299d75ad41243383b9766f306b6c73170aa"
+            "source": "008d63aa0db8f29d135fd58f6a8159b44cac2349e6e9b303dd91f3e770e8cf2b",
+            "snapshot": "b035beed167532d9bcac4405810cddd768083c93e49bf743e3373bfd6124bc35"
         },
         "ModelControlAnimations.ts": {
             "source": "c8aae7c0c01657b7aae940c2f6c25df307de221861a9107ed8134eda2abb552c",
@@ -34,8 +34,8 @@
             "snapshot": "73f9b6d9bc0ce4ec304c621cc5b66cf19254c75de198b5ebda28886ffa2eb1e5"
         },
         "fetchBytes.ts": {
-            "source": "a89e8d77b030e9e979a63d43f04fa19fb18791304e0ac3e35e126ecebcc22890",
-            "snapshot": "a89e8d77b030e9e979a63d43f04fa19fb18791304e0ac3e35e126ecebcc22890"
+            "source": "ea7be337a6652aee5300325283a2de4c9eac66c51697bde5907915b695e366c8",
+            "snapshot": "ea7be337a6652aee5300325283a2de4c9eac66c51697bde5907915b695e366c8"
         },
         "reader-feedback.ts": {
             "source": "2d0e3d568d89685760bc6f085d96b6df1246173a74385cb2dcede20cd7db8104",

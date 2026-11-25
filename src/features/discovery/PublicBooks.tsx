@@ -14,7 +14,13 @@ const shelfClass =
     'relative grid aspect-[1.16] min-w-0 place-items-center rounded-t-[calc(var(--radius-card)-1px)] bg-muted';
 const infoClass = 'flex min-w-0 flex-col items-start gap-1.5 p-3 sm:p-4';
 
-export function PublicBooks({ books }: { books: PublicBookCard[] }) {
+export function PublicBooks({
+    books,
+    showAuthor = true,
+}: {
+    books: PublicBookCard[];
+    showAuthor?: boolean;
+}) {
     const location = useLocation();
     const state = { publicBookReturnTo: location.pathname + location.search + location.hash };
     return (
@@ -56,12 +62,14 @@ export function PublicBooks({ books }: { books: PublicBookCard[] }) {
                                     />
                                 </Link>
                             </h3>
-                            <Link
-                                to={`/authors/${book.author.id}`}
-                                className="relative z-10 max-w-full truncate text-muted-foreground text-sm underline-offset-4 hover:text-foreground hover:underline"
-                            >
-                                {book.author.displayName}
-                            </Link>
+                            {showAuthor && (
+                                <Link
+                                    to={`/authors/${book.author.id}`}
+                                    className="relative z-10 max-w-full truncate text-muted-foreground text-sm underline-offset-4 hover:text-foreground hover:underline"
+                                >
+                                    {book.author.displayName}
+                                </Link>
+                            )}
                             <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-muted-foreground text-xs">
                                 {book.arPageCount > 0 && (
                                     <span className="inline-flex items-center gap-1.5">
@@ -83,19 +91,25 @@ export function PublicBooks({ books }: { books: PublicBookCard[] }) {
     );
 }
 
-export function PublicBooksSkeleton() {
+export function PublicBooksSkeleton({ showAuthor = true }: { showAuthor?: boolean }) {
     return (
-        <div role="status" aria-busy="true">
+        <div role="status" aria-busy="true" className={showAuthor ? 'max-sm:min-h-70' : undefined}>
             <span className="sr-only">Đang tải sách…</span>
             <div className={gridClass} aria-hidden="true">
-                {['a', 'b', 'c', 'd'].map((item) => (
-                    <div key={item} className={cardClass}>
+                {['a', 'b', 'c', 'd'].map((item, index) => (
+                    <div
+                        key={item}
+                        className={cn(
+                            cardClass,
+                            ['', '', 'hidden md:block', 'hidden xl:block'][index],
+                        )}
+                    >
                         <div className={shelfClass}>
                             <Skeleton className="aspect-[3/4] w-[54%] rounded-sm" />
                         </div>
                         <div className={infoClass}>
                             <Skeleton className="h-6 w-3/4" />
-                            <Skeleton className="h-5 w-1/2" />
+                            {showAuthor && <Skeleton className="h-5 w-1/2" />}
                             <Skeleton className="mt-1 h-4 w-2/3" />
                         </div>
                     </div>

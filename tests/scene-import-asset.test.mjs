@@ -55,13 +55,13 @@ test('rejects corrupt or unsupported models with readable errors', () => {
     assert.throws(() => readModelDocument(invalid), /GLB/);
 });
 test('rejects wrong file type and oversize uploads using backend contract limits', () => {
-    validateImport({ name: 'm.glb', type: '', size: 100 }, 'MODEL');
+    validateImport({ name: 'm.glb', type: '', size: 50 * 1024 * 1024 }, 'MODEL');
     assert.throws(
         () => validateImport({ name: 'image.png', type: 'image/png', size: 100 }, 'MODEL'),
         /không phù hợp/,
     );
     assert.throws(
-        () => validateImport({ name: 'large.glb', type: '', size: 11 * 1024 * 1024 }, 'MODEL'),
+        () => validateImport({ name: 'large.glb', type: '', size: 50 * 1024 * 1024 + 1 }, 'MODEL'),
         /vượt giới hạn/,
     );
 });

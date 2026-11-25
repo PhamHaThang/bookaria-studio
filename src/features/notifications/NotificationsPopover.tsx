@@ -159,19 +159,24 @@ export function NotificationsPopover({
                     variant={triggerVariant}
                     size="icon"
                     className={cn(
-                        'relative',
+                        'relative rounded-full text-foreground/80 hover:text-foreground focus-visible:text-foreground',
                         triggerVariant === 'ghost' && 'data-[state=open]:bg-hover',
                     )}
                     aria-label={count === undefined ? 'Thông báo' : `Thông báo, ${count} chưa đọc`}
                 >
-                    <Bell aria-hidden="true" />
-                    {count !== undefined && count > 0 && (
-                        <NotificationIndicator
-                            variant="dot"
-                            aria-hidden="true"
-                            className="pointer-events-none absolute top-0 right-0"
-                        />
-                    )}
+                    <span
+                        className="relative grid size-7 shrink-0 place-items-center"
+                        aria-hidden="true"
+                    >
+                        <Bell className="size-[22px]" strokeWidth={1.75} aria-hidden="true" />
+                        {count !== undefined && count > 0 && (
+                            <NotificationIndicator
+                                variant="dot"
+                                aria-hidden="true"
+                                className="pointer-events-none absolute top-0 right-0 size-2 ring-2 ring-surface"
+                            />
+                        )}
+                    </span>
                 </Button>
             </PopoverTrigger>
             <PopoverContent

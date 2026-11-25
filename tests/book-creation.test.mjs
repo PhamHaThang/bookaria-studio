@@ -64,7 +64,7 @@ test('image filenames use natural numeric order without mutating the file select
     assert.equal(files[0].name, '10.png');
 });
 test('page fitting preserves every edge and caps output dimensions across custom ratios', () => {
-    for (const aspect of [0.2, 1, Math.SQRT2, 5])
+    for (const aspect of [0.2, 1, Math.SQRT2, 2.9, 5])
         for (const [width, height] of [
             [2000, 100],
             [100, 2000],
@@ -76,6 +76,7 @@ test('page fitting preserves every edge and caps output dimensions across custom
             assert.ok(fit.drawWidth <= fit.width + 0.001 && fit.drawHeight <= fit.height + 0.001);
             assert.ok(Math.abs(fit.drawWidth / fit.drawHeight - width / height) < 0.001);
         }
+    assert.equal(pageFit(100, 100, 1.51).height, 2399);
     assert.throws(() => pageFit(0, 100, 1));
 });
 function fixture() {

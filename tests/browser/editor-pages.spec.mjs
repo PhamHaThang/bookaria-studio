@@ -19,6 +19,383 @@ async function selectedTitle(page) {
         return store.getPage(router.state.location.pathname.split('/').at(-1))?.title;
     });
 }
+
+test('opening pages in the same book reuses the design canvas', async ({ page }) => {
+    await open(page, 'pages=2');
+    const canvas = page.locator('.scene-three-host canvas');
+    await expect(canvas).toBeVisible();
+    const original = await canvas.elementHandle();
+    for (const number of [2, 1]) {
+        const link = page.getByRole('link', { name: new RegExp(`^Trang ${number}:`) });
+        await link.click();
+        await expect(link).toHaveAttribute('aria-current', 'page');
+        await expect(canvas).toBeVisible();
+        expect(await canvas.evaluate((current, first) => current === first, original)).toBe(true);
+    }
+    const context = await original.evaluateHandle(
+        (element) => element.getContext('webgl2') || element.getContext('webgl'),
+    );
+    await page.evaluate(() => window.__editorPages.router.navigate('/books'));
+    await expect.poll(() => context.evaluate((gl) => gl.isContextLost())).toBe(true);
+});
+
+test('focusing a page thumbnail prepares its data before navigation', async ({ page }) => {
+    await open(page, 'pages=2');
+    const link = page.getByRole('link', { name: /^Trang 2:/ });
+    const id = (await link.getAttribute('href')).split('/').at(-1);
+    await link.focus();
+    await expect
+        .poll(() => page.evaluate((id) => Boolean(window.__editorPages.store.getPage(id)), id))
+        .toBe(true);
+    await expect(page.getByRole('link', { name: /^Trang 1:/ })).toHaveAttribute(
+        'aria-current',
+        'page',
+    );
+    await link.press('Enter');
+    await expect(link).toHaveAttribute('aria-current', 'page');
+});
+
+test('the canvas loading status aligns with the toolbar and clears the page strip', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.route('**/skinned-transform.gltf', () => {});
+    await open(page, 'pages=8&transform=1');
+    const status = page.locator('.canvas-loading');
+    const toolbar = page.getByRole('toolbar', { name: 'Công cụ canvas' });
+    await expect(status).toBeVisible();
+    const viewport = await page.locator('.canvas-viewport').boundingBox();
+    const badge = await status.boundingBox();
+    expect(badge.x).toBeCloseTo((await toolbar.boundingBox()).x, 0);
+    expect(viewport.y + viewport.height - badge.y - badge.height).toBeCloseTo(16, 0);
+
+    await page.setViewportSize({ width: 900, height: 768 });
+    await expect
+        .poll(async () => {
+            const badge = await status.boundingBox();
+            const dock = await page.locator('.page-strip-region').boundingBox();
+            return dock.y - (badge.y + badge.height);
+        })
+        .toBeGreaterThanOrEqual(11);
+});
+
+test('page settings no longer offers text-to-speech generation', async ({ page }) => {
+    await open(page, 'pages=1');
+    await page.getByRole('button', { name: 'Thiết lập trang', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Tạo âm thanh', exact: true })).toHaveCount(0);
+});
+
+test('audio can be picked and played from the design canvas while the reader player is off', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page, 'pages=1&audio=1');
+    await page.getByRole('button', { name: 'Âm thanh', exact: true }).click();
+    const library = page.getByRole('dialog', { name: 'Thư viện âm thanh', exact: true });
+    await library.getByRole('button', { name: 'Xem Nhạc rừng', exact: true }).click();
+    await page
+        .getByRole('dialog', { name: 'Nhạc rừng', exact: true })
+        .getByRole('button', { name: 'Thêm vào trang', exact: true })
+        .click();
+
+    const player = page.getByRole('switch', { name: 'Hiện nút phát cho người đọc' });
+    await expect(player).not.toBeChecked();
+    const listen = page.getByRole('button', { name: 'Nghe thử', exact: true });
+    await expect(listen).toBeEnabled();
+    await listen.click();
+    await expect(page.getByRole('button', { name: 'Tạm dừng', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Tạm dừng', exact: true }).click();
+
+    const canvas = page.locator('.scene-three-host canvas');
+    await canvas.focus();
+    await page.keyboard.press('Escape');
+    await expect(player).toBeHidden();
+    const bounds = await canvas.boundingBox();
+    await canvas.click({ position: { x: bounds.width * 0.44, y: bounds.height * 0.43 } });
+    await expect(player).toBeVisible();
+    await expect(player).not.toBeChecked();
+    await page.getByRole('button', { name: 'Tạm dừng', exact: true }).click();
+
+    await page.getByRole('checkbox', { name: 'Tự phát khi đọc trang' }).check();
+    await page.evaluate(() => {
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+            if (this.src.endsWith('/maichi.mp3')) window.testPreviewAudio = this;
+            return play.call(this);
+        };
+    });
+    await page.getByRole('radio', { name: 'Xem trước', exact: true }).click();
+    await page.getByRole('button', { name: 'Bắt đầu xem', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.testPreviewAudio?.paused)).toBe(false);
+});
+
+test('losing pointer capture ends middle-button canvas zoom and allows the next gesture', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page, 'pages=1');
+    const canvas = page.locator('.scene-three-host canvas');
+    await expect(canvas).toBeVisible();
+    const { x, y, width, height } = await canvas.boundingBox();
+    const point = { x: x + width * 0.4, y: y + height * 0.4 };
+    await canvas.evaluate((element) => {
+        window.addEventListener(
+            'pointerdown',
+            (event) => {
+                element.dataset.testPointerId = String(event.pointerId);
+            },
+            { capture: true, once: true },
+        );
+    });
+    await page.mouse.move(point.x, point.y);
+    await page.mouse.down({ button: 'middle' });
+    await expect(canvas).toHaveCSS('cursor', 'ns-resize');
+    await page.mouse.move(point.x, point.y + 1);
+    const captured = await canvas.evaluate((element) => {
+        const id = Number(element.dataset.testPointerId);
+        if (!element.hasPointerCapture(id)) return false;
+        element.releasePointerCapture(id);
+        return true;
+    });
+    expect(captured).toBe(true);
+    await page.mouse.move(point.x, point.y + 8);
+    await expect.poll(() => canvas.evaluate((element) => element.style.cursor)).toBe('');
+    await page.mouse.up({ button: 'middle' });
+    await page.mouse.down({ button: 'middle' });
+    await expect(canvas).toHaveCSS('cursor', 'ns-resize');
+    await page.mouse.up({ button: 'middle' });
+    await expect.poll(() => canvas.evaluate((element) => element.style.cursor)).toBe('');
+});
+
+test('interaction mode shows control hints and hides the page strip', async ({ page }) => {
+    await open(page, 'pages=2');
+    await page.getByRole('radio', { name: 'Tương tác', exact: true }).click();
+    const ai = page.getByRole('button', { name: 'Trợ lý Boki', exact: true });
+    const pages = page.getByRole('navigation', { name: 'Các trang trong sách' });
+    const hints = page.getByRole('note', { name: 'Hướng dẫn điều khiển tương tác' });
+    await expect(ai.locator('[data-boki-state]')).toBeVisible();
+    await expect(pages).toBeHidden();
+    const buttonBounds = await ai.boundingBox();
+    expect(buttonBounds.width).toBe(buttonBounds.height);
+    await expect(hints.getByText('Cuộn để thu phóng')).toBeInViewport();
+    expect(buttonBounds.y + buttonBounds.height).toBeLessThan((await hints.boundingBox()).y);
+    await page.getByRole('radio', { name: 'Thiết kế', exact: true }).click();
+    await expect(pages).toBeVisible();
+});
+
+test('chat docks beside the editor and keeps separate drafts when changing pages', async ({
+    page,
+}, info) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page, 'pages=2');
+    const showChat = async () => {
+        await page.getByRole('radio', { name: 'Tương tác', exact: true }).click();
+        await page.getByRole('button', { name: 'Trợ lý Boki', exact: true }).click();
+    };
+    await showChat();
+    const chat = page.getByRole('complementary', { name: 'Trợ lý Boki' });
+    await expect(chat).toBeVisible();
+    await page.getByLabel('Yêu cầu cho trợ lý').fill('Lời đọc cho trang đầu');
+    const hints = await page
+        .getByRole('note', { name: 'Hướng dẫn điều khiển tương tác' })
+        .boundingBox();
+    const bounds = await chat.boundingBox();
+    expect(bounds.width).toBe(400);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(hints.y);
+    await page.screenshot({ path: info.outputPath('chat-desktop.png') });
+    await page.getByRole('radio', { name: 'Thiết kế', exact: true }).click();
+    await expect(chat).toBeHidden();
+    await page.getByRole('button', { name: 'Trợ lý Boki', exact: true }).click();
+    await expect(chat.getByText('Thiết kế trang', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Yêu cầu cho trợ lý')).toHaveValue('Lời đọc cho trang đầu');
+    await page.getByRole('link', { name: /^Trang 2:/ }).click();
+    await showChat();
+    await expect(page.getByLabel('Yêu cầu cho trợ lý')).toHaveValue('');
+    await page.getByLabel('Yêu cầu cho trợ lý').fill('Lời đọc cho trang thứ hai');
+    await page.getByRole('radio', { name: 'Thiết kế', exact: true }).click();
+    await page.getByRole('link', { name: /^Trang 1:/ }).click();
+    await showChat();
+    await expect(page.getByLabel('Yêu cầu cho trợ lý')).toHaveValue('Lời đọc cho trang đầu');
+});
+
+test('design assistant edits the page and carries its proposal and undo across both tabs', async ({
+    page,
+}, info) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await open(page, 'pages=2&repair', 'dark');
+    const launcher = page.getByRole('button', { name: 'Trợ lý Boki', exact: true });
+    const objects = page.getByRole('button', { name: /^Đối tượng \(/ });
+    await expect(launcher).toHaveText('');
+    await expect(launcher.locator('[data-boki-state]')).toBeVisible();
+    await expect
+        .poll(async () => {
+            const ai = await launcher.boundingBox();
+            const layers = await objects.boundingBox();
+            return (
+                Math.abs(ai.x - layers.x - layers.width - 6) < 1 &&
+                Math.abs(ai.y + ai.height - (layers.y + layers.height) - 7) < 1
+            );
+        })
+        .toBe(true);
+    await page.screenshot({ path: info.outputPath('assistant-design-launcher.png') });
+    await launcher.click();
+    const chat = page.getByRole('complementary', { name: 'Trợ lý Boki' });
+    await expect(chat.getByText('Thiết kế trang', { exact: true })).toBeVisible();
+    await expect(chat.getByRole('button', { name: 'Ẩn đối tượng khi mở trang' })).toBeVisible();
+    const bounds = await chat.boundingBox();
+    const toggle = page.getByRole('button', { name: 'Thu gọn trợ lý AI', exact: true });
+    await expect(toggle.locator('[data-boki-state]')).toBeVisible();
+    await expect(toggle).toHaveText('');
+    const toggleBounds = await toggle.boundingBox();
+    const dock = page.getByRole('navigation', { name: 'Các trang trong sách' });
+    const dockBounds = await dock.boundingBox();
+    expect(toggleBounds.y - bounds.y - bounds.height).toBeCloseTo(12, 0);
+    expect(
+        bounds.x >= dockBounds.x + dockBounds.width || bounds.y + bounds.height <= dockBounds.y,
+    ).toBe(true);
+    await page.screenshot({ path: info.outputPath('assistant-design-desktop.png') });
+    await chat.getByRole('button', { name: 'Mở rộng chat', exact: true }).click();
+    await expect
+        .poll(async () => {
+            const expanded = await chat.boundingBox();
+            return (
+                expanded.x >= dockBounds.x + dockBounds.width ||
+                expanded.y + expanded.height <= dockBounds.y
+            );
+        })
+        .toBe(true);
+    await chat.getByRole('button', { name: 'Thu nhỏ chat', exact: true }).click();
+
+    await page.getByLabel('Yêu cầu cho trợ lý').fill('Đổi nội dung thẻ Thông tin thành Rùa biển');
+    await chat.getByRole('button', { name: 'Gửi tin nhắn' }).click();
+    const proposal = chat.getByRole('region', { name: 'Đề xuất chỉnh sửa' });
+    await expect(proposal.getByText('Rùa biển', { exact: true })).toBeVisible();
+    const readText = () =>
+        page.evaluate(() => {
+            const { store, router } = window.__editorPages;
+            return store
+                .getPage(router.state.location.pathname.split('/').at(-1))
+                ?.scene.objects.find((item) => item.id === 'target')?.text;
+        });
+    await expect.poll(readText).toBe('Nội dung thông tin');
+    await proposal.getByRole('button', { name: 'Áp dụng thay đổi' }).click();
+    await expect.poll(readText).toBe('Rùa biển');
+    await objects.click();
+    await page
+        .locator('#scene-object-layers')
+        .getByRole('button', { name: 'Chọn Thông tin', exact: true })
+        .click();
+    const textField = page.getByRole('textbox', { name: 'Nội dung chữ', exact: true });
+    await textField.fill('Rùa biển sửa tay');
+    await textField.press('Tab');
+    await expect.poll(readText).toBe('Rùa biển sửa tay');
+    await launcher.click();
+    await expect(
+        proposal.getByText('Đã áp dụng · Có chỉnh sửa tiếp', { exact: true }),
+    ).toBeVisible();
+    await page.getByTestId('scene-history-undo').click();
+    await expect.poll(readText).toBe('Rùa biển');
+    await page.getByTestId('scene-history-undo').click();
+    await expect.poll(readText).toBe('Nội dung thông tin');
+    await expect(proposal.getByText('Đã hoàn tác', { exact: true })).toBeVisible();
+    await page.getByTestId('scene-history-redo').click();
+    await expect.poll(readText).toBe('Rùa biển');
+    await page.getByRole('radio', { name: 'Tương tác', exact: true }).click();
+    await expect(chat).toBeHidden();
+    await page.getByRole('button', { name: 'Trợ lý Boki', exact: true }).click();
+    await expect(chat.getByText('Tương tác', { exact: true })).toBeVisible();
+    await expect(proposal.getByText('Đã áp dụng vào bản nháp')).toBeVisible();
+    await page.getByTestId('scene-history-undo').click();
+    await expect.poll(readText).toBe('Nội dung thông tin');
+});
+
+test('design assistant and Objects stay together around a wide page strip', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await open(page, 'pages=9');
+    const launcher = page.getByRole('button', { name: 'Trợ lý Boki', exact: true });
+    const objects = page.getByRole('button', { name: /^Đối tượng \(/ });
+    await expect(launcher).toBeVisible();
+    await expect
+        .poll(async () => {
+            const ai = await launcher.boundingBox();
+            const layers = await objects.boundingBox();
+            return (
+                Math.abs(ai.x - layers.x - layers.width - 6) < 1 &&
+                Math.abs(ai.y + ai.height - (layers.y + layers.height) - 7) < 1
+            );
+        })
+        .toBe(true);
+    const dock = await page.locator('.page-strip-region').boundingBox();
+    const ai = await launcher.boundingBox();
+    expect(ai.x >= dock.x + dock.width || ai.y + ai.height <= dock.y).toBe(true);
+    await launcher.click();
+    await expect(
+        page.getByRole('button', { name: 'Thu gọn trợ lý AI' }).locator('[data-boki-state]'),
+    ).toBeVisible();
+    await expect(page.getByLabel('Yêu cầu cho trợ lý')).toBeVisible();
+});
+
+test('chat yields to design and interaction inspectors and keeps the typed draft', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page, 'pages=2&repair');
+    const launcher = page.getByRole('button', { name: 'Trợ lý Boki', exact: true });
+    const chat = page.getByRole('complementary', { name: 'Trợ lý Boki', exact: true });
+    const objects = page.getByRole('button', { name: /^Đối tượng \(/ });
+    const layers = page.locator('#scene-object-layers');
+    const inspector = page.locator('aside[aria-label="Bảng chỉnh sửa"]');
+    const input = page.getByLabel('Yêu cầu cho trợ lý');
+
+    await objects.click();
+    await expect(layers).toBeVisible();
+    await launcher.click();
+    await expect(layers).toBeHidden();
+    await input.fill('Giữ nội dung đang nhập');
+    await objects.click();
+    await expect(chat).toBeHidden();
+    await layers.getByRole('button', { name: 'Chọn Thông tin', exact: true }).click();
+    await expect(inspector).toHaveAttribute('aria-hidden', 'false');
+    await launcher.click();
+    await expect(inspector).toHaveAttribute('aria-hidden', 'true');
+    await expect(layers).toBeHidden();
+    await expect(input).toHaveValue('Giữ nội dung đang nhập');
+    await page.locator('.scene-three-host canvas').focus();
+    await page.keyboard.press('Control+a');
+    await expect(chat).toBeHidden();
+    await expect(inspector).toHaveAttribute('aria-hidden', 'false');
+
+    await page.getByRole('radio', { name: 'Tương tác', exact: true }).click();
+    const workflow = page.getByRole('region', { name: 'Workspace tương tác', exact: true });
+    await workflow.getByRole('button', { name: /^Hiện thông tin Khi chạm/ }).click();
+    const stepInspector = page.getByRole('complementary', {
+        name: 'Thiết lập bước tương tác',
+        exact: true,
+    });
+    const block = page.locator('[data-workflow-step="action-0"] .workflow-drag');
+    await block.click();
+    await expect(stepInspector).toBeVisible();
+    await launcher.click();
+    await expect(stepInspector).toBeHidden();
+    await expect(input).toHaveValue('Giữ nội dung đang nhập');
+    await block.click();
+    await expect(chat).toBeHidden();
+    await expect(stepInspector).toBeVisible();
+    await launcher.click();
+    await workflow.getByRole('tab', { name: /^Ghi nhớ/ }).click();
+    await expect(chat).toBeHidden();
+    await expect(workflow.getByRole('tab', { name: /^Ghi nhớ/ })).toHaveAttribute(
+        'aria-selected',
+        'true',
+    );
+    await launcher.click();
+    await expect(workflow.getByRole('tab', { name: 'Luồng', exact: true })).toHaveAttribute(
+        'aria-selected',
+        'true',
+    );
+    await expect(input).toHaveValue('Giữ nội dung đang nhập');
+});
+
 for (const [theme, width, height] of [
     ['light', 1366, 768],
     ['dark', 1920, 1080],

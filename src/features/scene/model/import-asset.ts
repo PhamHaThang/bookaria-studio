@@ -1,5 +1,7 @@
-import { checkUploadRequest } from '../../../shared/contracts/api/assets.schema';
+import { ASSET_MAX_BYTES, checkUploadRequest } from '../../../shared/contracts/api/assets.schema';
+import { MODEL_MAX_DOWNLOAD_BYTES } from '../../../shared/contracts/asset.schema';
 import type { AssetType } from '../../../shared/contracts/enums.schema';
+import { formatBytes } from '../../../shared/lib/format';
 import { uploadRequest } from '../../assets/model/form';
 
 export const importAccept: Record<AssetType, string> = {
@@ -9,10 +11,10 @@ export const importAccept: Record<AssetType, string> = {
     VIDEO: '.mp4',
 };
 export const importHint: Record<AssetType, string> = {
-    MODEL: 'GLB hoặc GLTF nhúng đầy đủ texture · tối đa 10 MB',
-    IMAGE: 'JPG, PNG hoặc WebP · tối đa 10 MB',
-    AUDIO: 'MP3 hoặc WAV · tối đa 100 MB',
-    VIDEO: 'MP4 · tối đa 100 MB',
+    MODEL: `GLB hoặc GLTF nhúng đầy đủ texture · tải lên tối đa ${formatBytes(ASSET_MAX_BYTES.MODEL)} · sau tối ưu tối đa ${formatBytes(MODEL_MAX_DOWNLOAD_BYTES)}`,
+    IMAGE: `JPG, PNG hoặc WebP · tối đa ${formatBytes(ASSET_MAX_BYTES.IMAGE)}`,
+    AUDIO: `MP3 hoặc WAV · tối đa ${formatBytes(ASSET_MAX_BYTES.AUDIO)}`,
+    VIDEO: `MP4 · tối đa ${formatBytes(ASSET_MAX_BYTES.VIDEO)}`,
 };
 export function validateImport(file: Pick<File, 'name' | 'type' | 'size'>, type: AssetType) {
     const check = checkUploadRequest(uploadRequest(file));

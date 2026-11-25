@@ -2,7 +2,7 @@ export async function fetchBytes(url: string, signal: AbortSignal, maxBytes = 50
     const response = await fetch(url, {
         signal,
         credentials: 'omit',
-        cache: 'no-store',
+        cache: 'default',
         referrerPolicy: 'no-referrer',
     });
     if (!response.ok) throw new Error('Không tải được tài nguyên của trang.');

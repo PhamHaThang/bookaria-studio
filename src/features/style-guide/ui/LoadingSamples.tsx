@@ -34,10 +34,10 @@ const skeletons: { value: SkeletonLayout; label: string }[] = [
     { value: 'books', label: 'Sách trong Studio' },
     { value: 'assets', label: 'Danh sách tài nguyên' },
     { value: 'rows', label: 'Hàng dữ liệu' },
+    { value: 'admin-rows', label: 'Danh sách quản trị' },
     { value: 'pages', label: 'Danh sách trang' },
     { value: 'public-books', label: 'Sách công khai' },
     { value: 'profile', label: 'Hồ sơ' },
-    { value: 'author', label: 'Tác giả' },
     { value: 'detail', label: 'Trang chi tiết' },
     { value: 'stats', label: 'Thống kê' },
     { value: 'editor', label: 'Khung editor' },
@@ -78,7 +78,7 @@ export function LoadingSamples() {
                     <div className="grid grid-cols-2 gap-8 max-[800px]:grid-cols-1">
                         <Sample title="Mở ứng dụng" source="@/shared/ui/LoadingScreen">
                             <div className="rounded-lg border border-border">
-                                <LoadingScreen message="Đang mở Bookaria…" />
+                                <LoadingScreen message="Đang tải tài nguyên…" />
                             </div>
                         </Sample>
                         <Sample
@@ -94,7 +94,7 @@ export function LoadingSamples() {
                     </div>
                     <Sample
                         title="Skeleton theo nội dung thực tế"
-                        source="LoadingState layout → ContentSkeleton (13 bố cục)"
+                        source="LoadingState layout → ContentSkeleton"
                     >
                         <Field className="max-w-80">
                             <FieldLabel htmlFor="guide-skeleton" className="mb-0">

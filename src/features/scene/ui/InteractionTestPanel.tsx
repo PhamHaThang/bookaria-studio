@@ -2,8 +2,10 @@ import { ExternalLink, List, Play, RotateCcw, Square, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { BookDetail, Page } from '@/shared/contracts/dto.schema';
 import type { InteractionRule, Scene } from '@/shared/contracts/scene.schema';
+import { cn } from '@/shared/lib/cn';
 import { buildScene, type PageRuntime } from '@/shared/scene-runtime/buildScene';
 import type { InteractionStepEvent } from '@/shared/scene-runtime/InteractionRunner';
+import { askWorkflowQuestion } from '@/shared/scene-runtime/WorkflowPrompt';
 import { WorkflowState } from '@/shared/scene-runtime/WorkflowState';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Button } from '@/shared/ui/primitives/button';
@@ -42,17 +44,20 @@ export function InteractionTestPanel({
     onMemoryChange,
     onRepair,
     mode = 'rule',
+    embedded = false,
 }: {
     scene: Scene;
-    rule: InteractionRule;
     page: Page;
     book: BookDetail;
     onStep: (event: InteractionStepEvent) => void;
     onReset?: () => void;
     onMemoryChange?: (values: Record<string, boolean | number | string>) => void;
     onRepair: (repair: PreviewRepair) => void;
-    mode?: 'page' | 'rule';
-}) {
+    embedded?: boolean;
+} & (
+    | { mode: 'page' | 'layout'; rule?: InteractionRule }
+    | { mode?: 'rule'; rule: InteractionRule }
+)) {
     const host = useRef<HTMLDivElement>(null);
     const controls = useRef<HTMLDivElement>(null);
     const [detailsOpen, setDetailsOpen] = useState(false);
@@ -106,7 +111,8 @@ export function InteractionTestPanel({
             if (controller.signal.aborted || !element) return;
             try {
                 const isolated = structuredClone(scene);
-                if (mode === 'rule')
+                if (mode === 'layout') isolated.interactions = [];
+                if (mode === 'rule' && rule)
                     isolated.interactions = [{ ...structuredClone(rule), enabled: true }];
                 const payload = await makePreviewPayload(
                     page,
@@ -120,6 +126,13 @@ export function InteractionTestPanel({
                 stage.current = currentStage;
                 current = await buildScene(payload.page, payload.assets, controller.signal, {
                     state: new WorkflowState(undefined, payload.workflowVariables),
+                    // A native question must stay inside the surrounding modal's focus and pointer scope.
+                    question: (question, signal) =>
+                        askWorkflowQuestion(
+                            question,
+                            signal,
+                            element.closest<HTMLElement>('[role="dialog"]') ?? document.body,
+                        ),
                     notice: (notice) => {
                         if (!controller.signal.aborted) setMessage(notice);
                     },
@@ -167,7 +180,10 @@ export function InteractionTestPanel({
                 runtime.current = current;
                 currentStage.setRuntime(current, payload.page);
                 setState('ready');
-                currentStage.start({ startRuntime: mode === 'page' });
+                currentStage.start({
+                    startRuntime: mode === 'page',
+                    interactive: mode !== 'layout',
+                });
             } catch (cause) {
                 if (!controller.signal.aborted) {
                     current?.dispose();
@@ -188,7 +204,7 @@ export function InteractionTestPanel({
         };
     }, [scene, rule, page, book, revision, mode]);
     async function run() {
-        if (!runtime.current || !['ready', 'done'].includes(state)) return;
+        if (!rule || !runtime.current || !['ready', 'done'].includes(state)) return;
         const current = runtime.current;
         setState('running');
         setMessage('');
@@ -237,38 +253,53 @@ export function InteractionTestPanel({
                     ready:
                         mode === 'page'
                             ? 'Chạm nội dung trong khung hoặc dùng Chạm thử.'
-                            : 'Bấm Chạy để mô phỏng sự kiện bắt đầu.',
-                    running: 'Theo dõi các bước đang sáng trên sơ đồ.',
+                            : mode === 'layout'
+                              ? 'Đang xem trạng thái ban đầu của trang.'
+                              : 'Bấm Chạy để mô phỏng sự kiện bắt đầu.',
+                    running: embedded
+                        ? 'Đang chạy tương tác…'
+                        : 'Theo dõi các bước đang sáng trên sơ đồ.',
                     done: 'Đã chạy hết các bước của luồng.',
                     error: 'Chưa chạy được tương tác.',
                 }[state];
     return (
         <section
-            aria-label="Chạy thử tương tác"
-            className="flex h-full min-h-0 w-[min(42vw,600px)] shrink-0 flex-col border-border border-l-2 bg-surface"
+            aria-label={mode === 'layout' ? 'Xem trước bố cục' : 'Chạy thử tương tác'}
+            className={cn(
+                'flex min-h-0 flex-col bg-surface',
+                embedded
+                    ? 'w-full flex-1'
+                    : 'h-full w-[min(42vw,600px)] shrink-0 border-border border-l-2',
+            )}
         >
-            <header className="min-w-0 shrink-0 border-border border-b px-4 py-3">
-                <div className="min-w-0">
-                    <h3
-                        ref={heading}
-                        tabIndex={-1}
-                        className="m-0 truncate font-semibold text-sm outline-none"
-                        title={mode === 'rule' ? rule.name : undefined}
-                    >
-                        {mode === 'page'
-                            ? 'Thử cả trang'
-                            : `Thử riêng: ${rule.name || 'Luồng chưa đặt tên'}`}
-                    </h3>
-                    <p className="m-0 mt-1 text-muted-foreground text-xs">
-                        {mode === 'page'
-                            ? 'Các luồng đang bật dùng chung ghi nhớ và chạy theo sự kiện.'
-                            : rule.trigger.type === 'onStateCondition'
-                              ? 'Thử riêng các bước. Dùng nút Chạy thử để kiểm tra ghi nhớ kích hoạt luồng trên cả trang.'
-                              : 'Mô phỏng sự kiện của luồng này; các luồng khác không chạy.'}
-                    </p>
-                </div>
-            </header>
-            <div className="relative min-h-40 flex-1">
+            {!embedded && (
+                <header className="min-w-0 shrink-0 border-border border-b px-4 py-3">
+                    <div className="min-w-0">
+                        <h3
+                            ref={heading}
+                            tabIndex={-1}
+                            className="m-0 truncate font-semibold text-sm outline-none"
+                            title={mode === 'rule' ? rule?.name : undefined}
+                        >
+                            {mode === 'page'
+                                ? 'Thử cả trang'
+                                : mode === 'layout'
+                                  ? 'Bố cục ban đầu'
+                                  : `Thử riêng: ${rule?.name || 'Luồng chưa đặt tên'}`}
+                        </h3>
+                        <p className="m-0 mt-1 text-muted-foreground text-xs">
+                            {mode === 'page'
+                                ? 'Các luồng đang bật dùng chung ghi nhớ và chạy theo sự kiện.'
+                                : mode === 'layout'
+                                  ? 'Hiển thị các đối tượng trước khi tương tác bắt đầu.'
+                                  : rule?.trigger.type === 'onStateCondition'
+                                    ? 'Thử riêng các bước. Dùng nút Chạy thử để kiểm tra ghi nhớ kích hoạt luồng trên cả trang.'
+                                    : 'Mô phỏng sự kiện của luồng này; các luồng khác không chạy.'}
+                        </p>
+                    </div>
+                </header>
+            )}
+            <div className={cn('relative flex-1', embedded ? 'min-h-0' : 'min-h-40')}>
                 <div
                     ref={host}
                     inert={pagePhase !== 'active'}
@@ -283,11 +314,20 @@ export function InteractionTestPanel({
             </div>
             <div
                 ref={controls}
-                className="flex shrink-0 flex-col gap-2 border-border border-t px-4 py-3"
+                className={cn(
+                    'flex shrink-0 gap-2 border-border border-t px-4',
+                    embedded ? 'flex-wrap items-center gap-x-3 py-2.5' : 'flex-col py-3',
+                )}
             >
                 {mode === 'page' && (
-                    <div className="flex items-center gap-2">
+                    <div
+                        className={cn(
+                            'flex items-center gap-2',
+                            embedded && 'w-full min-w-0 sm:w-56',
+                        )}
+                    >
                         <FormSelect
+                            className={embedded ? 'mt-0' : undefined}
                             aria-label="Đối tượng chạm khi thử"
                             value={tapTarget}
                             disabled={!canInteract}
@@ -311,7 +351,12 @@ export function InteractionTestPanel({
                         </Button>
                     </div>
                 )}
-                <div className="flex h-5 shrink-0 items-center gap-2">
+                <div
+                    className={cn(
+                        'flex h-5 items-center gap-2',
+                        embedded ? 'min-w-0 flex-1 basis-40' : 'shrink-0',
+                    )}
+                >
                     <p
                         role="status"
                         title={status}
@@ -358,7 +403,11 @@ export function InteractionTestPanel({
                             variant="outline"
                             size="sm"
                             disabled={state === 'loading' || pagePhase === 'leaving'}
-                            onClick={reset}
+                            onClick={
+                                embedded && mode === 'layout' && state === 'ready'
+                                    ? () => stage.current?.resetView()
+                                    : reset
+                            }
                         >
                             {state === 'running' ? (
                                 <Square data-icon="inline-start" />
@@ -369,7 +418,9 @@ export function InteractionTestPanel({
                                 ? 'Dừng và đặt lại'
                                 : state === 'error'
                                   ? 'Thử lại'
-                                  : 'Đặt lại từ đầu'}
+                                  : embedded && mode === 'layout'
+                                    ? 'Đặt lại góc nhìn'
+                                    : 'Đặt lại từ đầu'}
                         </Button>
                     )}
                     {availableEvents.length > 0 && (
@@ -391,145 +442,153 @@ export function InteractionTestPanel({
                             </DropdownMenuContent>
                         </DropdownMenu>
                     )}
-                    <Popover open={detailsOpen} onOpenChange={setDetailsOpen}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" aria-label="Chi tiết chạy thử">
-                                <List data-icon="inline-start" />
-                                Chi tiết
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                            aria-label="Chi tiết chạy thử"
-                            side="top"
-                            align="end"
-                            collisionPadding={12}
-                            className="max-h-[min(28rem,70dvh)] w-[min(24rem,calc(100vw-2rem))] gap-0 overflow-hidden p-0"
-                            onInteractOutside={(event) => {
-                                // Keep live details open while tapping or resetting the preview controls.
-                                if (
-                                    event.target instanceof Node &&
-                                    controls.current?.contains(event.target)
-                                )
-                                    event.preventDefault();
-                            }}
-                        >
-                            <div className="flex shrink-0 items-center justify-between gap-3 border-border border-b px-3 py-2">
-                                <h4 className="m-0 font-semibold text-sm">Chi tiết chạy thử</h4>
-                                <Button
-                                    variant="ghost"
-                                    size="icon-xs"
-                                    aria-label="Đóng chi tiết chạy thử"
-                                    onClick={() => setDetailsOpen(false)}
-                                >
-                                    <X />
+                    {mode !== 'layout' && (
+                        <Popover open={detailsOpen} onOpenChange={setDetailsOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm" aria-label="Chi tiết chạy thử">
+                                    <List data-icon="inline-start" />
+                                    Chi tiết
                                 </Button>
-                            </div>
-                            <ScrollArea
-                                className="min-h-0"
-                                viewportProps={{
-                                    tabIndex: 0,
-                                    'aria-label': 'Thông tin và nhật ký chạy thử',
-                                    className: 'max-h-[min(23rem,calc(70dvh-3.5rem))]',
+                            </PopoverTrigger>
+                            <PopoverContent
+                                aria-label="Chi tiết chạy thử"
+                                side="top"
+                                align="end"
+                                collisionPadding={12}
+                                className="max-h-[min(28rem,70dvh)] w-[min(24rem,calc(100vw-2rem))] gap-0 overflow-hidden p-0"
+                                onInteractOutside={(event) => {
+                                    // Keep live details open while tapping or resetting the preview controls.
+                                    if (
+                                        event.target instanceof Node &&
+                                        controls.current?.contains(event.target)
+                                    )
+                                        event.preventDefault();
                                 }}
                             >
-                                <div className="space-y-4 p-3">
-                                    <section aria-label="Thông tin ghi nhớ">
-                                        <h5 className="mt-0 mb-2 font-medium text-xs">Ghi nhớ</h5>
-                                        {Object.keys(memory).length > 0 && (
-                                            <dl
-                                                aria-label="Ghi nhớ khi chạy thử"
-                                                className="m-0 flex flex-col gap-2 text-xs"
-                                            >
-                                                {Object.entries(memory).map(([key, value]) => (
-                                                    <div
-                                                        key={key}
-                                                        className="flex items-center justify-between gap-3"
-                                                    >
-                                                        <dt className="truncate text-muted-foreground">
-                                                            {memoryName(
-                                                                key,
-                                                                book.workflowVariables || [],
-                                                            )}
-                                                        </dt>
-                                                        <dd className="wrap-anywhere m-0 max-w-[60%] text-right font-medium">
-                                                            {memoryValue(
-                                                                book.workflowVariables?.find(
-                                                                    (item) => item.key === key,
-                                                                )?.initialValue ??
-                                                                    (typeof value === 'number'
-                                                                        ? 0
-                                                                        : typeof value === 'boolean'
-                                                                          ? false
-                                                                          : ''),
-                                                            )}{' '}
-                                                            → {memoryValue(value)}
-                                                        </dd>
-                                                    </div>
-                                                ))}
-                                            </dl>
-                                        )}
-
-                                        {!Object.keys(memory).length && (
-                                            <p className="m-0 text-muted-foreground text-xs">
-                                                Chưa có giá trị ghi nhớ.
-                                            </p>
-                                        )}
-                                    </section>
-                                    <section aria-label="Hoạt động của luồng">
-                                        <h5 className="mt-0 mb-2 font-medium text-xs">Nhật ký</h5>
-                                        {events.length > 0 && (
-                                            <ol
-                                                aria-label="Nhật ký chạy thử"
-                                                className="m-0 flex list-none flex-col gap-2 p-0 text-xs"
-                                            >
-                                                {events.map((event) => (
-                                                    <li
-                                                        key={event.sequence}
-                                                        className="wrap-anywhere"
-                                                    >
-                                                        <span className="font-medium">
-                                                            {scene.interactions.find(
-                                                                (item) => item.id === event.ruleId,
-                                                            )?.name || 'Tương tác'}
-                                                        </span>
-                                                        : bước {event.index + 1} —{' '}
-                                                        {event.state === 'waiting'
-                                                            ? 'đang đợi'
-                                                            : event.state === 'running'
-                                                              ? 'đang chạy'
-                                                              : event.state === 'done'
-                                                                ? 'đã xong'
-                                                                : event.state === 'cancelled'
-                                                                  ? 'đã dừng'
-                                                                  : 'có lỗi'}
-                                                        {event.branch
-                                                            ? ` · nhánh ${event.branch === 'true' ? 'Đúng' : 'Sai'}`
-                                                            : ''}
-                                                    </li>
-                                                ))}
-                                            </ol>
-                                        )}
-
-                                        {!events.length && (
-                                            <p className="m-0 text-muted-foreground text-xs">
-                                                Chưa có hoạt động nào.
-                                            </p>
-                                        )}
-                                    </section>
-                                    {message && (
-                                        <section>
-                                            <h5 className="mt-0 mb-2 font-medium text-xs">
-                                                Thông báo
-                                            </h5>
-                                            <p className="m-0 break-words text-muted-foreground text-xs leading-5">
-                                                {message}
-                                            </p>
-                                        </section>
-                                    )}
+                                <div className="flex shrink-0 items-center justify-between gap-3 border-border border-b px-3 py-2">
+                                    <h4 className="m-0 font-semibold text-sm">Chi tiết chạy thử</h4>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-xs"
+                                        aria-label="Đóng chi tiết chạy thử"
+                                        onClick={() => setDetailsOpen(false)}
+                                    >
+                                        <X />
+                                    </Button>
                                 </div>
-                            </ScrollArea>
-                        </PopoverContent>
-                    </Popover>
+                                <ScrollArea
+                                    className="min-h-0"
+                                    viewportProps={{
+                                        tabIndex: 0,
+                                        'aria-label': 'Thông tin và nhật ký chạy thử',
+                                        className: 'max-h-[min(23rem,calc(70dvh-3.5rem))]',
+                                    }}
+                                >
+                                    <div className="space-y-4 p-3">
+                                        <section aria-label="Thông tin ghi nhớ">
+                                            <h5 className="mt-0 mb-2 font-medium text-xs">
+                                                Ghi nhớ
+                                            </h5>
+                                            {Object.keys(memory).length > 0 && (
+                                                <dl
+                                                    aria-label="Ghi nhớ khi chạy thử"
+                                                    className="m-0 flex flex-col gap-2 text-xs"
+                                                >
+                                                    {Object.entries(memory).map(([key, value]) => (
+                                                        <div
+                                                            key={key}
+                                                            className="flex items-center justify-between gap-3"
+                                                        >
+                                                            <dt className="truncate text-muted-foreground">
+                                                                {memoryName(
+                                                                    key,
+                                                                    book.workflowVariables || [],
+                                                                )}
+                                                            </dt>
+                                                            <dd className="wrap-anywhere m-0 max-w-[60%] text-right font-medium">
+                                                                {memoryValue(
+                                                                    book.workflowVariables?.find(
+                                                                        (item) => item.key === key,
+                                                                    )?.initialValue ??
+                                                                        (typeof value === 'number'
+                                                                            ? 0
+                                                                            : typeof value ===
+                                                                                'boolean'
+                                                                              ? false
+                                                                              : ''),
+                                                                )}{' '}
+                                                                → {memoryValue(value)}
+                                                            </dd>
+                                                        </div>
+                                                    ))}
+                                                </dl>
+                                            )}
+
+                                            {!Object.keys(memory).length && (
+                                                <p className="m-0 text-muted-foreground text-xs">
+                                                    Chưa có giá trị ghi nhớ.
+                                                </p>
+                                            )}
+                                        </section>
+                                        <section aria-label="Hoạt động của luồng">
+                                            <h5 className="mt-0 mb-2 font-medium text-xs">
+                                                Nhật ký
+                                            </h5>
+                                            {events.length > 0 && (
+                                                <ol
+                                                    aria-label="Nhật ký chạy thử"
+                                                    className="m-0 flex list-none flex-col gap-2 p-0 text-xs"
+                                                >
+                                                    {events.map((event) => (
+                                                        <li
+                                                            key={event.sequence}
+                                                            className="wrap-anywhere"
+                                                        >
+                                                            <span className="font-medium">
+                                                                {scene.interactions.find(
+                                                                    (item) =>
+                                                                        item.id === event.ruleId,
+                                                                )?.name || 'Tương tác'}
+                                                            </span>
+                                                            : bước {event.index + 1} —{' '}
+                                                            {event.state === 'waiting'
+                                                                ? 'đang đợi'
+                                                                : event.state === 'running'
+                                                                  ? 'đang chạy'
+                                                                  : event.state === 'done'
+                                                                    ? 'đã xong'
+                                                                    : event.state === 'cancelled'
+                                                                      ? 'đã dừng'
+                                                                      : 'có lỗi'}
+                                                            {event.branch
+                                                                ? ` · nhánh ${event.branch === 'true' ? 'Đúng' : 'Sai'}`
+                                                                : ''}
+                                                        </li>
+                                                    ))}
+                                                </ol>
+                                            )}
+
+                                            {!events.length && (
+                                                <p className="m-0 text-muted-foreground text-xs">
+                                                    Chưa có hoạt động nào.
+                                                </p>
+                                            )}
+                                        </section>
+                                        {message && (
+                                            <section>
+                                                <h5 className="mt-0 mb-2 font-medium text-xs">
+                                                    Thông báo
+                                                </h5>
+                                                <p className="m-0 break-words text-muted-foreground text-xs leading-5">
+                                                    {message}
+                                                </p>
+                                            </section>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            </PopoverContent>
+                        </Popover>
+                    )}
                 </div>
             </div>
         </section>

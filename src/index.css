@@ -6,6 +6,15 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@utility no-scrollbar {
+    @media (forced-colors: none) {
+        scrollbar-width: none;
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+}
+
 /* Product tokens are shared by utilities and shadcn primitives. */
 @theme inline {
     --font-sans: var(--font-body);
@@ -61,10 +70,18 @@
     --color-neutral-foreground: var(--status-neutral-text);
     --color-success: var(--status-success-bg);
     --color-success-foreground: var(--status-success-text);
+    --color-success-solid: var(--status-success-solid);
+    --color-danger-solid: var(--status-danger-solid);
     --color-warning: var(--status-warning-bg);
     --color-warning-foreground: var(--status-warning-text);
     --color-danger: var(--status-danger-bg);
     --color-danger-foreground: var(--status-danger-text);
     --color-info: var(--status-info-bg);
     --color-info-foreground: var(--status-info-text);
+    --color-processing: var(--status-processing);
+}
+
+[data-loading-completing] {
+    opacity: 0;
+    transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }

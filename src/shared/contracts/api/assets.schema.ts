@@ -7,7 +7,7 @@ import {
     PaginationQuerySchema,
     shortText,
 } from '../common.schema';
-import { AssetCategorySchema, AssetSchema, AssetScopeSchema } from '../dto.schema';
+import { AssetCategorySchema, AssetSchema, AssetScopeSchema, JobSchema } from '../dto.schema';
 import {
     type AssetType,
     AssetTypeSchema,
@@ -16,7 +16,7 @@ import {
 } from '../enums.schema';
 
 // --- Upload rules ------------------------------------------------------
-export type CloudinaryResourceType = 'image' | 'video' | 'raw';
+export type StorageResourceType = 'image' | 'video' | 'raw';
 
 const ASSET_MIME: Record<AssetType, readonly string[]> = {
     MODEL: ['model/gltf-binary', 'model/gltf+json'],
@@ -25,7 +25,7 @@ const ASSET_MIME: Record<AssetType, readonly string[]> = {
     VIDEO: ['video/mp4'],
 };
 export const ASSET_MAX_BYTES: Record<AssetType, number> = {
-    MODEL: 10 * MB,
+    MODEL: 50 * MB,
     IMAGE: 10 * MB,
     AUDIO: 100 * MB,
     VIDEO: 100 * MB,
@@ -48,7 +48,7 @@ export type UploadCheck =
           ok: true;
           assetType: AssetType | null;
           maxBytes: number;
-          resourceType: CloudinaryResourceType;
+          resourceType: StorageResourceType;
       }
     | { ok: false; code: 'FILE_TYPE_NOT_ALLOWED' | 'FILE_TOO_LARGE'; maxBytes?: number };
 
@@ -70,7 +70,7 @@ export function checkUploadRequest(req: {
     const sized = (
         allowed: boolean,
         maxBytes: number,
-        resourceType: CloudinaryResourceType,
+        resourceType: StorageResourceType,
         assetType: AssetType | null,
     ): UploadCheck => {
         if (!allowed) return reject('FILE_TYPE_NOT_ALLOWED');
@@ -87,6 +87,8 @@ export function checkUploadRequest(req: {
         }
         case 'PAGE_IMAGE':
             return sized(['image/jpeg', 'image/png'].includes(mime), 10 * MB, 'image', 'IMAGE');
+        case 'MODEL_INPUT':
+            return sized(['image/jpeg', 'image/png'].includes(mime), 6 * MB, 'image', 'IMAGE');
         case 'AVATAR':
             return sized(
                 ['image/jpeg', 'image/png', 'image/webp'].includes(mime),
@@ -113,22 +115,24 @@ export type UploadSignatureBody = z.infer<typeof UploadSignatureBodySchema>;
 export const UploadSignatureSchema = z.object({
     assetId: IdSchema,
     uploadUrl: HttpUrlSchema,
-    fields: z.looseObject({
-        api_key: z.string(),
-        public_id: z.string(),
-        timestamp: z.int(),
-        signature: z.string(),
-    }),
+    method: z.literal('PUT'),
+    objectKey: z.string().min(1).max(1024),
+    headers: z.record(z.string(), z.string()),
     expiresAt: IsoDateTimeSchema,
 });
 export type UploadSignature = z.infer<typeof UploadSignatureSchema>;
 
-/** `POST /assets/:assetId/complete`. The server verifies the file with Cloudinary, not these values. */
+/** `POST /assets/:assetId/complete`. The server verifies the file with R2, not these values. */
 export const CompleteAssetBodySchema = z.object({
     name: shortText(150).optional(),
     tags: z.array(shortText(30)).max(20).default([]),
 });
 export type CompleteAssetBody = z.infer<typeof CompleteAssetBodySchema>;
+
+/** Creates a background task from an owned, temporary input upload. */
+export const GenerateModelBodySchema = z.object({ inputId: IdSchema });
+export const ModelGenerationSchema = JobSchema.extend({ name: shortText(150) });
+export type ModelGeneration = z.infer<typeof ModelGenerationSchema>;
 
 /** 202: a model, audio or video file still needs processing. */
 export const CompleteAssetProcessingSchema = z.object({

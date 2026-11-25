@@ -80,7 +80,7 @@ export function InteractionScopeFilter({
                 />
             </div>
             <fieldset
-                className="m-0 flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain border-0 px-3 pt-0 pb-3"
+                className="no-scrollbar m-0 flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain border-0 px-3 pt-0 pb-3"
                 aria-label="Đối tượng trong trang"
             >
                 {matches.map((object) => (

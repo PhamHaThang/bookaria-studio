@@ -46,7 +46,6 @@ import {
     type FlowPort,
     flowLink,
     type InteractionFlow,
-    orderedFlowSteps,
     START_NODE,
 } from '../model/interaction-flow';
 import {
@@ -325,7 +324,7 @@ function WorkflowConnection(props: EdgeProps<WorkflowEdge>) {
             <EdgeLabelRenderer>
                 {context && (
                     <div
-                        className="nodrag nopan pointer-events-auto absolute"
+                        className="nodrag nopan pointer-events-auto absolute grid rounded-[var(--radius-control)] bg-surface"
                         data-flow-after={props.source}
                         data-flow-port={props.data?.port || 'next'}
                         style={{ transform: `translate(-50%, -50%) translate(${x}px,${y}px)` }}
@@ -627,12 +626,6 @@ export function InteractionWorkflowEditor({
             )?.port;
         onAdd(id, after || undefined, after ? undefined : position, port as FlowPort | undefined);
     };
-    let count = 0;
-    try {
-        count = orderedFlowSteps(graph).length - 1;
-    } catch {
-        count = graph.nodes.length - 1;
-    }
     return (
         <div
             className="relative min-h-0 min-w-0 flex-1 bg-[var(--editor-ground)]"
@@ -813,7 +806,7 @@ export function InteractionWorkflowEditor({
                         color="color-mix(in srgb, var(--text-muted) 35%, transparent)"
                     />
                 )}
-                <Panel position="bottom-left">
+                <Panel position="bottom-left" style={{ marginBottom: '1rem' }}>
                     <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
                         <Button
                             variant="ghost"
@@ -858,11 +851,6 @@ export function InteractionWorkflowEditor({
                             <LayoutGrid />
                         </Button>
                     </div>
-                </Panel>
-                <Panel position="bottom-right">
-                    <p className="m-0 rounded-md bg-surface px-3 py-2 text-muted-foreground text-xs">
-                        {count} bước · Kéo trái/phải để dịch · Cuộn để zoom
-                    </p>
                 </Panel>
             </ReactFlow>
         </div>

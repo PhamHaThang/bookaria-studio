@@ -4,12 +4,13 @@ export type SkeletonLayout =
     | 'books'
     | 'assets'
     | 'rows'
+    | 'admin-rows'
     | 'pages'
     | 'public-books'
     | 'profile'
-    | 'author'
     | 'detail'
     | 'stats'
+    | 'stats-books'
     | 'editor'
     | 'asset-picker'
     | 'page-strip'
@@ -44,7 +45,7 @@ function FormFields() {
 function Rows({ layout }: { layout: 'assets' | 'rows' | 'pages' | 'public-books' }) {
     return (
         <div className="flex flex-col border-border border-t">
-            {items.slice(0, 4).map((id) => (
+            {items.slice(0, 2).map((id) => (
                 <div key={id} className="flex items-center gap-5 border-border border-b py-5">
                     {layout === 'assets' && <Skeleton className="size-16 shrink-0" />}
                     {layout === 'pages' && <Skeleton className="h-22 w-16 shrink-0" />}
@@ -63,24 +64,34 @@ function Rows({ layout }: { layout: 'assets' | 'rows' | 'pages' | 'public-books'
 export function ContentSkeleton({ layout }: { layout: SkeletonLayout }) {
     if (layout === 'books')
         return (
-            <div className="mx-auto max-w-375">
-                <Skeleton className="mb-3 h-3 w-24" />
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-[22px]">
-                    {items.map((id) => (
-                        <div
-                            key={id}
-                            className="flex min-h-[350px] flex-col gap-3 rounded-xl border border-border bg-surface p-3"
-                        >
-                            <Skeleton className="h-[190px] w-full rounded-[7px]" />
-                            <Skeleton className="mt-2 h-4 w-4/5" />
-                            <Skeleton className="h-3 w-3/5" />
-                            <div className="mt-auto flex items-center justify-between">
-                                <Skeleton className="h-6 w-18" />
-                                <Skeleton className="size-5" />
+            <div className="@container">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,205px),1fr))] gap-4">
+                    {['', '@max-[426px]:hidden', '@max-[647px]:hidden', '@max-[868px]:hidden'].map(
+                        (visibility) => (
+                            <div
+                                key={visibility}
+                                className={`min-w-0 overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface ${visibility}`}
+                            >
+                                <Skeleton className="aspect-[4/3] w-full rounded-none" />
+                                <div className="flex flex-col gap-2 p-3">
+                                    <Skeleton className="h-5 w-4/5" />
+                                    <Skeleton className="h-4 w-3/5" />
+                                    <Skeleton className="mt-1 h-8 w-full" />
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ),
+                    )}
                 </div>
+            </div>
+        );
+    if (layout === 'admin-rows')
+        return (
+            <div className="space-y-4">
+                <div className="flex h-10 items-center justify-between gap-4">
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-10 w-28 rounded-[var(--radius-control)]" />
+                </div>
+                <Rows layout="rows" />
             </div>
         );
     if (layout === 'assets' || layout === 'rows' || layout === 'pages' || layout === 'public-books')
@@ -105,17 +116,6 @@ export function ContentSkeleton({ layout }: { layout: SkeletonLayout }) {
                 <FormFields />
             </div>
         );
-    if (layout === 'author')
-        return (
-            <div className="flex flex-col gap-8 py-8">
-                <div className="flex items-center gap-4">
-                    <Skeleton className="size-16 shrink-0 rounded-full" />
-                    <TextLines />
-                </div>
-                <Skeleton className="h-4 w-4/5 max-w-180" />
-                <Rows layout="public-books" />
-            </div>
-        );
     if (layout === 'detail')
         return (
             <div className="flex flex-col gap-8">
@@ -128,20 +128,43 @@ export function ContentSkeleton({ layout }: { layout: SkeletonLayout }) {
                 <FormFields />
             </div>
         );
+    if (layout === 'stats-books')
+        return (
+            <div className="grid gap-2.5">
+                {items.slice(0, 2).map((id) => (
+                    <div
+                        key={id}
+                        className="flex items-center gap-4 rounded-xl border border-border bg-surface p-3 sm:px-4"
+                    >
+                        <Skeleton className="h-14 w-11 shrink-0" />
+                        <div className="flex min-w-0 flex-1 flex-col gap-2">
+                            <Skeleton className="h-4 w-3/5 max-w-64" />
+                            <Skeleton className="h-3 w-2/5 max-w-40" />
+                        </div>
+                        <Skeleton className="hidden h-4 w-24 sm:block" />
+                    </div>
+                ))}
+            </div>
+        );
     if (layout === 'stats')
         return (
-            <div className="flex flex-col gap-8">
-                <div className="grid grid-cols-4 gap-5 border-border border-y py-5">
+            <div className="flex flex-col gap-6">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     {items.slice(0, 4).map((id) => (
-                        <div key={id} className="flex flex-col gap-3">
-                            <Skeleton className="h-3 w-24" />
-                            <Skeleton className="h-8 w-20" />
+                        <div
+                            key={id}
+                            className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
+                        >
+                            <Skeleton className="h-4 w-4/5 max-w-36" />
+                            <Skeleton className="h-8 w-2/5 max-w-20" />
                         </div>
                     ))}
                 </div>
-                <Skeleton className="h-5 w-56" />
-                <Skeleton className="h-64 w-full" />
-                <Rows layout="rows" />
+                <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-6">
+                    <Skeleton className="h-5 w-44 max-w-full" />
+                    <Skeleton className="h-60 w-full" />
+                </div>
+                <Skeleton className="h-10 w-72 max-w-full" />
             </div>
         );
     if (layout === 'asset-picker')

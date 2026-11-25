@@ -6,6 +6,13 @@ import {
     ValidationIssueSchema,
 } from '../contracts/error.schema';
 
+export function retryAfterSeconds(error: unknown): number | undefined {
+    if (!axios.isAxiosError(error)) return;
+    const parsed = ApiErrorSchema.safeParse(error.response?.data);
+    if (!parsed.success || parsed.data.error.code !== 'RATE_LIMITED') return;
+    return RateLimitedDetailsSchema.safeParse(parsed.data.error.details).data?.retryAfterSeconds;
+}
+
 export function errorMessage(error: unknown): string {
     if (error instanceof ZodError) return error.issues[0]?.message || 'Dữ liệu nhập chưa hợp lệ.';
     if (axios.isAxiosError(error)) {

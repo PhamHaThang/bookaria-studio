@@ -10,7 +10,7 @@ import {
     Share2,
     Upload,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { pageWidthMm } from '@/shared/contracts/marker.schema';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
@@ -41,7 +41,7 @@ import {
 import { BookariaLogo } from '../../../shared/ui/BookariaLogo';
 import { Button } from '../../../shared/ui/Button';
 import { Feedback } from '../../../shared/ui/Feedback';
-import { useBookDraft } from '../../book-draft/ui/BookDraftProvider';
+import { useBookDraft } from '../../book-draft/ui/book-draft-context';
 import { BookInfoDialog } from '../../books/ui/BookInfoDialog';
 import type { ImageAttachmentContext } from '../../pages/ui/PageImageForm';
 import type { PreviewView } from '../../preview/model/LocalPreviewStage';
@@ -53,6 +53,7 @@ import { createFittedAssetObject } from '../model/asset-insertion';
 import {
     addObject,
     duplicateObject,
+    isVisibleInEditor,
     moveObject,
     newObject,
     objectAssetTypes,
@@ -101,6 +102,9 @@ import { useSaveBeforeAction } from './use-save-before-action';
 const InteractionEditor = lazy(() =>
     import('./InteractionEditor').then((module) => ({ default: module.InteractionEditor })),
 );
+const SceneAssistant = lazy(() =>
+    import('./SceneAssistant').then((module) => ({ default: module.SceneAssistant })),
+);
 
 export function SceneEditor(props: Parameters<typeof SceneEditorContent>[0]) {
     return (
@@ -136,8 +140,15 @@ function SceneEditorContent({
             bookDraftState.working?.workflowVariables || book.workflowVariables || [],
     };
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [assistantOpen, setAssistantOpen] = useState(false);
+    const closeAssistant = useCallback(() => setAssistantOpen(false), []);
+    useEffect(() => {
+        void page.id;
+        closeAssistant();
+    }, [page.id, closeAssistant]);
     const [transforming, setTransforming] = useState(false);
     function setSelectedId(id: string) {
+        if (id) closeAssistant();
         setSelectedIds(id ? [id] : []);
     }
     const [textDialog, setTextDialog] = useState<{
@@ -157,6 +168,8 @@ function SceneEditorContent({
     );
     const interactionEditor = useRef<InteractionEditorHandle>(null);
     const [workflowInvalid, setWorkflowInvalid] = useState(false);
+    const [testingInteraction, setTestingInteraction] = useState(false);
+    const [designAssistantHost, setDesignAssistantHost] = useState<HTMLDivElement | null>(null);
     const [layersOpen, setLayersOpen] = useState(false),
         [helpOpen, setHelpOpen] = useState(false),
         [publishOpen, setPublishOpen] = useState(false),
@@ -221,6 +234,7 @@ function SceneEditorContent({
     const activeIds = selection.map((object) => object.id);
     const selected = selection.at(-1);
     const inspectorVisible =
+        !assistantOpen &&
         panel !== 'preview' &&
         panel !== 'interactions' &&
         (panel !== 'properties' || selection.length > 0);
@@ -276,16 +290,24 @@ function SceneEditorContent({
     function changePanel(next: typeof panel) {
         if (next !== panel)
             runOutsideSettings(() => {
+                closeAssistant();
+                setLayersOpen(false);
                 if (next === 'preview')
                     previewView.current = commands.current.canvas?.getPreviewView();
                 setPanel(next);
             });
+        else if (next === 'settings') closeAssistant();
+    }
+    function openLayers() {
+        closeAssistant();
+        setLayersOpen(true);
     }
     useEffect(() => {
         const id = searchParams.get('flow');
         const memory = searchParams.get('memory') === '1';
         if (!id && !memory) return;
         if (memory || editor.draft.interactions.some((rule) => rule.id === id)) {
+            closeAssistant();
             const step = searchParams.get('step');
             const actionIndex = step !== null && /^\d+$/.test(step) ? Number(step) : null;
             setRequestedRule({ id: id || undefined, memory, actionIndex, request: Date.now() });
@@ -297,7 +319,7 @@ function SceneEditorContent({
         next.delete('step');
         next.delete('memory');
         setSearchParams(next, { replace: true });
-    }, [searchParams, setSearchParams, editor.draft.interactions]);
+    }, [closeAssistant, searchParams, setSearchParams, editor.draft.interactions]);
     function repairPreview(repair: PreviewRepair, targetPageId: string) {
         if (targetPageId !== page.id) {
             const params = new URLSearchParams();
@@ -308,6 +330,7 @@ function SceneEditorContent({
             return;
         }
         runOutsideSettings(() => {
+            closeAssistant();
             setSelectedIds([]);
             if (repair.kind === 'scene') setPanel('properties');
             else {
@@ -336,7 +359,10 @@ function SceneEditorContent({
     }
     function selectMany(ids: string[], mode: SelectionMode = 'replace') {
         const select = () => {
-            if (ids.length > 0 && panel !== 'preview') setPanel('properties');
+            if (ids.length > 0 && panel !== 'preview') {
+                closeAssistant();
+                setPanel('properties');
+            }
             setSelectedIds((current) =>
                 updateSelection(
                     current.filter((id) => editor.draft.objects.some((item) => item.id === id)),
@@ -409,6 +435,7 @@ function SceneEditorContent({
         try {
             const copy = duplicateSelection(state.editor.draft, ids, () => crypto.randomUUID());
             state.editor.setDraft(copy.scene);
+            closeAssistant();
             setSelectedIds(copy.ids);
             setError(null);
         } catch (cause) {
@@ -418,7 +445,13 @@ function SceneEditorContent({
     function flagChosen(flag: 'locked' | 'visible', value: boolean) {
         if (blocked) return;
         try {
-            editor.setDraft((current) => setSelectionFlag(current, activeIds, flag, value));
+            const ids =
+                flag === 'visible'
+                    ? selection
+                          .filter((object) => object.type !== 'audio')
+                          .map((object) => object.id)
+                    : activeIds;
+            editor.setDraft((current) => setSelectionFlag(current, ids, flag, value));
             setError(null);
         } catch (cause) {
             setError(errorMessage(cause));
@@ -538,9 +571,10 @@ function SceneEditorContent({
             }
             if (modifier && event.key.toLowerCase() === 'a') {
                 event.preventDefault();
+                closeAssistant();
                 setSelectedIds(
                     state.editor.draft.objects
-                        .filter((object) => !object.locked && object.visible)
+                        .filter((object) => !object.locked && isVisibleInEditor(object))
                         .map((object) => object.id),
                 );
             }
@@ -556,7 +590,7 @@ function SceneEditorContent({
         }
         window.addEventListener('keydown', keyboard);
         return () => window.removeEventListener('keydown', keyboard);
-    }, []);
+    }, [closeAssistant]);
     function exportBookDraft() {
         const link = document.createElement('a'),
             url = URL.createObjectURL(
@@ -884,6 +918,7 @@ function SceneEditorContent({
                         helpOpen={helpOpen}
                         onAdd={(type) =>
                             runOutsideSettings(() => {
+                                closeAssistant();
                                 if (usesAsset(type)) setPicker({ type });
                                 else if (type === 'text') setTextDialog({ start: 'text' });
                                 else insert(type);
@@ -896,7 +931,10 @@ function SceneEditorContent({
                             )
                         }
                         onSettings={() => changePanel('settings')}
-                        onShortcuts={() => setHelpOpen(true)}
+                        onShortcuts={() => {
+                            closeAssistant();
+                            setHelpOpen(true);
+                        }}
                         shortcutsRef={(element) => {
                             commands.current.shortcutsButton = element;
                         }}
@@ -905,7 +943,8 @@ function SceneEditorContent({
                 <div
                     ref={workspaceRef}
                     data-inspector-visible="false"
-                    className="scene-workspace relative m-0 grid h-[calc(100dvh_-_64px)] min-h-125 min-w-0 flex-1 grid-cols-[minmax(0,_1fr)] items-stretch gap-0 overflow-hidden [--inspector-offset:var(--inspector-width)] [--inspector-width:340px] [container-type:inline-size] data-[inspector-visible=false]:[--inspector-offset:0px] max-[1100px]:[--inspector-width:300px] min-[1600px]:[--inspector-width:380px] [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)]"
+                    data-interactions={panel === 'interactions'}
+                    className="scene-workspace relative m-0 grid h-[calc(100dvh_-_64px)] min-h-125 min-w-0 flex-1 grid-cols-[minmax(0,_1fr)] items-stretch gap-0 overflow-hidden [--inspector-offset:var(--inspector-width)] [--inspector-width:340px] [container-type:inline-size] data-[interactions=true]:grid-rows-[minmax(0,1fr)_auto] data-[inspector-visible=false]:[--inspector-offset:0px] max-[1100px]:[--inspector-width:300px] min-[1600px]:[--inspector-width:380px] data-[interactions=true]:[&>.scene-stage-column]:hidden [&_h3]:mx-0 [&_h3]:mt-0 [&_h3]:mb-3 [&_h3]:text-[length:var(--text-lg)]"
                 >
                     <SceneObjectsPanel
                         objects={editor.draft.objects}
@@ -979,7 +1018,7 @@ function SceneEditorContent({
                         aspect={book.pageAspect}
                         scene={editor.draft}
                         assets={sceneAssets}
-                        selectedIds={annotationPlacement ? [] : activeIds}
+                        selectedIds={assistantOpen || annotationPlacement ? [] : activeIds}
                         disabled={sceneBlocked}
                         selectionActions={{
                             canDuplicate:
@@ -1025,28 +1064,35 @@ function SceneEditorContent({
                             setTransforming(false);
                         }}
                         footer={
-                            <Button
-                                ref={(element) => {
-                                    commands.current.layersButton = element;
-                                }}
-                                variant={layersOpen ? 'default' : 'outline'}
-                                size="sm"
-                                aria-expanded={layersOpen}
-                                aria-controls="scene-object-layers"
-                                onKeyDown={(event) => {
-                                    if (event.key !== 'Escape' || !layersOpen) return;
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    setLayersOpen(false);
-                                }}
-                                onClick={() => setLayersOpen(!layersOpen)}
-                            >
-                                <Layers data-icon="inline-start" aria-hidden="true" />
-                                Đối tượng
-                                <span className="tabular-nums">
-                                    ({editor.draft.objects.length})
-                                </span>
-                            </Button>
+                            <>
+                                <Button
+                                    ref={(element) => {
+                                        commands.current.layersButton = element;
+                                    }}
+                                    variant={layersOpen ? 'default' : 'outline'}
+                                    size="sm"
+                                    aria-expanded={layersOpen}
+                                    aria-controls="scene-object-layers"
+                                    className="mb-[7px]"
+                                    onKeyDown={(event) => {
+                                        if (event.key !== 'Escape' || !layersOpen) return;
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        setLayersOpen(false);
+                                    }}
+                                    onClick={() => {
+                                        if (layersOpen) setLayersOpen(false);
+                                        else openLayers();
+                                    }}
+                                >
+                                    <Layers data-icon="inline-start" aria-hidden="true" />
+                                    Đối tượng
+                                    <span className="tabular-nums">
+                                        ({editor.draft.objects.length})
+                                    </span>
+                                </Button>
+                                <div ref={setDesignAssistantHost} className="contents" />
+                            </>
                         }
                     />
                     <div className="inspector-slot pointer-events-none absolute top-0 right-0 bottom-[var(--canvas-hints-height)] z-10 min-h-0 w-[var(--inspector-width)] min-w-0 [.scene-editor[data-panel=interactions]_&]:hidden [.scene-editor[data-panel=preview]_&]:hidden">
@@ -1190,7 +1236,7 @@ function SceneEditorContent({
                                                 <SceneInspectorEmpty
                                                     empty={editor.draft.objects.length === 0}
                                                     disabled={Boolean(blocked)}
-                                                    onList={() => setLayersOpen(true)}
+                                                    onList={openLayers}
                                                     onAddText={() =>
                                                         setTextDialog({ start: 'text' })
                                                     }
@@ -1232,7 +1278,7 @@ function SceneEditorContent({
                     {panel === 'interactions' && (
                         <section
                             aria-label="Trình biên soạn tương tác"
-                            className="absolute inset-0 z-20 min-h-0 min-w-0 overflow-hidden bg-surface"
+                            className="relative z-20 row-start-1 min-h-0 min-w-0 overflow-hidden bg-surface"
                         >
                             <Suspense
                                 fallback={
@@ -1255,6 +1301,9 @@ function SceneEditorContent({
                                     onWorkflowVariablesChange={(definitions) =>
                                         bookDraft.setWorkflowVariables(definitions)
                                     }
+                                    onTestingChange={setTestingInteraction}
+                                    assistantOpen={assistantOpen}
+                                    onEditFocus={closeAssistant}
                                     loadMemoryPages={() =>
                                         Promise.all(
                                             (bookDraftState.working?.pages || book.pages).map(
@@ -1286,7 +1335,7 @@ function SceneEditorContent({
                             onRepair={repairPreview}
                         />
                     </section>
-                    <ScenePageDock>
+                    <ScenePageDock hidden={panel === 'interactions'}>
                         <PageStrip
                             requestAction={pageAction.request}
                             book={book}
@@ -1297,6 +1346,40 @@ function SceneEditorContent({
                             onDraftChange={setPagesDirty}
                         />
                     </ScenePageDock>
+                    {panel === 'interactions' && (
+                        <div
+                            role="note"
+                            aria-label="Hướng dẫn điều khiển tương tác"
+                            className="z-20 row-start-2 flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1 border-border border-t bg-surface px-4 py-2 text-muted-foreground text-sm"
+                        >
+                            <span>Kéo vùng trống để dịch khung nhìn</span>
+                            <span>Cuộn để thu phóng</span>
+                            <span>Chọn khối để chỉnh sửa</span>
+                        </div>
+                    )}
+                    <Suspense fallback={null}>
+                        <SceneAssistant
+                            key={page.id}
+                            open={assistantOpen}
+                            onOpenChange={(open) => {
+                                if (open) setLayersOpen(false);
+                                setAssistantOpen(open);
+                            }}
+                            designLauncherHost={designAssistantHost}
+                            active={panel !== 'preview' && !testingInteraction}
+                            surface={panel === 'interactions' ? 'interactions' : 'design'}
+                            scene={editor.draft}
+                            assets={sceneAssets}
+                            page={page}
+                            book={memoryBook}
+                            variables={memoryBook.workflowVariables}
+                            disabled={blocked || workflowInvalid || settingsDirty}
+                            onApply={(scene, rule, variables) => {
+                                bookDraft.setScene(page.id, scene, variables);
+                                interactionEditor.current?.selectAppliedRule(scene, rule);
+                            }}
+                        />
+                    </Suspense>
                 </div>
             </SceneWorkbench>
             {saveBeforeAction.dialog}

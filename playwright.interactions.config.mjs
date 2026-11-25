@@ -4,11 +4,14 @@ const existingURL = process.env.BOOKARIA_TEST_BASE_URL;
 export default defineConfig({
     testDir: './tests/browser',
     testMatch: [
+        'interaction-ai.spec.mjs',
         'interaction-guided.spec.mjs',
         'interaction-workspace.spec.mjs',
         'model-controls.spec.mjs',
         'cover-upload.spec.mjs',
         'editor-pages.spec.mjs',
+        'assets-narration.spec.mjs',
+        'assets-generate-3d.spec.mjs',
         'interaction-repair.spec.mjs',
         'marker-dialog-layout.spec.mjs',
         'transform-edit.spec.mjs',
@@ -16,6 +19,7 @@ export default defineConfig({
         'admin-merge.spec.mjs',
         'viewer-links.spec.mjs',
         'notifications.spec.mjs',
+        'studio-navigation.spec.mjs',
     ],
     workers: 1,
     retries: 0,

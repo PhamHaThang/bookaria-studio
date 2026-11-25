@@ -1,20 +1,26 @@
-import { useQuery } from '@tanstack/react-query';
-import { FolderOpen, RotateCcw, SearchX } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { CircleAlert, FolderOpen, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, type NavigateOptions, useSearchParams } from 'react-router-dom';
+import {
+    Link,
+    type NavigateOptions,
+    useLocation,
+    useMatch,
+    useSearchParams,
+} from 'react-router-dom';
 import { assetKeys, assetsApi, readAssetSearch, updateAssetSearch } from '@/features/assets';
 import { LibraryAssetPreview } from '@/features/assets/ui/LibraryAssetPreview';
 import { useAuth } from '@/features/auth';
 import { errorMessage } from '@/shared/api/errors';
 import type { ListAssetsQuery } from '@/shared/contracts/api/assets.schema';
+import { IdSchema } from '@/shared/contracts/common.schema';
 import type { Asset, AssetCategory } from '@/shared/contracts/dto.schema';
 import { cn } from '@/shared/lib/cn';
-import { Button, buttonStyles } from '@/shared/ui/Button';
+import { Button } from '@/shared/ui/Button';
 import { Feedback } from '@/shared/ui/Feedback';
 import { FilterBar } from '@/shared/ui/FilterBar';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { SearchFilter } from '@/shared/ui/LiveFilters';
-import { LoadingState } from '@/shared/ui/LoadingState';
 import { Pagination } from '@/shared/ui/Pagination';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import {
@@ -26,15 +32,15 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
-import { AssetCatalogRow } from './AssetCatalogRow';
-import { LibraryAssetGrid, LibraryAssetGridSkeleton } from './LibraryAssetGrid';
+import { SearchActivity } from '@/shared/ui/SearchActivity';
+import { AssetCardGrid, AssetCardGridSkeleton } from './AssetCardGrid';
 import { PersonalAssetDialog } from './PersonalAssetDialog';
 
 const assetTypes = [
     { value: 'IMAGE', label: 'Hình ảnh' },
     { value: 'AUDIO', label: 'Âm thanh' },
     { value: 'VIDEO', label: 'Video' },
-    { value: 'MODEL', label: '3D' },
+    { value: 'MODEL', label: 'Mô hình 3D' },
 ];
 
 function AssetFilters({
@@ -62,7 +68,10 @@ function AssetFilters({
     return (
         <form
             aria-label="Bộ lọc tài nguyên"
-            className="asset-filters mb-6 flex flex-wrap items-center gap-3 [&_[data-slot=field-label]]:m-0 [&_[data-slot=input]]:m-0 [&_[data-slot=select-trigger]]:m-0"
+            className={cn(
+                'asset-filters flex flex-wrap items-center gap-3 [&_[data-slot=field-label]]:m-0 [&_[data-slot=input]]:m-0 [&_[data-slot=select-trigger]]:m-0',
+                library ? 'mb-6' : 'mb-5',
+            )}
             onSubmit={(event) => event.preventDefault()}
         >
             <FieldGroup className="contents">
@@ -70,7 +79,7 @@ function AssetFilters({
                     className={
                         library
                             ? 'min-w-0 basis-full lg:w-auto lg:flex-1 lg:basis-0'
-                            : 'min-w-60 flex-1'
+                            : 'min-w-48 flex-1'
                     }
                 >
                     <FieldLabel htmlFor="asset-search" className="sr-only">
@@ -157,14 +166,68 @@ function AssetFilters({
 
 export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
     const { user } = useAuth();
+    const userId = user?.id ?? '';
+    const cache = useQueryClient();
+    const { state } = useLocation();
     const [params, setParams] = useSearchParams();
     const scoped = new URLSearchParams(params);
     scoped.set('scope', scope);
     const query = readAssetSearch(scoped);
     const library = scope === 'library';
+    const modelJobs = useQuery({
+        queryKey: assetKeys.generationJobs(userId),
+        queryFn: ({ signal }) => assetsApi.modelGenerations(signal),
+        enabled: Boolean(user && !library),
+        retry: false,
+        refetchInterval: ({ state }) =>
+            state.data?.some((job) => job.status === 'QUEUED' || job.status === 'RUNNING')
+                ? 3000
+                : false,
+    });
+    const completed = (modelJobs.data ?? [])
+        .filter((job) => job.status === 'SUCCEEDED')
+        .map((job) => job.id)
+        .join(',');
+    useEffect(() => {
+        if (completed) void cache.invalidateQueries({ queryKey: assetKeys.lists(userId) });
+    }, [completed, cache, userId]);
+    const generating =
+        !library &&
+        query.page === 1 &&
+        (!query.type || query.type === 'MODEL') &&
+        query.hasAnimation !== true
+            ? (modelJobs.data ?? []).filter(
+                  (job) =>
+                      job.status !== 'SUCCEEDED' &&
+                      (!query.q || job.name.toLowerCase().includes(query.q.toLowerCase())),
+              )
+            : [];
     const searchInput = useRef<HTMLInputElement>(null);
     const results = useRef<HTMLElement>(null);
-    const [preview, setPreview] = useState<Asset | null>(null);
+    const [selected, setPreview] = useState<Asset | null>(null);
+    const personalAssets = useMatch('/assets');
+    const linkedModelJob = IdSchema.safeParse(params.get('job')).data;
+    const assetId = IdSchema.safeParse(params.get('asset')).data;
+    const linked = useQuery({
+        queryKey: assetKeys.detail(user?.id ?? '', assetId ?? ''),
+        queryFn: ({ signal }) => assetsApi.detail(assetId ?? '', signal),
+        enabled: Boolean(user && !library && personalAssets && assetId),
+        retry: false,
+    });
+    const preview = selected ?? (!library && personalAssets && assetId ? linked.data : undefined);
+    function closePreview() {
+        setPreview(null);
+        if (personalAssets && assetId) {
+            setParams(
+                (current) => {
+                    const next = new URLSearchParams(current);
+                    next.delete('asset');
+                    return next;
+                },
+                { replace: true },
+            );
+        }
+    }
     const listing = useQuery({
         queryKey: assetKeys.list(user?.id || '', query),
         queryFn: ({ signal }) => assetsApi.list(query, signal),
@@ -219,14 +282,6 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
     }
     return (
         <>
-            {!library && (
-                <FilterBar
-                    value={query.type || 'all'}
-                    onValueChange={(type) => change({ type: type === 'all' ? undefined : type })}
-                    options={[{ value: 'all', label: 'Tất cả' }, ...assetTypes]}
-                    label="Loại tài nguyên"
-                />
-            )}
             <AssetFilters
                 key={query.scope}
                 query={query}
@@ -237,6 +292,32 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                 clearFilters={clearFilters}
                 searchInput={searchInput}
             />
+            {!library && (
+                <FilterBar
+                    value={query.type || 'all'}
+                    onValueChange={(type) => change({ type: type === 'all' ? undefined : type })}
+                    options={[{ value: 'all', label: 'Tất cả' }, ...assetTypes]}
+                    label="Loại tài nguyên"
+                    variant="pill"
+                    resultCount={{
+                        total: meta?.total,
+                        unit: generating.length
+                            ? `tài nguyên · ${generating.length} tác vụ tạo 3D`
+                            : 'tài nguyên',
+                    }}
+                />
+            )}
+            {personalAssets && assetId && linked.isError && (
+                <Feedback error="Chưa mở được tài nguyên từ liên kết." />
+            )}
+            {!library && modelJobs.isError && (
+                <div className="mb-6 flex flex-wrap items-start gap-3 [&_.feedback]:m-0">
+                    <Feedback error="Chưa tải được tiến độ tạo 3D." />
+                    <Button variant="outline" size="sm" onClick={() => void modelJobs.refetch()}>
+                        Tải lại tiến độ
+                    </Button>
+                </div>
+            )}
             {query.scope === 'library' && categories.isError && (
                 <div className="mb-6 flex flex-wrap items-start gap-3 [&_.feedback]:m-0">
                     <Feedback error="Chưa tải được danh mục. Bạn vẫn có thể tìm tài nguyên." />
@@ -251,14 +332,22 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                     </Button>
                 </div>
             )}
+            {(listing.isPending || listing.isError) && generating.length > 0 && (
+                <AssetCardGrid
+                    assets={[]}
+                    busy={modelJobs.isFetching}
+                    onPreview={setPreview}
+                    scope={scope}
+                    generating={generating}
+                    focusModelJob={linkedModelJob ?? state?.focusModelJob}
+                />
+            )}
+            <SearchActivity query={query.q} fetching={listing.isFetching} />
             {listing.isPending ? (
-                library ? (
-                    <LibraryAssetGridSkeleton />
-                ) : (
-                    <LoadingState layout="assets">Đang tải tài nguyên…</LoadingState>
-                )
+                <AssetCardGridSkeleton scope={scope} />
             ) : listing.isError ? (
                 <div className="list-state px-0 py-12">
+                    <CircleAlert aria-hidden="true" className="size-6 text-destructive" />
                     <Feedback error={errorMessage(listing.error)} />
                     <Button
                         onClick={() => {
@@ -275,31 +364,21 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                     aria-label={library ? 'Kết quả tài nguyên' : undefined}
                     className={library ? 'scroll-mt-24 outline-none' : undefined}
                 >
-                    <p
-                        className={
-                            library
-                                ? 'sr-only'
-                                : 'mx-0 mt-0 mb-3 flex list-summary justify-between gap-4 text-[length:12px] text-muted-foreground [:where(.studio-main_>_&)]:mx-auto [:where(.studio-main_>_&)]:max-w-375'
-                        }
-                        role="status"
-                    >
-                        {library && listing.isFetching
-                            ? 'Đang cập nhật…'
-                            : `${meta?.total ?? 0} tài nguyên${query.q ? ` khớp “${query.q}”` : ''}${listing.isFetching ? ' — Đang cập nhật…' : ''}`}
-                    </p>
+                    {library && (
+                        <p className="sr-only" role="status">
+                            {listing.isFetching
+                                ? 'Đang cập nhật…'
+                                : `${meta?.total ?? 0} tài nguyên${query.q ? ` khớp “${query.q}”` : ''}`}
+                        </p>
+                    )}
                     {library && listing.data.data.length === 0 ? (
-                        <Empty className="gap-5 px-4 py-9 sm:py-12">
+                        <Empty className="min-h-48 gap-5 px-4 py-9 sm:min-h-70 sm:py-12">
                             <EmptyHeader className="gap-2">
-                                <EmptyMedia
-                                    variant="icon"
-                                    className="mb-2 size-12 rounded-xl"
-                                    aria-hidden="true"
-                                >
-                                    {filtered ? (
-                                        <SearchX className="size-6" />
-                                    ) : (
-                                        <FolderOpen className="size-6" />
-                                    )}
+                                <EmptyMedia>
+                                    <FolderOpen
+                                        aria-hidden="true"
+                                        className="size-10 text-muted-foreground"
+                                    />
                                 </EmptyMedia>
                                 <EmptyTitle>
                                     <h2>
@@ -377,30 +456,37 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                                     'motion-safe:fade-in-60 motion-safe:animate-in motion-safe:duration-200',
                             )}
                         >
-                            <LibraryAssetGrid
+                            <AssetCardGrid
                                 assets={listing.data.data}
                                 busy={listing.isFetching}
                                 onPreview={setPreview}
                             />
                         </div>
-                    ) : listing.data.data.length === 0 ? (
+                    ) : listing.data.data.length === 0 && generating.length === 0 ? (
                         <Empty className="empty-state px-5 py-16 max-[760px]:px-3 max-[760px]:py-12">
                             <EmptyHeader>
                                 <EmptyMedia>
-                                    <FolderOpen size={38} aria-hidden="true" />
+                                    <FolderOpen
+                                        aria-hidden="true"
+                                        className="size-10 text-muted-foreground"
+                                    />
                                 </EmptyMedia>
                                 <EmptyTitle>
                                     <h2>
                                         {filtered
                                             ? 'Không tìm thấy tài nguyên phù hợp'
-                                            : 'Chưa có tài nguyên'}
+                                            : query.type
+                                              ? 'Chưa có tài nguyên thuộc loại này'
+                                              : 'Chưa có tài nguyên'}
                                     </h2>
                                 </EmptyTitle>
                                 <EmptyDescription>
                                     <p>
                                         {filtered
                                             ? 'Thử từ khóa khác hoặc xóa bộ lọc.'
-                                            : 'Tải tệp đầu tiên để chuẩn bị cho nội dung sách của bạn.'}
+                                            : query.type
+                                              ? 'Đổi loại tài nguyên hoặc tải thêm tệp.'
+                                              : 'Tải tệp đầu tiên để chuẩn bị cho nội dung sách của bạn.'}
                                     </p>
                                 </EmptyDescription>
                             </EmptyHeader>
@@ -409,29 +495,40 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                                     <Button variant="secondary" onClick={clearFilters}>
                                         Xóa bộ lọc
                                     </Button>
-                                ) : (
-                                    <Link
-                                        className={buttonStyles()}
-                                        to={{
-                                            pathname: '/assets/upload',
-                                            search: params.toString(),
+                                ) : query.type ? (
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => {
+                                            change({ type: undefined });
+                                            searchInput.current?.focus({ preventScroll: true });
                                         }}
                                     >
-                                        Tải tài nguyên đầu tiên
-                                    </Link>
+                                        Xem tất cả tài nguyên
+                                    </Button>
+                                ) : (
+                                    <Button asChild>
+                                        <Link
+                                            to={{
+                                                pathname: '/assets/upload',
+                                                search: params.toString(),
+                                            }}
+                                            aria-haspopup="dialog"
+                                        >
+                                            Tải tài nguyên đầu tiên
+                                        </Link>
+                                    </Button>
                                 )}
                             </EmptyContent>
                         </Empty>
                     ) : (
-                        <ul className="asset-list m-0 list-none border-t-[1px] border-t-border p-0 [border-top-style:solid]">
-                            {listing.data.data.map((asset) => (
-                                <AssetCatalogRow
-                                    key={asset.id}
-                                    asset={asset}
-                                    onPreview={() => setPreview(asset)}
-                                />
-                            ))}
-                        </ul>
+                        <AssetCardGrid
+                            scope={scope}
+                            assets={listing.data.data}
+                            generating={generating}
+                            focusModelJob={linkedModelJob ?? state?.focusModelJob}
+                            busy={listing.isFetching}
+                            onPreview={setPreview}
+                        />
                     )}
                     {meta && meta.totalPages > 1 && (
                         <Pagination
@@ -455,7 +552,7 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
             )}
             {preview &&
                 (scope === 'mine' ? (
-                    <PersonalAssetDialog asset={preview} onClose={() => setPreview(null)} />
+                    <PersonalAssetDialog key={preview.id} asset={preview} onClose={closePreview} />
                 ) : (
                     <LibraryAssetPreview asset={preview} onClose={() => setPreview(null)} />
                 ))}

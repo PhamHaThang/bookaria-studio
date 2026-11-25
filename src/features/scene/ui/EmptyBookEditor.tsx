@@ -16,7 +16,7 @@ import { Separator } from '@/shared/ui/primitives/separator';
 import { ThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
 import type { BookDetail } from '../../../shared/contracts/dto.schema';
 import { Button } from '../../../shared/ui/Button';
-import { useBookDraft } from '../../book-draft/ui/BookDraftProvider';
+import { useBookDraft } from '../../book-draft/ui/book-draft-context';
 import { BookInfoDialog } from '../../books/ui/BookInfoDialog';
 import { PublicationDialog } from '../../publication/ui/PublicationDialog';
 import { EditorSaveStatus } from './EditorSaveStatus';

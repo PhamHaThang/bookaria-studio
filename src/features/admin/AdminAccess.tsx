@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { errorMessage } from '@/shared/api/errors';
 import { Feedback } from '@/shared/ui/Feedback';
+import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { useAuth } from '../auth';
 import { adminApi, adminKeys } from './index';
 import { AdminReload } from './ui';
@@ -18,8 +19,8 @@ function AdminGate({ actor, children }: { actor: string; children: ReactNode }) 
     });
     if (gate.isPending)
         return (
-            <main id="main" className="mx-auto max-w-180 px-8 py-12" role="status">
-                Đang kiểm tra quyền quản trị…
+            <main id="main">
+                <LoadingScreen fullScreen message="Đang kiểm tra quyền quản trị…" />
             </main>
         );
     if (gate.isError)

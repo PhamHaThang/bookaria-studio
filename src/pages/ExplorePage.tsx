@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { BookOpen, SearchX, SlidersHorizontal, X } from 'lucide-react';
+import { BookOpen, CircleAlert, SlidersHorizontal, X } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { libraryAssetLocation } from '@/features/assets/model/search';
@@ -21,6 +21,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/primitives/popover';
+import { SearchActivity } from '@/shared/ui/SearchActivity';
 import { discoveryApi } from '../features/discovery';
 import { PublicBooks, PublicBooksSkeleton } from '../features/discovery/PublicBooks';
 import { readDiscoverySearch, updateDiscoverySearch } from '../features/discovery/search';
@@ -266,6 +267,7 @@ function ExploreBooks() {
                         ? 'Đang cập nhật…'
                         : meta && `${meta.total.toLocaleString('vi-VN')} cuốn sách`}
                 </p>
+                <SearchActivity query={query.q} fetching={listing.isFetching} />
                 {loading ? (
                     <PublicBooksSkeleton />
                 ) : listing.isError ? (
@@ -275,6 +277,7 @@ function ExploreBooks() {
                                 <h3>Chưa tải được sách</h3>
                             </EmptyTitle>
                         </EmptyHeader>
+                        <CircleAlert aria-hidden="true" className="size-6 text-destructive" />
                         <Feedback error={errorMessage(listing.error)} />
                         <EmptyContent>
                             <Button type="button" onClick={() => void listing.refetch()}>
@@ -294,18 +297,13 @@ function ExploreBooks() {
                         <PublicBooks books={books} />
                     </div>
                 ) : (
-                    <Empty className="gap-5 px-4 py-9 sm:py-12">
+                    <Empty className="min-h-70 gap-5 px-4 py-9 sm:min-h-80 sm:py-12">
                         <EmptyHeader className="gap-2">
-                            <EmptyMedia
-                                variant="icon"
-                                className="mb-2 size-12 rounded-xl"
-                                aria-hidden="true"
-                            >
-                                {filtered ? (
-                                    <SearchX className="size-6" />
-                                ) : (
-                                    <BookOpen className="size-6" />
-                                )}
+                            <EmptyMedia>
+                                <BookOpen
+                                    aria-hidden="true"
+                                    className="size-10 text-muted-foreground"
+                                />
                             </EmptyMedia>
                             <EmptyTitle>
                                 <h3>

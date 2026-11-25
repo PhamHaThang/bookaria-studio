@@ -44,7 +44,7 @@ import { BookImportField, type BookImportValue } from './BookImportField';
 import { BookSizeFields } from './BookSizeFields';
 import { BookTopicField } from './BookTopicField';
 
-export function BookCreateDialog() {
+export function BookCreateDialog({ backTo = '/books' }: { backTo?: '/books' | '/studio' }) {
     const navigate = useNavigate(),
         cache = useQueryClient();
     const location = useLocation();
@@ -102,7 +102,7 @@ export function BookCreateDialog() {
             {
                 pathname: checkpoint.current.bookId
                     ? `/books/${checkpoint.current.bookId}`
-                    : '/books',
+                    : backTo,
                 search: checkpoint.current.bookId ? '' : returnSearch,
             },
             { replace: true },

@@ -3,7 +3,7 @@ import { BookOpen, CircleAlert, Library, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../features/auth';
-import { useBookDraft } from '../features/book-draft/ui/BookDraftProvider';
+import { useBookDraft } from '../features/book-draft/ui/book-draft-context';
 import { bookKeys, booksApi } from '../features/books';
 import { EmptyBookEditor } from '../features/scene/ui/EmptyBookEditor';
 import { errorMessage } from '../shared/api/errors';
@@ -117,7 +117,10 @@ function BookEditorContent({ bookId }: { bookId: string }) {
         undefined,
     );
     return firstPage ? (
-        <Navigate to={`/books/${bookId}/pages/${firstPage.id}`} replace />
+        <>
+            <LoadingScreen fullScreen message="Đang mở editor…" />
+            <Navigate to={`/books/${bookId}/pages/${firstPage.id}`} replace />
+        </>
     ) : (
         <EmptyBookEditor
             book={{

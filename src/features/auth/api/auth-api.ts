@@ -9,6 +9,7 @@ import {
     RefreshTokenResultSchema,
     type RegisterBody,
     RegisterBodySchema,
+    RegisterResultSchema,
     ResetPasswordBodySchema,
     VerifyEmailBodySchema,
 } from '../../../shared/contracts/api/auth.schema';
@@ -28,7 +29,7 @@ export function createAuthApi(raw: AxiosInstance, api: AxiosInstance) {
         async register(body: RegisterBody) {
             return readData(
                 await raw.post('/auth/register', RegisterBodySchema.parse(body)),
-                AuthResponseSchema,
+                RegisterResultSchema,
             );
         },
         async refresh() {

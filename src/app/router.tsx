@@ -9,10 +9,16 @@ import {
     RouterProvider,
     useLocation,
     useMatches,
+    useParams,
 } from 'react-router-dom';
+import { IdSchema } from '@/shared/contracts/common.schema';
+import { Button } from '@/shared/ui/Button';
+import { LoadingBoundary } from '@/shared/ui/LoadingBoundary';
+import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { FloatingThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
 import { RequireSession, SessionBoundary, useAuth } from '../features/auth';
 import { AuthDialog, LegacyAuthRoute } from '../features/auth/ui/AuthDialog';
+import { RequireVerifiedEmail } from '../features/auth/ui/SessionBoundary';
 import { HomePage } from '../pages/HomePage';
 import { AdminLayout, AdminNotFoundPage } from './AdminLayout';
 import { PublicHeader } from './PublicHeader';
@@ -107,12 +113,27 @@ const AuthorPage = lazy(() =>
 const StatsBooksPage = lazy(() =>
     import('../pages/StatsBooksPage').then((module) => ({ default: module.StatsBooksPage })),
 );
-const BookStatsPage = lazy(() =>
-    import('../pages/BookStatsPage').then((module) => ({ default: module.BookStatsPage })),
-);
 
+const StudioOverviewPage = lazy(() =>
+    import('../pages/StudioOverviewPage').then((module) => ({
+        default: module.StudioOverviewPage,
+    })),
+);
+const StudioBookCreateDialog = lazy(() =>
+    import('../features/books/ui/BookCreateDialog').then((module) => ({
+        default: module.BookCreateDialog,
+    })),
+);
+const StudioAssetUploadDialog = lazy(() =>
+    import('../features/assets/ui/AssetUploadDialog').then((module) => ({
+        default: module.AssetUploadDialog,
+    })),
+);
 const BooksPage = lazy(() =>
     import('../pages/BooksPage').then((module) => ({ default: module.BooksPage })),
+);
+const TrashPage = lazy(() =>
+    import('../pages/TrashPage').then((module) => ({ default: module.TrashPage })),
 );
 const BookCreatePage = lazy(() =>
     import('../pages/BookCreatePage').then((module) => ({ default: module.BookCreatePage })),
@@ -144,9 +165,6 @@ const AssetsPage = lazy(() =>
 );
 const AssetUploadPage = lazy(() =>
     import('../pages/AssetUploadPage').then((module) => ({ default: module.AssetUploadPage })),
-);
-const AssetDetailPage = lazy(() =>
-    import('../pages/AssetDetailPage').then((module) => ({ default: module.AssetDetailPage })),
 );
 const StyleGuidePage = import.meta.env.DEV
     ? lazy(() =>
@@ -190,10 +208,28 @@ function RouterLayout() {
             >
                 Đến nội dung chính
             </a>
-            {showSiteLayout ? <SiteLayout /> : <Outlet />}
+            <LoadingBoundary fullScreen editor={inEditor}>
+                {showSiteLayout ? <SiteLayout /> : <Outlet />}
+            </LoadingBoundary>
             {!inEditor && <FloatingThemeSwitcher />}
             <AuthDialog />
         </>
+    );
+}
+
+function RouteErrorPage() {
+    return (
+        <LoadingBoundary fullScreen>
+            <main id="main" className="grid min-h-dvh place-items-center bg-background px-6 py-12">
+                <div className="max-w-sm text-center">
+                    <h1 className="m-0 font-semibold text-2xl">Không mở được trang</h1>
+                    <p className="mt-3 mb-6 text-muted-foreground text-sm">
+                        Hãy tải lại để mở trang này.
+                    </p>
+                    <Button onClick={() => window.location.reload()}>Tải lại trang</Button>
+                </div>
+            </main>
+        </LoadingBoundary>
     );
 }
 
@@ -202,9 +238,15 @@ function LegacyExploreRedirect() {
     return <Navigate to={{ pathname: '/library', search, hash }} replace />;
 }
 
+function LegacyAssetRedirect() {
+    const { assetId } = useParams();
+    const id = IdSchema.safeParse(assetId);
+    return <Navigate to={id.success ? `/assets?asset=${id.data}` : '/assets'} replace />;
+}
+
 const router = createBrowserRouter(
     createRoutesFromElements(
-        <Route element={<RouterLayout />}>
+        <Route element={<RouterLayout />} errorElement={<RouteErrorPage />}>
             <Route id="public-pages" element={<PublicLayout />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/library" element={<ExplorePage />} />
@@ -225,15 +267,7 @@ const router = createBrowserRouter(
                     path="/style-guide"
                     element={
                         <Suspense
-                            fallback={
-                                <main
-                                    id="main"
-                                    className="session-state mx-auto my-[12vh] max-w-130 p-8 text-center"
-                                    role="status"
-                                >
-                                    Đang mở bộ giao diện…
-                                </main>
-                            }
+                            fallback={<LoadingScreen fullScreen message="Đang mở bộ giao diện…" />}
                         >
                             <StyleGuidePage />
                         </Suspense>
@@ -252,12 +286,17 @@ const router = createBrowserRouter(
                         <Route path="jobs" element={<AdminJobsPage />} />
                         <Route path="audit-logs" element={<AdminAuditPage />} />
                         <Route path="audit-logs/:logId" element={<AdminAuditDetailPage />} />
-                        <Route path="library" element={<AdminLibraryPage />} />
-                        <Route path="library/new" element={<AdminLibraryNewPage />} />
-                        <Route path="library/:assetId" element={<AdminLibraryDetailPage />} />
-                        <Route path="categories" element={<AdminCategoriesPage />} />
-                        <Route path="categories/new" element={<AdminCategoryEditPage />} />
-                        <Route path="categories/:categoryId" element={<AdminCategoryEditPage />} />
+                        <Route element={<RequireVerifiedEmail />}>
+                            <Route path="library" element={<AdminLibraryPage />} />
+                            <Route path="library/new" element={<AdminLibraryNewPage />} />
+                            <Route path="library/:assetId" element={<AdminLibraryDetailPage />} />
+                            <Route path="categories" element={<AdminCategoriesPage />} />
+                            <Route path="categories/new" element={<AdminCategoryEditPage />} />
+                            <Route
+                                path="categories/:categoryId"
+                                element={<AdminCategoryEditPage />}
+                            />
+                        </Route>
                         <Route path="markers" element={<AdminMarkersPage />} />
                         <Route
                             path="markers/new"
@@ -276,14 +315,24 @@ const router = createBrowserRouter(
                         <Route path="*" element={<AdminNotFoundPage />} />
                     </Route>
                     <Route id="studio-pages" element={<StudioLayout />}>
-                        <Route path="/books" element={<BooksPage key="active" />} />
+                        <Route path="/studio" element={<StudioOverviewPage />}>
+                            <Route
+                                path="new-book"
+                                element={<StudioBookCreateDialog backTo="/studio" />}
+                            />
+                            <Route
+                                path="upload"
+                                element={<StudioAssetUploadDialog backTo="/studio" />}
+                            />
+                        </Route>
+                        <Route path="/books" element={<BooksPage />} />
                         <Route path="/stats" element={<StatsBooksPage />} />
-                        <Route path="/books/:bookId/stats" element={<BookStatsPage />} />
+                        <Route path="/books/:bookId/stats" element={<StatsBooksPage />} />
                         <Route
                             path="/notifications"
                             element={<Navigate to="/books?notifications=open" replace />}
                         />
-                        <Route path="/books/trash" element={<BooksPage key="trash" trash />} />
+                        <Route path="/books/trash" element={<TrashPage />} />
                         <Route path="/books/new" element={<BookCreatePage />} />
 
                         <Route path="/books/:bookId" element={<BookDetailPage />} />
@@ -296,7 +345,11 @@ const router = createBrowserRouter(
                         </Route>
                         <Route path="/assets" element={<AssetsPage />} />
                         <Route path="/assets/upload" element={<AssetUploadPage />} />
-                        <Route path="/assets/:assetId" element={<AssetDetailPage />} />
+                        <Route
+                            path="/assets/generate-3d"
+                            element={<AssetUploadPage generateModel />}
+                        />
+                        <Route path="/assets/:assetId" element={<LegacyAssetRedirect />} />
                     </Route>
                 </Route>
             </Route>

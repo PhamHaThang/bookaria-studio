@@ -47,7 +47,6 @@ function getJobStatusTone(status: string): 'success' | 'danger' | 'warning' | 'n
         case 'RUNNING':
         case 'PENDING':
             return 'warning';
-        case 'CANCELLED':
         default:
             return 'neutral';
     }
@@ -60,7 +59,7 @@ function JobStatusIcon({ status }: { status: string }) {
         case 'FAILED':
             return <AlertTriangle className="h-5 w-5 text-destructive" />;
         case 'RUNNING':
-            return <RefreshCw className="h-5 w-5 text-amber-500 animate-spin" />;
+            return <RefreshCw className="h-5 w-5 animate-spin text-amber-500" />;
         case 'PENDING':
             return <Clock className="h-5 w-5 text-amber-500" />;
         default:
@@ -77,9 +76,13 @@ interface AdminJobItemProps {
 function AdminJobItem({ job, onRetry, retryDisabled }: AdminJobItemProps) {
     const statusTone = getJobStatusTone(job.status);
     const canRetry = canRetryJob(job);
+    const error =
+        job.type === 'GENERATE_MODEL' && job.error
+            ? { ...job.error, code: job.error.code.replace(/^RUNPOD_/, 'MODEL_SERVICE_') }
+            : job.error;
 
     return (
-        <li className="group rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-all hover:border-primary/40 hover:shadow-xs space-y-4">
+        <li className="group space-y-4 rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-all hover:border-primary/40 hover:shadow-xs">
             {/* Hàng 1: Icon + Tên loại tác vụ + Trạng thái + Nút Thao tác */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex min-w-0 flex-1 items-start gap-3.5">
@@ -103,7 +106,7 @@ function AdminJobItem({ job, onRetry, retryDisabled }: AdminJobItemProps) {
                         </div>
 
                         {/* ID tác vụ & lượt worker */}
-                        <div className="flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2.5 text-muted-foreground text-xs">
                             <span>
                                 Mã tác vụ:{' '}
                                 <code className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] text-foreground">
@@ -176,10 +179,10 @@ function AdminJobItem({ job, onRetry, retryDisabled }: AdminJobItemProps) {
             </div>
 
             {/* Hàng 3: Khối thông báo lỗi (nếu có) */}
-            {job.error && (
-                <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
-                    <span className="font-semibold">Lỗi {job.error.code}:</span>{' '}
-                    <span className="font-mono whitespace-pre-wrap">{job.error.message}</span>
+            {error && (
+                <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-destructive text-xs">
+                    <span className="font-semibold">Lỗi {error.code}:</span>{' '}
+                    <span className="whitespace-pre-wrap font-mono">{error.message}</span>
                 </div>
             )}
 
@@ -192,7 +195,7 @@ function AdminJobItem({ job, onRetry, retryDisabled }: AdminJobItemProps) {
                         status: job.status,
                         ref: job.ref,
                         result: job.result,
-                        error: job.error,
+                        error,
                     }}
                 />
             </Disclosure>
@@ -244,41 +247,41 @@ export function AdminJobsPage() {
             >
                 <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {/* 1. Lọc theo Trạng thái */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="jobs-status" className="font-medium text-xs">
                             Trạng thái tác vụ
-                            <SelectFilter
-                                id="jobs-status"
-                                name="status"
-                                value={params.get('status') || ''}
-                                options={[
-                                    { value: '', label: 'Tất cả trạng thái' },
-                                    ...(JobStatusSchema.options.map((value) => ({
-                                        value,
-                                        label: jobStatusLabel[value],
-                                    })) ?? []),
-                                ]}
-                            />
                         </FieldLabel>
+                        <SelectFilter
+                            id="jobs-status"
+                            name="status"
+                            value={params.get('status') || ''}
+                            options={[
+                                { value: '', label: 'Tất cả trạng thái' },
+                                ...(JobStatusSchema.options.map((value) => ({
+                                    value,
+                                    label: jobStatusLabel[value],
+                                })) ?? []),
+                            ]}
+                        />
                     </Field>
 
                     {/* 2. Lọc theo Loại tác vụ */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="jobs-type" className="font-medium text-xs">
                             Loại tác vụ
-                            <SelectFilter
-                                id="jobs-type"
-                                name="type"
-                                value={params.get('type') || ''}
-                                options={[
-                                    { value: '', label: 'Tất cả loại tác vụ' },
-                                    ...(JobTypeSchema.options.map((value) => ({
-                                        value,
-                                        label: jobTypeLabel[value],
-                                    })) ?? []),
-                                ]}
-                            />
                         </FieldLabel>
+                        <SelectFilter
+                            id="jobs-type"
+                            name="type"
+                            value={params.get('type') || ''}
+                            options={[
+                                { value: '', label: 'Tất cả loại tác vụ' },
+                                ...(JobTypeSchema.options.map((value) => ({
+                                    value,
+                                    label: jobTypeLabel[value],
+                                })) ?? []),
+                            ]}
+                        />
                     </Field>
                 </FieldGroup>
 
@@ -300,24 +303,24 @@ export function AdminJobsPage() {
             </form>
 
             {/* Thanh công cụ Giám sát tự động (Auto-refresh) & Chú thích */}
-            <div className="flex flex-col gap-2.5 rounded-[var(--radius-md)] border border-border/70 bg-surface/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between text-xs">
-                <div className="m-0 mb-0 flex items-center gap-2.5 font-medium text-foreground select-none">
+            <div className="flex flex-col gap-2.5 rounded-[var(--radius-md)] border border-border/70 bg-surface/60 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+                <div className="m-0 mb-0 flex select-none items-center gap-2.5 font-medium text-foreground">
                     <Checkbox
                         id="auto-refresh-monitor"
                         checked={monitor}
                         onCheckedChange={(checked) => setMonitor(checked === true)}
                     />
-                    <label htmlFor="auto-refresh-monitor" className="cursor-pointer">
+                    <label htmlFor="auto-refresh-monitor" className="m-0 cursor-pointer">
                         Tự động làm mới mỗi 10 giây
                     </label>
                     {monitor && (
-                        <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-normal text-emerald-600 dark:text-emerald-400">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 font-normal text-[11px] text-emerald-600 dark:text-emerald-400">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                             Đang tự động theo dõi
                         </span>
                     )}
                 </div>
-                <span className="m-0 text-muted-foreground text-[11px] leading-normal sm:text-right">
+                <span className="m-0 text-[11px] text-muted-foreground leading-normal sm:text-right">
                     Tối đa 3 lượt worker xử lý cho mỗi tác vụ. Thử lại thủ công sẽ sinh mã tiến
                     trình mới.
                 </span>
@@ -338,12 +341,12 @@ export function AdminJobsPage() {
 
             {/* Banner hiển thị khi yêu cầu thử lại vừa được máy chủ tiếp nhận */}
             {accepted && (
-                <div className="rounded-[var(--radius-lg)] border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3">
-                    <div className="flex items-center gap-2 font-semibold text-sm text-emerald-600 dark:text-emerald-400">
+                <div className="space-y-3 rounded-[var(--radius-lg)] border border-emerald-500/30 bg-emerald-500/5 p-4">
+                    <div className="flex items-center gap-2 font-semibold text-emerald-600 text-sm dark:text-emerald-400">
                         <CheckCircle2 className="h-4 w-4 shrink-0" />
                         <span>Yêu cầu thử lại đã được máy chủ tiếp nhận</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                         Máy chủ đã khởi tạo tác vụ mới và đưa vào hàng chờ xử lý. Tiến trình mới
                         chưa được xác nhận hoàn tất.
                     </p>
@@ -377,7 +380,9 @@ export function AdminJobsPage() {
             )}
 
             {/* Trạng thái đang tải */}
-            {query && list.isPending && <LoadingState layout="rows">Đang tải tác vụ…</LoadingState>}
+            {query && list.isPending && (
+                <LoadingState layout="admin-rows">Đang tải tác vụ…</LoadingState>
+            )}
 
             {/* Báo lỗi khi truy vấn */}
             {query && list.isError && (
@@ -441,7 +446,7 @@ export function AdminJobsPage() {
                             <p className="font-medium text-foreground text-sm">
                                 {jobTypeLabel[selected.type]}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-muted-foreground text-xs">
                                 Mã tác vụ:{' '}
                                 <code className="font-mono text-foreground">{selected.id}</code>
                             </p>
@@ -452,7 +457,7 @@ export function AdminJobsPage() {
                     onClose={() => setSelected(null)}
                     className="admin-confirm max-h-[calc(100dvh_-_32px)] max-w-[min(480px,_calc(100%_-_32px))] overflow-y-auto"
                 >
-                    <div className="space-y-2.5 text-xs text-muted-foreground">
+                    <div className="space-y-2.5 text-muted-foreground text-xs">
                         <p>
                             <strong className="text-foreground">
                                 {targetLabel[selected.ref.type]}:

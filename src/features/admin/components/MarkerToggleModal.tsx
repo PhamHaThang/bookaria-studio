@@ -124,16 +124,12 @@ export function MarkerToggleModal({ marker, isOpen, onClose, onSuccess }: Marker
                                 {marker.isActive ? 'Hiện đang bật' : 'Hiện đang tắt'}
                             </Badge>
                         </div>
-                        <p className="truncate text-muted-foreground text-xs">
-                            {marker.markerScore !== null
-                                ? `Điểm chất lượng: ${marker.markerScore}/100`
-                                : 'Chưa có điểm đánh giá'}
-                        </p>
+                        <p className="truncate text-muted-foreground text-xs">Chưa đánh giá</p>
                     </div>
                 </div>
 
                 {/* Hướng dẫn chi tiết */}
-                <div className="rounded-[var(--radius-md)] border border-border/70 bg-muted/20 p-3 text-xs leading-relaxed text-muted-foreground">
+                <div className="rounded-[var(--radius-md)] border border-border/70 bg-muted/20 p-3 text-muted-foreground text-xs leading-relaxed">
                     {marker.isActive ? (
                         <p>
                             Marker sẽ <strong>không được cấp phát cho các trang sách mới</strong>{' '}
@@ -142,8 +138,7 @@ export function MarkerToggleModal({ marker, isOpen, onClose, onSuccess }: Marker
                         </p>
                     ) : (
                         <p>
-                            Marker sẽ <strong>được cấp phát cho các trang sách mới</strong> nếu đáp
-                            ứng đủ điều kiện chất lượng nhận diện từ hệ thống máy chủ.
+                            Marker sẽ <strong>được cấp phát cho các trang sách mới</strong>.
                         </p>
                     )}
                 </div>

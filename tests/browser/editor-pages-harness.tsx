@@ -2,7 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { auth } from '../../src/features/auth';
-import { BookDraftRoute, useBookDraft } from '../../src/features/book-draft/ui/BookDraftProvider';
+import { BookDraftRoute } from '../../src/features/book-draft/ui/BookDraftProvider';
+import { useBookDraft } from '../../src/features/book-draft/ui/book-draft-context';
 import { newObject } from '../../src/features/scene/model/objects';
 import { BookEditorPage } from '../../src/pages/BookEditorPage';
 import { PageDetailPage } from '../../src/pages/PageDetailPage';
@@ -25,6 +26,7 @@ const count = Number(params.get('pages') ?? 1);
 const repair = params.has('repair');
 const markerLayout = params.has('marker');
 const transformEditing = params.has('transform');
+const audioEditing = params.has('audio');
 const transformAsset = AssetSchema.parse({
     id: '44444444-4444-4444-8444-444444444444',
     type: 'MODEL',
@@ -42,6 +44,14 @@ const transformAsset = AssetSchema.parse({
     scope: 'mine',
     categoryId: null,
     createdAt: new Date().toISOString(),
+});
+const audioAsset = AssetSchema.parse({
+    ...transformAsset,
+    id: '55555555-5555-4555-8555-555555555555',
+    type: 'AUDIO',
+    name: 'Nhạc rừng',
+    url: `${location.origin}/audio/voice-samples/maichi.mp3`,
+    format: 'mp3',
 });
 const markerReport = {
     analysis: {
@@ -172,6 +182,14 @@ auth.store.setState({
 
 // This fixture never sends requests to the live API or changes a real book.
 apiClient.defaults.adapter = async (config) => {
+    if (audioEditing && config.url === '/assets')
+        return {
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config,
+            data: { data: [audioAsset], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } },
+        };
     let data: unknown;
     if (config.url === `/books/${bookId}/draft` && config.method === 'put') {
         const body = JSON.parse(config.data);
@@ -193,8 +211,33 @@ apiClient.defaults.adapter = async (config) => {
             ),
         };
         data = { snapshot, pages, warnings: [], jobs: [] };
+    } else if (
+        repair &&
+        config.method === 'post' &&
+        config.url?.endsWith('/interaction-proposals')
+    ) {
+        const body = JSON.parse(config.data);
+        data = {
+            status: 'edit_plan',
+            revision: body.revision,
+            usage: {
+                model: 'mock-openai',
+                promptVersion: 'bookaria-editor-v2',
+                attempts: 1,
+                latencyMs: 10,
+                inputTokens: 30,
+                outputTokens: 15,
+            },
+            plan: {
+                variables: [],
+                rules: [],
+                objectEdits: [{ objectId: 'target', text: 'Rùa biển' }],
+            },
+        };
     } else if (transformEditing && config.url === `/assets/${transformAsset.id}`)
         data = transformAsset;
+    else if (audioEditing && config.url === `/assets/${audioAsset.id}`) data = audioAsset;
+    else if (audioEditing && config.url === '/asset-categories') data = [];
     else if (config.url === `/books/${bookId}/draft`) data = snapshot;
     else if (config.url === `/books/${bookId}`)
         data = { ...book, pages: snapshot.pages, pageCount: snapshot.pages.length };

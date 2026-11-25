@@ -3,11 +3,18 @@ import { X } from 'lucide-react';
 import { useState } from 'react';
 import type { AssetRef } from '@/shared/contracts/asset.schema';
 import type { BookDetail } from '@/shared/contracts/dto.schema';
-import type { Action, Easing, Scene, SceneObject } from '@/shared/contracts/scene.schema';
+import type {
+    Action,
+    Easing,
+    Scene,
+    SceneObject,
+    Transform,
+} from '@/shared/contracts/scene.schema';
 import { facesCamera } from '@/shared/scene/audio-kind';
 import { BufferedInput } from '@/shared/ui/BufferedTextInput';
 import { Button } from '@/shared/ui/Button';
 import { FormSelect } from '@/shared/ui/FormSelect';
+import { Alert, AlertDescription } from '@/shared/ui/primitives/alert';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/shared/ui/primitives/field';
 import { assetKeys, assetsApi } from '../../assets';
@@ -34,6 +41,8 @@ export function InteractionActionEditor({
     hideOperation = false,
     hideObject = false,
     onChange,
+    startTransform,
+    transformWarning,
 }: {
     action: Action;
     scene?: Scene;
@@ -47,6 +56,8 @@ export function InteractionActionEditor({
     hideObject?: boolean;
     defaultTarget?: SceneObject;
     onChange: (action: Action) => void;
+    startTransform?: Transform;
+    transformWarning?: string;
 }) {
     const { user } = useAuth();
     const queryClient = useQueryClient();
@@ -95,7 +106,10 @@ export function InteractionActionEditor({
     return (
         <>
             <FieldSet disabled={disabled} className="m-0 min-w-0 shrink-0 border-0 p-0">
-                <FieldGroup className="shrink-0 gap-4 [&_[data-orientation=contents]>[data-slot=field-label]]:mb-0">
+                <FieldGroup
+                    data-motion={action.type === 'transformTo'}
+                    className="shrink-0 gap-4 data-[motion=true]:gap-3 [&_[data-orientation=contents]>[data-slot=field-label]]:mb-0"
+                >
                     {operation && !hideOperation && (
                         <Field>
                             <FieldLabel htmlFor={`${id}-operation`}>Thao tác</FieldLabel>
@@ -330,69 +344,60 @@ export function InteractionActionEditor({
                         />
                     )}
                     {action.type === 'transformTo' && (
-                        <FieldGroup className="gap-4">
-                            {(['position', 'rotation', 'scale'] as const).map((key) => (
-                                <FieldGroup key={key} className="gap-2">
-                                    <Field orientation="horizontal">
-                                        <Checkbox
-                                            disabled={key === 'rotation' && rotationLocked}
-                                            id={`${id}-${key}-use`}
-                                            checked={action[key] !== undefined}
-                                            onCheckedChange={(v) =>
-                                                patch({
-                                                    [key]:
-                                                        v === true
-                                                            ? [
-                                                                  ...(target?.transform[key] ||
-                                                                      (key === 'scale'
-                                                                          ? [1, 1, 1]
-                                                                          : [0, 0, 0])),
-                                                              ]
-                                                            : undefined,
-                                                })
-                                            }
-                                        />
-                                        <FieldLabel
-                                            htmlFor={`${id}-${key}-use`}
-                                            className="font-normal"
-                                        >
-                                            {
-                                                {
-                                                    position: 'Thay đổi vị trí',
-                                                    rotation: 'Thay đổi góc xoay',
-                                                    scale: 'Thay đổi kích thước',
-                                                }[key]
-                                            }
-                                        </FieldLabel>
-                                    </Field>
-                                    {action[key] && (
-                                        <VectorFields
-                                            id={`${id}-${key}`}
-                                            label={
-                                                {
-                                                    position: 'Vị trí cuối',
-                                                    rotation: 'Góc cuối',
-                                                    scale: 'Tỉ lệ cuối',
-                                                }[key]
-                                            }
-                                            unit={
-                                                key === 'position'
-                                                    ? 'mm'
-                                                    : key === 'rotation'
-                                                      ? '°'
-                                                      : undefined
-                                            }
-                                            displayFactor={key === 'position' ? widthMm : 1}
-                                            values={action[key]}
-                                            positive={key === 'scale'}
-                                            disabled={
-                                                disabled || (key === 'rotation' && rotationLocked)
-                                            }
-                                            onChange={(v) => patch({ [key]: v })}
-                                        />
-                                    )}
-                                </FieldGroup>
-                            ))}
+                        <FieldGroup className="gap-3">
+                            {transformWarning && (
+                                <Alert>
+                                    <AlertDescription>{transformWarning}</AlertDescription>
+                                </Alert>
+                            )}
+                            {(['position', 'rotation', 'scale'] as const).map((key) => {
+                                const labels = {
+                                    position: {
+                                        title: 'Vị trí',
+                                        field: 'Vị trí cuối',
+                                        unit: 'mm',
+                                    },
+                                    rotation: {
+                                        title: 'Góc xoay',
+                                        field: 'Góc cuối',
+                                        unit: '°',
+                                    },
+                                    scale: {
+                                        title: 'Tỉ lệ',
+                                        field: 'Tỉ lệ cuối',
+                                        unit: '',
+                                    },
+                                }[key];
+                                return (
+                                    <VectorFields
+                                        key={key}
+                                        id={`${id}-${key}`}
+                                        label={labels.field}
+                                        displayLabel={labels.title}
+                                        unit={labels.unit || undefined}
+                                        displayFactor={key === 'position' ? widthMm : 1}
+                                        values={
+                                            action[key] ??
+                                            startTransform?.[key] ??
+                                            target?.transform[key] ??
+                                            (key === 'scale' ? [1, 1, 1] : [0, 0, 0])
+                                        }
+                                        inherited={action[key] === undefined}
+                                        resetValues={
+                                            (
+                                                startTransform?.[key] ?? target?.transform[key]
+                                            )?.every(Number.isFinite)
+                                                ? (startTransform?.[key] ?? target?.transform[key])
+                                                : undefined
+                                        }
+                                        positive={key === 'scale'}
+                                        disabled={
+                                            disabled || (key === 'rotation' && rotationLocked)
+                                        }
+                                        onChange={(value) => patch({ [key]: value })}
+                                    />
+                                );
+                            })}
                             {rotationLocked && (
                                 <p className="m-0 text-muted-foreground text-xs leading-5">
                                     {target?.type === 'audio'
@@ -410,7 +415,55 @@ export function InteractionActionEditor({
                                 Bước sau bắt đầu ngay khi gửi lệnh phát.
                             </p>
                         )}
-                    {action.type !== 'wait' && (
+                    {action.type === 'transformTo' && (
+                        <FieldSet className="m-0 min-w-0 gap-2 border-0 pt-1">
+                            <FieldLegend className="sr-only">Thời gian</FieldLegend>
+                            <FieldGroup className="grid @min-[21rem]/field-group:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)] grid-cols-2 gap-2 [&_[data-slot=field-label]]:mb-0 [&_[data-slot=field-label]]:font-normal [&_[data-slot=field-label]]:text-xs [&_[data-slot=input]]:mt-0">
+                                <Field>
+                                    <NumericField
+                                        id={`${id}-duration`}
+                                        label="Thời lượng (giây)"
+                                        aria-label="Thời lượng chuyển đổi (giây, 0–10)"
+                                        value={action.durationMs / 1000}
+                                        onChange={(value) =>
+                                            patch({ durationMs: Math.round(value * 1000) })
+                                        }
+                                    />
+                                </Field>
+                                <Field>
+                                    <NumericField
+                                        id={`${id}-delay`}
+                                        label="Chờ trước (giây)"
+                                        aria-label="Chờ trước khi bắt đầu (giây, 0–60)"
+                                        value={action.delayMsSchema / 1000}
+                                        onChange={(value) =>
+                                            patch({ delayMsSchema: Math.round(value * 1000) })
+                                        }
+                                    />
+                                </Field>
+                                <Field className="@min-[21rem]/field-group:col-span-1 col-span-2">
+                                    <FieldLabel htmlFor={`${id}-easing`}>
+                                        Cách chuyển động
+                                    </FieldLabel>
+                                    <FormSelect
+                                        id={`${id}-easing`}
+                                        className="gap-1 px-2 text-sm"
+                                        value={action.easing}
+                                        options={[
+                                            { value: 'linear', label: 'Tốc độ đều' },
+                                            { value: 'easeIn', label: 'Bắt đầu chậm' },
+                                            { value: 'easeOut', label: 'Kết thúc chậm' },
+                                            { value: 'easeInOut', label: 'Mượt hai đầu' },
+                                        ]}
+                                        onValueChange={(value) =>
+                                            patch({ easing: value as Easing })
+                                        }
+                                    />
+                                </Field>
+                            </FieldGroup>
+                        </FieldSet>
+                    )}
+                    {action.type !== 'wait' && action.type !== 'transformTo' && (
                         <FieldSet className="gap-3 pt-3 [&_[data-slot=field-label]]:text-xs [&_[data-slot=field-label]]:leading-5 [&_[data-slot=input]]:mt-0">
                             <FieldLegend variant="label" className="mb-0 font-semibold leading-5">
                                 Thời gian
@@ -435,25 +488,6 @@ export function InteractionActionEditor({
                                             onChange={(v) =>
                                                 patch({ durationMs: Math.round(v * 1000) })
                                             }
-                                        />
-                                    </Field>
-                                )}
-                                {action.type === 'transformTo' && (
-                                    <Field>
-                                        <FieldLabel htmlFor={`${id}-easing`}>
-                                            Cách chuyển động
-                                        </FieldLabel>
-                                        <FormSelect
-                                            size="sm"
-                                            id={`${id}-easing`}
-                                            value={action.easing}
-                                            options={[
-                                                { value: 'linear', label: 'Tốc độ đều' },
-                                                { value: 'easeIn', label: 'Bắt đầu chậm' },
-                                                { value: 'easeOut', label: 'Kết thúc chậm' },
-                                                { value: 'easeInOut', label: 'Mượt ở đầu và cuối' },
-                                            ]}
-                                            onValueChange={(v) => patch({ easing: v as Easing })}
                                         />
                                     </Field>
                                 )}

@@ -267,7 +267,7 @@ export function UserDeleteModal({ user, isOpen, onClose, onSuccess }: UserDelete
                                     />
                                     <label
                                         htmlFor="confirm-delete-checkbox"
-                                        className="cursor-pointer select-none text-foreground text-xs leading-normal"
+                                        className="m-0 cursor-pointer select-none text-foreground text-xs leading-normal"
                                     >
                                         Tôi đã đọc cảnh báo và xác nhận muốn vô hiệu hóa tài khoản
                                         của{' '}

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Page } from '@/shared/contracts/dto.schema';
 import type { Scene, SceneWarning } from '@/shared/contracts/scene.schema';
 import { historyFeedback } from '../../book-draft/model/history-description';
-import { useBookDraft } from '../../book-draft/ui/BookDraftProvider';
+import { useBookDraft } from '../../book-draft/ui/book-draft-context';
 export function useSceneDraft(page: Page) {
     const { store, state } = useBookDraft(),
         navigate = useNavigate();

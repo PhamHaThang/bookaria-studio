@@ -55,7 +55,7 @@ export function HomeStudioSection() {
                         ))}
                     </ul>
                     <Button size="hero" asChild className="mt-8 max-sm:w-full">
-                        <AuthRequiredLink to="/books">
+                        <AuthRequiredLink to="/studio">
                             Khám phá Studio <ArrowRight aria-hidden="true" data-icon="inline-end" />
                         </AuthRequiredLink>
                     </Button>

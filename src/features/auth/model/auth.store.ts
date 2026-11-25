@@ -8,6 +8,8 @@ interface AuthState {
     token: string | null;
     message: string | null;
     signingOut: boolean;
+    verificationEmailFailed: boolean;
+    verificationResendAt: number;
 }
 export function createAuthStore() {
     return createStore<AuthState>(() => ({
@@ -16,5 +18,7 @@ export function createAuthStore() {
         token: null,
         message: null,
         signingOut: false,
+        verificationEmailFailed: false,
+        verificationResendAt: 0,
     }));
 }

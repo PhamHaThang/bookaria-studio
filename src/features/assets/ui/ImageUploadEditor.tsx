@@ -1,6 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ImagePlus, UserRound } from 'lucide-react';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { authLocation } from '@/features/auth/model/dialog';
+import { useAuth } from '@/features/auth/model/session';
 import { cn } from '@/shared/lib/cn';
 import { optimizeBookCover } from '@/shared/lib/image-file';
 import { Button as PreviewButton } from '@/shared/ui/primitives/button';
@@ -46,6 +49,9 @@ export function ImageUploadEditor({
 }) {
     const id = useId();
     const cache = useQueryClient();
+    const { user } = useAuth();
+    const location = useLocation();
+    const navigate = useNavigate();
     const avatar = kind === 'avatar';
     const title = avatar ? 'Ảnh đại diện' : 'Ảnh bìa sách';
     const purpose = avatar ? 'AVATAR' : 'ASSET';
@@ -77,9 +83,16 @@ export function ImageUploadEditor({
         setProgress(0);
         if (clearInput && input.current) input.current.value = '';
     }
+    function canUpload() {
+        if (!user || user.emailVerified) return true;
+        navigate(authLocation(location, 'check-email'), {
+            state: { ...location.state, authDialogBackground: true },
+        });
+        return false;
+    }
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (disabled || controller.current || !file) return;
+        if (disabled || controller.current || !file || !canUpload()) return;
         const active = new AbortController();
         controller.current = active;
         setError(null);
@@ -161,7 +174,7 @@ export function ImageUploadEditor({
     const imageUrl = preview || currentUrl;
     const choosingDisabled = disabled || Boolean(stage);
     function chooseImage() {
-        if (!choosingDisabled) input.current?.click();
+        if (!choosingDisabled && canUpload()) input.current?.click();
     }
     return (
         <section

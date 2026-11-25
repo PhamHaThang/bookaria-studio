@@ -37,7 +37,7 @@ export async function createBookWithPages({
     upload: (
         file: File,
         checkpoint: UploadCheckpoint | undefined,
-        save: (value: UploadCheckpoint) => void,
+        save: (value: UploadCheckpoint | null) => void,
     ) => Promise<string>;
     add: (id: string, body: AddPageBody) => Promise<AddPageResult>;
     checkSession: () => void;

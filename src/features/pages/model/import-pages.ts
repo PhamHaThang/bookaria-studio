@@ -34,7 +34,7 @@ export async function importPages({
     upload: (
         file: File,
         checkpoint: UploadCheckpoint | undefined,
-        save: (value: UploadCheckpoint) => void,
+        save: (value: UploadCheckpoint | null) => void,
     ) => Promise<string>;
     add: (id: string, body: AddPageBody) => Promise<AddPageResult>;
     checkSession: () => void;
@@ -70,7 +70,7 @@ export async function importPages({
             checkSession();
             const page = current.pages[position];
             const id = await upload(page.file as File, page.upload, (upload) =>
-                savePage({ upload }),
+                savePage({ upload: upload ?? undefined }),
             );
             savePage({ imageAssetId: id, file: undefined, upload: undefined });
         }

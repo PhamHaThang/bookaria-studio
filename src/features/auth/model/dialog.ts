@@ -24,10 +24,21 @@ export function authLocation(location: PageLocation, mode: AuthMode, next?: stri
 }
 
 export function protectedLogin(location: PageLocation): PageLocation {
+    return protectedAuthLocation(location, 'login');
+}
+
+export function requireEmailVerification(location: PageLocation): PageLocation {
+    return protectedAuthLocation(location, 'check-email');
+}
+
+function protectedAuthLocation(
+    location: PageLocation,
+    mode: 'login' | 'check-email',
+): PageLocation {
     const background = withoutAuth(location);
     return authLocation(
         { pathname: '/', search: '', hash: '' },
-        'login',
+        mode,
         `${background.pathname}${background.search}${background.hash}`,
     );
 }

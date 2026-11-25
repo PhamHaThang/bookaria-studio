@@ -73,7 +73,7 @@ const marker = {
     id: id(20),
     number: 1,
     imageUrl: `${location.origin}/tests/browser/page.png`,
-    markerScore: 80,
+    markerScore: params.has('legacyMarkerScore') ? 5 : null,
     isActive: true,
     validatedAt: time,
 };
@@ -123,7 +123,8 @@ apiClient.defaults.adapter = async (config) => {
                 data: {
                     users: 2,
                     publishedBooks: 1,
-                    storageUsedBytes: 0,
+                    storageUsedBytes: 10275143,
+                    libraryStorageUsedBytes: 2097152,
                     failedJobs24h: 0,
                     openReports: 1,
                     publishedPerDay: ['04', '05', '06', '07', '08', '09', '10'].map((day) => ({
@@ -170,7 +171,16 @@ apiClient.defaults.adapter = async (config) => {
                 },
             ]);
         else if (path === '/asset-categories') data = { data: [] };
-        else if (path === '/admin/bookaria-markers') data = page([marker]);
+        else if (path === '/admin/bookaria-markers')
+            data = page(
+                params.has('scrollMarkers')
+                    ? Array.from({ length: 12 }, (_, index) => ({
+                          ...marker,
+                          id: id(20 + index),
+                          number: index + 1,
+                      }))
+                    : [marker],
+            );
         else if (
             ['/admin/jobs', '/admin/audit-logs', '/admin/library/assets', '/assets'].includes(path)
         )

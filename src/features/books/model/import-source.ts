@@ -88,7 +88,7 @@ export function pageFit(width: number, height: number, aspect: number) {
     const targetWidth = Math.round(
         Math.min(PAGE_IMAGE_BOUNDS.width, PAGE_IMAGE_BOUNDS.height / aspect),
     );
-    const targetHeight = Math.round(targetWidth * aspect);
+    const targetHeight = Math.min(PAGE_IMAGE_BOUNDS.height, Math.round(targetWidth * aspect));
     const scale = Math.min(targetWidth / width, targetHeight / height);
     return {
         width: targetWidth,

@@ -1,7 +1,9 @@
 import { LogIn } from 'lucide-react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { AssetCardGridSkeleton } from '@/features/assets/ui/AssetCardGrid';
 import { AssetCatalog } from '@/features/assets/ui/AssetCatalog';
-import { LibraryAssetGridSkeleton } from '@/features/assets/ui/LibraryAssetGrid';
 import { useAuth } from '@/features/auth';
+import { requireEmailVerification } from '@/features/auth/model/dialog';
 import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
 import { Button } from '@/shared/ui/Button';
 import {
@@ -15,6 +17,10 @@ import {
 
 export function ExploreAssetsPage() {
     const { user, status } = useAuth();
+    const location = useLocation();
+    if (user && !user.emailVerified)
+        return <Navigate to={requireEmailVerification(location)} replace />;
+
     return (
         <>
             <header data-stable-scroll-overlays className="pt-3 pb-7 sm:pt-7 sm:pb-9">
@@ -26,7 +32,7 @@ export function ExploreAssetsPage() {
                 </p>
             </header>
             {status === 'loading' ? (
-                <LibraryAssetGridSkeleton />
+                <AssetCardGridSkeleton />
             ) : user ? (
                 <AssetCatalog scope="library" />
             ) : (

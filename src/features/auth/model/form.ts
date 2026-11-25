@@ -14,7 +14,7 @@ export function validateNewPassword(password: string, confirmation: string): str
 }
 export function safeReturnPath(value: unknown): string {
     return typeof value === 'string' &&
-        /^\/(?:books|assets|profile|change-password|admin|stats|notifications|check-email)(?:[/?#]|$)/.test(
+        /^\/(?:studio|books|assets|resources|profile|change-password|admin|stats|notifications|check-email)(?:[/?#]|$)/.test(
             value,
         ) &&
         !value.includes('\\')

@@ -37,11 +37,11 @@ const tools = [
 ] as const;
 
 const itemClass =
-    'h-10 gap-3 rounded-lg px-1.5 text-[14px] group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:p-1.5! transition-colors [&_svg]:size-7';
-const menuClass = 'gap-4';
-const iconStrokeWidth = 1.5;
+    'h-10 gap-2.5 rounded-lg px-[9px] text-sm text-muted-foreground transition-colors duration-150 hover:bg-hover hover:text-foreground active:bg-selected active:text-foreground disabled:opacity-40 data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:hover:bg-primary group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:px-[9px]! group-data-[collapsible=icon]:py-2! motion-safe:active:[--tool-shift:1px] motion-safe:[&:hover:not(:active)]:[--tool-shift:3px] motion-safe:[&>svg]:translate-x-[var(--tool-shift,0px)] motion-safe:[&>svg]:transition-[translate] motion-safe:[&>svg]:duration-150 motion-safe:[&>svg]:ease-out motion-reduce:transition-none [&_svg]:size-[22px]';
+const menuClass = 'm-0 gap-2 p-0 [@media(max-height:700px)]:gap-1';
+const iconStrokeWidth = 1.75;
 const labelClass =
-    'min-w-0 whitespace-nowrap transition-opacity duration-150 group-data-[collapsible=icon]:opacity-0 motion-reduce:transition-none';
+    'min-w-0 whitespace-nowrap transition-[opacity,translate] duration-150 ease-out group-data-[collapsible=icon]:opacity-0 motion-safe:group-data-[collapsible=icon]:-translate-x-1 motion-safe:group-data-[state=expanded]:delay-[60ms,0ms] motion-safe:group-data-[state=expanded]:translate-x-[var(--tool-shift,0px)] motion-reduce:transition-none';
 
 function SidebarSectionLabel({
     children,
@@ -53,17 +53,17 @@ function SidebarSectionLabel({
     const { open } = useSidebar();
 
     return (
-        <SidebarGroupLabel className="pointer-events-none relative mb-3 h-5 overflow-hidden px-1.5 font-semibold text-[10px] uppercase tracking-wide transition-none group-data-[collapsible=icon]:mt-0 group-data-[collapsible=icon]:opacity-100">
+        <SidebarGroupLabel className="pointer-events-none relative mb-1 h-5 overflow-hidden px-2.5 font-medium text-muted-foreground text-xs transition-none group-data-[collapsible=icon]:mt-0 group-data-[collapsible=icon]:opacity-100 [@media(max-height:700px)]:mb-0 [@media(max-height:700px)]:h-4">
             <span
                 aria-hidden={!open}
-                className="whitespace-nowrap transition-opacity duration-150 group-data-[collapsible=icon]:opacity-0 motion-reduce:transition-none"
+                className="whitespace-nowrap transition-[opacity,translate] duration-150 ease-out group-data-[collapsible=icon]:opacity-0 motion-safe:group-data-[collapsible=icon]:-translate-x-1 motion-safe:group-data-[state=expanded]:delay-60 motion-reduce:transition-none"
             >
                 {children}
             </span>
             {divider && (
                 <SidebarSeparator
                     aria-hidden="true"
-                    className="absolute top-1/2 left-0 mx-0 h-px w-10 transition-opacity duration-150 group-data-[state=expanded]:opacity-0 motion-reduce:transition-none"
+                    className="absolute top-1/2 left-1 mx-0 h-px w-8! bg-border transition-opacity duration-150 ease-out group-data-[state=expanded]:opacity-0 motion-safe:group-data-[state=collapsed]:delay-60 motion-reduce:transition-none"
                 />
             )}
         </SidebarGroupLabel>
@@ -104,7 +104,7 @@ export function SceneEditorSidebar({
             collapsible="icon"
             role="complementary"
             aria-label="Công cụ editor"
-            className="scene-add absolute top-0 left-0 h-[calc(100dvh_-_64px_-_var(--canvas-hints-height,2.5rem))] min-h-0 w-(--sidebar-width)! overflow-hidden border-0! transition-[clip-path] duration-200 ease-out [clip-path:inset(0_-24px_0_0)] before:pointer-events-none before:absolute before:inset-y-0 before:left-[calc(var(--sidebar-width-icon)_-_1px)] before:z-1 before:w-px before:bg-border before:transition-opacity before:duration-150 group-data-[collapsible=icon]:w-(--sidebar-width)! group-data-[state=expanded]:shadow-[4px_0_16px_#00000014] group-data-[collapsible=icon]:duration-150 group-data-[state=expanded]:before:opacity-0 motion-reduce:transition-none motion-reduce:before:transition-none group-data-[collapsible=icon]:[clip-path:inset(0_calc(var(--sidebar-width)_-_var(--sidebar-width-icon))_0_0)] [.scene-editor[data-panel=preview]_&]:h-[calc(100dvh_-_64px)]"
+            className="scene-add absolute top-0 left-0 h-[calc(100dvh_-_64px_-_var(--canvas-hints-height,2.5rem))] min-h-0 w-(--sidebar-width)! overflow-hidden border-0! transition-[clip-path] duration-(--sidebar-motion-duration) ease-(--sidebar-motion-ease) [clip-path:inset(0)] after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border after:transition-transform after:duration-(--sidebar-motion-duration) after:ease-(--sidebar-motion-ease) group-data-[collapsible=icon]:w-(--sidebar-width)! group-data-[collapsible=icon]:after:-translate-x-[calc(var(--sidebar-width)_-_var(--sidebar-width-icon))] motion-reduce:transition-none motion-reduce:after:transition-none group-data-[collapsible=icon]:[clip-path:inset(0_calc(var(--sidebar-width)_-_var(--sidebar-width-icon))_0_0)]"
             onPointerEnter={(event) => {
                 if (event.pointerType !== 'touch') enter();
             }}
@@ -119,7 +119,7 @@ export function SceneEditorSidebar({
         >
             <SidebarContent
                 id="scene-sidebar-content"
-                className="justify-center-safe gap-3 py-0 group-data-[collapsible=icon]:overflow-y-auto"
+                className="justify-center-safe gap-2 overscroll-y-contain py-3 group-data-[collapsible=icon]:overflow-y-auto [@media(max-height:700px)]:gap-1 [@media(max-height:700px)]:py-1.5"
             >
                 <SidebarGroup className="shrink-0 px-[calc((var(--sidebar-width-icon)_-_2.5rem)/2)] py-0">
                     <SidebarSectionLabel>Thêm đối tượng</SidebarSectionLabel>

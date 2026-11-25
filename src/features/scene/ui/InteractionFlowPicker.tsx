@@ -50,7 +50,7 @@ export function InteractionFlowPicker({
                     onValueChange={setQuery}
                 />
             </div>
-            <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain px-2 pb-1">
+            <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain px-2 pb-1">
                 {matches.map((rule) => (
                     <fieldset
                         key={rule.id}

@@ -351,39 +351,39 @@ export function AdminModerationPage() {
                     </Field>
 
                     {/* Lọc theo Lý do báo cáo */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="admin-queue-reason" className="font-medium text-xs">
                             Lý do báo cáo trong trang hiện tại
-                            <SelectFilter
-                                name="reason"
-                                id="admin-queue-reason"
-                                value={query.reason || ''}
-                                options={[
-                                    { value: '', label: 'Tất cả lý do' },
-                                    { value: 'INAPPROPRIATE', label: 'Nội dung không phù hợp' },
-                                    { value: 'COPYRIGHT', label: 'Vi phạm bản quyền' },
-                                    { value: 'OTHER', label: 'Lý do khác' },
-                                ]}
-                            />
                         </FieldLabel>
+                        <SelectFilter
+                            name="reason"
+                            id="admin-queue-reason"
+                            value={query.reason || ''}
+                            options={[
+                                { value: '', label: 'Tất cả lý do' },
+                                { value: 'INAPPROPRIATE', label: 'Nội dung không phù hợp' },
+                                { value: 'COPYRIGHT', label: 'Vi phạm bản quyền' },
+                                { value: 'OTHER', label: 'Lý do khác' },
+                            ]}
+                        />
                     </Field>
 
                     {/* Hiển thị / trang */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="admin-queue-limit" className="font-medium text-xs">
                             Hiển thị
-                            <SelectFilter
-                                name="limit"
-                                id="admin-queue-limit"
-                                value={String(query.limit)}
-                                options={[
-                                    { value: '5', label: '5 sách / trang' },
-                                    { value: '10', label: '10 sách / trang' },
-                                    { value: '12', label: '12 sách / trang' },
-                                    { value: '20', label: '20 sách / trang' },
-                                ]}
-                            />
                         </FieldLabel>
+                        <SelectFilter
+                            name="limit"
+                            id="admin-queue-limit"
+                            value={String(query.limit)}
+                            options={[
+                                { value: '5', label: '5 sách / trang' },
+                                { value: '10', label: '10 sách / trang' },
+                                { value: '12', label: '12 sách / trang' },
+                                { value: '20', label: '20 sách / trang' },
+                            ]}
+                        />
                     </Field>
                 </FieldGroup>
 
@@ -404,7 +404,7 @@ export function AdminModerationPage() {
 
             {/* Trạng thái tải & Báo lỗi */}
             {list.isPending && (
-                <LoadingState layout="rows">Đang tải báo cáo kiểm duyệt…</LoadingState>
+                <LoadingState layout="admin-rows">Đang tải báo cáo kiểm duyệt…</LoadingState>
             )}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
 
@@ -810,38 +810,38 @@ export function AdminBooksPage() {
                     </Field>
 
                     {/* Quyền hiển thị */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="admin-book-visibility" className="font-medium text-xs">
                             Quyền hiển thị
-                            <SelectFilter
-                                id="admin-book-visibility"
-                                name="visibility"
-                                value={query.visibility}
-                                options={[
-                                    { value: 'PUBLIC', label: 'Công khai' },
-                                    { value: 'UNLISTED', label: 'Qua liên kết' },
-                                    { value: 'PRIVATE', label: 'Riêng tư' },
-                                ]}
-                            />
                         </FieldLabel>
+                        <SelectFilter
+                            id="admin-book-visibility"
+                            name="visibility"
+                            value={query.visibility}
+                            options={[
+                                { value: 'PUBLIC', label: 'Công khai' },
+                                { value: 'UNLISTED', label: 'Qua liên kết' },
+                                { value: 'PRIVATE', label: 'Riêng tư' },
+                            ]}
+                        />
                     </Field>
 
                     {/* Hiển thị / trang */}
-                    <Field orientation="contents">
+                    <Field>
                         <FieldLabel htmlFor="admin-book-limit" className="font-medium text-xs">
                             Hiển thị
-                            <SelectFilter
-                                id="admin-book-limit"
-                                name="limit"
-                                value={String(query.limit)}
-                                options={[
-                                    { value: '5', label: '5 sách / trang' },
-                                    { value: '10', label: '10 sách / trang' },
-                                    { value: '12', label: '12 sách / trang' },
-                                    { value: '20', label: '20 sách / trang' },
-                                ]}
-                            />
                         </FieldLabel>
+                        <SelectFilter
+                            id="admin-book-limit"
+                            name="limit"
+                            value={String(query.limit)}
+                            options={[
+                                { value: '5', label: '5 sách / trang' },
+                                { value: '10', label: '10 sách / trang' },
+                                { value: '12', label: '12 sách / trang' },
+                                { value: '20', label: '20 sách / trang' },
+                            ]}
+                        />
                     </Field>
                 </FieldGroup>
 
@@ -862,7 +862,7 @@ export function AdminBooksPage() {
             </form>
 
             {/* Trạng thái tải & Báo lỗi */}
-            {list.isPending && <LoadingState layout="rows">Đang tải sách…</LoadingState>}
+            {list.isPending && <LoadingState layout="admin-rows">Đang tải sách…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} />}
 
             {/* Danh sách sách */}

@@ -14,36 +14,37 @@
         const dark = preference === 'dark' || (preference !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.classList.toggle('dark', dark);
         document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        document.documentElement.dataset.editor = /^\/books\/[^/]+\/(?:edit|pages\/[^/]+)\/?$/.test(location.pathname) ? 'true' : 'false';
       })();
     </script>
     <title>Bookaria Studio</title>
     <style>
-      #root > .app-boot {
+      .app-boot {
         box-sizing: border-box;
         min-height: 100dvh;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 32px;
-        padding: 48px 24px;
-        background: var(--bg-canvas, #fff);
+        gap: 12px;
+        padding: 24px;
+        background: var(--bg-surface, #fff);
         color: var(--text-muted, #60646c);
-        font: 14px/1.6 "Be Vietnam Pro", "Segoe UI", sans-serif;
+        font: 14px/22px "Inter", "Segoe UI", sans-serif;
         text-align: center;
       }
-      html.dark { background: #111113; color-scheme: dark; --bg-canvas: #111113; --text-muted: #b0b4ba; }
-      .app-boot-brand { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+      html.dark { background: #1c1c1c; color-scheme: dark; --bg-surface: #1c1c1c; --text-muted: #9c9c9c; }
+      .app-boot-brand { display: flex; flex-direction: column; align-items: center; gap: 12px; }
       .app-boot img { display: block; height: auto; }
-      html.dark .app-boot img { filter: invert(1); }
-      .app-boot p { margin: 0; }
-      @keyframes bookaria-loading-pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.45; }
-      }
-      @media (prefers-reduced-motion: no-preference) {
-        .app-boot-brand { animation: bookaria-loading-pulse 1.8s ease-in-out infinite; }
-      }
+      .app-boot .boki-boot-dark { display: none; }
+      html.dark .app-boot .boki-boot-light { display: none; }
+      html.dark .app-boot .boki-boot-dark { display: block; }
+      .app-boot p { margin: 0; max-width: 448px; text-wrap: balance; }
+      .app-boot .editor-label { display: none; }
+      html[data-editor="true"] .app-boot .app-label { display: none; }
+      html[data-editor="true"] .app-boot .editor-label { display: inline; }
+      .app-boot-copy { display: flex; flex-direction: column; align-items: center; }
+      #app-entry-loading { position: fixed; inset: 0; z-index: 50; overflow-y: auto; }
       body { margin: 0; }
     </style>
   </head>
@@ -51,9 +52,16 @@
     <div id="root">
       <main id="main" class="app-boot" role="status" aria-busy="true">
         <div class="app-boot-brand" aria-hidden="true">
-          <img src="/brand/bookaria-symbol.svg" alt="" width="96" height="49" />
+          <picture class="boki-boot-light">
+            <source media="(prefers-reduced-motion: reduce)" srcset="/brand/mascot/light-loading-poster.svg">
+            <img loading="lazy" src="/brand/mascot/light-loading-loop.svg" alt="" width="80" height="80" onload="this.dataset.loadingStarted = performance.now()">
+          </picture>
+          <picture class="boki-boot-dark">
+            <source media="(prefers-reduced-motion: reduce)" srcset="/brand/mascot/dark-loading-poster.svg">
+            <img loading="lazy" src="/brand/mascot/dark-loading-loop.svg" alt="" width="80" height="80" onload="this.dataset.loadingStarted = performance.now()">
+          </picture>
         </div>
-        <p>Đang mở Bookaria…</p>
+        <div class="app-boot-copy"><p><span class="app-label">Đang tải tài nguyên…</span><span class="editor-label">Đang mở editor…</span></p></div>
       </main>
     </div>
     <noscript>

@@ -6,6 +6,7 @@ import type {
     WorkflowNavigation,
     WorkflowQuestion,
 } from '../contracts/scene.schema';
+import { InteractionRuleSchema } from '../contracts/scene.schema';
 
 import { type WorkflowChange, WorkflowState } from './WorkflowState';
 
@@ -158,7 +159,11 @@ export class InteractionRunner {
         if (this.disposed) return Promise.resolve([]);
         const change: WorkflowChange = { reactions: 0 };
         if (trigger.type === 'onPageEnter') this.startConditions();
-        if (trigger.type === 'onPageLeave') this.stopConditions();
+        if (trigger.type === 'onPageLeave') {
+            this.stopConditions();
+            for (const rule of this.rules)
+                if (rule.movementLoop) this.active.get(rule.id)?.controller.abort();
+        }
         if (trigger.type === 'onTap')
             this.progress.tap(this.environment.pageId || '', trigger.objectId, change);
         return Promise.all(
@@ -195,6 +200,7 @@ export class InteractionRunner {
         // Defer to a microtask so registration happens before a synchronous chain can finish.
         const task = Promise.resolve()
             .then(async () => {
+                if (rule.movementLoop) InteractionRuleSchema.parse(rule);
                 const layout = rule.editorLayout;
                 const next = (from: string, port = 'next') =>
                     rule.workflow?.edges.find((edge) => edge.source === from && edge.port === port)
@@ -269,6 +275,35 @@ export class InteractionRunner {
                     controller.signal.throwIfAborted();
                     this.report({ ...detail, branch, state: 'done' });
                     if (terminal) break;
+                    if (rule.movementLoop && nodeId === rule.movementLoop.endId) {
+                        // Yield even for zero-duration steps so stop/input events can cancel the loop.
+                        await this.delay(
+                            Math.max(16, rule.movementLoop.pauseMs),
+                            controller.signal,
+                        );
+                        controller.signal.throwIfAborted();
+                        const firstIndex =
+                            (layout?.findIndex((node) => node.id === rule.movementLoop?.startId) ??
+                                0) - 1;
+                        const first = rule.actions[firstIndex];
+                        if (first?.type !== 'transformTo')
+                            throw new Error('Không tìm thấy điểm bắt đầu chuyển động lặp.');
+                        await this.execute(
+                            {
+                                type: 'transformTo',
+                                objectId: first.objectId,
+                                ...rule.movementLoop.initial,
+                                durationMs: 0,
+                                delayMsSchema: 0,
+                                easing: 'linear',
+                            },
+                            controller.signal,
+                        );
+                        nodeId = rule.movementLoop.startId;
+                        visited.clear();
+                        count = -1;
+                        continue;
+                    }
                     if (rule.workflow) nodeId = next(nodeId as string, branch || 'next');
                 }
             })

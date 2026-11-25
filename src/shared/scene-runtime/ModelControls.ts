@@ -170,6 +170,13 @@ export class ModelControls {
         if (this.knob)
             this.knob.style.transform = `translate(${this.axis.x * 28}px, ${-this.axis.y * 28}px)`;
     }
+    needsUpdate() {
+        return (
+            this.running &&
+            !this.paused &&
+            (this.keys.size > 0 || this.axis.lengthSq() > 0 || this.movement.lengthSq() > 0)
+        );
+    }
     update(delta: number) {
         const visible = this.running && !this.paused && this.hasControllable();
         if (this.panel && visible !== this.lastVisible) {
@@ -237,6 +244,7 @@ export class ModelControls {
     }
     private clearInput = () => {
         this.keys.clear();
+        this.movement.set(0, 0);
         this.setMove(0, 0);
         this.idle();
         if (this.pointer !== null) {

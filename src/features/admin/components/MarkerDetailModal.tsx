@@ -31,46 +31,6 @@ export interface MarkerDetailModalProps {
     onTestMarker?: (marker: BookariaMarker) => void;
 }
 
-function getMarkerQuality(score: number | null) {
-    if (score === null) {
-        return {
-            label: 'Chưa có điểm đánh giá',
-            tone: 'neutral' as const,
-            description: 'Marker chưa có dữ liệu chấm điểm nhận diện tự động từ thuật toán.',
-        };
-    }
-    if (score >= 80) {
-        return {
-            label: 'Xuất sắc',
-            tone: 'success' as const,
-            description:
-                'Nhiều điểm đặc trưng, hoa văn và độ tương phản phân bố tốt. Tracking AR phản hồi nhanh và ổn định cao.',
-        };
-    }
-    if (score >= 60) {
-        return {
-            label: 'Khá tốt',
-            tone: 'info' as const,
-            description:
-                'Đủ đặc trưng hình học để nhận diện ổn định trong điều kiện ánh sáng tiêu chuẩn.',
-        };
-    }
-    if (score >= 40) {
-        return {
-            label: 'Trung bình',
-            tone: 'warning' as const,
-            description:
-                'Độ nhận diện ở mức chấp nhận được nhưng có thể khó bắt góc nghiêng hoặc môi trường thiếu sáng.',
-        };
-    }
-    return {
-        label: 'Cần cải thiện',
-        tone: 'danger' as const,
-        description:
-            'Ít chi tiết hoặc độ tương phản thấp. Nên chọn ảnh có nhiều đường nét và góc cạnh rõ ràng hơn.',
-    };
-}
-
 export function MarkerDetailModal({
     marker,
     isOpen,
@@ -81,8 +41,6 @@ export function MarkerDetailModal({
     const [copiedId, setCopiedId] = useState(false);
 
     if (!marker) return null;
-
-    const quality = getMarkerQuality(marker.markerScore);
 
     const handleCopyId = async () => {
         try {
@@ -132,11 +90,9 @@ export function MarkerDetailModal({
                     <Badge tone={marker.isActive ? 'success' : 'neutral'} className="px-2.5 py-0.5">
                         {marker.isActive ? 'Đang bật' : 'Đã tắt'}
                     </Badge>
-                    <Badge tone={quality.tone} className="px-2.5 py-0.5">
+                    <Badge tone="neutral" className="px-2.5 py-0.5">
                         <Sparkles className="mr-1 h-3 w-3" />
-                        {marker.markerScore !== null
-                            ? `Điểm: ${marker.markerScore}/100 (${quality.label})`
-                            : quality.label}
+                        Chưa đánh giá
                     </Badge>
                 </div>
 
@@ -144,7 +100,8 @@ export function MarkerDetailModal({
                 <div className="rounded-[var(--radius-md)] border border-border/70 bg-surface/60 p-3 text-xs">
                     <p className="font-medium text-foreground">Đánh giá chất lượng nhận diện AR</p>
                     <p className="mt-1 text-muted-foreground leading-relaxed">
-                        {quality.description}
+                        Chưa có kết quả phân tích được lưu. Dùng công cụ phân tích ảnh để xem phân
+                        bố điểm, độ độc đáo và kích thước ảnh.
                     </p>
                 </div>
 
@@ -178,7 +135,7 @@ export function MarkerDetailModal({
                         <span
                             className={
                                 marker.isActive
-                                    ? 'font-medium text-success'
+                                    ? 'font-medium text-success-foreground'
                                     : 'font-medium text-muted-foreground'
                             }
                         >
@@ -241,7 +198,7 @@ export function MarkerDetailModal({
                                 }}
                             >
                                 <ScanLine className="h-3.5 w-3.5" />
-                                <span>Thử nghiệm</span>
+                                <span>Phân tích ảnh</span>
                             </Button>
                         )}
                     </div>

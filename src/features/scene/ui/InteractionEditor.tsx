@@ -94,6 +94,11 @@ import {
     targetObjects,
 } from '../model/interactions';
 import { memoryDefinitions, memoryOperations } from '../model/memory-variables';
+import {
+    initializeMovementTarget,
+    movementStartState,
+    refreshMovementLoop,
+} from '../model/movement-sequence';
 import { InteractionActionEditor } from './InteractionActionEditor';
 import { ActionPalette, TemplateMenu } from './InteractionAddMenu';
 import { InteractionChoices } from './InteractionChoices';
@@ -105,9 +110,13 @@ import { InteractionTestPanel } from './InteractionTestPanel';
 import { InteractionWorkflowEditor } from './InteractionWorkflowEditor';
 import { MemoryContext } from './MemoryContext';
 import { MemoryVariablesPanel, type MemoryVariablesPanelHandle } from './MemoryVariablesPanel';
+import { MovementSettingsPanel } from './MovementSettings';
 
 type Draft = { rule: InteractionRule; graph: InteractionFlow; template?: InteractionTemplateId };
-export type InteractionEditorHandle = { confirmLeave: (action: () => void) => void };
+export type InteractionEditorHandle = {
+    confirmLeave: (action: () => void) => void;
+    selectAppliedRule: (scene: Scene, rule: InteractionRule | null) => void;
+};
 export type InteractionRequest = {
     id?: string;
     request: number;
@@ -289,6 +298,9 @@ export function InteractionEditor({
     book,
     onDirtyChange,
     onWorkflowVariablesChange,
+    onTestingChange,
+    assistantOpen = false,
+    onEditFocus,
     loadMemoryPages,
     ref,
 }: {
@@ -297,6 +309,9 @@ export function InteractionEditor({
     disabled: boolean;
     onChange: (scene: Scene) => void;
     onWorkflowVariablesChange?: (definitions: WorkflowVariable[]) => void;
+    onTestingChange: (testing: boolean) => void;
+    assistantOpen?: boolean;
+    onEditFocus?: () => void;
     loadMemoryPages?: () => Promise<Pick<Page, 'id' | 'title' | 'scene'>[]>;
     preferredObject?: SceneObject;
     requestedRule?: InteractionRequest;
@@ -409,11 +424,22 @@ export function InteractionEditor({
         id: string;
         position: { x: number; y: number };
     } | null>(null);
+    useEffect(() => {
+        if (!assistantOpen) return;
+        setShowInspector(false);
+        setObjectChoice(null);
+        setMemoryTab('flows');
+    }, [assistantOpen]);
     const history = useRef<{ past: Draft[]; future: Draft[] }>({ past: [], future: [] });
     const [movingNode, setMovingNode] = useState(false);
     const result = useMemo(() => (draft ? compile(draft, scene) : null), [draft, scene]);
     const invalid = !!result?.error;
     const blocked = disabled || !!test;
+    const testing = !!test;
+    useLayoutEffect(() => {
+        onTestingChange(testing);
+        return () => onTestingChange(false);
+    }, [testing, onTestingChange]);
     const emitted = useRef<string | null>(null);
     const previousRules = useRef(scene.interactions);
     const restoreNotice = useRef(false);
@@ -483,6 +509,8 @@ export function InteractionEditor({
     const commit = useCallback(
         (next: Draft, record = true) => {
             if (disabled) return;
+            const graph = refreshMovementLoop(next.graph, currentScene.current.objects);
+            if (graph !== next.graph) next = { ...next, graph };
             const previous = current.current;
             if (record && previous) {
                 history.current.past = [
@@ -507,7 +535,25 @@ export function InteractionEditor({
         if (memoryPanel.current) memoryPanel.current.confirmLeave(leave);
         else leave();
     };
-    useImperativeHandle(ref, () => ({ confirmLeave: guard }));
+    useImperativeHandle(ref, () => ({
+        confirmLeave: guard,
+        selectAppliedRule(next, rule) {
+            const selectedRule =
+                rule ??
+                next.interactions.find((item) => item.id === current.current?.rule.id) ??
+                next.interactions[0];
+            const nextDraft = selectedRule
+                ? { rule: selectedRule, graph: restoreFlowLayout(selectedRule) }
+                : null;
+            current.current = nextDraft;
+            emitted.current = selectedRule ? JSON.stringify(selectedRule) : null;
+            previousRules.current = next.interactions;
+            setDraft(nextDraft);
+            setSelected(START_NODE);
+            setSelectedEdge(null);
+            setShowInspector(false);
+        },
+    }));
     const selectRule = useCallback(
         (rule: InteractionRule, actionIndex?: number | null) => {
             const select = () => {
@@ -716,7 +762,14 @@ export function InteractionEditor({
                         if (continuation) graph.edges.push(flowLink(branchId, continuation));
                     }
                 }
-                commit({ ...active, graph: layoutInsertedFlowStep(active.graph, graph, nextId) });
+                commit({
+                    ...active,
+                    graph: initializeMovementTarget(
+                        layoutInsertedFlowStep(active.graph, graph, nextId),
+                        nextId,
+                        currentScene.current.objects,
+                    ),
+                });
                 setSelected(nextId);
                 setSelectedEdge(null);
                 setShowInspector(true);
@@ -795,7 +848,14 @@ export function InteractionEditor({
                             }),
                         };
                     }
-                    commit({ ...active, graph });
+                    commit({
+                        ...active,
+                        graph: initializeMovementTarget(
+                            graph,
+                            nodeId,
+                            currentScene.current.objects,
+                        ),
+                    });
                 }
                 setSelected(nodeId);
                 setSelectedEdge(null);
@@ -841,12 +901,16 @@ export function InteractionEditor({
                 else return;
                 commit({
                     ...active,
-                    graph: {
-                        ...active.graph,
-                        nodes: active.graph.nodes.map((item) =>
-                            item.id === nodeId ? { ...item, action } : item,
-                        ),
-                    },
+                    graph: initializeMovementTarget(
+                        {
+                            ...active.graph,
+                            nodes: active.graph.nodes.map((item) =>
+                                item.id === nodeId ? { ...item, action } : item,
+                            ),
+                        },
+                        nodeId,
+                        currentScene.current.objects,
+                    ),
                 });
             }
             setSelected(nodeId);
@@ -907,12 +971,18 @@ export function InteractionEditor({
                         commit({
                             ...active,
                             template: undefined,
-                            graph: {
-                                ...active.graph,
-                                nodes: active.graph.nodes.map((item) =>
-                                    item.id === nodeId ? { ...item, action } : item,
-                                ),
-                            },
+                            graph: initializeMovementTarget(
+                                {
+                                    ...active.graph,
+                                    nodes: active.graph.nodes.map((item) =>
+                                        item.id === nodeId ? { ...item, action } : item,
+                                    ),
+                                },
+                                action.type === 'transformTo' && node.action.type !== 'transformTo'
+                                    ? nodeId
+                                    : '',
+                                currentScene.current.objects,
+                            ),
                         });
                 }
                 setSelected(nodeId);
@@ -1022,6 +1092,7 @@ export function InteractionEditor({
                                   ...draft.rule,
                                   editorLayout: undefined,
                                   workflow: undefined,
+                                  movementLoop: undefined,
                                   trigger: { type: 'onPageEnter' },
                                   actions: [node.action],
                               },
@@ -1047,6 +1118,14 @@ export function InteractionEditor({
         }
     }
     const selectedAction = selectedStep?.action;
+    const movementObject =
+        selectedAction?.type === 'transformTo'
+            ? scene.objects.find((object) => object.id === selectedAction.objectId)
+            : undefined;
+    const movementContext =
+        draft && selectedStep && movementObject
+            ? movementStartState(draft.graph, selectedStep.id, movementObject)
+            : undefined;
     const selectedGroup = blockGroup(selectedAction);
     const hasNextStep = draft?.graph.edges.some((edge) => edge.source === selected) ?? false;
     const hasNamedTarget =
@@ -1193,7 +1272,23 @@ export function InteractionEditor({
         >
             <section
                 aria-label="Workspace tương tác"
-                className="flex h-full min-h-0 flex-col overflow-hidden bg-surface"
+                className="relative flex h-full min-h-0 flex-col overflow-hidden bg-surface"
+                onPointerDownCapture={(event) => {
+                    if (
+                        assistantOpen &&
+                        !test &&
+                        !(event.target as Element).closest('[data-interaction-test-controls]')
+                    )
+                        onEditFocus?.();
+                }}
+                onFocusCapture={(event) => {
+                    if (
+                        assistantOpen &&
+                        !test &&
+                        !(event.target as Element).closest('[data-interaction-test-controls]')
+                    )
+                        onEditFocus?.();
+                }}
                 onKeyDown={(event) => {
                     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') return;
                     if (
@@ -1337,7 +1432,7 @@ export function InteractionEditor({
                             </>
                         )}
                     </aside>
-                    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
                         <div className="flex min-h-15 shrink-0 flex-wrap items-center gap-2 border-border border-b px-4 py-2.5">
                             {draft ? (
                                 <BufferedInput
@@ -1380,6 +1475,7 @@ export function InteractionEditor({
                                     ) : (
                                         <div className="ml-auto flex flex-wrap items-center gap-2">
                                             <fieldset
+                                                data-interaction-test-controls
                                                 aria-label="Chạy thử"
                                                 className="m-0 inline-flex min-w-0 items-stretch border-0 p-0"
                                             >
@@ -1409,6 +1505,7 @@ export function InteractionEditor({
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent
+                                                        data-interaction-test-controls
                                                         align="end"
                                                         className="w-72"
                                                     >
@@ -1447,6 +1544,7 @@ export function InteractionEditor({
                                     focusOnResize={
                                         !test &&
                                         showInspector &&
+                                        !assistantOpen &&
                                         selectedAction?.type === 'transformTo'
                                     }
                                     selectedEdge={selectedEdge}
@@ -1499,7 +1597,7 @@ export function InteractionEditor({
                                     }
                                     onArrange={() => graphChange(arrangeFlow(draft.graph))}
                                 />
-                                {objectChoice && (
+                                {objectChoice && !assistantOpen && (
                                     <fieldset
                                         aria-label="Thêm tương tác từ đối tượng"
                                         className="absolute top-4 left-4 z-10 flex w-72 flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-lg"
@@ -1562,7 +1660,9 @@ export function InteractionEditor({
                                 )}
                                 {!test &&
                                     showInspector &&
+                                    !assistantOpen &&
                                     !selectedEdge &&
+                                    selectedStep &&
                                     selectedAction?.type === 'transformTo' && (
                                         <InteractionTargetPreview
                                             key={`${draft.rule.id}:${selected}`}
@@ -1570,6 +1670,8 @@ export function InteractionEditor({
                                             page={page}
                                             book={book}
                                             action={selectedAction}
+                                            graph={draft.graph}
+                                            stepId={selectedStep.id}
                                             disabled={blocked}
                                             onChange={updateAction}
                                         />
@@ -1612,14 +1714,25 @@ export function InteractionEditor({
                                     />
                                 ) : (
                                     showInspector &&
+                                    !assistantOpen &&
                                     (selectedStep || selectedEdge) && (
                                         <aside
                                             aria-label="Thiết lập bước tương tác"
-                                            className="flex w-76 shrink-0 flex-col border-border border-l bg-surface xl:w-80"
+                                            data-motion={selectedAction?.type === 'transformTo'}
+                                            className="flex w-76 min-w-0 shrink-0 flex-col border-border border-l bg-surface data-[motion=true]:w-92 xl:w-80"
                                         >
                                             <header className="flex shrink-0 items-center justify-between gap-3 border-border border-b px-4 py-3">
-                                                <h2 className="wrap-anywhere m-0 min-w-0 font-semibold text-sm leading-5">
-                                                    {inspectorTitle}
+                                                <h2
+                                                    title={inspectorTitle}
+                                                    className={
+                                                        selectedAction?.type === 'transformTo'
+                                                            ? 'm-0 min-w-0 truncate font-semibold text-sm leading-5'
+                                                            : 'wrap-anywhere m-0 min-w-0 font-semibold text-sm leading-5'
+                                                    }
+                                                >
+                                                    {selectedAction?.type === 'transformTo'
+                                                        ? `Chuyển động · ${objectName(scene.objects.find((object) => object.id === selectedAction.objectId))}`
+                                                        : inspectorTitle}
                                                 </h2>
                                                 <Button
                                                     variant="ghost"
@@ -1633,7 +1746,8 @@ export function InteractionEditor({
                                             </header>
                                             <section
                                                 aria-label="Thiết lập mục tiêu và thông số"
-                                                className="flex min-h-0 min-w-0 flex-1 flex-col gap-5 overflow-y-auto p-4"
+                                                data-motion={selectedAction?.type === 'transformTo'}
+                                                className="flex min-h-0 min-w-0 flex-1 flex-col gap-5 overflow-y-auto p-4 data-[motion=true]:gap-3 data-[motion=true]:overflow-x-hidden data-[motion=true]:p-3"
                                                 onDragOver={(event) => {
                                                     if (
                                                         !blocked &&
@@ -1717,16 +1831,16 @@ export function InteractionEditor({
                                                                 )}
                                                             </div>
                                                         )}
-                                                        {selectedAction.type === 'transformTo' && (
-                                                            <p className="m-0 text-muted-foreground text-xs leading-5">
-                                                                Nhập thông số hoặc kéo tay nắm ở
-                                                                khung trạng thái đích bên cạnh.
-                                                            </p>
-                                                        )}
                                                         <InteractionActionEditor
                                                             scene={editingScene}
                                                             pages={book.pages}
                                                             action={selectedAction}
+                                                            startTransform={
+                                                                movementContext?.transform
+                                                            }
+                                                            transformWarning={
+                                                                movementContext?.message
+                                                            }
                                                             objects={scene.objects}
                                                             assets={assets}
                                                             id={`workflow-${selected}`}
@@ -1739,6 +1853,22 @@ export function InteractionEditor({
                                                             }
                                                             onChange={updateAction}
                                                         />
+                                                        {selectedAction.type === 'transformTo' && (
+                                                            <MovementSettingsPanel
+                                                                key={selectedStep.id}
+                                                                graph={draft.graph}
+                                                                stepId={selectedStep.id}
+                                                                scene={scene}
+                                                                disabled={blocked}
+                                                                allowLoop={
+                                                                    draft.rule.trigger.type !==
+                                                                    'onPageLeave'
+                                                                }
+                                                                onChange={(graph) =>
+                                                                    commit({ ...draft, graph })
+                                                                }
+                                                            />
+                                                        )}
                                                         {selectedAction.type === 'condition' && (
                                                             <InteractionConditionBranches
                                                                 key={selectedStep.id}
@@ -1797,7 +1927,14 @@ export function InteractionEditor({
                                                                 </FieldLabel>
                                                             </Field>
                                                         )}
-                                                        <div className="flex flex-wrap gap-2 border-border border-t pt-3">
+                                                        <div
+                                                            className={
+                                                                selectedAction.type ===
+                                                                'transformTo'
+                                                                    ? 'flex flex-wrap gap-2 pt-1'
+                                                                    : 'flex flex-wrap gap-2 border-border border-t pt-3'
+                                                            }
+                                                        >
                                                             {selectedAction.type !== 'navigate' && (
                                                                 <Button
                                                                     variant="outline"

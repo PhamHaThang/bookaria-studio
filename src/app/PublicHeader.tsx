@@ -1,4 +1,5 @@
 import { useMotionTokens, useShouldReduceMotion } from '@animate-ui/react/utils/motion';
+import { BookOpen, House, LibraryBig, LifeBuoy } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -7,13 +8,17 @@ import { AuthDialogLink } from '@/features/auth/ui/AuthDialogLink';
 import { BookariaLogo, bookariaLogoLinkStyles } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
 import { HeaderAccountActions } from './HeaderAccountActions';
-import { PublicHeaderNavigation, type PublicNavigationLink } from './PublicHeaderNavigation';
+import {
+    PublicHeaderNavigation,
+    PublicMobileNavigation,
+    type PublicNavigationLink,
+} from './PublicHeaderNavigation';
 
 const destinations: readonly PublicNavigationLink[] = [
-    { to: '/', label: 'Trang chủ' },
-    { to: '/library', label: 'Khám phá sách' },
-    { to: '/resources', label: 'Thư viện tài nguyên' },
-    { to: '/help', label: 'Hướng dẫn' },
+    { to: '/', label: 'Trang chủ', icon: House },
+    { to: '/library', label: 'Khám phá sách', icon: BookOpen },
+    { to: '/resources', label: 'Thư viện tài nguyên', icon: LibraryBig },
+    { to: '/help', label: 'Hướng dẫn', icon: LifeBuoy },
 ];
 
 export function PublicHeader() {
@@ -60,25 +65,29 @@ export function PublicHeader() {
         <motion.header
             ref={headerRef}
             data-scrolled={scrolled}
-            initial={{ opacity: 0, y: reduceMotion ? 0 : -6 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={reduceMotion ? false : { opacity: 0, y: -8, filter: 'blur(2px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             transition={transition.reveal}
-            className="site-header sticky top-3 z-20 mx-auto mt-3 w-[calc(100%-48px)] max-w-[1280px] rounded-[var(--radius-nav)] bg-surface shadow-[var(--shadow-header)] transition-[background-color,box-shadow] duration-200 data-[scrolled=true]:shadow-[var(--shadow-header-scrolled)] supports-[backdrop-filter]:bg-[var(--bg-header-glass)] supports-[backdrop-filter]:backdrop-blur-[24px] supports-[backdrop-filter]:backdrop-saturate-150 motion-reduce:transition-none max-sm:top-2 max-sm:mt-2 max-sm:w-[calc(100%-16px)]"
+            className="site-header sticky top-0 z-20 w-full bg-background"
         >
-            <div className="mx-auto grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-5 px-6 max-sm:px-3 max-xl:grid-cols-[minmax(0,1fr)_auto] max-xl:gap-x-4 max-xl:gap-y-0 max-xl:py-2">
-                <Link
-                    to="/"
-                    aria-label="Bookaria - Trang chủ"
-                    className={bookariaLogoLinkStyles('inline-flex justify-self-start rounded-md')}
-                >
-                    <BookariaLogo className="w-36 max-sm:w-24 max-[360px]:w-20" />
-                </Link>
+            <div className="mx-auto flex min-h-18 max-w-[1328px] items-center gap-3 px-4 max-sm:gap-2 sm:px-8 lg:gap-6">
+                <div className="flex min-w-0 items-center gap-2 justify-self-start">
+                    <Link
+                        to="/"
+                        aria-label="Bookaria - Trang chủ"
+                        className={bookariaLogoLinkStyles(
+                            'inline-flex min-h-11 min-w-12 shrink-0 items-center rounded-md',
+                        )}
+                    >
+                        <BookariaLogo className="w-36" />
+                    </Link>
+                </div>
                 <PublicHeaderNavigation links={destinations} activePath={activePath} />
-                <div className="flex min-w-0 items-center justify-end gap-3 max-sm:gap-2 [&_[data-slot=button]]:whitespace-nowrap">
+                <div className="ml-auto flex min-w-0 items-center justify-end gap-3 max-sm:gap-2 [&_[data-slot=button]]:whitespace-nowrap">
                     {signedIn ? (
                         <HeaderAccountActions variant="compact" showStudio />
                     ) : (
-                        <>
+                        <div className="hidden items-center gap-3 lg:flex">
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -90,8 +99,9 @@ export function PublicHeader() {
                             <Button variant="default" size="sm" asChild>
                                 <AuthDialogLink mode="register">Đăng ký</AuthDialogLink>
                             </Button>
-                        </>
+                        </div>
                     )}
+                    <PublicMobileNavigation links={destinations} activePath={activePath} />
                 </div>
             </div>
         </motion.header>
