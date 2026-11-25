@@ -295,35 +295,12 @@ for (const viewport of [
             uploadArea.press('Enter'),
         ]);
         await chooser.setFiles({ name: 'invalid.gif', mimeType: 'image/gif', buffer: image });
-        const uploadError = dialog.getByRole('alert');
+        const uploadError = page.locator('[data-sonner-toast]').filter({
+            hasText: 'Ảnh trang chỉ hỗ trợ JPG hoặc PNG.',
+        });
         await expect(uploadError).toBeVisible();
-        await expect
-            .poll(async () => {
-                const [alert, action] = await Promise.all([
-                    uploadError.boundingBox(),
-                    submit.boundingBox(),
-                ]);
-                return Boolean(
-                    alert &&
-                        action &&
-                        action.y >= alert.y + alert.height &&
-                        action.y - alert.y - alert.height <= 16,
-                );
-            })
-            .toBe(true);
-        await expect
-            .poll(async () => {
-                const [alert, modal] = await Promise.all([
-                    uploadError.boundingBox(),
-                    dialog.boundingBox(),
-                ]);
-                return Boolean(
-                    alert &&
-                        modal &&
-                        Math.round(alert.width) >= Math.round(modal.width - (dark ? 42 : 58)),
-                );
-            })
-            .toBe(true);
+        await expect(dialog.getByRole('alert')).toHaveCount(0);
+        await expect(submit).toBeDisabled();
         await page.screenshot({
             path: info.outputPath('generate-3d-upload-error.png'),
             animations: 'disabled',

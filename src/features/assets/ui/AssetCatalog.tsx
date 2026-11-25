@@ -308,7 +308,7 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                 />
             )}
             {personalAssets && assetId && linked.isError && (
-                <Feedback error="Chưa mở được tài nguyên từ liên kết." />
+                <Feedback error="Chưa mở được tài nguyên từ liên kết." errorMode="toast" />
             )}
             {!library && modelJobs.isError && (
                 <div className="mb-6 flex flex-wrap items-start gap-3 [&_.feedback]:m-0">

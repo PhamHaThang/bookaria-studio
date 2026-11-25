@@ -149,7 +149,7 @@ export function PageImageForm({
         >
             <FieldGroup className="contents">
                 <h3>{title}</h3>
-                <Feedback error={error} success={notice} />
+                <Feedback error={error} success={notice} errorMode={file ? 'inline' : 'toast'} />
                 <fieldset disabled={disabled || Boolean(stage)}>
                     <Field orientation="contents">
                         <FieldLabel htmlFor={`${id}-image`}>Ảnh trang</FieldLabel>

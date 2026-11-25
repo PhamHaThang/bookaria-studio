@@ -203,7 +203,7 @@ export function ImageUploadEditor({
                         : 'Ảnh giúp nhận diện sách trong danh sách của bạn.'}
                 </p>
             )}
-            <Feedback error={error} success={notice} />
+            <Feedback error={error} success={notice} errorMode={file ? 'inline' : 'toast'} />
             <div
                 className={cn(
                     'image-editor-layout grid [&_form]:min-w-0',

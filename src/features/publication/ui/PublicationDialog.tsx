@@ -238,7 +238,7 @@ export function PublicationDialog({
             await navigator.clipboard.writeText(value);
             toast.success('Đã sao chép.');
         } catch {
-            setError('Chưa sao chép được. Bạn có thể chọn liên kết và sao chép thủ công.');
+            toast.error('Chưa sao chép được. Bạn có thể chọn liên kết và sao chép thủ công.');
         }
     }
     async function download(url: string, name: string) {
@@ -252,7 +252,7 @@ export function PublicationDialog({
             a.click();
             setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
         } catch {
-            setError('Chưa tải được tệp. Hãy thử lại hoặc mở liên kết trong tab mới.');
+            toast.error('Chưa tải được tệp. Hãy thử lại hoặc mở liên kết trong tab mới.');
         }
     }
     const renderIssues = (items: PublishCheck['errors'] | PublishCheck['warnings']) => {

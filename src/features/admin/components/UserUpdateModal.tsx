@@ -124,7 +124,9 @@ export function UserUpdateModal({ user, isOpen, onClose, onSuccess }: UserUpdate
         const isQuotaChanged = diff.storageQuotaBytes !== undefined;
 
         if (!isStatusOrRoleChanged && !isQuotaChanged) {
-            setApiError('Bạn chưa thay đổi thông tin nào của người dùng.');
+            toast.info('Bạn chưa thay đổi thông tin nào của người dùng.', {
+                id: `admin-user-unchanged-${user.id}`,
+            });
             return;
         }
 

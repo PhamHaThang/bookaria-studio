@@ -1,5 +1,6 @@
 import { Copy, ExternalLink } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { apiClient } from '@/shared/api/client';
 import { errorMessage } from '@/shared/api/errors';
 import { IdSchema } from '@/shared/contracts/common.schema';
@@ -279,10 +280,10 @@ function PhonePreviewSession({ bookId, pageId, unsaved, onClose }: PhonePreviewP
                                     variant="outline"
                                     onClick={() => {
                                         void navigator.clipboard.writeText(link).then(
-                                            () => setStatus('Đã sao chép liên kết.'),
+                                            () => toast.success('Đã sao chép liên kết.'),
                                             () =>
-                                                setError(
-                                                    'Không sao chép được. Hãy sao chép địa chỉ bên dưới.',
+                                                toast.error(
+                                                    'Không sao chép được. Bạn có thể sao chép địa chỉ thủ công.',
                                                 ),
                                         );
                                     }}
