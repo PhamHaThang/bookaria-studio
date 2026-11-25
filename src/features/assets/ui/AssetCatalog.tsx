@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CircleAlert, FolderOpen, RotateCcw } from 'lucide-react';
+import { FolderOpen, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Link,
@@ -32,6 +32,7 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { RetryNotice } from '@/shared/ui/RetryNotice';
 import { SearchActivity } from '@/shared/ui/SearchActivity';
 import { AssetCardGrid, AssetCardGridSkeleton } from './AssetCardGrid';
 import { PersonalAssetDialog } from './PersonalAssetDialog';
@@ -311,26 +312,20 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
                 <Feedback error="Chưa mở được tài nguyên từ liên kết." errorMode="toast" />
             )}
             {!library && modelJobs.isError && (
-                <div className="mb-6 flex flex-wrap items-start gap-3 [&_.feedback]:m-0">
-                    <Feedback error="Chưa tải được tiến độ tạo 3D." />
-                    <Button variant="outline" size="sm" onClick={() => void modelJobs.refetch()}>
-                        Tải lại tiến độ
-                    </Button>
-                </div>
+                <RetryNotice
+                    message="Chưa tải được tiến độ tạo 3D."
+                    label="Tải lại tiến độ"
+                    busy={modelJobs.isFetching}
+                    onRetry={() => void modelJobs.refetch()}
+                />
             )}
             {query.scope === 'library' && categories.isError && (
-                <div className="mb-6 flex flex-wrap items-start gap-3 [&_.feedback]:m-0">
-                    <Feedback error="Chưa tải được danh mục. Bạn vẫn có thể tìm tài nguyên." />
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                            void categories.refetch();
-                        }}
-                    >
-                        Tải lại danh mục
-                    </Button>
-                </div>
+                <RetryNotice
+                    message="Chưa tải được danh mục. Bạn vẫn có thể tìm tài nguyên."
+                    label="Tải lại danh mục"
+                    busy={categories.isFetching}
+                    onRetry={() => void categories.refetch()}
+                />
             )}
             {(listing.isPending || listing.isError) && generating.length > 0 && (
                 <AssetCardGrid
@@ -346,17 +341,11 @@ export function AssetCatalog({ scope }: { scope: 'mine' | 'library' }) {
             {listing.isPending ? (
                 <AssetCardGridSkeleton scope={scope} />
             ) : listing.isError ? (
-                <div className="list-state px-0 py-12">
-                    <CircleAlert aria-hidden="true" className="size-6 text-destructive" />
-                    <Feedback error={errorMessage(listing.error)} />
-                    <Button
-                        onClick={() => {
-                            void listing.refetch();
-                        }}
-                    >
-                        Thử tải lại
-                    </Button>
-                </div>
+                <RetryNotice
+                    message={errorMessage(listing.error)}
+                    busy={listing.isFetching}
+                    onRetry={() => void listing.refetch()}
+                />
             ) : (
                 <section
                     ref={results}

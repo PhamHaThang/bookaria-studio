@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, CircleAlert, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
+import { BookOpen, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/shared/ui/Badge';
@@ -28,6 +28,7 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { RetryNotice } from '@/shared/ui/RetryNotice';
 import { SearchActivity } from '@/shared/ui/SearchActivity';
 import { StudioPageHeader } from '@/shared/ui/StudioPageHeader';
 import { useAuth } from '../features/auth';
@@ -147,18 +148,11 @@ export function BooksPage() {
             <SearchActivity query={query.q} fetching={listing.isFetching} />
             {listing.isPending && <LoadingState layout="books">Đang tải sách…</LoadingState>}
             {listing.isError && (
-                <div className="list-state px-0 py-12">
-                    <CircleAlert aria-hidden="true" className="size-6 text-destructive" />
-                    <Feedback error={errorMessage(listing.error)} />
-                    <Button
-                        type="button"
-                        onClick={() => {
-                            void listing.refetch();
-                        }}
-                    >
-                        Thử tải lại
-                    </Button>
-                </div>
+                <RetryNotice
+                    message={errorMessage(listing.error)}
+                    busy={listing.isFetching}
+                    onRetry={() => void listing.refetch()}
+                />
             )}
             {listing.isSuccess && listing.data.data.length > 0 && (
                 <>
