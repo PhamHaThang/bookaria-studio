@@ -44,11 +44,23 @@ test.describe('Studio Admin: RBAC, Dashboard, Users, Moderation, Library, Catego
             createModal.getByRole('heading', { name: 'Tạo tài khoản người dùng mới' }),
         ).toBeVisible();
 
+        const nameError = createModal.getByText('Vui lòng nhập họ tên / tên hiển thị');
+        const emailError = createModal.getByText('Vui lòng nhập địa chỉ email');
+        await createModal.getByLabel('Địa chỉ email').focus();
+        await createModal.getByRole('combobox', { name: 'Hạn mức lưu trữ' }).focus();
+        await expect(nameError).toHaveCount(0);
+        await expect(emailError).toHaveCount(0);
+        await createModal.getByRole('button', { name: 'Tạo tài khoản', exact: true }).click();
+        await expect(nameError).toBeVisible();
+        await expect(emailError).toBeVisible();
+
         await createModal.locator('#create-display-name').fill('Tác giả Trùng');
         await createModal.locator('#create-email').fill('author@bookaria.test');
         await createModal.locator('#create-password').fill('SecretPass123!');
         await createModal.getByRole('button', { name: /Tạo tài khoản|Tạo người dùng/i }).click();
-        await expect(createModal.getByText(/Email này đã được đăng ký/)).toBeVisible();
+        await expect(
+            page.locator('[data-sonner-toast]').getByText(/Email này đã được đăng ký/),
+        ).toBeVisible();
 
         // useAdminMutation locks modal until page reload after an Axios write error
         await page.reload();
@@ -58,9 +70,49 @@ test.describe('Studio Admin: RBAC, Dashboard, Users, Moderation, Library, Catego
         await createModal2.locator('#create-display-name').fill('Tác giả Mới 2');
         await createModal2.locator('#create-email').fill('author2@bookaria.test');
         await createModal2.locator('#create-password').fill('SecretPass123!');
+        await createModal2.getByRole('combobox', { name: 'Hạn mức lưu trữ' }).click();
+        await page.getByRole('option', { name: 'Tùy chỉnh', exact: true }).click();
+        const amount = createModal2.getByLabel('Dung lượng tùy chỉnh');
+        const unit = createModal2.getByRole('combobox', { name: 'Đơn vị dung lượng' });
+        await unit.click();
+        await page.getByRole('option', { name: 'GiB', exact: true }).click();
+        await amount.fill('1,5');
+        await unit.click();
+        await page.getByRole('option', { name: 'MiB', exact: true }).click();
+        await expect(amount).toHaveValue('1536');
         await createModal2.getByRole('button', { name: /Tạo tài khoản|Tạo người dùng/i }).click();
         await expect(createModal2).toBeHidden();
         await expect(page.getByText('author2@bookaria.test')).toBeVisible();
+        expect(
+            mock.state.calls.find(
+                (call) => call.method === 'POST' && call.body?.email === 'author2@bookaria.test',
+            )?.body.storageQuotaBytes,
+        ).toBe(1536 * 1024 ** 2);
+
+        const createdUser = page.getByRole('listitem').filter({ hasText: 'author2@bookaria.test' });
+        await createdUser.getByRole('button', { name: 'Cập nhật tài khoản' }).click();
+        const update = page.getByRole('dialog', { name: 'Cập nhật tài khoản người dùng' });
+        const updateAmount = update.getByLabel('Dung lượng tùy chỉnh');
+        await expect(updateAmount).toHaveValue('1,5');
+        await updateAmount.clear();
+        await update.getByRole('button', { name: 'Lưu thay đổi' }).click();
+        await expect(
+            update.getByText('Nhập dung lượng lớn hơn 0 và trong phạm vi cho phép.'),
+        ).toBeVisible();
+        expect(
+            mock.state.calls.some(
+                (call) => call.method === 'PATCH' && call.path.startsWith('/admin/users/'),
+            ),
+        ).toBe(false);
+        await update.getByRole('combobox', { name: 'Hạn mức lưu trữ' }).click();
+        await page.getByRole('option', { name: '2 GiB', exact: true }).click();
+        await update.getByRole('button', { name: 'Lưu thay đổi' }).click();
+        await expect(update).toBeHidden();
+        expect(
+            mock.state.calls.find(
+                (call) => call.method === 'PATCH' && call.path.startsWith('/admin/users/'),
+            )?.body.storageQuotaBytes,
+        ).toBe(2 * 1024 ** 3);
 
         // Lock & Unlock user (requires reason; self-lock button is disabled)
         await expect(
@@ -75,7 +127,10 @@ test.describe('Studio Admin: RBAC, Dashboard, Users, Moderation, Library, Catego
         await expect
             .poll(() =>
                 mock.state.calls.some(
-                    (c) => c.method === 'PATCH' && c.path.startsWith('/admin/users/'),
+                    (c) =>
+                        c.method === 'PATCH' &&
+                        c.path.startsWith('/admin/users/') &&
+                        c.body?.status === 'LOCKED',
                 ),
             )
             .toBe(true);

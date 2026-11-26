@@ -10,7 +10,8 @@ import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { DialogFooter } from '@/shared/ui/primitives/dialog';
 import { libraryApi } from '../library-ui';
 import { useAdminMutation as useMutation } from '../use-admin-mutation';
-import { LibraryAssetDialog, LibraryAssetSummary } from './LibraryAssetDialog';
+import { AdminDialog } from './AdminDialog';
+import { LibraryAssetSummary } from './LibraryAssetSummary';
 
 export interface LibraryAssetDeleteModalProps {
     asset: Asset | null;
@@ -62,7 +63,7 @@ export function LibraryAssetDeleteModal({
     if (!asset) return null;
 
     return (
-        <LibraryAssetDialog
+        <AdminDialog
             open={isOpen}
             busy={deleteMutation.isPending}
             title="Xóa tài nguyên?"
@@ -111,6 +112,6 @@ export function LibraryAssetDeleteModal({
                     {deleteMutation.isPending ? 'Đang xóa…' : 'Xác nhận xóa'}
                 </Button>
             </DialogFooter>
-        </LibraryAssetDialog>
+        </AdminDialog>
     );
 }

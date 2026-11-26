@@ -11,7 +11,7 @@ import { Button } from '@/shared/ui/Button';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { DialogFooter } from '@/shared/ui/primitives/dialog';
 import { adminDate } from '../model';
-import { LibraryAssetDialog } from './LibraryAssetDialog';
+import { AdminDialog } from './AdminDialog';
 
 export interface LibraryAssetDetailModalProps {
     assetId: string | null;
@@ -43,7 +43,7 @@ export function LibraryAssetDetailModal({
     const category = categories.data?.find((item) => item.id === asset?.categoryId);
 
     return (
-        <LibraryAssetDialog
+        <AdminDialog
             open={isOpen}
             title="Chi tiết tài nguyên"
             description="Xem tệp, thông tin tác giả và giấy phép sử dụng."
@@ -192,6 +192,6 @@ export function LibraryAssetDetailModal({
                     )}
                 </DialogFooter>
             )}
-        </LibraryAssetDialog>
+        </AdminDialog>
     );
 }

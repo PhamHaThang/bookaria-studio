@@ -1,5 +1,4 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { HardDrive, KeyRound, Mail, Plus, ShieldCheck, User } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth';
@@ -14,14 +13,7 @@ import type { UserRole } from '@/shared/contracts/enums.schema';
 import { Button } from '@/shared/ui/Button';
 import { Feedback } from '@/shared/ui/Feedback';
 import { PasswordInput } from '@/shared/ui/PasswordInput';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/shared/ui/primitives/dialog';
+import { DialogFooter } from '@/shared/ui/primitives/dialog';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
 import {
@@ -32,21 +24,20 @@ import {
     SelectValue,
 } from '@/shared/ui/primitives/select';
 import { adminApi } from '../client';
-import { adminKeys, bytesLabel } from '../model';
+import { adminKeys } from '../model';
 import { useAdminMutation as useMutation } from '../use-admin-mutation';
+import { AdminDialog } from './AdminDialog';
+import {
+    initialUserStorageQuota,
+    UserStorageQuotaField,
+    userStorageQuotaBytes,
+} from './UserStorageQuotaField';
 
 interface UserCreateModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess?: (userId: string) => void;
 }
-
-const STORAGE_PRESETS = [
-    { label: '500 MiB (Mặc định)', bytes: LIMITS.defaultQuotaBytes },
-    { label: '1 GiB', bytes: 1024 * 1024 * 1024 },
-    { label: '2 GiB', bytes: 2 * 1024 * 1024 * 1024 },
-    { label: '5 GiB', bytes: 5 * 1024 * 1024 * 1024 },
-];
 
 export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalProps) {
     const { user: currentAdmin } = useAuth();
@@ -57,11 +48,10 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState<UserRole>('AUTHOR');
-    const [storageQuotaBytes, setStorageQuotaBytes] = useState<number>(LIMITS.defaultQuotaBytes);
-    const [customStorage, setCustomStorage] = useState(false);
+    const [storageQuota, setStorageQuota] = useState(() => initialUserStorageQuota());
 
     // Validation errors per field
-    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [submitted, setSubmitted] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [apiError, setApiError] = useState<string | null>(null);
 
@@ -87,17 +77,11 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
         return '';
     };
 
-    const handleBlur = (fieldName: 'displayName' | 'email' | 'password', val: string) => {
-        setTouched((prev) => ({ ...prev, [fieldName]: true }));
-        const err = validateField(fieldName, val);
-        setFieldErrors((prev) => ({ ...prev, [fieldName]: err }));
-    };
-
     const handleChange = (fieldName: 'displayName' | 'email' | 'password', val: string) => {
         if (fieldName === 'displayName') setDisplayName(val);
         if (fieldName === 'email') setEmail(val);
         if (fieldName === 'password') setPassword(val);
-        if (touched[fieldName] || fieldErrors[fieldName]) {
+        if (submitted) {
             const err = validateField(fieldName, val);
             setFieldErrors((prev) => ({ ...prev, [fieldName]: err }));
         }
@@ -108,9 +92,8 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
         setEmail('');
         setPassword('');
         setRole('AUTHOR');
-        setStorageQuotaBytes(LIMITS.defaultQuotaBytes);
-        setCustomStorage(false);
-        setTouched({});
+        setStorageQuota(initialUserStorageQuota());
+        setSubmitted(false);
         setFieldErrors({});
         setApiError(null);
     };
@@ -143,13 +126,17 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
         const eErr = validateField('email', email);
         const pErr = validateField('password', password);
 
-        setTouched({ displayName: true, email: true, password: true });
+        const storageQuotaBytes = userStorageQuotaBytes(storageQuota);
+        setSubmitted(true);
 
-        if (dErr || eErr || pErr) {
+        if (dErr || eErr || pErr || storageQuotaBytes === null) {
             setFieldErrors({
                 ...(dErr ? { displayName: dErr } : {}),
                 ...(eErr ? { email: eErr } : {}),
                 ...(pErr ? { password: pErr } : {}),
+                ...(storageQuotaBytes === null
+                    ? { storageQuotaBytes: 'Nhập dung lượng lớn hơn 0 và trong phạm vi cho phép.' }
+                    : {}),
             });
             return;
         }
@@ -180,212 +167,151 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
     };
 
     return (
-        <Dialog
+        <AdminDialog
             open={isOpen}
-            onOpenChange={(open) => {
-                if (!open && !createMutation.isPending) {
-                    handleClose();
-                }
-            }}
+            busy={createMutation.isPending}
+            onClose={handleClose}
+            title="Tạo tài khoản người dùng mới"
+            description="Nhập thông tin đăng nhập, vai trò và hạn mức lưu trữ."
         >
-            <DialogContent className="max-h-[92dvh] max-w-xl overflow-y-auto p-6 sm:p-7">
-                <DialogHeader className="gap-1.5 pb-1">
-                    <DialogTitle className="m-0 flex items-center gap-2 text-xl leading-tight">
-                        <Plus className="h-5 w-5 text-primary" />
-                        Tạo tài khoản người dùng mới
-                    </DialogTitle>
-                    <DialogDescription className="text-sm">
-                        Thêm tài khoản vào hệ thống với vai trò và dung lượng lưu trữ tương ứng.
-                    </DialogDescription>
-                </DialogHeader>
+            <Feedback error={apiError} errorMode="toast" />
+            <form
+                id="admin-user-create-form"
+                noValidate
+                onSubmit={handleSubmit}
+                className="-mx-1 min-h-0 space-y-4 overflow-y-auto px-1 pb-1"
+            >
+                <FieldGroup className="grid gap-4 sm:grid-cols-2">
+                    {/* Tên hiển thị */}
+                    <Field>
+                        <FieldLabel htmlFor="create-display-name">
+                            Tên hiển thị <span className="text-destructive">*</span>
+                        </FieldLabel>
+                        <Input
+                            id="create-display-name"
+                            value={displayName}
+                            onChange={(e) => handleChange('displayName', e.target.value)}
+                            placeholder="Ví dụ: Nguyễn Văn A"
+                            maxLength={100}
+                            disabled={createMutation.isPending}
+                            className={fieldErrors.displayName ? 'border-destructive' : ''}
+                            aria-invalid={Boolean(fieldErrors.displayName)}
+                            aria-describedby={
+                                fieldErrors.displayName ? 'create-display-name-error' : undefined
+                            }
+                            required
+                        />
+                        {fieldErrors.displayName && (
+                            <FieldError id="create-display-name-error">
+                                {fieldErrors.displayName}
+                            </FieldError>
+                        )}
+                    </Field>
 
-                <Feedback error={apiError} errorMode="toast" />
+                    {/* Email */}
+                    <Field>
+                        <FieldLabel htmlFor="create-email">
+                            Địa chỉ email <span className="text-destructive">*</span>
+                        </FieldLabel>
+                        <Input
+                            id="create-email"
+                            type="email"
+                            value={email}
+                            onChange={(e) => handleChange('email', e.target.value)}
+                            placeholder="user@example.com"
+                            disabled={createMutation.isPending}
+                            className={fieldErrors.email ? 'border-destructive' : ''}
+                            aria-invalid={Boolean(fieldErrors.email)}
+                            aria-describedby={fieldErrors.email ? 'create-email-error' : undefined}
+                            required
+                        />
+                        {fieldErrors.email && (
+                            <FieldError id="create-email-error">{fieldErrors.email}</FieldError>
+                        )}
+                    </Field>
 
-                <form onSubmit={handleSubmit} className="space-y-5 pt-1">
-                    <FieldGroup className="gap-5">
-                        {/* Tên hiển thị */}
-                        <Field>
-                            <FieldLabel htmlFor="create-display-name">
-                                <span className="flex items-center gap-1.5">
-                                    <User className="h-3.5 w-3.5 text-muted-foreground" />
-                                    Tên hiển thị <span className="text-destructive">*</span>
-                                </span>
-                            </FieldLabel>
-                            <Input
-                                id="create-display-name"
-                                value={displayName}
-                                onChange={(e) => handleChange('displayName', e.target.value)}
-                                onBlur={() => handleBlur('displayName', displayName)}
-                                placeholder="Ví dụ: Nguyễn Văn A"
-                                maxLength={100}
-                                disabled={createMutation.isPending}
-                                className={fieldErrors.displayName ? 'border-destructive' : ''}
-                                required
-                            />
-                            {fieldErrors.displayName && (
-                                <FieldError>{fieldErrors.displayName}</FieldError>
-                            )}
-                        </Field>
+                    {/* Mật khẩu khởi tạo */}
+                    <Field>
+                        <FieldLabel htmlFor="create-password">
+                            Mật khẩu ban đầu <span className="text-destructive">*</span>
+                        </FieldLabel>
+                        <PasswordInput
+                            id="create-password"
+                            value={password}
+                            onChange={(e) => handleChange('password', e.target.value)}
+                            placeholder={`Tối thiểu ${LIMITS.passwordMinLength} ký tự`}
+                            minLength={LIMITS.passwordMinLength}
+                            maxLength={LIMITS.passwordMaxLength}
+                            disabled={createMutation.isPending}
+                            className={fieldErrors.password ? 'border-destructive' : ''}
+                            aria-invalid={Boolean(fieldErrors.password)}
+                            aria-describedby={
+                                fieldErrors.password ? 'create-password-error' : undefined
+                            }
+                            required
+                        />
+                        {fieldErrors.password && (
+                            <FieldError id="create-password-error">
+                                {fieldErrors.password}
+                            </FieldError>
+                        )}
+                    </Field>
 
-                        {/* Email */}
-                        <Field>
-                            <FieldLabel htmlFor="create-email">
-                                <span className="flex items-center gap-1.5">
-                                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                                    Địa chỉ email <span className="text-destructive">*</span>
-                                </span>
-                            </FieldLabel>
-                            <Input
-                                id="create-email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => handleChange('email', e.target.value)}
-                                onBlur={() => handleBlur('email', email)}
-                                placeholder="user@example.com"
-                                disabled={createMutation.isPending}
-                                className={fieldErrors.email ? 'border-destructive' : ''}
-                                required
-                            />
-                            {fieldErrors.email && <FieldError>{fieldErrors.email}</FieldError>}
-                        </Field>
-
-                        {/* Mật khẩu khởi tạo */}
-                        <Field>
-                            <FieldLabel htmlFor="create-password">
-                                <span className="flex items-center gap-1.5">
-                                    <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
-                                    Mật khẩu ban đầu <span className="text-destructive">*</span>
-                                </span>
-                            </FieldLabel>
-                            <PasswordInput
-                                id="create-password"
-                                value={password}
-                                onChange={(e) => handleChange('password', e.target.value)}
-                                onBlur={() => handleBlur('password', password)}
-                                placeholder={`Tối thiểu ${LIMITS.passwordMinLength} ký tự`}
-                                minLength={LIMITS.passwordMinLength}
-                                maxLength={LIMITS.passwordMaxLength}
-                                disabled={createMutation.isPending}
-                                className={fieldErrors.password ? 'border-destructive' : ''}
-                                required
-                            />
-                            {fieldErrors.password && (
-                                <FieldError>{fieldErrors.password}</FieldError>
-                            )}
-                        </Field>
-
-                        {/* Vai trò */}
-                        <Field>
-                            <FieldLabel htmlFor="create-role">
-                                <span className="flex items-center gap-1.5">
-                                    <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                                    Vai trò tài khoản
-                                </span>
-                            </FieldLabel>
-                            <Select
-                                value={role}
-                                onValueChange={(val) => setRole(val as UserRole)}
-                                disabled={createMutation.isPending}
-                            >
-                                <SelectTrigger id="create-role">
-                                    <SelectValue placeholder="Chọn vai trò" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="AUTHOR">Tác giả (AUTHOR)</SelectItem>
-                                    <SelectItem value="ADMIN">Quản trị viên (ADMIN)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            {role === 'ADMIN' && (
-                                <p className="text-[11px] text-warning-foreground">
-                                    Tài khoản Quản trị viên sẽ có toàn quyền can thiệp vào tài
-                                    nguyên và hệ thống.
-                                </p>
-                            )}
-                        </Field>
-
-                        {/* Hạn mức dung lượng */}
-                        <Field>
-                            <FieldLabel htmlFor="create-quota">
-                                <span className="flex items-center gap-1.5">
-                                    <HardDrive className="h-3.5 w-3.5 text-muted-foreground" />
-                                    Hạn mức lưu trữ: {bytesLabel(storageQuotaBytes)}
-                                </span>
-                            </FieldLabel>
-
-                            {/* Preset Buttons */}
-                            <div className="flex flex-wrap gap-2">
-                                {STORAGE_PRESETS.map((preset) => (
-                                    <Button
-                                        key={preset.bytes}
-                                        type="button"
-                                        size="xs"
-                                        variant={
-                                            !customStorage && storageQuotaBytes === preset.bytes
-                                                ? 'default'
-                                                : 'secondary'
-                                        }
-                                        disabled={createMutation.isPending}
-                                        onClick={() => {
-                                            setStorageQuotaBytes(preset.bytes);
-                                            setCustomStorage(false);
-                                        }}
-                                    >
-                                        {preset.label}
-                                    </Button>
-                                ))}
-                                <Button
-                                    type="button"
-                                    size="xs"
-                                    variant={customStorage ? 'default' : 'secondary'}
-                                    disabled={createMutation.isPending}
-                                    onClick={() => setCustomStorage(true)}
-                                >
-                                    Tùy chỉnh (byte)
-                                </Button>
-                            </div>
-
-                            {customStorage && (
-                                <div className="mt-2">
-                                    <Input
-                                        id="create-quota"
-                                        type="number"
-                                        min={1}
-                                        step={1048576}
-                                        value={storageQuotaBytes}
-                                        onChange={(e) => {
-                                            const val = Math.max(1, Number(e.target.value));
-                                            setStorageQuotaBytes(val);
-                                        }}
-                                        disabled={createMutation.isPending}
-                                        placeholder="Nhập số byte"
-                                    />
-                                    <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                                        = {bytesLabel(storageQuotaBytes)}
-                                    </p>
-                                </div>
-                            )}
-
-                            {fieldErrors.storageQuotaBytes && (
-                                <FieldError>{fieldErrors.storageQuotaBytes}</FieldError>
-                            )}
-                        </Field>
-                    </FieldGroup>
-
-                    <DialogFooter className="mt-6 flex items-center justify-end gap-3 border-border/60 border-t pt-4">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={handleClose}
+                    {/* Vai trò */}
+                    <Field>
+                        <FieldLabel htmlFor="create-role">Vai trò tài khoản</FieldLabel>
+                        <Select
+                            value={role}
+                            onValueChange={(val) => setRole(val as UserRole)}
                             disabled={createMutation.isPending}
                         >
-                            Hủy bỏ
-                        </Button>
-                        <Button type="submit" disabled={createMutation.isPending}>
-                            {createMutation.isPending ? 'Đang tạo…' : 'Tạo tài khoản'}
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
+                            <SelectTrigger id="create-role">
+                                <SelectValue placeholder="Chọn vai trò" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="AUTHOR">Tác giả (AUTHOR)</SelectItem>
+                                <SelectItem value="ADMIN">Quản trị viên (ADMIN)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {role === 'ADMIN' && (
+                            <p className="m-0 text-warning-foreground text-xs">
+                                Tài khoản Quản trị viên sẽ có toàn quyền can thiệp vào tài nguyên và
+                                hệ thống.
+                            </p>
+                        )}
+                    </Field>
+
+                    <UserStorageQuotaField
+                        id="create-quota"
+                        value={storageQuota}
+                        disabled={createMutation.isPending}
+                        error={fieldErrors.storageQuotaBytes}
+                        onChange={(value) => {
+                            setStorageQuota(value);
+                            if (fieldErrors.storageQuotaBytes) {
+                                setFieldErrors((prev) => ({ ...prev, storageQuotaBytes: '' }));
+                            }
+                        }}
+                    />
+                </FieldGroup>
+            </form>
+            <DialogFooter className="mt-0 shrink-0 flex-row flex-wrap items-center justify-end border-0 pt-0">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleClose}
+                    disabled={createMutation.isPending}
+                >
+                    Hủy
+                </Button>
+                <Button
+                    type="submit"
+                    form="admin-user-create-form"
+                    disabled={createMutation.isPending}
+                >
+                    {createMutation.isPending ? 'Đang tạo…' : 'Tạo tài khoản'}
+                </Button>
+            </DialogFooter>
+        </AdminDialog>
     );
 }

@@ -24,7 +24,8 @@ import {
 import { Input } from '@/shared/ui/primitives/input';
 import { libraryApi } from '../library-ui';
 import { useAdminMutation as useMutation } from '../use-admin-mutation';
-import { LibraryAssetDialog, LibraryAssetSummary } from './LibraryAssetDialog';
+import { AdminDialog } from './AdminDialog';
+import { LibraryAssetSummary } from './LibraryAssetSummary';
 import { LibraryLicenseField } from './LibraryLicenseField';
 
 export interface LibraryAssetEditModalProps {
@@ -142,7 +143,7 @@ export function LibraryAssetEditModal({
     const categories = categoriesQuery.data || [];
 
     return (
-        <LibraryAssetDialog
+        <AdminDialog
             open={isOpen}
             busy={editMutation.isPending}
             title="Chỉnh sửa tài nguyên"
@@ -296,6 +297,6 @@ export function LibraryAssetEditModal({
                     </Button>
                 </DialogFooter>
             </form>
-        </LibraryAssetDialog>
+        </AdminDialog>
     );
 }

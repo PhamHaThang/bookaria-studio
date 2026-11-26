@@ -33,7 +33,8 @@ import { Input } from '@/shared/ui/primitives/input';
 import { SearchInput } from '@/shared/ui/SearchInput';
 import { libraryApi } from '../library-ui';
 import { useAdminMutation as useMutation } from '../use-admin-mutation';
-import { LibraryAssetDialog, LibraryAssetSummary } from './LibraryAssetDialog';
+import { AdminDialog } from './AdminDialog';
+import { LibraryAssetSummary } from './LibraryAssetSummary';
 import { LibraryLicenseField } from './LibraryLicenseField';
 
 const uploadTypes = AssetTypeSchema.options.map((type) => ({
@@ -378,7 +379,7 @@ export function LibraryAssetCreateModal({
 
     return (
         <>
-            <LibraryAssetDialog
+            <AdminDialog
                 open={isOpen}
                 busy={promoteMutation.isPending || uploadBusy}
                 className={
@@ -608,7 +609,7 @@ export function LibraryAssetCreateModal({
                         </DialogFooter>
                     </form>
                 )}
-            </LibraryAssetDialog>
+            </AdminDialog>
             {discardUpload && (
                 <ConfirmationDialog
                     title="Bỏ tệp đang chọn?"

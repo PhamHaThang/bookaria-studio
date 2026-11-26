@@ -1,38 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
-import {
-    BookOpen,
-    Calendar,
-    Clock,
-    HardDrive,
-    Lock,
-    Pencil,
-    ShieldCheck,
-    Unlock,
-} from 'lucide-react';
+import { BookOpen, Calendar, Clock, HardDrive, Lock, Pencil, Unlock } from 'lucide-react';
 import { useAuth } from '@/features/auth';
+import { bookStatusLabels } from '@/features/books';
 import type { AdminUserDetails } from '@/shared/contracts/api/admin.schema';
 import { cn } from '@/shared/lib/cn';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { LoadingState } from '@/shared/ui/LoadingState';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/primitives/avatar';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/shared/ui/primitives/dialog';
+import { DialogFooter } from '@/shared/ui/primitives/dialog';
 import { adminApi } from '../client';
-import {
-    adminDate,
-    adminKeys,
-    bytesLabel,
-    roleLabel,
-    statusLabel,
-    visibilityLabel,
-} from '../model';
+import { adminDate, adminKeys, bytesLabel, visibilityLabel } from '../model';
+import { AdminDialog } from './AdminDialog';
+import { UserSummary } from './UserSummary';
 
 interface UserDetailModalProps {
     userId: string | null;
@@ -65,13 +44,6 @@ export function UserDetailModal({ userId, isOpen, onClose, onEdit, onLock }: Use
     const usedPercent = Math.min(100, Math.round((usedBytes / quotaBytes) * 100));
 
     const isLocked = userDetails?.status === 'LOCKED';
-    const isAdmin = userDetails?.role === 'ADMIN';
-
-    const initials = (userDetails?.displayName || userDetails?.email || 'U')
-        .trim()
-        .slice(0, 2)
-        .toUpperCase();
-
     const isSelf = Boolean(
         currentAdmin?.id &&
             userDetails?.id &&
@@ -79,17 +51,14 @@ export function UserDetailModal({ userId, isOpen, onClose, onEdit, onLock }: Use
     );
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-h-[92dvh] max-w-2xl overflow-y-auto p-6 sm:p-7">
-                <DialogHeader className="gap-1.5 pb-2">
-                    <DialogTitle className="m-0 text-xl leading-tight">
-                        Chi tiết người dùng
-                    </DialogTitle>
-                    <DialogDescription className="text-sm">
-                        Xem thông tin tài khoản, hạn mức lưu trữ và các đầu sách của tác giả.
-                    </DialogDescription>
-                </DialogHeader>
-
+        <AdminDialog
+            open={isOpen}
+            onClose={onClose}
+            title="Chi tiết người dùng"
+            description="Thông tin tài khoản, dung lượng lưu trữ và sách đã tạo."
+            className="max-w-[min(680px,calc(100vw-32px))]"
+        >
+            <div className="-mx-1 min-h-0 space-y-4 overflow-y-auto px-1 pb-1">
                 {isPending && (
                     <div className="py-12">
                         <LoadingState layout="rows">Đang tải thông tin chi tiết…</LoadingState>
@@ -103,101 +72,14 @@ export function UserDetailModal({ userId, isOpen, onClose, onEdit, onLock }: Use
                 )}
 
                 {userDetails && (
-                    <div className="space-y-6 pt-1">
-                        {/* Khối hồ sơ chính - Tối ưu spacing, căn lề cân đối và khắc phục khoảng hụt thị giác */}
-                        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5 shadow-xs sm:p-6">
-                            {/* Hàng trên: Căn giữa Avatar theo trục dọc với khối thông tin nhận diện */}
-                            <div className="flex items-center gap-4 sm:gap-5">
-                                <div className="relative shrink-0">
-                                    <Avatar className="h-16 w-16 border-2 border-border shadow-xs">
-                                        {userDetails.avatarUrl && (
-                                            <AvatarImage
-                                                src={userDetails.avatarUrl}
-                                                alt={userDetails.displayName}
-                                            />
-                                        )}
-                                        <AvatarFallback className="bg-primary/10 font-bold text-lg text-primary">
-                                            {initials}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <span
-                                        className={cn(
-                                            'absolute right-0.5 bottom-0.5 h-4 w-4 rounded-full border-2 border-surface shadow-xs',
-                                            isLocked ? 'bg-destructive' : 'bg-emerald-500',
-                                        )}
-                                        title={isLocked ? 'Đã khóa' : 'Hoạt động'}
-                                    />
-                                </div>
-
-                                <div className="min-w-0 flex-1 space-y-2">
-                                    {/* Hàng 1: Tên người dùng và các chip badge nhỏ gọn, cân đối */}
-                                    <div className="flex items-center gap-2.5">
-                                        <h3 className="m-0 truncate font-bold text-foreground text-l leading-tight tracking-tight">
-                                            {userDetails.displayName}
-                                        </h3>
-                                        <div className="flex shrink-0 items-center gap-1.5">
-                                            <Badge
-                                                tone={isAdmin ? 'info' : 'neutral'}
-                                                className="h-5 justify-center gap-1 px-2 text-center font-normal text-[11px] leading-none"
-                                            >
-                                                {isAdmin && (
-                                                    <ShieldCheck className="size-3 shrink-0" />
-                                                )}
-                                                <span>{roleLabel[userDetails.role]}</span>
-                                            </Badge>
-                                            <Badge
-                                                tone={isLocked ? 'danger' : 'success'}
-                                                className="h-5 justify-center gap-1 px-2 text-center font-normal text-[11px] leading-none"
-                                            >
-                                                {isLocked ? (
-                                                    <>
-                                                        <Lock className="size-3 shrink-0" />
-                                                        <span>
-                                                            {statusLabel[userDetails.status]}
-                                                        </span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
-                                                        <span>
-                                                            {statusLabel[userDetails.status]}
-                                                        </span>
-                                                    </>
-                                                )}
-                                            </Badge>
-                                        </div>
-                                    </div>
-
-                                    {/* Hàng 2: Email (giảm font size xuống 11px tinh tế) */}
-                                    <p className="m-0 font-mono text-[12px] text-muted-foreground leading-normal">
-                                        {userDetails.email}
-                                    </p>
-
-                                    {/* Hàng 3: Đơn vị công tác (giảm font size xuống 11px) */}
-                                    {userDetails.organization && (
-                                        <p className="m-0 text-[12px] text-muted-foreground leading-normal">
-                                            Đơn vị công tác:{' '}
-                                            <span className="font-medium text-foreground">
-                                                {userDetails.organization}
-                                            </span>
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Hàng dưới: Hộp ghi chú / Tiểu sử (Bio) trải đều toàn bộ chiều ngang card */}
-                            {userDetails.bio && (
-                                <div className="mt-4.5 rounded-[var(--radius-md)] border border-border/70 bg-muted/40 p-3.5 text-muted-foreground text-xs leading-relaxed sm:mt-5">
-                                    <p className="font-normal">{userDetails.bio}</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Thống kê tài nguyên & Hoạt động - 2 Card thoáng đãng */}
+                    <div className="flex flex-col gap-4">
+                        <UserSummary user={userDetails} />
+                        {userDetails.bio && (
+                            <p className="m-0 text-muted-foreground text-sm">{userDetails.bio}</p>
+                        )}
                         <div className="grid grid-cols-1 gap-4 text-xs sm:grid-cols-2">
-                            {/* Card 1: Dung lượng lưu trữ */}
-                            <div className="space-y-3 rounded-[var(--radius-lg)] border border-border bg-surface p-4.5 shadow-xs">
-                                <div className="flex items-center justify-between">
+                            <div className="space-y-3 rounded-lg border border-border p-3">
+                                <div className="flex items-center justify-between gap-2">
                                     <span className="flex items-center gap-2 font-medium text-muted-foreground text-xs">
                                         <HardDrive className="h-4 w-4 text-primary" />
                                         <span>Dung lượng lưu trữ</span>
@@ -230,7 +112,7 @@ export function UserDetailModal({ userId, isOpen, onClose, onEdit, onLock }: Use
                                     />
                                 </div>
 
-                                <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground text-xs">
                                     <span>
                                         Đã dùng:{' '}
                                         <strong className="text-foreground">
@@ -246,9 +128,8 @@ export function UserDetailModal({ userId, isOpen, onClose, onEdit, onLock }: Use
                                 </div>
                             </div>
 
-                            {/* Card 2: Hoạt động & Thời gian */}
-                            <div className="space-y-2.5 rounded-[var(--radius-lg)] border border-border bg-surface p-4.5 shadow-xs">
-                                <div className="flex items-center justify-between">
+                            <div className="space-y-2.5 rounded-lg border border-border p-3">
+                                <div className="flex items-center justify-between gap-2">
                                     <span className="flex items-center gap-2 text-muted-foreground">
                                         <BookOpen className="h-4 w-4 text-primary" />
                                         <span>Tổng số sách:</span>
@@ -258,7 +139,7 @@ export function UserDetailModal({ userId, isOpen, onClose, onEdit, onLock }: Use
                                     </Badge>
                                 </div>
 
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                     <span className="flex items-center gap-2 text-muted-foreground">
                                         <Calendar className="h-4 w-4 text-muted-foreground/80" />
                                         <span>Ngày tham gia:</span>
@@ -268,7 +149,7 @@ export function UserDetailModal({ userId, isOpen, onClose, onEdit, onLock }: Use
                                     </span>
                                 </div>
 
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                     <span className="flex items-center gap-2 text-muted-foreground">
                                         <Clock className="h-4 w-4 text-muted-foreground/80" />
                                         <span>Đăng nhập cuối:</span>
@@ -280,29 +161,23 @@ export function UserDetailModal({ userId, isOpen, onClose, onEdit, onLock }: Use
                             </div>
                         </div>
 
-                        {/* Danh sách sách của người dùng */}
-                        <div className="space-y-2.5">
-                            <div className="flex items-center justify-between">
-                                <h4 className="font-semibold text-foreground text-sm">
-                                    Tác phẩm đã tạo ({userDetails.books?.length ?? 0})
-                                </h4>
-                                <span className="text-muted-foreground text-xs">
-                                    Danh sách các sách thuộc quyền sở hữu của tác giả
-                                </span>
-                            </div>
+                        <div className="flex flex-col gap-2">
+                            <h3 className="m-0 font-semibold text-foreground text-sm">
+                                Tác phẩm đã tạo ({userDetails.books?.length ?? 0})
+                            </h3>
 
                             {userDetails.books && userDetails.books.length > 0 ? (
-                                <div className="max-h-56 divide-y divide-border overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-surface">
+                                <div className="divide-y divide-border rounded-lg border border-border">
                                     {userDetails.books.map((book) => (
                                         <div
                                             key={book.id}
-                                            className="flex items-center justify-between p-3.5 text-xs transition-colors hover:bg-muted/20"
+                                            className="flex items-center justify-between gap-2 p-3 text-xs"
                                         >
-                                            <div className="min-w-0 flex-1 pr-4">
-                                                <p className="truncate font-semibold text-foreground text-sm">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="m-0 font-medium text-foreground text-sm">
                                                     {book.title}
                                                 </p>
-                                                <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
                                                     <span>{book.pageCount} trang</span>
                                                     <span>•</span>
                                                     <span>{visibilityLabel[book.visibility]}</span>
@@ -316,68 +191,55 @@ export function UserDetailModal({ userId, isOpen, onClose, onEdit, onLock }: Use
                                                 tone={book.takenDown ? 'danger' : 'neutral'}
                                                 className="shrink-0 px-2.5 py-0.5 text-xs"
                                             >
-                                                {book.takenDown ? 'Đã gỡ' : book.status}
+                                                {book.takenDown
+                                                    ? 'Đã gỡ'
+                                                    : bookStatusLabels[book.status]}
                                             </Badge>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <p className="rounded-[var(--radius-lg)] border border-border border-dashed p-6 text-center text-muted-foreground text-xs">
+                                <p className="m-0 rounded-lg bg-muted/40 p-3 text-muted-foreground text-sm">
                                     Tác giả này chưa tạo cuốn sách nào trên hệ thống.
                                 </p>
                             )}
                         </div>
                     </div>
                 )}
-
-                <DialogFooter className="mt-6 flex flex-col-reverse gap-3 border-border/70 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <Button variant="secondary" onClick={onClose} className="px-5">
-                        Đóng
+            </div>
+            <DialogFooter className="mt-0 shrink-0 flex-row flex-wrap items-center justify-end border-0 pt-0">
+                <Button variant="outline" onClick={onClose}>
+                    Đóng
+                </Button>
+                {userDetails && !isSelf && onLock && (
+                    <Button
+                        variant="outline"
+                        className={isLocked ? undefined : 'text-destructive'}
+                        onClick={() => {
+                            onClose();
+                            onLock(userDetails);
+                        }}
+                    >
+                        {isLocked ? (
+                            <Unlock data-icon="inline-start" />
+                        ) : (
+                            <Lock data-icon="inline-start" />
+                        )}
+                        {isLocked ? 'Mở khóa' : 'Khóa'}
                     </Button>
-                    {userDetails && (
-                        <div className="flex flex-wrap items-center gap-2.5">
-                            {!isSelf && onLock && (
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    className={cn(
-                                        'transition-colors',
-                                        isLocked
-                                            ? 'text-success-foreground hover:bg-success hover:text-success-foreground'
-                                            : 'text-warning-foreground hover:bg-warning hover:text-warning-foreground',
-                                    )}
-                                    onClick={() => {
-                                        onClose();
-                                        onLock(userDetails);
-                                    }}
-                                >
-                                    {isLocked ? (
-                                        <Unlock className="h-4 w-4" data-icon="inline-start" />
-                                    ) : (
-                                        <Lock className="h-4 w-4" data-icon="inline-start" />
-                                    )}
-                                    <span>{isLocked ? 'Mở khóa' : 'Khóa'}</span>
-                                </Button>
-                            )}
-
-                            {onEdit && (
-                                <Button
-                                    variant="default"
-                                    size="sm"
-                                    onClick={() => {
-                                        onClose();
-                                        onEdit(userDetails);
-                                    }}
-                                    className="gap-1.5"
-                                >
-                                    <Pencil className="h-4 w-4" data-icon="inline-start" />
-                                    <span>Cập nhật tài khoản</span>
-                                </Button>
-                            )}
-                        </div>
-                    )}
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                )}
+                {userDetails && onEdit && (
+                    <Button
+                        onClick={() => {
+                            onClose();
+                            onEdit(userDetails);
+                        }}
+                    >
+                        <Pencil data-icon="inline-start" />
+                        Cập nhật tài khoản
+                    </Button>
+                )}
+            </DialogFooter>
+        </AdminDialog>
     );
 }
