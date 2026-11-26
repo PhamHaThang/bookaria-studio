@@ -21,7 +21,13 @@ export function markerWarningText(warning: MarkerWarning) {
     const labels: Record<string, string> = {
         NO_MARKER_AVAILABLE: 'Chưa có marker Bookaria khả dụng; trang đang không dùng AR.',
         LOW_SCORE: 'Ảnh nhận diện khó quét. Hãy chọn ảnh có nhiều chi tiết hơn.',
-        NOT_SCORED: 'Ảnh nhận diện chưa có điểm đánh giá.',
+        NOT_SCORED: 'Ảnh nhận diện chưa được phân tích.',
+        REANALYZE_REQUIRED: 'Báo cáo marker cũ hoặc không hợp lệ. Hãy đánh giá lại.',
+        STALE_MARKER: 'Ảnh hoặc khổ trang đã thay đổi. Áp dụng lại ảnh nhận diện và đánh giá lại.',
+        NO_FEATURES: 'Ảnh không có điểm đặc trưng để nhận diện. Hãy chọn ảnh khác.',
+        DISTRIBUTION_LOW: 'Điểm đặc trưng phân bố chưa đều. Nên thử quét trên điện thoại.',
+        UNIQUENESS_LOW: 'Ảnh có nhiều đặc trưng lặp. Nên thử quét trên điện thoại.',
+        IMAGE_SMALL: 'Ảnh nhận diện có cạnh ngắn dưới 1000 px. Nên dùng ảnh gốc lớn hơn.',
         MARKER_TOO_SMALL: 'Marker quá nhỏ khi in.',
         MARKER_NEAR_EDGE: 'Marker quá gần mép trang.',
     };

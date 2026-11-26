@@ -8,26 +8,31 @@ import {
     ScrollText,
     Tags,
     UsersRound,
+    X,
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { AdminAccess } from '@/features/admin/AdminAccess';
+import { cn } from '@/shared/lib/cn';
 import { BookariaLogo, bookariaLogoLinkStyles } from '@/shared/ui/BookariaLogo';
 import { Button } from '@/shared/ui/Button';
+import { LoadingBoundary } from '@/shared/ui/LoadingBoundary';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import {
     Sidebar,
     SidebarContent,
     SidebarGroup,
     SidebarGroupContent,
+    SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
     SidebarProvider,
+    SidebarTrigger,
+    useSidebar,
 } from '@/shared/ui/primitives/sidebar';
 import { HeaderAccountActions } from './HeaderAccountActions';
-import { HomeLink } from './HomeLink';
 
 const destinations = [
     { to: '/admin', label: 'Tổng quan', icon: LayoutDashboard },
@@ -42,7 +47,27 @@ const destinations = [
 ];
 
 export function AdminLayout() {
+    return (
+        <SidebarProvider
+            data-stable-scroll-overlays
+            className="admin-shell min-h-dvh flex-col bg-background [&_[data-slot=sidebar-gap]]:ease-out motion-reduce:[&_[data-slot=sidebar-gap]]:transition-none"
+            style={{ '--sidebar-width': '248px', '--sidebar-width-icon': '72px' } as CSSProperties}
+        >
+            <AdminWorkspace />
+        </SidebarProvider>
+    );
+}
+
+function AdminWorkspace() {
     const { pathname } = useLocation();
+    const { open, isMobile, openMobile, setOpenMobile } = useSidebar();
+    const sidebarTrigger = useRef<HTMLButtonElement>(null);
+    const collapsed = !isMobile && !open;
+    const toggleLabel = isMobile
+        ? 'Mở menu quản trị'
+        : open
+          ? 'Thu gọn sidebar'
+          : 'Mở rộng sidebar';
     const title =
         destinations.find(
             ({ to }) => pathname === to || (to !== '/admin' && pathname.startsWith(`${to}/`)),
@@ -56,55 +81,103 @@ export function AdminLayout() {
     }, [title]);
 
     return (
-        <div className="admin-shell min-h-dvh bg-background">
-            <header className="admin-topbar sticky top-0 z-20 flex min-h-16 items-center justify-between gap-8 border-border border-b bg-surface px-8">
+        <>
+            <header className="admin-topbar sticky top-0 z-20 flex h-16 w-full items-center bg-surface">
                 <Link
                     to="/"
                     aria-label="Bookaria - Trang chủ"
                     className={bookariaLogoLinkStyles(
-                        'inline-flex items-center gap-4 rounded-md text-foreground no-underline [&_.bookaria-logo]:w-32',
+                        cn(
+                            'relative inline-flex h-16 w-36 shrink-0 items-center overflow-hidden border-border text-foreground no-underline transition-[width,opacity] duration-200 ease-out motion-reduce:transition-none md:w-(--sidebar-width) md:border-r',
+                            collapsed && 'md:w-(--sidebar-width-icon)',
+                        ),
                     )}
                 >
-                    <BookariaLogo />
-                    <span className="border-border border-l pl-4 text-muted-foreground text-sm">
-                        Quản trị
+                    <span
+                        aria-hidden={collapsed}
+                        className={cn(
+                            'absolute left-4 transition-opacity duration-150 ease-out motion-reduce:transition-none md:left-6',
+                            collapsed && 'opacity-0',
+                        )}
+                    >
+                        <BookariaLogo className="w-28 md:w-36" />
+                    </span>
+                    <span
+                        aria-hidden={!collapsed}
+                        className={cn(
+                            'absolute left-4.5 opacity-0 transition-opacity duration-150 ease-out motion-reduce:transition-none',
+                            collapsed && 'opacity-100',
+                        )}
+                    >
+                        <BookariaLogo symbol className="w-9" />
                     </span>
                 </Link>
-                <div className="flex items-center gap-4">
-                    <HomeLink />
-                    <Button variant="ghost" size="sm" asChild>
-                        <Link to="/books">Studio</Link>
-                    </Button>
+                <div className="flex h-full min-w-0 flex-1 items-center justify-between gap-2 border-border border-b px-3 md:px-4">
+                    <SidebarTrigger
+                        ref={sidebarTrigger}
+                        className="size-10 shrink-0"
+                        aria-label={toggleLabel}
+                        title={toggleLabel}
+                        aria-expanded={isMobile ? openMobile : open}
+                        aria-controls="admin-navigation"
+                    />
                     <HeaderAccountActions />
                 </div>
             </header>
             <AdminAccess>
-                <SidebarProvider
-                    className="admin-body min-h-[calc(100dvh-64px)]"
-                    style={{ '--sidebar-width': '248px' } as CSSProperties}
-                >
+                <div className="admin-body flex min-h-[calc(100dvh-64px)] w-full flex-1">
                     <Sidebar
-                        collapsible="none"
-                        className="sticky top-16 h-[calc(100dvh-64px)] shrink-0 self-start border-border border-r px-3 py-6"
+                        collapsible="icon"
+                        className="top-16 h-[calc(100dvh-64px)] border-border ease-out motion-reduce:transition-none"
+                        onCloseAutoFocus={(event) => {
+                            event.preventDefault();
+                            sidebarTrigger.current?.focus();
+                        }}
                     >
-                        <SidebarContent>
+                        <SidebarHeader className="h-16 flex-row items-center justify-between px-5 md:hidden">
+                            <Link
+                                to="/"
+                                aria-label="Bookaria - Trang chủ"
+                                className={bookariaLogoLinkStyles()}
+                            >
+                                <BookariaLogo className="w-32" />
+                            </Link>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Đóng menu quản trị"
+                                onClick={() => setOpenMobile(false)}
+                            >
+                                <X aria-hidden="true" />
+                            </Button>
+                        </SidebarHeader>
+                        <SidebarContent className="px-3.5 py-4 group-data-[collapsible=icon]:overflow-y-auto">
                             <SidebarGroup className="p-0">
                                 <SidebarGroupContent>
-                                    <nav aria-label="Điều hướng quản trị">
-                                        <SidebarMenu>
+                                    <nav id="admin-navigation" aria-label="Điều hướng quản trị">
+                                        <SidebarMenu className="gap-1.5">
                                             {destinations.map(({ to, label, icon: Icon }) => (
                                                 <SidebarMenuItem key={to}>
                                                     <SidebarMenuButton
                                                         asChild
+                                                        tooltip={label}
+                                                        className="gap-3 px-3 transition-[width,background-color,color] duration-200 ease-out data-[active=true]:bg-(--surface-dark) data-[active=true]:text-(--text-on-dark) data-[active=true]:active:bg-(--surface-dark) data-[active=true]:active:text-(--text-on-dark) data-[active=true]:hover:bg-(--surface-dark) data-[active=true]:hover:text-(--text-on-dark) group-data-[collapsible=icon]:size-11! group-data-[collapsible=icon]:p-3! motion-reduce:transition-none [&_svg]:size-5"
                                                         isActive={
                                                             pathname === to ||
                                                             (to !== '/admin' &&
                                                                 pathname.startsWith(`${to}/`))
                                                         }
                                                     >
-                                                        <NavLink to={to} end={to === '/admin'}>
+                                                        <NavLink
+                                                            to={to}
+                                                            end={to === '/admin'}
+                                                            aria-label={label}
+                                                            onClick={() => setOpenMobile(false)}
+                                                        >
                                                             <Icon aria-hidden="true" />
-                                                            <span>{label}</span>
+                                                            <span className="whitespace-nowrap transition-opacity duration-150 ease-out group-data-[collapsible=icon]:opacity-0 motion-reduce:transition-none">
+                                                                {label}
+                                                            </span>
                                                         </NavLink>
                                                     </SidebarMenuButton>
                                                 </SidebarMenuItem>
@@ -115,14 +188,21 @@ export function AdminLayout() {
                             </SidebarGroup>
                         </SidebarContent>
                     </Sidebar>
-                    <main id="main" className="admin-main min-w-0 flex-1 px-10 pt-10 pb-16">
-                        <Suspense fallback={<LoadingScreen message="Đang mở trang quản trị…" />}>
-                            <Outlet />
-                        </Suspense>
+                    <main
+                        id="main"
+                        className="admin-main min-w-0 flex-1 px-4 pt-8 pb-16 md:px-10 md:pt-10"
+                    >
+                        <LoadingBoundary>
+                            <Suspense
+                                fallback={<LoadingScreen message="Đang mở trang quản trị…" />}
+                            >
+                                <Outlet />
+                            </Suspense>
+                        </LoadingBoundary>
                     </main>
-                </SidebarProvider>
+                </div>
             </AdminAccess>
-        </div>
+        </>
     );
 }
 

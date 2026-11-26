@@ -12,18 +12,33 @@ const check = process.argv.includes('--check');
 const hash = (content) => createHash('sha256').update(content).digest('hex');
 const normalize = (content) => content.replace(/\r\n/g, '\n');
 const outputs = {};
-for (const name of ['buildScene.ts', 'InteractionRunner.ts']) {
+for (const name of [
+    'buildScene.ts',
+    'InteractionRunner.ts',
+    'WorkflowState.ts',
+    'WorkflowPrompt.ts',
+    'MediaElementPool.ts',
+    'ModelControls.ts',
+    'ModelControlAnimations.ts',
+    'asset-cache.ts',
+]) {
     const original = normalize(await readFile(path.join(viewer, 'src/scene-core', name), 'utf8'));
     let content = original
         .replaceAll("'../shared/contracts/", "'../contracts/")
         .replaceAll("'../shared/scene/", "'../scene/")
+        .replace("'../reader-feedback'", "'./reader-feedback'")
         .replace("'../shared/api'", "'./fetchBytes'");
     if (name === 'buildScene.ts')
         content = content
+            .replace("import type { ReaderNoticeOptions } from './reader-feedback';\n", '')
+            .replace(
+                'import { askWorkflowQuestion }',
+                "import type { ReaderNoticeOptions } from './reader-feedback';\nimport { askWorkflowQuestion }",
+            )
             .replace("import { fetchBytes } from './fetchBytes';\n", '')
             .replace(
-                'import { InteractionRunner, sleep }',
-                "import { fetchBytes } from './fetchBytes';\nimport { InteractionRunner, sleep }",
+                "import type { AssetCache } from './asset-cache';",
+                "import type { AssetCache } from './asset-cache';\nimport { fetchBytes } from './fetchBytes';",
             );
     if (name === 'InteractionRunner.ts') {
         content = content.replace(
@@ -45,11 +60,27 @@ for (const name of ['buildScene.ts', 'InteractionRunner.ts']) {
     }`,
         );
     }
+    if (name === 'asset-cache.ts') {
+        content = content.replace(
+            `    constructor(
+        private download: Download = fetchBytes,
+        private limits: { totalBytes: number; fileBytes: number } = ASSET_CACHE_LIMITS,
+    ) {}`,
+            `    private download: Download;
+    private limits: { totalBytes: number; fileBytes: number };
+    constructor(download: Download = fetchBytes, limits: { totalBytes: number; fileBytes: number } = ASSET_CACHE_LIMITS) {
+        this.download = download;
+        this.limits = limits;
+    }`,
+        );
+    }
     outputs[name] = { original, content };
 }
 const api = normalize(await readFile(path.join(viewer, 'src/shared/api.ts'), 'utf8'));
 const fetchBytes = api.slice(api.indexOf('export async function fetchBytes('));
 outputs['fetchBytes.ts'] = { original: fetchBytes, content: fetchBytes };
+const feedback = normalize(await readFile(path.join(viewer, 'src/reader-feedback.ts'), 'utf8'));
+outputs['reader-feedback.ts'] = { original: feedback, content: feedback };
 const require = createRequire(import.meta.url);
 const biome = path.join(path.dirname(require.resolve('@biomejs/biome/package.json')), 'bin/biome');
 for (const [name, value] of Object.entries(outputs)) {

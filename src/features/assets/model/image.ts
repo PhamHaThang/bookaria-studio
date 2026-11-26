@@ -1,6 +1,7 @@
 import { ContractError } from '../../../shared/api/contract';
 import { checkUploadRequest } from '../../../shared/contracts/api/assets.schema';
 import type { Asset } from '../../../shared/contracts/dto.schema';
+import type { AssetsApi } from '../api/assets-api';
 import { uploadRequest } from './form';
 import { runAssetUpload } from './upload';
 
@@ -21,19 +22,31 @@ export async function saveUploadedImage({
     onReady,
     save,
     onSaving,
+    prepareFile,
+    onPreparing,
     ...upload
-}: Parameters<typeof runAssetUpload>[0] & {
+}: Parameters<typeof runAssetUpload<Awaited<ReturnType<AssetsApi['complete']>>>>[0] & {
     purpose: ImagePurpose;
     readyAsset: Asset | null;
     onReady: (asset: Asset) => void;
     save: (assetId: string) => Promise<void>;
     onSaving: () => void;
+    prepareFile?: (file: File, signal: AbortSignal) => Promise<File>;
+    onPreparing?: () => void;
 }) {
     imageUploadRequest(upload.file, upload.purpose);
     upload.signal.throwIfAborted();
     let asset = readyAsset;
     if (!asset) {
-        const result = await runAssetUpload(upload);
+        let file = upload.file;
+        // An uploaded checkpoint only needs completion; do not decode/encode it again.
+        if (prepareFile && !upload.checkpoint?.uploaded) {
+            onPreparing?.();
+            file = await prepareFile(file, upload.signal);
+            upload.signal.throwIfAborted();
+            imageUploadRequest(file, upload.purpose);
+        }
+        const result = await runAssetUpload({ ...upload, file });
         upload.signal.throwIfAborted();
         if (result.processing || result.asset.type !== 'IMAGE' || result.asset.status !== 'READY')
             throw new ContractError();

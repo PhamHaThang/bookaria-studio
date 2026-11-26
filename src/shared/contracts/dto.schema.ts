@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AssetMetaSchema, AssetRefSchema } from './asset.schema';
 import {
+    BOOK_AGE_MAX,
     BytesSchema,
     HttpUrlSchema,
     IdSchema,
@@ -31,7 +32,7 @@ import {
     MarkerWarningSchema,
     PageWidthMmSchema,
 } from './marker.schema';
-import { PageSettingsSchema, SceneSchema } from './scene.schema';
+import { PageSettingsSchema, SceneSchema, WorkflowVariablesSchema } from './scene.schema';
 
 export const UserRefSchema = z.object({
     id: z.string(),
@@ -100,6 +101,7 @@ export const CurrentVersionRefSchema = z.object({
     publishedAt: IsoDateTimeSchema,
 });
 export const BookDetailSchema = BookSummarySchema.extend({
+    workflowVariables: WorkflowVariablesSchema.optional(),
     description: z.string().nullable(),
     ageMin: z.int().min(0).nullable(),
     ageMax: z.int().min(0).nullable(),
@@ -191,7 +193,8 @@ export const JobResultsSchema = {
         kind: z.enum(['PRINT', 'MARKER_SHEET']),
     }),
     OPTIMIZE_ASSET: z.object({ assetId: IdSchema, meta: AssetMetaSchema }),
-    SCORE_MARKER: z.object({ pageId: IdSchema, score: MarkerScoreSchema }),
+    GENERATE_MODEL: z.object({ assetId: IdSchema }),
+    SCORE_MARKER: z.object({ pageId: IdSchema, score: MarkerScoreSchema.nullable() }),
     BUILD_PREVIEW: z.object({ token: z.string(), url: HttpUrlSchema }),
 } as const;
 export const VersionSchema = z.object({
@@ -224,8 +227,8 @@ export const PublicBookSchema = z.object({
     author: UserRefSchema,
     coverUrl: HttpUrlSchema.nullable(),
     language: LanguageSchema,
-    ageMin: z.int().min(0).max(18).nullable(),
-    ageMax: z.int().min(0).max(18).nullable(),
+    ageMin: z.int().min(0).max(BOOK_AGE_MAX).nullable(),
+    ageMax: z.int().min(0).max(BOOK_AGE_MAX).nullable(),
     version: z.object({
         id: IdSchema,
         versionNo: z.int().positive(),

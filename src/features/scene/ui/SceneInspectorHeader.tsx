@@ -12,7 +12,6 @@ import {
     Video,
     Volume2,
     X,
-    Zap,
 } from 'lucide-react';
 import type { SceneObject } from '@/shared/contracts/scene.schema';
 import { Button } from '@/shared/ui/primitives/button';
@@ -37,7 +36,7 @@ export function SceneInspectorHeader({
     onBack,
     onClear,
 }: {
-    panel: 'properties' | 'interactions' | 'settings' | 'preview';
+    panel: 'properties' | 'settings' | 'preview';
     selected?: SceneObject;
     count: number;
     pageNumber: number;
@@ -53,9 +52,7 @@ export function SceneInspectorHeader({
             : meta?.title || 'Thuộc tính đối tượng'
         : panel === 'settings'
           ? 'Thiết lập trang'
-          : panel === 'interactions'
-            ? 'Tương tác của trang'
-            : 'Xem trước';
+          : 'Xem trước';
     const subtitle = properties
         ? count > 1
             ? `${count} đối tượng được chọn`
@@ -69,9 +66,7 @@ export function SceneInspectorHeader({
               : MousePointer2
         : panel === 'settings'
           ? Settings2
-          : panel === 'interactions'
-            ? Zap
-            : Eye;
+          : Eye;
 
     return (
         <header className="inspector-heading flex min-h-20 shrink-0 items-center gap-3 border-border border-b bg-surface px-4 py-4">

@@ -3,6 +3,7 @@ import { ArrowRight, BookOpen, FileUp, LoaderCircle, X } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
+import { optimizeBookCover } from '@/shared/lib/image-file';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -12,10 +13,7 @@ import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import { ContractError } from '../../../shared/api/contract';
 import { errorMessage } from '../../../shared/api/errors';
-import {
-    type CreateBookBody,
-    CreateBookBodySchema,
-} from '../../../shared/contracts/api/books.schema';
+import type { CreateBookBody } from '../../../shared/contracts/api/books.schema';
 import type { Asset } from '../../../shared/contracts/dto.schema';
 import type { PageFormat } from '../../../shared/contracts/enums.schema';
 import { Button } from '../../../shared/ui/Button';
@@ -38,14 +36,15 @@ import { blankPageImage } from '../../pages/model/blank-page';
 import { NavigationGuard } from '../../scene/ui/NavigationGuard';
 import { bookKeys, booksApi } from '../model/books';
 import { type CreationCheckpoint, createBookWithPages } from '../model/create-book';
+import { createBookForm } from '../model/form';
 import type { ImportSource } from '../model/import-source';
-import { customBookSize } from '../model/page-size';
+import { BookAudienceFields } from './BookAudienceFields';
 import { BookCoverField } from './BookCoverField';
 import { BookImportField, type BookImportValue } from './BookImportField';
 import { BookSizeFields } from './BookSizeFields';
 import { BookTopicField } from './BookTopicField';
 
-export function BookCreateDialog() {
+export function BookCreateDialog({ backTo = '/books' }: { backTo?: '/books' | '/studio' }) {
     const navigate = useNavigate(),
         cache = useQueryClient();
     const location = useLocation();
@@ -73,6 +72,7 @@ export function BookCreateDialog() {
     const [detectedPage, setDetectedPage] = useState<number | null>(null);
     const [description, setDescription] = useState(''),
         [topic, setTopic] = useState('');
+    const [audienceEdited, setAudienceEdited] = useState(false);
     const [selection, setSelection] = useState<number[]>([]);
     const [preparing, setPreparing] = useState(false),
         [busy, setBusy] = useState(false);
@@ -102,7 +102,7 @@ export function BookCreateDialog() {
             {
                 pathname: checkpoint.current.bookId
                     ? `/books/${checkpoint.current.bookId}`
-                    : '/books',
+                    : backTo,
                 search: checkpoint.current.bookId ? '' : returnSearch,
             },
             { replace: true },
@@ -152,6 +152,7 @@ export function BookCreateDialog() {
             cover ||
             description ||
             topic ||
+            audienceEdited ||
             source ||
             preparing ||
             locked ||
@@ -160,7 +161,7 @@ export function BookCreateDialog() {
             width !== '210' ||
             height !== '297',
     );
-    async function submit(event: FormEvent) {
+    async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (active.current || preparing || checkpoint.current.uncertain) return;
         setError(null);
@@ -170,14 +171,7 @@ export function BookCreateDialog() {
                 if (mode === 'import' && (!source || !selection.length))
                     throw new Error('Chọn PDF hoặc ảnh và ít nhất một trang để nhập.');
                 submission.current = {
-                    body: CreateBookBodySchema.parse({
-                        title,
-                        description: description.trim() || undefined,
-                        topic: topic.trim() || undefined,
-                        pageFormat: format,
-                        ...(format === 'CUSTOM' ? customBookSize(width, height) : {}),
-                        source: { type: 'BLANK' },
-                    }),
+                    body: createBookForm(new FormData(event.currentTarget)),
                     indices: mode === 'blank' ? [0] : selection,
                     cover,
                 };
@@ -209,6 +203,8 @@ export function BookCreateDialog() {
                               transfer: uploadFile,
                               file: frozen.cover as File,
                               purpose: 'ASSET',
+                              prepareFile: optimizeBookCover,
+                              onPreparing: () => setStage('Đang tối ưu ảnh bìa…'),
                               metadata: { name: frozen.cover?.name || 'Ảnh bìa', tags: [] },
                               signal: new AbortController().signal,
                               checkpoint: coverCheckpoint.current,
@@ -363,6 +359,7 @@ export function BookCreateDialog() {
                                                 </FieldLabel>
                                                 <Input
                                                     id="new-book-title"
+                                                    name="title"
                                                     value={title}
                                                     onChange={(event) =>
                                                         setTitle(event.target.value)
@@ -391,6 +388,7 @@ export function BookCreateDialog() {
                                                 </FieldLabel>
                                                 <Textarea
                                                     id="new-book-description"
+                                                    name="description"
                                                     rows={3}
                                                     maxLength={2000}
                                                     value={description}
@@ -402,9 +400,15 @@ export function BookCreateDialog() {
                                             </Field>
                                             <BookTopicField
                                                 id="new-book-topic"
+                                                name="topic"
                                                 value={topic}
                                                 disabled={busy || locked}
                                                 onChange={setTopic}
+                                            />
+                                            <BookAudienceFields
+                                                prefix="new-book"
+                                                disabled={busy || locked}
+                                                onChange={() => setAudienceEdited(true)}
                                             />
                                         </FieldGroup>
                                     </div>
@@ -420,6 +424,7 @@ export function BookCreateDialog() {
                                                     </FieldLabel>
                                                     <FormSelect
                                                         id="new-book-format"
+                                                        name="pageFormat"
                                                         value={format}
                                                         onValueChange={(value) => {
                                                             setFormat(value as PageFormat);

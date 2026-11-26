@@ -61,9 +61,11 @@ test('audio cards render role/title, map the play hit, throttle redraw and dispo
             }),
             42,
         );
-        assert.ok(drawn.includes('VOICE'));
+        assert.ok(drawn.includes('Thuyết minh'));
         assert.ok(drawn.includes('Lời kể tiếng Việt'));
-        assert.ok(card.isPlayHit({ x: 72 / 768, y: 1 - 273 / 360 }));
+        assert.ok(drawn.includes('0:00 / 0:42'));
+        assert.ok(card.isPlayHit({ x: 0.12, y: 0.5 }));
+        assert.ok(card.isPlayHit({ x: 0.21, y: 0.5 }));
         assert.equal(card.isPlayHit({ x: 0.7, y: 0.7 }), false);
         const state = { playing: true, waiting: false, currentTime: 1, duration: 42, error: null };
         card.setPlayback(state);
@@ -74,7 +76,12 @@ test('audio cards render role/title, map the play hit, throttle redraw and dispo
         assert.ok(drawn.length > count);
         card.setTitle('Nhạc mới');
         assert.ok(drawn.includes('Nhạc mới'));
+        card.setTitle('Lời kể rất dài '.repeat(8));
+        assert.ok(drawn.some((text) => text.startsWith('Lời kể rất dài') && text.endsWith('…')));
+        card.setPlayback({ ...state, waiting: true });
+        assert.ok(drawn.includes('Đang tải…'));
         const mesh = card.group.children[0];
+        assert.ok(mesh.geometry.parameters.height / mesh.geometry.parameters.width < 0.3);
         let disposed = 0;
         mesh.material.map.addEventListener('dispose', () => disposed++);
         card.dispose();

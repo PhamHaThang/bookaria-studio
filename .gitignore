@@ -27,3 +27,7 @@ dist-ssr
 
 # Generated from the pinned pdfjs-dist package before dev/build
 public/vendor/pdfjs/
+
+# Browser interaction test artifacts
+test-results/
+playwright-report/

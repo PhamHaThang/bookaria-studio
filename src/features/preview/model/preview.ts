@@ -3,8 +3,13 @@ import { type Manifest, ManifestSchema } from '../../../shared/contracts/manifes
 import {
     PublishedSceneSchema,
     type Scene,
+    SceneSchema,
     sceneAssetIds,
+    WorkflowVariablesSchema,
 } from '../../../shared/contracts/scene.schema';
+import { interactionProblems, playableInteractions } from '../../scene/model/interaction-health';
+import { memoryDefinitions } from '../../scene/model/memory-variables';
+import { interactionFailure, PreviewDataError } from './preview-problem';
 
 export function viewerOrigin(value: string) {
     const url = new URL(value);
@@ -19,9 +24,11 @@ export function viewerOrigin(value: string) {
         throw new Error('VITE_VIEWER_ORIGIN phải là origin HTTP/HTTPS của Viewer.');
     return url.origin;
 }
-export function previewUrl(origin: string, token: string) {
+export function previewUrl(origin: string, token: string, mode?: 'ar') {
     if (!/^[A-Za-z0-9_-]{32}$/.test(token)) throw new Error('Token xem trước không hợp lệ.');
-    return new URL(`/preview/${token}`, viewerOrigin(origin)).href;
+    const url = new URL(`/preview/${token}`, viewerOrigin(origin));
+    if (mode === 'ar') url.searchParams.set('mode', 'ar');
+    return url.href;
 }
 export async function makePreviewPayload(
     page: Page,
@@ -29,8 +36,27 @@ export async function makePreviewPayload(
     scene: Scene,
     detail: (id: string, signal: AbortSignal) => Promise<Asset>,
     signal: AbortSignal,
+    options: { allowInvalidInteractions?: boolean } = {},
 ) {
-    const parsed = PublishedSceneSchema.parse(scene);
+    signal.throwIfAborted();
+    const draft = SceneSchema.parse(scene);
+    const memory = WorkflowVariablesSchema.safeParse(
+        memoryDefinitions(book.workflowVariables || [], [draft]),
+    );
+    if (!memory.success)
+        throw new PreviewDataError(
+            `Thông tin ghi nhớ chưa hợp lệ: ${memory.error.issues[0]?.message || 'Kiểm tra tên và giá trị.'} Mở Ghi nhớ để sửa.`,
+            { kind: 'memory' },
+        );
+    const workflowVariables = memory.data;
+    const prepared = options.allowInvalidInteractions
+        ? playableInteractions(draft)
+        : { scene: draft, problems: [] };
+    if (!options.allowInvalidInteractions) {
+        const problem = interactionProblems(draft)[0];
+        if (problem) throw interactionFailure(problem);
+    }
+    const parsed = PublishedSceneSchema.parse(prepared.scene);
     const ids = sceneAssetIds(parsed, page.settings);
     const assets: Manifest['assets'] = {};
     for (let offset = 0; offset < ids.length; offset += 8) {
@@ -54,6 +80,7 @@ export async function makePreviewPayload(
         bookId: book.id,
         version: 1,
         title: book.title,
+        workflowVariables,
         trackerEngine: 'mindar',
         generatedAt: new Date().toISOString(),
         targetGroups: [],
@@ -72,6 +99,12 @@ export async function makePreviewPayload(
         assets,
         credits: [],
     });
-    return { title: manifest.title, page: manifest.pages[0], assets: manifest.assets };
+    return {
+        title: manifest.title,
+        page: manifest.pages[0],
+        assets: manifest.assets,
+        workflowVariables: manifest.workflowVariables || [],
+        problems: prepared.problems,
+    };
 }
 export type PreviewPayload = Awaited<ReturnType<typeof makePreviewPayload>>;

@@ -1,5 +1,5 @@
-import { GlobalWorkerOptions, getDocument, version } from 'pdfjs-dist';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { PAGE_IMAGE_BOUNDS } from '../../../shared/lib/image-file';
+import { openPdf } from '../../../shared/lib/pdf';
 import {
     canvasFile,
     type ImportProgress,
@@ -8,23 +8,12 @@ import {
 } from './import-source';
 import { type PageSizeMm, pdfPageSizeMm } from './page-size';
 
-GlobalWorkerOptions.workerSrc = workerUrl;
-
 export async function preparePdf(
     file: File,
     signal: AbortSignal,
     onProgress?: ImportProgress,
 ): Promise<ImportSource> {
-    const base = `${import.meta.env.BASE_URL}vendor/pdfjs/${version}/`;
-    const task = getDocument({
-        data: new Uint8Array(await file.arrayBuffer()),
-        cMapUrl: `${base}cmaps/`,
-        cMapPacked: true,
-        standardFontDataUrl: `${base}standard_fonts/`,
-        wasmUrl: `${base}wasm/`,
-        iccUrl: `${base}iccs/`,
-        maxImageSize: 40_000_000,
-    });
+    const task = openPdf({ data: new Uint8Array(await file.arrayBuffer()) });
     const abort = () => {
         void task.destroy();
     };
@@ -125,7 +114,11 @@ export async function preparePdf(
             },
             render(index) {
                 const result = queue.then(async () => {
-                    const canvas = await renderCanvas(index, 1600, 2400);
+                    const canvas = await renderCanvas(
+                        index,
+                        PAGE_IMAGE_BOUNDS.width,
+                        PAGE_IMAGE_BOUNDS.height,
+                    );
                     try {
                         return await canvasFile(canvas, `trang-pdf-${index + 1}.jpg`);
                     } finally {

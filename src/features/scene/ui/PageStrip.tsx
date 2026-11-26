@@ -24,7 +24,7 @@ import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { assetKeys } from '../../assets';
 import { auth, useAuth } from '../../auth';
-import { useOptionalBookDraft } from '../../book-draft/ui/BookDraftProvider';
+import { useOptionalBookDraft } from '../../book-draft/ui/book-draft-context';
 import { bookKeys } from '../../books';
 import { pageKeys, pagesApi } from '../../pages';
 import { movedPageIds, uncertainWrite } from '../../pages/model/operations';
@@ -41,6 +41,7 @@ export function PageStrip({
     dirty,
     onBusyChange,
     onDraftChange,
+    onAddingChange,
 }: {
     requestAction: (label: string, action: () => void, returnFocus?: HTMLElement | null) => void;
     book: BookDetail;
@@ -49,6 +50,7 @@ export function PageStrip({
     dirty: boolean;
     onBusyChange: (busy: boolean) => void;
     onDraftChange: (dirty: boolean) => void;
+    onAddingChange?: (adding: boolean) => void;
 }) {
     const { user } = useAuth();
     const bookDraft = useOptionalBookDraft();
@@ -67,11 +69,16 @@ export function PageStrip({
     const [deleting, setDeleting] = useState(false),
         [adding, setAdding] = useState(false);
     const [target, setTarget] = useState<string | null>(null);
+    useEffect(() => {
+        onAddingChange?.(adding);
+        return () => onAddingChange?.(false);
+    }, [adding, onAddingChange]);
     const currentPageLink = useRef<HTMLAnchorElement>(null);
     const pageScroll = useRef<HTMLElement>(null);
     const dragSession = useRef<{ id: string; ids: string[] } | null>(null);
     const dragX = useRef<number | null>(null);
     const suppressClickUntil = useRef(0);
+    const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dropTarget, setDropTarget] = useState<PageDropTarget | null>(null);
     const [pendingOrder, setPendingOrder] = useState<string[] | null>(null);
@@ -100,6 +107,16 @@ export function PageStrip({
             : pendingOrder;
     usePageReorderMotion(pageScroll, listing.data, previewOrder);
     const locked = disabled || busy || uncertain;
+    function cancelPagePrefetch() {
+        clearTimeout(hoverTimer.current);
+    }
+    function preparePage(id: string, hover = false) {
+        cancelPagePrefetch();
+        if (!bookDraft || id === pageId || locked || dragSession.current || bookDraft.getPage(id))
+            return;
+        if (hover) hoverTimer.current = setTimeout(() => void bookDraft.prefetchPage(id), 120);
+        else void bookDraft.prefetchPage(id);
+    }
     const dragLocked = locked || listing.isPending || listing.isError || listing.isFetching;
     const clearDrag = useCallback(() => {
         dragSession.current = null;
@@ -190,6 +207,7 @@ export function PageStrip({
         alive.current = true;
         return () => {
             alive.current = false;
+            clearTimeout(hoverTimer.current);
             onBusyChange(false);
         };
     }, [onBusyChange]);
@@ -345,7 +363,8 @@ export function PageStrip({
                 aria-label="Các trang trong sách"
             >
                 <section
-                    className="m-0 flex min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain border-0 p-1 [scrollbar-width:thin]"
+                    className="no-scrollbar m-0 flex min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain border-0 p-1 [&[hidden]]:hidden"
+                    hidden={listing.data?.length === 0}
                     aria-label="Sắp xếp các trang"
                     data-page-scroll
                     ref={pageScroll}
@@ -367,10 +386,15 @@ export function PageStrip({
                     }}
                 >
                     {listing.isPending && (
-                        <div className="flex items-center gap-2 p-1" role="status" aria-busy="true">
+                        <div className="flex items-center gap-1" role="status" aria-busy="true">
                             <span className="sr-only">Đang tải các trang…</span>
-                            {[0, 1, 2].map((index) => (
-                                <Skeleton key={index} className="size-14 shrink-0 rounded-xl" />
+                            {Array.from(
+                                { length: Math.min(Math.max(1, book.pageCount), 9) },
+                                (_, index) => `page-placeholder-${index + 1}`,
+                            ).map((key) => (
+                                <div key={key} className="shrink-0 p-1">
+                                    <Skeleton className="size-14 rounded-xl" />
+                                </div>
                             ))}
                         </div>
                     )}
@@ -406,7 +430,17 @@ export function PageStrip({
                                     className="relative grid size-14 grid-rows-[minmax(0,1fr)] place-items-center overflow-hidden rounded-xl border border-border bg-surface p-1 no-underline transition-[transform,border-color,box-shadow] duration-200 ease-out hover:border-input focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-[current=page]:border-primary aria-[current=page]:ring-1 aria-[current=page]:ring-primary data-[reorderable=true]:cursor-grab data-[reorderable=true]:active:cursor-grabbing group-data-[dragging=true]:scale-95 motion-reduce:transform-none motion-reduce:transition-none"
                                     draggable={!dragLocked}
                                     data-reorderable={!dragLocked}
+                                    onPointerEnter={(event) => {
+                                        if (event.pointerType === 'mouse')
+                                            preparePage(page.id, true);
+                                    }}
+                                    onPointerLeave={cancelPagePrefetch}
+                                    onFocus={() => preparePage(page.id)}
+                                    onPointerDown={(event) => {
+                                        if (event.button === 0) preparePage(page.id);
+                                    }}
                                     onDragStart={(event) => {
+                                        cancelPagePrefetch();
                                         if (dragLocked || menu) {
                                             event.preventDefault();
                                             return;
@@ -446,7 +480,6 @@ export function PageStrip({
                                         )
                                             event.preventDefault();
                                         else if (
-                                            dirty &&
                                             page.id !== pageId &&
                                             !event.ctrlKey &&
                                             !event.metaKey &&
@@ -455,10 +488,16 @@ export function PageStrip({
                                             event.button === 0
                                         ) {
                                             event.preventDefault();
-                                            requestPageAction(
-                                                `Mở trang ${page.orderIndex + 1}`,
-                                                () => navigate(`/books/${bookId}/pages/${page.id}`),
-                                            );
+                                            const openPage = () =>
+                                                navigate(`/books/${bookId}/pages/${page.id}`, {
+                                                    flushSync: true,
+                                                });
+                                            if (dirty)
+                                                requestPageAction(
+                                                    `Mở trang ${page.orderIndex + 1}`,
+                                                    openPage,
+                                                );
+                                            else void openPage();
                                         }
                                     }}
                                     title={`${page.title || `Trang ${page.orderIndex + 1}`}${!dragLocked ? ' · Kéo để đổi thứ tự' : ''}`}
@@ -565,7 +604,12 @@ export function PageStrip({
                 </section>
                 <Tooltip delayDuration={250}>
                     <TooltipTrigger asChild>
-                        <span className="mt-2 inline-flex shrink-0 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2">
+                        <span
+                            className={cn(
+                                'inline-flex shrink-0 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2',
+                                { 'mt-2': Boolean(listing.data?.length) },
+                            )}
+                        >
                             <ActionButton
                                 variant="plain"
                                 className="strip-add-page grid size-14 shrink-0 place-items-center rounded-xl border border-border bg-surface text-primary transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:pointer-events-none"
@@ -655,20 +699,22 @@ export function PageStrip({
                             disabled={locked}
                             onClick={() =>
                                 void run(async () => {
-                                    if (bookDraft) await bookDraft.removePage(menu.id);
-                                    else await pagesApi.remove(menu.id);
+                                    if (bookDraft) {
+                                        // The editor selects the neighbouring page when its draft changes.
+                                        await bookDraft.removePage(menu.id);
+                                        return;
+                                    }
+                                    await pagesApi.remove(menu.id);
                                     if (menu.id === pageId && currentSession()) {
                                         // Deletion is confirmed: a failed refresh must not leave the editor on a deleted page.
-                                        const remaining = bookDraft
-                                            ? bookDraft.getSnapshot().working?.pages || []
-                                            : await pagesApi.list(bookId).catch(() => null);
+                                        const remaining = await pagesApi
+                                            .list(bookId)
+                                            .catch(() => null);
                                         if (!currentSession()) return;
                                         setTarget(
                                             remaining?.[0]
                                                 ? `/books/${bookId}/pages/${remaining[0].id}`
-                                                : bookDraft
-                                                  ? `/books/${bookId}/pages/${pageId}`
-                                                  : `/books/${bookId}/edit`,
+                                                : `/books/${bookId}/edit`,
                                         );
                                     }
                                 })

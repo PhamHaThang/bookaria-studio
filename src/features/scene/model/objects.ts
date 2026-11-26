@@ -29,6 +29,9 @@ export type AssetObjectType = keyof typeof objectAssetTypes;
 export function usesAsset(type: SceneObjectType): type is AssetObjectType {
     return type in objectAssetTypes;
 }
+export function isVisibleInEditor(object: SceneObject) {
+    return object.type === 'audio' || object.visible;
+}
 export function newObject(type: SceneObjectType, id: string, asset?: Asset): SceneObject {
     if (
         usesAsset(type) &&

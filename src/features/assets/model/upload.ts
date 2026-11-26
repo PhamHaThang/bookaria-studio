@@ -1,7 +1,9 @@
+import { isAxiosError } from 'axios';
 import type {
     CompleteAssetBody,
     UploadSignature,
 } from '../../../shared/contracts/api/assets.schema';
+import { ApiErrorSchema } from '../../../shared/contracts/error.schema';
 import type { AssetsApi } from '../api/assets-api';
 import { uploadRequest } from './form';
 
@@ -17,8 +19,8 @@ type Transfer = (
     progress: (percent: number) => void,
 ) => Promise<void>;
 
-/** Keep the checkpoint in memory so a failed complete request never re-uploads the file. */
-export async function runAssetUpload({
+/** Retry uncertain completions against the same immutable upload. */
+export async function runAssetUpload<Completion>({
     api,
     transfer,
     file,
@@ -30,16 +32,23 @@ export async function runAssetUpload({
     onProgress,
     purpose = 'ASSET',
 }: {
-    api: Pick<AssetsApi, 'signature' | 'complete'>;
+    api: {
+        signature: AssetsApi['signature'];
+        complete: (
+            id: string,
+            metadata: CompleteAssetBody,
+            signal: AbortSignal,
+        ) => Promise<Completion>;
+    };
     transfer: Transfer;
     file: File;
     metadata: CompleteAssetBody;
     signal: AbortSignal;
     checkpoint: UploadCheckpoint | null;
-    onCheckpoint: (checkpoint: UploadCheckpoint) => void;
+    onCheckpoint: (checkpoint: UploadCheckpoint | null) => void;
     onStage: (stage: UploadStage) => void;
     onProgress: (percent: number) => void;
-    purpose?: 'ASSET' | 'AVATAR' | 'PAGE_IMAGE';
+    purpose?: Parameters<typeof uploadRequest>[1];
 }) {
     const request = uploadRequest(file, purpose);
     signal.throwIfAborted();
@@ -59,5 +68,19 @@ export async function runAssetUpload({
     }
     signal.throwIfAborted();
     onStage('completing');
-    return api.complete(current.signature.assetId, metadata, signal);
+    try {
+        return await api.complete(current.signature.assetId, metadata, signal);
+    } catch (error) {
+        if (!isAxiosError(error)) throw error;
+        const response = ApiErrorSchema.safeParse(error.response?.data);
+        if (
+            response.success &&
+            ['QUOTA_EXCEEDED', 'FILE_TOO_LARGE', 'FILE_TYPE_NOT_ALLOWED', 'NOT_FOUND'].includes(
+                response.data.error.code,
+            )
+        ) {
+            onCheckpoint(null);
+        }
+        throw error;
+    }
 }

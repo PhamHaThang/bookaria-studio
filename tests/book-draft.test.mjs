@@ -6,6 +6,7 @@ import { startBookAutosave } from '../src/features/book-draft/model/autosave.ts'
 import { BookDraftStore } from '../src/features/book-draft/model/book-draft-store.ts';
 import { DraftRecordSchema } from '../src/features/book-draft/model/draft-model.ts';
 import { newObject } from '../src/features/scene/model/objects.ts';
+import { removeSelection } from '../src/features/scene/model/selection.ts';
 
 const uid = '10000000-0000-4000-8000-000000000001',
     book = '10000000-0000-4000-8000-000000000002',
@@ -95,6 +96,7 @@ async function fixture(overrides = {}) {
             }));
             snapshot = {
                 ...snapshot,
+                ...(body.workflowVariables ? { workflowVariables: body.workflowVariables } : {}),
                 revision: (snapshot.revision[0] === 'a' ? 'b' : 'c').repeat(64),
                 pages: pages.map((page) => PageSummarySchema.parse(page)),
                 pageRevisions: Object.fromEntries(pages.map((page) => [page.id, page.revision])),
@@ -130,6 +132,69 @@ function withText(text) {
         objects: [{ ...newObject('text', 'text'), text }],
     });
 }
+it('opening a page joins its pending thumbnail request', async () => {
+    const { store, deps } = await fixture();
+    let resolvePage;
+    deps.page.mock.mockImplementationOnce(
+        () =>
+            new Promise((resolve) => {
+                resolvePage = resolve;
+            }),
+    );
+    const warming = store.prefetchPage(p2);
+    const opening = store.loadPage(p2);
+    resolvePage(page(p2, 1));
+    await warming;
+    assert.equal((await opening).id, p2);
+    assert.equal(deps.page.mock.calls.filter(({ arguments: args }) => args[0] === p2).length, 1);
+});
+
+it('hovering a stale page does not put the active draft into conflict', async () => {
+    const { store, remote } = await fixture();
+    remote.set(p2, { ...page(p2, 1), revision: 1 });
+    await store.prefetchPage(p2);
+    assert.equal(store.getPage(p2), undefined);
+    assert.equal(store.getSnapshot().conflict, false);
+    await store.loadPage(p2);
+    assert.equal(store.getSnapshot().conflict, true);
+});
+it('deleting an object with its workflows restores both in one undo, even after saving', async () => {
+    const { store } = await fixture();
+    const scene = SceneSchema.parse({
+        schemaVersion: 1,
+        objects: [newObject('text', 'source'), newObject('text', 'target')],
+        interactions: [
+            {
+                id: 'flow',
+                name: 'Luồng cần giữ',
+                trigger: { type: 'onTap', objectId: 'source' },
+                actions: [{ type: 'setVisible', objectId: 'target', value: true }],
+            },
+        ],
+    });
+    const variables = [
+        { key: 'book_score', name: 'Điểm của sách', type: 'number', initialValue: 0 },
+    ];
+    store.setWorkflowVariables(variables);
+    store.setScene(p1, scene);
+    assert.equal(await store.save(), true);
+    store.setScene(p1, (current) => removeSelection(current, ['target'], true));
+    assert.deepEqual(
+        store.getPage(p1).scene.objects.map((object) => object.id),
+        ['source'],
+    );
+    assert.deepEqual(store.getPage(p1).scene.interactions, []);
+    assert.deepEqual(store.getSnapshot().working.workflowVariables, variables);
+    assert.equal(await store.save(), true);
+    store.undo();
+    assert.deepEqual(store.getPage(p1).scene, scene);
+    store.redo();
+    assert.deepEqual(store.getPage(p1).scene.interactions, []);
+    assert.deepEqual(
+        store.getPage(p1).scene.objects.map((object) => object.id),
+        ['source'],
+    );
+});
 const uploaded = {
     id: image,
     type: 'IMAGE',
@@ -138,6 +203,52 @@ const uploaded = {
     meta: { width: 640, height: 960 },
 };
 describe('book working drafts', () => {
+    it('saves book memory without page changes, recovers it, and keeps rename undo after save', async () => {
+        const { store, deps, make } = await fixture();
+        const variables = [
+            { key: 'mission', name: 'Đã khám phá', type: 'boolean', initialValue: false },
+        ];
+        store.setWorkflowVariables(variables);
+        assert.equal(store.getSnapshot().dirty, true);
+        await store.flush();
+        const recovered = make();
+        await recovered.initialize();
+        recovered.restore();
+        assert.deepEqual(recovered.getSnapshot().working.workflowVariables, variables);
+        assert.equal(await store.save(), true);
+        assert.deepEqual(deps.save.mock.calls[0].arguments[1].workflowVariables, variables);
+        assert.deepEqual(deps.save.mock.calls[0].arguments[1].changes, []);
+        assert.equal(store.getSnapshot().dirty, false);
+        store.setWorkflowVariables([{ ...variables[0], name: 'Đã tìm khủng long' }]);
+        assert.equal(await store.save(), true);
+        store.undo();
+        assert.equal(store.getSnapshot().working.workflowVariables[0].name, 'Đã khám phá');
+        assert.equal(store.getSnapshot().dirty, true);
+        store.redo();
+        assert.equal(store.getSnapshot().working.workflowVariables[0].name, 'Đã tìm khủng long');
+        assert.equal(store.getSnapshot().dirty, false);
+    });
+    it('preserves memory changes made while autosave is in flight', async () => {
+        const { store, deps } = await fixture();
+        const gate = deferred(),
+            save = deps.save;
+        deps.save = mock.fn(async (...args) => {
+            await gate.promise;
+            return save(...args);
+        });
+        const original = { key: 'score', name: 'Điểm', type: 'number', initialValue: 10 };
+        store.setWorkflowVariables([original]);
+        const saving = store.save('auto');
+        await new Promise((resolve) => setImmediate(resolve));
+        store.setWorkflowVariables([{ ...original, name: 'Điểm khám phá' }]);
+        gate.resolve();
+        assert.equal(await saving, true);
+        assert.equal(store.getSnapshot().working.workflowVariables[0].name, 'Điểm khám phá');
+        assert.equal(store.getSnapshot().base.workflowVariables[0].name, 'Điểm');
+        assert.equal(store.getSnapshot().dirty, true);
+        assert.equal(await store.save(), true);
+        assert.equal(store.getSnapshot().dirty, false);
+    });
     it('loads pages lazily and preserves stable page references across status-only updates', async () => {
         const { store, deps } = await fixture();
         assert.equal(deps.page.mock.callCount(), 1);
@@ -544,12 +655,9 @@ describe('instant blank pages and background saves', () => {
                 signature: {
                     assetId: whiteId,
                     uploadUrl: 'https://fake.test/upload',
-                    fields: {
-                        api_key: 'test',
-                        public_id: 'draft/test',
-                        timestamp: 1,
-                        signature: 'test',
-                    },
+                    method: 'PUT',
+                    objectKey: 'draft/test',
+                    headers: { 'Content-Type': 'application/octet-stream', 'If-None-Match': '*' },
                     expiresAt: '2026-11-01T00:00:00.000Z',
                 },
                 uploaded: true,
@@ -885,4 +993,65 @@ it('refreshes saved marker metadata without losing scene history or reverting ma
     store.redo();
     assert.equal(store.getPage(p1).scene.objects[0].text, 'Latest edit');
     assert.equal(store.getPage(p1).markerMode, 'BOOKARIA_MARKER');
+});
+
+describe('history action descriptions', () => {
+    it('tracks workflow deletion through undo, redo and switching to another page', async () => {
+        const { store } = await fixture();
+        const rule = {
+            id: 'history-flow',
+            name: 'Khám phá',
+            enabled: true,
+            trigger: { type: 'onPageEnter' },
+            actions: [{ type: 'wait', ms: 100 }],
+            onRetrigger: 'ignore',
+        };
+        const scene = SceneSchema.parse({ schemaVersion: 1, objects: [], interactions: [rule] });
+        store.setScene(p1, scene);
+        assert.equal(store.getSnapshot().undoChange.label, 'Thêm luồng “Khám phá”');
+        store.setScene(p1, { ...scene, interactions: [] });
+        assert.equal(store.getSnapshot().undoChange.label, 'Xóa luồng “Khám phá”');
+        assert.deepEqual(store.getSnapshot().undoChange.undoTarget, {
+            pageId: p1,
+            ruleId: rule.id,
+        });
+        await store.loadPage(p2);
+        store.activate(p2);
+        assert.equal(store.undo(), p1);
+        assert.equal(store.getPage(p1).scene.interactions[0].id, rule.id);
+        assert.equal(store.getSnapshot().redoChange.label, 'Xóa luồng “Khám phá”');
+        assert.equal(store.getSnapshot().redoChange.redoTarget, undefined);
+        store.redo();
+        assert.equal(store.getPage(p1).scene.interactions.length, 0);
+        store.undo();
+        store.setScene(p1, { ...scene, interactions: [{ ...rule, name: 'Khám phá mới' }] });
+        assert.equal(store.getSnapshot().redoChange, null);
+        assert.equal(
+            store.getSnapshot().undoChange.label,
+            'Đổi tên luồng “Khám phá” thành “Khám phá mới”',
+        );
+    });
+    it('labels one drag gesture and keeps its description after saving and undoing', async () => {
+        const { store } = await fixture();
+        store.setScene(p1, withText('Hello'));
+        store.begin();
+        for (const x of [0.1, 0.2, 0.3])
+            store.setScene(p1, (current) => ({
+                ...current,
+                objects: current.objects.map((object) => ({
+                    ...object,
+                    transform: { ...object.transform, position: [x, 0, 0] },
+                })),
+            }));
+        store.end();
+        assert.match(store.getSnapshot().undoChange.label, /^Di chuyển đối tượng/);
+        const label = store.getSnapshot().undoChange.label;
+        assert.equal(await store.save(), true);
+        assert.equal(store.getSnapshot().undoChange.label, label);
+        store.undo();
+        assert.equal(store.getPage(p1).scene.objects[0].transform.position[0], 0);
+        assert.equal(store.getSnapshot().redoChange.label, label);
+        store.redo();
+        assert.equal(store.getPage(p1).scene.objects[0].transform.position[0], 0.3);
+    });
 });

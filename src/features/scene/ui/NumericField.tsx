@@ -7,7 +7,7 @@ import { Input } from '@/shared/ui/primitives/input';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/shared/ui/primitives/input-group';
 
 type Axis = 'X' | 'Y' | 'Z';
-const axisColor = { X: 'text-[#ba2548]', Y: 'text-[#167142]', Z: 'text-[#215dd0]' };
+const axisColor = { X: 'text-axis-x', Y: 'text-axis-y', Z: 'text-axis-z' };
 
 function compactNumber(value: number) {
     if (!Number.isFinite(value)) return '';
@@ -25,6 +25,8 @@ export function NumericField({
     positive = false,
     displayFactor = 1,
     unit,
+    'aria-label': ariaLabel,
+    unknown = false,
 }: {
     disabled?: boolean;
     id: string;
@@ -35,6 +37,8 @@ export function NumericField({
     positive?: boolean;
     displayFactor?: number;
     unit?: string;
+    'aria-label'?: string;
+    unknown?: boolean;
 }) {
     const displayValue = value * displayFactor;
     const [text, setText] = useState(
@@ -59,19 +63,23 @@ export function NumericField({
             previousFactor.current = displayFactor;
         }
     }, [value, axis, displayFactor, displayValue, unit]);
-    const inputError = !Number.isFinite(value)
-        ? 'Vui lòng nhập một số hợp lệ.'
-        : positive && value <= 0
-          ? 'Tỉ lệ phải lớn hơn 0.'
-          : undefined;
+    const inputError = unknown
+        ? undefined
+        : !Number.isFinite(value)
+          ? 'Vui lòng nhập một số hợp lệ.'
+          : positive && value <= 0
+            ? 'Tỉ lệ phải lớn hơn 0.'
+            : undefined;
     const Control = axis ? InputGroupInput : Input;
     const control = (
         <Control
             id={id}
+            aria-label={ariaLabel}
             type="text"
             inputMode="decimal"
             disabled={disabled}
             value={text}
+            placeholder={unknown ? 'Theo nhánh' : undefined}
             title={
                 inputError ||
                 (Number.isFinite(displayValue) && (axis || unit)
@@ -94,9 +102,11 @@ export function NumericField({
                     ? Number(normalized)
                     : Number.NaN;
                 const next = parsed / displayFactor;
-                emitted.current = next;
                 setText(raw);
-                onChange(next);
+                if (!Object.is(next, emitted.current)) {
+                    emitted.current = next;
+                    onChange(next);
+                }
             }}
         />
     );
@@ -107,7 +117,7 @@ export function NumericField({
             data-invalid={Boolean(inputError)}
             data-disabled={disabled}
         >
-            <FieldLabel htmlFor={id} className={axis ? 'sr-only' : undefined}>
+            <FieldLabel htmlFor={id} className={axis ? 'sr-only max-w-px' : undefined}>
                 {label}
                 {unit ? ` (${unit})` : ''}
             </FieldLabel>
@@ -145,6 +155,8 @@ export function VectorFields({
     positive = false,
     displayFactor = 1,
     unit,
+    displayLabel,
+    inherited = false,
 }: {
     id: string;
     label: string;
@@ -156,6 +168,8 @@ export function VectorFields({
     positive?: boolean;
     displayFactor?: number;
     unit?: string;
+    displayLabel?: string;
+    inherited?: boolean;
 }) {
     const resettable = resetValues?.some(
         (value, index) => !disabledAxes.includes(index) && !Object.is(value, values[index]),
@@ -164,10 +178,13 @@ export function VectorFields({
         <FieldSet disabled={disabled} className="scene-vector m-0 min-w-0 gap-2 border-0 p-0">
             <FieldLegend
                 variant="label"
-                className="mb-2 flex w-full items-center justify-between font-medium text-muted-foreground tracking-wide data-[variant=label]:text-[12px]"
+                className={cn(
+                    'mb-2 flex w-full items-center justify-between font-medium text-muted-foreground tracking-wide data-[variant=label]:text-[12px]',
+                    displayLabel && 'mb-1',
+                )}
             >
                 <span>
-                    {label}
+                    {displayLabel ?? label}
                     {unit ? ` (${unit})` : ''}
                 </span>
                 {resetValues && (
@@ -200,6 +217,7 @@ export function VectorFields({
                         displayFactor={displayFactor}
                         unit={unit}
                         value={values[index]}
+                        unknown={inherited && !Number.isFinite(values[index])}
                         disabled={disabledAxes.includes(index)}
                         onChange={(value) => {
                             const next: [number, number, number] = [...values];

@@ -23,10 +23,11 @@ const card = {
 
 test('discovery search keeps age zero, ignores invalid parameters and bounds text', () => {
     assert.equal(readDiscoverySearch(new URLSearchParams('age=0')).age, 0);
+    assert.equal(readDiscoverySearch(new URLSearchParams('age=25')).age, 25);
     const query = readDiscoverySearch(
         new URLSearchParams({
             page: '-1',
-            age: '19',
+            age: '151',
             language: 'javascript:',
             sort: 'title',
             q: 'x'.repeat(200),

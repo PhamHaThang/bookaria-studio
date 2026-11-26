@@ -1,5 +1,6 @@
 import type { Scene, SceneObject } from '../../../shared/contracts/scene.schema';
 import { SCENE_LIMITS } from '../../../shared/contracts/scene.schema';
+import { objectRemovalImpact } from './interaction-health';
 import { objectLabels } from './objects';
 
 export type SelectionMode = 'replace' | 'add' | 'toggle';
@@ -27,12 +28,18 @@ export function assertUnlocked(objects: SceneObject[]) {
         throw new Error('Mở khóa tất cả đối tượng đã chọn trước khi thực hiện thao tác này.');
 }
 
-export function removeSelection(scene: Scene, ids: string[]): Scene {
+export function removeSelection(scene: Scene, ids: string[], removeInteractions = false): Scene {
     const selected = members(scene, ids);
     assertUnlocked(selected);
     const wanted = new Set(ids);
-    // Retain interaction rules, as for single-object deletion; reference warnings remain visible.
-    return { ...scene, objects: scene.objects.filter((object) => !wanted.has(object.id)) };
+    const affected = new Set(
+        removeInteractions ? objectRemovalImpact(scene, ids).map((rule) => rule.id) : [],
+    );
+    return {
+        ...scene,
+        objects: scene.objects.filter((object) => !wanted.has(object.id)),
+        interactions: scene.interactions.filter((rule) => !affected.has(rule.id)),
+    };
 }
 
 export function setSelectionFlag(

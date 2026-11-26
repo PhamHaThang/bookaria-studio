@@ -1,16 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
-import {
-    createContext,
-    type ReactNode,
-    useContext,
-    useEffect,
-    useMemo,
-    useSyncExternalStore,
-} from 'react';
+import { type ReactNode, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { Link, Outlet, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { errorMessage } from '@/shared/api/errors';
 import { IdSchema } from '@/shared/contracts/common.schema';
+import { flushPendingTextEdits } from '@/shared/lib/pending-text-edits';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { LoadingScreen } from '@/shared/ui/LoadingScreen';
@@ -27,20 +21,8 @@ import { startBookAutosave } from '../model/autosave';
 import { BookDraftStore, type DraftState } from '../model/book-draft-store';
 import { draftStorage } from '../model/draft-storage';
 import { rememberBookDraftSave } from '../model/save-cache';
+import { BookDraftContext } from './book-draft-context';
 
-const Context = createContext<BookDraftStore | null>(null);
-export function useOptionalBookDraft() {
-    return useContext(Context);
-}
-export function useBookDraft() {
-    const store = useContext(Context);
-    if (!store) throw new Error('Thiếu bản nháp sách.');
-    const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
-    return { store, state };
-}
-export function draftPagePath(bookId: string, pathname: string) {
-    return new RegExp(`^/books/${bookId}/(?:pages/[0-9a-f-]+|edit)/?$`, 'i').test(pathname);
-}
 export function BookDraftProvider({ bookId, children }: { bookId: string; children: ReactNode }) {
     const { user } = useAuth(),
         cache = useQueryClient();
@@ -138,10 +120,13 @@ export function BookDraftProvider({ bookId, children }: { bookId: string; childr
         document.addEventListener('compositionend', compositionEnd);
         window.addEventListener('online', autosave.wake);
         const checkpoint = () => {
-            if (document.visibilityState === 'hidden') void store.flush();
-            else autosave.wake();
+            if (document.visibilityState === 'hidden') {
+                flushPendingTextEdits();
+                void store.flush();
+            } else autosave.wake();
         };
         const pagehide = () => {
+            flushPendingTextEdits();
             void store.flush();
         };
         document.addEventListener('visibilitychange', checkpoint);
@@ -161,9 +146,11 @@ export function BookDraftProvider({ bookId, children }: { bookId: string; childr
             toast.warning(state.storageWarning, { id: 'book-draft-storage', duration: 7000 });
     }, [state.storageWarning]);
     return (
-        <Context.Provider value={store}>
-            {state.loading || state.recovery ? (
+        <BookDraftContext.Provider value={store}>
+            {state.loading ? (
                 <LoadingScreen fullScreen message="Đang mở bản nháp sách…" />
+            ) : state.recovery ? (
+                <div className="min-h-dvh bg-surface" />
             ) : state.base ? (
                 children
             ) : (
@@ -186,7 +173,7 @@ export function BookDraftProvider({ bookId, children }: { bookId: string; childr
                     </div>
                 </ConfirmationDialog>
             )}
-        </Context.Provider>
+        </BookDraftContext.Provider>
     );
 }
 function DraftLoadError({ state, retry }: { state: DraftState; retry: () => void }) {

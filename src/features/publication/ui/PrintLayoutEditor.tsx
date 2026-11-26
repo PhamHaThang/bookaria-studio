@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Move, Printer, RefreshCw, RotateCcw, ScanLine } from 'lucide-react';
+import { Move, Printer, RefreshCw, RotateCcw, ScanLine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '@/shared/api/client';
@@ -9,6 +9,7 @@ import { layoutMarkerStickerSheets, MARKER_STICKER_SHEET } from '@/shared/contra
 import { Alert } from '@/shared/ui/Alert';
 import { Button } from '@/shared/ui/Button';
 import { FormSelect } from '@/shared/ui/FormSelect';
+import { PdfReaderButton } from '@/shared/ui/pdf-reader/PdfReaderButton';
 import {
     Empty,
     EmptyDescription,
@@ -821,12 +822,10 @@ function Layout({
                         {pdf.kind === 'PRINT' ? 'Sách PDF' : 'Tờ marker'}
                         {pdf.versionNo ? ` | Phiên bản ${pdf.versionNo}` : ''}
                     </span>
-                    <Button asChild variant="outline">
-                        <a href={pdf.url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink data-icon="inline-start" />
-                            Mở PDF
-                        </a>
-                    </Button>
+                    <PdfReaderButton
+                        url={pdf.url}
+                        title={pdf.kind === 'PRINT' ? 'Sách PDF' : 'Tờ marker'}
+                    />
                 </div>
             )}
         </div>

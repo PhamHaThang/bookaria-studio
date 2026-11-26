@@ -108,6 +108,20 @@ test('create form enforces custom ratio and age order using backend schema', () 
     assert.throws(() => createBookForm(form({ ageMin: '10', ageMax: '5' })));
     assert.equal(createBookForm(form({ pageFormat: 'CUSTOM', pageAspect: '1.5' })).pageAspect, 1.5);
 });
+test('create form sends language and optional age bounds, including zero', () => {
+    const from = createBookForm(form({ language: 'en', ageMin: '0', ageMax: '' }));
+    assert.equal(from.language, 'en');
+    assert.equal(from.ageMin, 0);
+    assert.equal(from.ageMax, undefined);
+
+    const until = createBookForm(form({ language: '', ageMin: '', ageMax: '150' }));
+    assert.equal(until.language, 'vi');
+    assert.equal(until.ageMin, undefined);
+    assert.equal(until.ageMax, 150);
+    assert.equal(updateBookForm(form({ ageMin: '21' })).ageMin, 21);
+    assert.throws(() => createBookForm(form({ ageMin: '151' })), /0 đến 150/);
+    assert.throws(() => updateBookForm(form({ ageMax: '18.5' })), /0 đến 150/);
+});
 test('book forms use width and height fields, retain legacy ratios and ignore custom sizes for fixed formats', () => {
     const custom = form({ pageFormat: 'CUSTOM', pageWidthMm: '180', pageHeightMm: '270' });
     assert.equal(createBookForm(custom).pageWidthMm, 180);

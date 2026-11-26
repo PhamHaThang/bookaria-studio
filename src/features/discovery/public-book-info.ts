@@ -12,6 +12,7 @@ export function publicBookInfoLocation(location: PageLocation, slug: string) {
 export function withoutPublicBookInfo(location: PageLocation) {
     const params = new URLSearchParams(location.search);
     params.delete('book');
+    params.delete('pdf');
     return `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`;
 }
 

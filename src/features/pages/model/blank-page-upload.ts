@@ -33,7 +33,7 @@ export async function uploadBlankPage({
         signal,
         checkpoint: current.upload || null,
         onCheckpoint: (upload) => {
-            current = { ...current, upload };
+            current = { ...current, upload: upload ?? undefined };
             onCheckpoint(current);
         },
         onStage: () => onStage('Đang chuẩn bị trang trắng…'),

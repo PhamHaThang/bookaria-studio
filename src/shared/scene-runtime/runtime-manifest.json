@@ -2,16 +2,44 @@
     "source": "bookaria-viewer/src/scene-core",
     "files": {
         "buildScene.ts": {
-            "source": "82dc8375aa853ddbdd408fc6e4b795d5dc11c5401311bece2906a7a227b294e2",
-            "snapshot": "b1c4520532343dbdb2dbd7fe8ba09cda99f9d573a2e8282c008e3ce606af5808"
+            "source": "32d5be9286f4cf5be4c73274c11f963584e7abcaf12f227647da192d1199819c",
+            "snapshot": "0344481104c33b0b6fbe20b0281c19da6ee112bb2283825ad089d4b30e95ddd4"
         },
         "InteractionRunner.ts": {
-            "source": "fce070c493449250c996cee5aa17349760de5e73fd93c15f1224ff8dc788306a",
-            "snapshot": "97f12aa0e6f00bfedd390cc0926199913531b2744077944c9343aac921780902"
+            "source": "dba2d0a153c413293605e3b4408ddce548badcc1787017875fc901f49bad3299",
+            "snapshot": "a2afe43860009008b787de86d0583effbf7593756a8305b1cacb133ccdd1996f"
+        },
+        "WorkflowState.ts": {
+            "source": "3c4114fb92df0d8407d5649993545296bf9e44e6b3a42590d1b0024dce1941fe",
+            "snapshot": "91aefde694495a8e99b4ac6d0392adad8badee7b5b6988f6f902043a61eba1db"
+        },
+        "WorkflowPrompt.ts": {
+            "source": "d56c86b1f75a1b67ab2bf097fbb242570cf7f8ea863822d960d6666e725cf2cb",
+            "snapshot": "778c30dd7cc86606a0bd913ffce6453bf5d28b5ec292ec09472e7e8b237c6d86"
+        },
+        "MediaElementPool.ts": {
+            "source": "00915bb96f79c0c98d4ee4312be915f4d4df3ffe44e5d7db80d5f6a8f30be085",
+            "snapshot": "00915bb96f79c0c98d4ee4312be915f4d4df3ffe44e5d7db80d5f6a8f30be085"
+        },
+        "ModelControls.ts": {
+            "source": "008d63aa0db8f29d135fd58f6a8159b44cac2349e6e9b303dd91f3e770e8cf2b",
+            "snapshot": "b035beed167532d9bcac4405810cddd768083c93e49bf743e3373bfd6124bc35"
+        },
+        "ModelControlAnimations.ts": {
+            "source": "c8aae7c0c01657b7aae940c2f6c25df307de221861a9107ed8134eda2abb552c",
+            "snapshot": "b63c3307ad4bd3089366b124ba0f316664eeebdf4f7a856042b547ebd318542d"
+        },
+        "asset-cache.ts": {
+            "source": "4e3ff45058669168177b3714794100f191133aa844bef0f1f4cd50089cf19ac2",
+            "snapshot": "73f9b6d9bc0ce4ec304c621cc5b66cf19254c75de198b5ebda28886ffa2eb1e5"
         },
         "fetchBytes.ts": {
-            "source": "a89e8d77b030e9e979a63d43f04fa19fb18791304e0ac3e35e126ecebcc22890",
-            "snapshot": "a89e8d77b030e9e979a63d43f04fa19fb18791304e0ac3e35e126ecebcc22890"
+            "source": "ea7be337a6652aee5300325283a2de4c9eac66c51697bde5907915b695e366c8",
+            "snapshot": "ea7be337a6652aee5300325283a2de4c9eac66c51697bde5907915b695e366c8"
+        },
+        "reader-feedback.ts": {
+            "source": "2d0e3d568d89685760bc6f085d96b6df1246173a74385cb2dcede20cd7db8104",
+            "snapshot": "2d0e3d568d89685760bc6f085d96b6df1246173a74385cb2dcede20cd7db8104"
         }
     }
 }

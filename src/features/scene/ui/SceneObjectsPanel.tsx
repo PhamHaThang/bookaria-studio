@@ -19,7 +19,7 @@ import {
     Volume2,
     X,
 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import type { SceneObject } from '@/shared/contracts/scene.schema';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/primitives/button';
@@ -76,7 +76,7 @@ type Props = {
     onDuplicate: (id: string) => void;
     onDelete: (object: SceneObject) => void;
 };
-export function SceneObjectsPanel({
+function SceneObjectsPanelContent({
     objects,
     selectedIds,
     query,
@@ -182,7 +182,11 @@ export function SceneObjectsPanel({
                 </div>
             </div>
             <Separator />
-            <div className="min-h-0 overflow-y-auto px-2 py-2" data-object-list-scroll ref={list}>
+            <div
+                className="no-scrollbar min-h-0 overflow-y-auto px-2 py-2"
+                data-object-list-scroll
+                ref={list}
+            >
                 {filtered.length ? (
                     <ol
                         className="m-0 flex list-none flex-col gap-1 p-0"
@@ -236,26 +240,32 @@ export function SceneObjectsPanel({
                                                 {object.type === 'audio'
                                                     ? ` · ${object.audioKind === 'VOICE' ? 'Voice' : object.audioKind || 'BGM'}`
                                                     : ''}
-                                                {!object.visible ? ' · Đang ẩn' : ''}
+                                                {!object.visible && object.type !== 'audio'
+                                                    ? ' · Đang ẩn'
+                                                    : ''}
                                             </span>
                                         </span>
                                     </Button>
                                     <div className="scene-layer-controls flex shrink-0 items-center [&_.button]:size-7 [&_.button]:min-h-7 [&_.button]:p-1.5">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon-xs"
-                                            disabled={disabled || object.locked}
-                                            aria-label={`${object.visible ? 'Ẩn' : 'Hiện'} ${name}`}
-                                            aria-pressed={object.visible}
-                                            title={
-                                                object.visible ? 'Ẩn đối tượng' : 'Hiện đối tượng'
-                                            }
-                                            onClick={() =>
-                                                onFlag(object.id, 'visible', !object.visible)
-                                            }
-                                        >
-                                            {object.visible ? <Eye /> : <EyeOff />}
-                                        </Button>
+                                        {object.type !== 'audio' && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon-xs"
+                                                disabled={disabled || object.locked}
+                                                aria-label={`${object.visible ? 'Ẩn' : 'Hiện'} ${name}`}
+                                                aria-pressed={object.visible}
+                                                title={
+                                                    object.visible
+                                                        ? 'Ẩn đối tượng'
+                                                        : 'Hiện đối tượng'
+                                                }
+                                                onClick={() =>
+                                                    onFlag(object.id, 'visible', !object.visible)
+                                                }
+                                            >
+                                                {object.visible ? <Eye /> : <EyeOff />}
+                                            </Button>
+                                        )}
                                         <Button
                                             variant="ghost"
                                             size="icon-xs"
@@ -384,3 +394,8 @@ export function SceneObjectsPanel({
         </section>
     );
 }
+
+export const SceneObjectsPanel = memo(
+    SceneObjectsPanelContent,
+    (previous, next) => previous.hidden && next.hidden,
+);

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import type { AssetType } from '../../../shared/contracts/enums.schema';
 
@@ -22,11 +22,22 @@ export function AssetMediaPreview({
     type,
     url,
     modelOptions,
+    audioLabel = 'Nghe thử âm thanh',
 }: {
     type: AssetType;
     url: string;
     modelOptions?: ModelPreviewOptions;
+    audioLabel?: string;
 }) {
+    const audio = useRef<HTMLAudioElement>(null);
+    const video = useRef<HTMLVideoElement>(null);
+    useEffect(() => {
+        const current = type === 'AUDIO' ? audio.current : video.current;
+        if (!current || current.getAttribute('src') !== url) return;
+        return () => {
+            current?.pause();
+        };
+    }, [type, url]);
     const [failedUrl, setFailedUrl] = useState<string | null>(null);
     if (failedUrl === url)
         return (
@@ -59,6 +70,7 @@ export function AssetMediaPreview({
     if (type === 'VIDEO')
         return (
             <video
+                ref={video}
                 key={url}
                 src={url}
                 controls
@@ -72,13 +84,15 @@ export function AssetMediaPreview({
             </video>
         );
     return (
-        <div className="grid h-full min-h-0 place-items-center p-4">
+        <div className="grid h-full min-h-0 w-full place-items-center p-2">
             <audio
+                ref={audio}
                 key={url}
                 src={url}
                 controls
                 preload="metadata"
-                aria-label="Nghe thử âm thanh"
+                aria-label={audioLabel}
+                className="h-9 w-full min-w-0"
                 onError={() => setFailedUrl(url)}
             >
                 <track kind="captions" />

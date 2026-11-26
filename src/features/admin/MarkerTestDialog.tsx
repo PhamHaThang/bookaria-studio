@@ -1,8 +1,8 @@
-import { Download, ImagePlus, ScanLine, Star, Upload, X } from 'lucide-react';
+import { Download, ImagePlus, ScanLine, Upload, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/shared/api/errors';
-import type { MarkerTestResult } from '@/shared/contracts/api/admin.schema';
+import type { MarkerImagePreview } from '@/shared/contracts/marker-analysis.schema';
 import { Alert, AlertDescription } from '@/shared/ui/primitives/alert';
 import { Button } from '@/shared/ui/primitives/button';
 import {
@@ -21,24 +21,17 @@ import {
 import { Progress } from '@/shared/ui/primitives/progress';
 import { Skeleton } from '@/shared/ui/primitives/skeleton';
 import { Spinner } from '@/shared/ui/primitives/spinner';
-import { libraryApi } from './library-ui';
+import { analyzeMarkerImage } from '../pages/api/compile-marker';
+import { MarkerMetrics } from '../pages/ui/MarkerMetrics';
 import { MarkerAnalysisPreview } from './MarkerAnalysisPreview';
 
 const MAX_BYTES = 10 * 1024 * 1024;
-const ratings = [
-    '',
-    'Khó nhận diện',
-    'Ít chi tiết',
-    'Cần cải thiện',
-    'Khá tốt',
-    'Nhiều chi tiết, phân bố tốt',
-];
 export function MarkerTestDialog({ onClose }: { onClose: () => void }) {
     const id = useId(),
         input = useRef<HTMLInputElement>(null),
         request = useRef<AbortController | null>(null);
     const [file, setFile] = useState<File | null>(null),
-        [result, setResult] = useState<MarkerTestResult | null>(null),
+        [result, setResult] = useState<MarkerImagePreview | null>(null),
         [busy, setBusy] = useState(false),
         [progress, setProgress] = useState(0),
         [error, setError] = useState<string | null>(null),
@@ -66,7 +59,7 @@ export function MarkerTestDialog({ onClose }: { onClose: () => void }) {
         setBusy(true);
         setProgress(0);
         try {
-            const value = await libraryApi.testMarker(next, controller.signal, (percent) => {
+            const value = await analyzeMarkerImage(next, controller.signal, (percent) => {
                 if (request.current === controller) setProgress(percent);
             });
             if (request.current === controller && !controller.signal.aborted) setResult(value);
@@ -107,7 +100,7 @@ export function MarkerTestDialog({ onClose }: { onClose: () => void }) {
                     <div className="flex items-start gap-3">
                         <ScanLine className="mt-1 size-6 shrink-0" />
                         <div>
-                            <DialogTitle className="text-xl">Thử điểm marker</DialogTitle>
+                            <DialogTitle className="text-xl">Phân tích ảnh marker</DialogTitle>
                             <DialogDescription id={`${id}-description`} className="mt-1">
                                 Kiểm tra ảnh trước khi đưa vào kho marker Bookaria.
                             </DialogDescription>
@@ -239,36 +232,7 @@ export function MarkerTestDialog({ onClose }: { onClose: () => void }) {
                             </>
                         ) : result ? (
                             <>
-                                <div>
-                                    <p className="m-0 text-muted-foreground text-sm">
-                                        Điểm tham khảo
-                                    </p>
-                                    <div className="mt-2 flex items-baseline gap-2">
-                                        <span className="font-semibold text-5xl">
-                                            {result.score}
-                                        </span>
-                                        <span className="text-muted-foreground">/ 5</span>
-                                    </div>
-                                    <div
-                                        className="mt-3 flex gap-1"
-                                        role="img"
-                                        aria-label={`${result.score} trên 5 sao`}
-                                    >
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                            <Star
-                                                key={star}
-                                                className="size-5 text-warning-foreground"
-                                                fill={
-                                                    star <= result.score ? 'currentColor' : 'none'
-                                                }
-                                                aria-hidden="true"
-                                            />
-                                        ))}
-                                    </div>
-                                    <p className="m-0 mt-3 font-medium text-sm">
-                                        {ratings[result.score]}
-                                    </p>
-                                </div>
+                                <MarkerMetrics analysis={result.analysis} />
                                 <dl className="m-0 flex flex-col gap-4 border-border border-y py-4">
                                     <div className="flex items-center justify-between gap-3">
                                         <dt className="text-muted-foreground text-sm">
@@ -283,7 +247,7 @@ export function MarkerTestDialog({ onClose }: { onClose: () => void }) {
                                             Vùng có chi tiết
                                         </dt>
                                         <dd className="m-0 font-semibold tabular-nums">
-                                            {result.cells.filter((count) => count > 0).length} / 16
+                                            {result.cells.filter((count) => count > 0).length} / 100
                                         </dd>
                                     </div>
                                     <div>
@@ -307,9 +271,9 @@ export function MarkerTestDialog({ onClose }: { onClose: () => void }) {
                                     </ul>
                                 </div>
                                 <p className="m-0 text-muted-foreground text-xs">
-                                    Ảnh phân tích: {result.width} × {result.height} px. Điểm dựa
-                                    trên lượng chi tiết và phân bố, chưa kiểm tra độ giống với các
-                                    marker khác.
+                                    Ảnh gốc: {result.analysis.sourceWidth} ×{' '}
+                                    {result.analysis.sourceHeight} px. Ảnh phân tích: {result.width}{' '}
+                                    × {result.height} px.
                                 </p>
                             </>
                         ) : (
@@ -317,19 +281,19 @@ export function MarkerTestDialog({ onClose }: { onClose: () => void }) {
                                 <ScanLine className="mx-auto size-20 text-muted-foreground" />
                                 <h3 className="m-0 font-semibold">Xem ảnh có dễ nhận diện không</h3>
                                 <p className="m-0 text-muted-foreground text-sm">
-                                    Công cụ tìm các điểm đặc trưng và chia ảnh thành 16 vùng để phát
-                                    hiện nơi còn ít chi tiết.
+                                    Xem phân bố điểm, độ độc đáo và kích thước ảnh theo cách của
+                                    Pictarize.
                                 </p>
                                 <p className="m-0 text-muted-foreground text-sm">
-                                    Ảnh chỉ được phân tích tạm thời; không tạo tài nguyên hay đăng
-                                    ký marker.
+                                    Ảnh được phân tích ngay trong trình duyệt; không tạo tài nguyên
+                                    hay đăng ký marker.
                                 </p>
                             </div>
                         )}
                         <Alert>
                             <AlertDescription>
-                                Đây là điểm ORB để sàng lọc ảnh, không phải kết quả kiểm định MindAR
-                                hay camera thực tế.
+                                Ba tiêu chí được đánh giá riêng từ điểm đặc trưng MindAR. Hãy thử
+                                thêm với bản in và camera thực tế.
                             </AlertDescription>
                         </Alert>
                     </aside>

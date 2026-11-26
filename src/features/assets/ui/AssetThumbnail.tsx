@@ -8,15 +8,22 @@ const icons = { MODEL: Box, IMAGE: FileImage, AUDIO: Music2, VIDEO: Film };
 export function AssetThumbnail({
     asset,
     variant = 'compact',
+    className,
 }: {
     asset: Asset;
     variant?: 'compact' | 'card';
+    className?: string;
 }) {
     const [failedUrl, setFailedUrl] = useState<string | null>(null);
     const Icon = icons[asset.type];
-    const url =
-        asset.thumbnailUrl ||
-        (asset.type === 'IMAGE' && asset.status === 'READY' ? asset.url : null);
+    const originalImage = asset.type === 'IMAGE' && asset.status === 'READY' ? asset.url : null;
+    // Legacy square variants omit part of the image. New uploads have an asset-preview variant.
+    const legacySquare =
+        variant === 'card' &&
+        originalImage &&
+        asset.thumbnailUrl &&
+        /\/derived\/v\d+\/[a-f0-9]{64}\/thumbnail\.jpg(?:[?#]|$)/i.test(asset.thumbnailUrl);
+    const url = legacySquare ? originalImage : asset.thumbnailUrl || originalImage;
     return (
         <span
             className={cn(
@@ -24,6 +31,7 @@ export function AssetThumbnail({
                 variant === 'card'
                     ? 'h-full w-full bg-surface text-muted-foreground'
                     : 'size-16 rounded-[var(--radius-md)] bg-[var(--bg-cover)] text-[var(--text-cover)] max-[540px]:row-span-2 max-[540px]:size-12',
+                className,
             )}
             aria-hidden="true"
         >
@@ -43,7 +51,7 @@ export function AssetThumbnail({
                     decoding="async"
                     className={cn(
                         'size-full min-h-0 min-w-0',
-                        variant === 'card' ? 'object-contain p-3' : 'object-cover',
+                        variant === 'card' ? 'object-contain p-2' : 'object-cover',
                     )}
                     onError={() => setFailedUrl(url)}
                 />

@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ImagePlus, Trash2, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { optimizeBookCover } from '@/shared/lib/image-file';
 import { BookCoverImage } from '@/shared/ui/BookCoverImage';
 import { errorMessage } from '../../../shared/api/errors';
 import { IdSchema } from '../../../shared/contracts/common.schema';
@@ -185,6 +186,8 @@ export function BookInfoDialog({
                     transfer: uploadFile,
                     file,
                     purpose: 'ASSET',
+                    prepareFile: optimizeBookCover,
+                    onPreparing: () => setStage('Đang tối ưu ảnh bìa…'),
                     metadata: { name: file.name, tags: [] },
                     signal: active.signal,
                     checkpoint: checkpoint.current,

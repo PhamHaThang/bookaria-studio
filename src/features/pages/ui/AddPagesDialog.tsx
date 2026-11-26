@@ -25,7 +25,7 @@ import { assetsApi } from '../../assets';
 import { uploadFile } from '../../assets/api/upload-file';
 import { runAssetUpload } from '../../assets/model/upload';
 import { auth } from '../../auth';
-import { useOptionalBookDraft } from '../../book-draft/ui/BookDraftProvider';
+import { useOptionalBookDraft } from '../../book-draft/ui/book-draft-context';
 import { booksApi } from '../../books';
 import { bookPageSize } from '../../books/model/page-size';
 import { BookImportField, type BookImportValue } from '../../books/ui/BookImportField';

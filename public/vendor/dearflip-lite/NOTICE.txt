@@ -1,0 +1,7 @@
+DearFlip Lite 1.7.36 by DearHive
+Source: https://github.com/dearhive/dearflip-js-flipbook
+Revision: 2202e0d3e6e89c048699c6c60b9c4f4b390550f4
+License: Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International
+https://creativecommons.org/licenses/by-nc-nd/4.0/
+
+The included DearFlip files are unmodified. Bookaria supplies its own interface and icons.

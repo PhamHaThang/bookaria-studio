@@ -1,6 +1,5 @@
 import { type FormEvent, useId, useState } from 'react';
 import { Button } from '@/shared/ui/Button';
-import { Disclosure } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Field, FieldGroup, FieldLabel, FieldSet } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
@@ -8,8 +7,8 @@ import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import type { BookDetail } from '../../../shared/contracts/dto.schema';
 import { Feedback } from '../../../shared/ui/Feedback';
-import { bookLanguageOptions } from '../model/languages';
 import { bookPageSize } from '../model/page-size';
+import { BookAudienceFields } from './BookAudienceFields';
 import { BookSizeFields } from './BookSizeFields';
 import { BookTopicField } from './BookTopicField';
 
@@ -77,18 +76,24 @@ export function BookForm({
                             rows={3}
                         />
                     </Field>
-                    <FieldGroup className="grid grid-cols-2 gap-4 [container-type:normal]">
-                        <BookTopicField
-                            id={`${prefix}-topic`}
-                            name="topic"
-                            value={topic}
-                            disabled={busy}
-                            onChange={(value) => {
-                                setTopic(value);
-                                onDirtyChange?.(true);
-                            }}
-                        />
-                        <Field className="min-w-0">
+                    <BookTopicField
+                        id={`${prefix}-topic`}
+                        name="topic"
+                        value={topic}
+                        disabled={busy}
+                        onChange={(value) => {
+                            setTopic(value);
+                            onDirtyChange?.(true);
+                        }}
+                    />
+                    <BookAudienceFields
+                        prefix={prefix}
+                        book={book}
+                        disabled={busy}
+                        onChange={() => onDirtyChange?.(true)}
+                    />
+                    <FieldGroup className="grid grid-cols-2 items-start gap-4 [container-type:normal] sm:grid-cols-3">
+                        <Field className="col-span-2 min-w-0 sm:col-span-1">
                             <FieldLabel className="mb-0" htmlFor={`${prefix}-format`}>
                                 Khổ sách
                             </FieldLabel>
@@ -109,62 +114,17 @@ export function BookForm({
                                 ]}
                             />
                         </Field>
+                        <BookSizeFields
+                            className="contents"
+                            format={format}
+                            idPrefix={`${prefix}-size`}
+                            width={width}
+                            height={height}
+                            onWidthChange={setWidth}
+                            onHeightChange={setHeight}
+                        />
                     </FieldGroup>
-                    <BookSizeFields
-                        format={format}
-                        idPrefix={`${prefix}-size`}
-                        width={width}
-                        height={height}
-                        onWidthChange={setWidth}
-                        onHeightChange={setHeight}
-                    />
                 </FieldGroup>
-                <Disclosure title="Thông tin bổ sung" className="border-border border-t">
-                    <FieldGroup className="gap-4 pt-3 [container-type:normal]">
-                        <Field>
-                            <FieldLabel className="mb-0" htmlFor={`${prefix}-language`}>
-                                Ngôn ngữ
-                            </FieldLabel>
-                            <FormSelect
-                                id={`${prefix}-language`}
-                                name="language"
-                                defaultValue={book?.language || 'vi'}
-                                options={bookLanguageOptions(book?.language || 'vi')}
-                                placeholder="Chọn ngôn ngữ"
-                                disabled={busy}
-                                onValueChange={() => onDirtyChange?.(true)}
-                            />
-                        </Field>
-                        <FieldGroup className="grid grid-cols-2 gap-4 [container-type:normal]">
-                            <Field>
-                                <FieldLabel className="mb-0" htmlFor={`${prefix}-ageMin`}>
-                                    Độ tuổi từ
-                                </FieldLabel>
-                                <Input
-                                    id={`${prefix}-ageMin`}
-                                    name="ageMin"
-                                    type="number"
-                                    min="0"
-                                    max="150"
-                                    defaultValue={book?.ageMin ?? ''}
-                                />
-                            </Field>
-                            <Field>
-                                <FieldLabel className="mb-0" htmlFor={`${prefix}-ageMax`}>
-                                    Đến độ tuổi
-                                </FieldLabel>
-                                <Input
-                                    id={`${prefix}-ageMax`}
-                                    name="ageMax"
-                                    type="number"
-                                    min="0"
-                                    max="150"
-                                    defaultValue={book?.ageMax ?? ''}
-                                />
-                            </Field>
-                        </FieldGroup>
-                    </FieldGroup>
-                </Disclosure>
                 {!hideActions && (
                     <Button type="submit" aria-busy={busy} disabled={busy}>
                         {busy && <Spinner data-icon="inline-start" />}

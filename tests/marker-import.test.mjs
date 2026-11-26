@@ -13,12 +13,16 @@ const signature = {
     mindPublicId: 'mind',
     image: {
         uploadUrl: 'https://api.cloudinary.com/test/image/upload',
-        fields: {},
+        method: 'PUT',
+        objectKey: 'image',
+        headers: { 'Content-Type': 'application/octet-stream', 'If-None-Match': '*' },
         expiresAt: '2099-01-01T00:00:00Z',
     },
     mind: {
         uploadUrl: 'https://api.cloudinary.com/test/raw/upload',
-        fields: {},
+        method: 'PUT',
+        objectKey: 'mind',
+        headers: { 'Content-Type': 'application/octet-stream', 'If-None-Match': '*' },
         expiresAt: '2099-01-01T00:00:00Z',
     },
 };
@@ -220,20 +224,20 @@ test('admin upload API validates request and response contracts and sends cancel
                               ...signature,
                               image: {
                                   ...signature.image,
-                                  fields: {
-                                      api_key: 'k',
-                                      public_id: 'image',
-                                      timestamp: 1,
-                                      signature: 's',
+                                  method: 'PUT',
+                                  objectKey: 'image',
+                                  headers: {
+                                      'Content-Type': 'application/octet-stream',
+                                      'If-None-Match': '*',
                                   },
                               },
                               mind: {
                                   ...signature.mind,
-                                  fields: {
-                                      api_key: 'k',
-                                      public_id: 'mind',
-                                      timestamp: 1,
-                                      signature: 's',
+                                  method: 'PUT',
+                                  objectKey: 'mind',
+                                  headers: {
+                                      'Content-Type': 'application/octet-stream',
+                                      'If-None-Match': '*',
                                   },
                               },
                           },

@@ -22,24 +22,27 @@ import { pagesApi } from '../../pages';
 import { createPreviewApi } from '../api/preview-api';
 import { previewUrl, viewerOrigin } from '../model/preview';
 
-export function PhonePreviewDialog({
-    bookId,
-    pageId,
-    unsaved,
-    onClose,
-}: {
+type PhonePreviewProps = {
     bookId: string;
     pageId: string;
     unsaved: boolean;
     onClose: () => void;
-}) {
+};
+
+export function PhonePreviewDialog(props: PhonePreviewProps) {
+    return <PhonePreviewSession key={`${props.bookId}:${props.pageId}`} {...props} />;
+}
+
+function PhonePreviewSession({ bookId, pageId, unsaved, onClose }: PhonePreviewProps) {
     const [scope, setScope] = useState<'PAGE' | 'BOOK'>('PAGE');
     const [jobId, setJobId] = useState<string | null>(null);
+    const [followingExisting, setFollowingExisting] = useState(false);
     const [busy, setBusy] = useState(false),
         [error, setError] = useState(''),
         [status, setStatus] = useState('');
-    const [link, setLink] = useState(''),
-        [qr, setQr] = useState('');
+    const [link, setLink] = useState('');
+    const [qr, setQr] = useState<{ link: string; data: string } | null>(null);
+    const qrData = qr?.link === link ? qr.data : undefined;
     const [paused, setPaused] = useState(false);
     const alive = useRef(true),
         posting = useRef(false);
@@ -68,6 +71,7 @@ export function PhonePreviewDialog({
                 const job = await pagesApi.job(jobId as string, controller.signal);
                 if (controller.signal.aborted) return;
                 if (
+                    job.id !== jobId ||
                     job.type !== 'BUILD_PREVIEW' ||
                     job.ref.type !== 'BOOK' ||
                     job.ref.id !== bookId
@@ -79,10 +83,22 @@ export function PhonePreviewDialog({
                     throw Error(job.error?.message || 'Chưa tạo được bản xem trước. Hãy thử lại.');
                 }
                 if (job.status === 'SUCCEEDED') {
-                    setLink(
-                        previewUrl(origin, JobResultsSchema.BUILD_PREVIEW.parse(job.result).token),
-                    );
                     setJobId(null);
+                    // The job response has no requested scope/page. An existing job
+                    // may belong to another tab, so its token cannot satisfy this request.
+                    if (followingExisting) {
+                        setStatus(
+                            'Tác vụ trước đã hoàn tất. Tạo liên kết mới cho phạm vi đã chọn.',
+                        );
+                        return;
+                    }
+                    setLink(
+                        previewUrl(
+                            origin,
+                            JobResultsSchema.BUILD_PREVIEW.parse(job.result).token,
+                            'ar',
+                        ),
+                    );
                     setStatus('Liên kết có hiệu lực 24 giờ, dùng nội dung đã lưu.');
                     return;
                 }
@@ -106,14 +122,14 @@ export function PhonePreviewDialog({
             controller.abort();
             clearTimeout(timer);
         };
-    }, [jobId, origin, bookId, paused]);
+    }, [jobId, origin, bookId, paused, followingExisting]);
     useEffect(() => {
         if (!link) return;
         let cancelled = false;
         void import('qrcode')
             .then((m) => m.toDataURL(link, { width: 220, margin: 2 }))
             .then((data) => {
-                if (!cancelled) setQr(data);
+                if (!cancelled) setQr({ link, data });
             })
             .catch(() => {
                 if (!cancelled) setError('Chưa tạo được QR. Bạn vẫn có thể dùng liên kết.');
@@ -122,12 +138,24 @@ export function PhonePreviewDialog({
             cancelled = true;
         };
     }, [link]);
+    function changeScope(next: 'PAGE' | 'BOOK') {
+        if (next === scope || posting.current || busy || jobId) return;
+        setScope(next);
+        setLink('');
+        setQr(null);
+        setStatus('');
+        setError('');
+        setPaused(false);
+    }
     async function create() {
-        if (posting.current || busy || jobId || unsaved) return;
+        if (posting.current || busy || jobId || unsaved || configError || link) return;
         posting.current = true;
         setBusy(true);
         setError('');
+        setStatus('');
+        setQr(null);
         setPaused(false);
+        setFollowingExisting(false);
         try {
             const result = await createPreviewApi(apiClient).create(
                 bookId,
@@ -149,8 +177,9 @@ export function PhonePreviewDialog({
                     : null;
             if (existing?.success) {
                 setPaused(false);
+                setFollowingExisting(true);
                 setJobId(existing.data);
-                setStatus('Đang kiểm tra tác vụ xem trước đã có.');
+                setStatus('Đang chờ tác vụ trước hoàn tất…');
             } else setError(errorMessage(e));
         } finally {
             posting.current = false;
@@ -188,7 +217,7 @@ export function PhonePreviewDialog({
                             id="phone-preview-scope"
                             value={scope}
                             disabled={busy || !!jobId}
-                            onValueChange={(v) => setScope(v as 'PAGE' | 'BOOK')}
+                            onValueChange={(v) => changeScope(v as 'PAGE' | 'BOOK')}
                             options={[
                                 { value: 'PAGE', label: 'Trang hiện tại' },
                                 { value: 'BOOK', label: 'Toàn bộ sách' },
@@ -228,9 +257,9 @@ export function PhonePreviewDialog({
                     )}
                     {link && (
                         <div className="flex flex-col items-center gap-5">
-                            {qr ? (
+                            {qrData ? (
                                 <img
-                                    src={qr}
+                                    src={qrData}
                                     width={220}
                                     height={220}
                                     alt="QR mở Viewer xem trước"

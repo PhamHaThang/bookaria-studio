@@ -36,6 +36,7 @@ export class LocalPreviewStage {
     private observer: ResizeObserver;
     private last = 0;
     private active = false;
+    private interactive = true;
     private down: {
         x: number;
         y: number;
@@ -252,6 +253,7 @@ export class LocalPreviewStage {
         }
         if (
             !this.active ||
+            !this.interactive ||
             !this.runtime ||
             !down.tap ||
             down.moved ||
@@ -298,7 +300,13 @@ export class LocalPreviewStage {
         this.runtime = runtime;
         this.active = false;
         this.renderer.setAnimationLoop(null);
-        if (runtime) this.scene.add(runtime.group);
+        if (runtime) {
+            this.scene.add(runtime.group);
+            runtime.attachControls(
+                this.renderer.domElement.parentElement || document.body,
+                this.renderer.domElement,
+            );
+        }
         if (page) {
             this.aspect = page.aspect;
             this.lighting.setPreset(page.settings.lighting);
@@ -306,11 +314,13 @@ export class LocalPreviewStage {
         this.resetView();
         if (runtime) this.draw(0);
     }
-    start() {
+    start({ startRuntime = true, interactive = true } = {}) {
         if (!this.runtime || this.active) return;
+        this.interactive = interactive;
         this.active = true;
         this.last = 0;
-        this.runtime.start();
+        if (interactive) this.runtime.startControls();
+        if (startRuntime) this.runtime.start();
         this.renderer.setAnimationLoop(this.tick);
     }
     getView(): PreviewView {

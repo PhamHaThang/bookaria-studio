@@ -7,12 +7,14 @@ import { bookTopicChoice, bookTopicOptions, OTHER_BOOK_TOPIC } from '../model/to
 export function BookTopicField({
     id,
     name,
+    emptyLabel,
     value,
     disabled,
     onChange,
 }: {
     id: string;
     name?: string;
+    emptyLabel?: string;
     value: string;
     disabled: boolean;
     onChange: (topic: string) => void;
@@ -37,7 +39,11 @@ export function BookTopicField({
             <FormSelect
                 id={id}
                 value={choice}
-                options={bookTopicOptions}
+                options={
+                    emptyLabel
+                        ? [{ value: '', label: emptyLabel }, ...bookTopicOptions.slice(1)]
+                        : bookTopicOptions
+                }
                 disabled={disabled}
                 onValueChange={(next) => {
                     focusCustom.current = next === OTHER_BOOK_TOPIC;

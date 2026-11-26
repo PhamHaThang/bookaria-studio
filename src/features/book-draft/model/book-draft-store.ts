@@ -11,7 +11,13 @@ import {
     type PageSummary,
     PageSummarySchema,
 } from '@/shared/contracts/dto.schema';
-import { PageSettingsSchema, type Scene, SceneSchema } from '@/shared/contracts/scene.schema';
+import {
+    PageSettingsSchema,
+    type Scene,
+    SceneSchema,
+    type WorkflowVariable,
+    WorkflowVariablesSchema,
+} from '@/shared/contracts/scene.schema';
 import type { UploadCheckpoint } from '../../assets/model/upload';
 import { blankPageDimensions } from '../../pages/model/blank-page';
 import {
@@ -25,6 +31,7 @@ import {
     workingDirty,
 } from './draft-model';
 import type { DraftStorage } from './draft-storage';
+import { describeDraftChange, type HistoryChange } from './history-description';
 import { rebaseSavedBook } from './rebase-save';
 
 type Dependencies = {
@@ -45,7 +52,7 @@ type Dependencies = {
     prepareBlankImage?: (
         aspect: number,
         checkpoint: UploadCheckpoint | null,
-        save: (value: UploadCheckpoint) => void,
+        save: (value: UploadCheckpoint | null) => void,
         signal: AbortSignal,
     ) => Promise<Asset>;
 };
@@ -67,8 +74,10 @@ export type DraftState = {
     version: number;
     canUndo: boolean;
     canRedo: boolean;
+    undoChange: HistoryChange | null;
+    redoChange: HistoryChange | null;
 };
-type Entry = { working: WorkingBook; focus: string };
+type Entry = { working: WorkingBook; focus: string; change?: HistoryChange };
 export class BookDraftStore {
     private state: DraftState = {
         base: null,
@@ -88,6 +97,8 @@ export class BookDraftStore {
         version: 0,
         canUndo: false,
         canRedo: false,
+        undoChange: null,
+        redoChange: null,
     };
     private listeners = new Set<() => void>();
     private basePages: Record<string, Page> = {};
@@ -105,7 +116,7 @@ export class BookDraftStore {
         string,
         { page: Page; summary: PageSummary; assets: Record<string, AssetRef>; value: Page }
     >();
-    private loads = new Map<string, Promise<Page>>();
+    private loads = new Map<string, { request: Promise<Page>; opening: boolean }>();
     private lastValid: Record<string, Page> = {};
     private pending: SaveBookDraftBody | null = null;
     private pendingWorking: WorkingBook | null = null;
@@ -136,6 +147,8 @@ export class BookDraftStore {
             version: this.state.version + 1,
             canUndo: this.past.length > 0,
             canRedo: this.future.length > 0,
+            undoChange: this.past.at(-1)?.change || null,
+            redoChange: this.future.at(-1)?.change || null,
         };
         for (const listener of this.listeners) listener();
     }
@@ -245,7 +258,14 @@ export class BookDraftStore {
         if ((this.state.saving && !this.state.autosaving) || this.disposed)
             throw new Error('Hãy đợi thao tác lưu hoàn tất.');
         if (!this.gesture) {
-            this.past = [...this.past.slice(-39), this.entry()];
+            const entry = this.entry();
+            this.past = [
+                ...this.past.slice(-39),
+                {
+                    ...entry,
+                    change: describeDraftChange(entry.working, working, this.basePages, this.focus),
+                },
+            ];
             this.future = [];
         }
         this.publish({
@@ -269,19 +289,41 @@ export class BookDraftStore {
         return value;
     }
     async loadPage(id: string): Promise<Page> {
+        return this.fetchPage(id, true);
+    }
+    async prefetchPage(id: string) {
+        try {
+            await this.fetchPage(id, false);
+        } catch {
+            // Opening the page retries and reports any failure to the author.
+        }
+    }
+    private async fetchPage(id: string, opening: boolean): Promise<Page> {
         const local = this.getPage(id);
         if (local) return local;
         if (!this.state.working?.pages.some((page) => page.id === id))
             throw new Error('Trang không còn trong bản nháp.');
         const existing = this.loads.get(id);
-        if (existing) return existing;
+        if (existing) {
+            if (opening) existing.opening = true;
+            return existing.request;
+        }
         const run = this.run;
-        const request = this.deps
+        const base = this.state.base;
+        const request: Promise<Page> = this.deps
             .page(id, this.controller.signal)
             .then((page) => {
                 if (this.disposed || run !== this.run) throw new Error('Đã đóng bản nháp.');
                 if (page.bookId !== this.bookId)
                     throw new Error('Trang không thuộc sách đang chỉnh sửa.');
+                if (
+                    !load.opening &&
+                    (base !== this.state.base ||
+                        page.revision !== base?.pageRevisions[id] ||
+                        this.getPage(id) ||
+                        !this.state.working?.pages.some((item) => item.id === id))
+                )
+                    return page;
                 this.basePages = { ...this.basePages, [id]: page };
                 this.publish({
                     conflict:
@@ -290,7 +332,8 @@ export class BookDraftStore {
                 return this.getPage(id) as Page;
             })
             .finally(() => this.loads.delete(id));
-        this.loads.set(id, request);
+        const load = { request, opening };
+        this.loads.set(id, load);
         return request;
     }
     registerAsset(asset: Asset, temporaryImage = false) {
@@ -427,7 +470,7 @@ export class BookDraftStore {
                 .map((page, orderIndex) => ({ ...page, orderIndex })),
         });
     }
-    patchPage(id: string, patch: Partial<Page>, mind?: string) {
+    patchPage(id: string, patch: Partial<Page>, mind?: string, definitions?: WorkflowVariable[]) {
         const page = this.getPage(id);
         if (!page) throw new Error('Chưa đọc được trang.');
         const working = this.state.working as WorkingBook,
@@ -437,6 +480,9 @@ export class BookDraftStore {
             delete blankPages[id];
         this.change({
             ...working,
+            ...(definitions
+                ? { workflowVariables: WorkflowVariablesSchema.parse(definitions) }
+                : {}),
             blankPages,
             pages: working.pages.map((summary) =>
                 summary.id === id
@@ -452,11 +498,20 @@ export class BookDraftStore {
             minds: mind ? { ...working.minds, [id]: mind } : working.minds,
         });
     }
-    setScene(id: string, update: Scene | ((scene: Scene) => Scene)) {
+    setScene(
+        id: string,
+        update: Scene | ((scene: Scene) => Scene),
+        definitions?: WorkflowVariable[],
+    ) {
         const page = this.getPage(id);
         if (!page) return;
         const scene = typeof update === 'function' ? update(page.scene) : update;
-        this.patchPage(id, { scene, objectCount: scene.objects.length });
+        this.patchPage(id, { scene, objectCount: scene.objects.length }, undefined, definitions);
+    }
+    setWorkflowVariables(definitions: WorkflowVariable[]) {
+        const working = this.state.working;
+        if (!working) return;
+        this.change({ ...working, workflowVariables: WorkflowVariablesSchema.parse(definitions) });
     }
     begin() {
         this.gesture ??= this.entry();
@@ -467,7 +522,18 @@ export class BookDraftStore {
             fingerprint(this.gesture.working) !==
             fingerprint(this.materialize(this.state.working as WorkingBook))
         ) {
-            this.past = [...this.past.slice(-39), this.gesture];
+            this.past = [
+                ...this.past.slice(-39),
+                {
+                    ...this.gesture,
+                    change: describeDraftChange(
+                        this.gesture.working,
+                        this.state.working as WorkingBook,
+                        this.basePages,
+                        this.focus,
+                    ),
+                },
+            ];
             this.future = [];
         }
         this.gesture = null;
@@ -479,7 +545,7 @@ export class BookDraftStore {
         const target = this.past.at(-1);
         if (!target || (this.state.saving && !this.state.autosaving)) return this.focus;
         this.past = this.past.slice(0, -1);
-        this.future.push(this.entry());
+        this.future.push({ ...this.entry(), change: target.change });
         this.publish({
             working: target.working,
             editVersion: this.state.editVersion + 1,
@@ -499,7 +565,7 @@ export class BookDraftStore {
         const target = this.future.at(-1);
         if (!target || (this.state.saving && !this.state.autosaving)) return this.focus;
         this.future = this.future.slice(0, -1);
-        this.past.push(this.entry());
+        this.past.push({ ...this.entry(), change: target.change });
         this.publish({
             working: target.working,
             editVersion: this.state.editVersion + 1,
@@ -664,7 +730,7 @@ export class BookDraftStore {
                 this.blankUpload,
                 (checkpoint) => {
                     this.blankUpload = checkpoint;
-                    this.temporaryImages.add(checkpoint.signature.assetId);
+                    if (checkpoint) this.temporaryImages.add(checkpoint.signature.assetId);
                     void this.flush();
                 },
                 this.controller.signal,
@@ -739,6 +805,10 @@ export class BookDraftStore {
                     );
             this.pending = SaveBookDraftBodySchema.parse({
                 revision: base.revision,
+                ...(fingerprint(working.workflowVariables || []) !==
+                fingerprint(base.workflowVariables || [])
+                    ? { workflowVariables: working.workflowVariables || [] }
+                    : {}),
                 order: working.pages.map((page) => page.id),
                 changes,
             });

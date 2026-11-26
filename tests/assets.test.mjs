@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import axios from 'axios';
 import { createAssetsApi } from '../src/features/assets/api/assets-api.ts';
-import { uploadFormData } from '../src/features/assets/api/upload-file.ts';
+import { uploadFile } from '../src/features/assets/api/upload-file.ts';
 import { assetInUse } from '../src/features/assets/model/errors.ts';
 import {
     completeAssetForm,
@@ -39,19 +39,16 @@ const asset = {
 };
 const signature = {
     assetId: id,
-    uploadUrl: 'https://api.cloudinary.com/v1_1/review/image/upload',
-    fields: {
-        public_id: 'review/file',
-        api_key: 'review-key',
-        timestamp: 1,
-        signature: 'review-signature',
-        overwrite: 'false',
-    },
+    uploadUrl: 'https://account.r2.cloudflarestorage.com/bookaria-test/review/file',
+    method: 'PUT',
+    objectKey: 'review/file',
+    headers: { 'Content-Type': 'application/octet-stream', 'If-None-Match': '*' },
     expiresAt: '2099-01-01T00:00:00Z',
 };
 function fixture(body, status = 200) {
     const calls = [];
     const http = axios.create({
+        timeout: 15_000,
         adapter: async (config) => {
             calls.push(config);
             return { data: body, status, statusText: '', headers: {}, config };
@@ -157,7 +154,14 @@ test('upload signature validates outgoing input and incoming signed fields', asy
     );
     assert.equal(calls.length, 1);
     await assert.rejects(
-        fixture({ data: { ...signature, fields: {} } }).api.signature({
+        fixture({
+            data: {
+                ...signature,
+                method: 'POST',
+                objectKey: 'image',
+                headers: { 'Content-Type': 'application/octet-stream', 'If-None-Match': '*' },
+            },
+        }).api.signature({
             purpose: 'ASSET',
             fileName: 'a.png',
             mimeType: 'image/png',
@@ -182,6 +186,17 @@ test('complete distinguishes full 200 from partial 202 and rejects other shapes/
     );
     await assert.rejects(fixture({ data: { asset } }, 201).api.complete(id, {}), ContractError);
 });
+test('only completion extends the API timeout and keeps cancellation', async () => {
+    const { api, calls } = fixture({ data: { asset } });
+    const signal = new AbortController().signal;
+    await api.complete(id, {}, signal);
+    assert.equal(calls[0].timeout, 120_000);
+    assert.equal(calls[0].signal, signal);
+    const detail = fixture({ data: asset });
+    await detail.api.detail(id, signal);
+    assert.equal(detail.calls[0].timeout, 15_000);
+});
+
 test('file validation applies shared backend limits and empty MIME fallback', () => {
     assert.equal(
         uploadRequest({ name: 'MODEL.GLB', type: '', size: 10 }).mimeType,
@@ -233,20 +248,24 @@ test('URL filters fall back safely and preserve scope/filter values across pages
     assert.equal(current.get('page'), '3');
     assert.equal(updateAssetSearch(current, { page: '2' }).get('type'), 'MODEL');
 });
-test('multipart includes all signed fields unchanged and the actual selected file', () => {
+test('direct uploads reject other hosts and headers that could expose API credentials', async () => {
     const file = new File(['a'], 'a.png', { type: 'image/png' });
-    const data = uploadFormData(signature, file);
-    assert.equal(data.get('timestamp'), '1');
-    assert.equal(data.get('overwrite'), 'false');
-    assert.equal(data.get('signature'), 'review-signature');
-    assert.equal(data.get('file').name, 'a.png');
-    assert.throws(() =>
-        uploadFormData(
-            { ...signature, fields: { ...signature.fields, bad: { nested: true } } },
+    const signal = new AbortController().signal;
+    await assert.rejects(
+        uploadFile({ ...signature, uploadUrl: 'https://evil.test/upload' }, file, signal, () => {}),
+        /Địa chỉ/,
+    );
+    await assert.rejects(
+        uploadFile(
+            { ...signature, headers: { Authorization: 'Bearer private' } },
             file,
+            signal,
+            () => {},
         ),
+        /Tham số/,
     );
 });
+
 test('upload pipeline runs signature then transfer then completion', async () => {
     const fixture = pipeline();
     const result = await runAssetUpload(fixture.options);
@@ -268,6 +287,22 @@ test('failed completion retries the same id and metadata without another file up
     await runAssetUpload({ ...fixture.options, checkpoint: fixture.checkpoint() });
     assert.equal(attempts, 2);
     assert.deepEqual(fixture.calls, ['signature', 'file']);
+});
+test('a discarded or missing upload clears its checkpoint and retries with a fresh signature', async () => {
+    for (const code of ['QUOTA_EXCEEDED', 'FILE_TOO_LARGE', 'FILE_TYPE_NOT_ALLOWED', 'NOT_FOUND']) {
+        const fixture = pipeline();
+        const complete = fixture.options.api.complete;
+        fixture.options.api.complete = async () => {
+            throw new axios.AxiosError('upload rejected', undefined, undefined, undefined, {
+                data: { error: { code, message: 'Tải lại tệp.', requestId: 'test-request' } },
+            });
+        };
+        await assert.rejects(runAssetUpload(fixture.options));
+        assert.equal(fixture.checkpoint(), null);
+        fixture.options.api.complete = complete;
+        await runAssetUpload({ ...fixture.options, checkpoint: fixture.checkpoint() });
+        assert.deepEqual(fixture.calls.slice(0, 4), ['signature', 'file', 'signature', 'file']);
+    }
 });
 test('failed file transfer never calls complete and an expired unused signature is renewed', async () => {
     const fixture = pipeline({
@@ -385,7 +420,7 @@ test('animation filter only applies to models and is cleared when changing asset
     assert.equal(updateAssetSearch(model, { type: undefined }).has('hasAnimation'), false);
 });
 
-test('old shared-library links move into Explore with valid filters and pagination', () => {
+test('old shared-library links move to resources with valid filters and pagination', () => {
     const target = new URL(
         libraryAssetLocation(
             new URLSearchParams({
@@ -401,9 +436,8 @@ test('old shared-library links move into Explore with valid filters and paginati
         ),
         'https://bookaria.example',
     );
-    assert.equal(target.pathname, '/library');
+    assert.equal(target.pathname, '/resources');
     assert.deepEqual(Object.fromEntries(target.searchParams), {
-        view: 'assets',
         type: 'MODEL',
         q: 'mèo',
         categoryId: id,
@@ -419,10 +453,10 @@ test('old shared-library links do not carry stale animation or invalid filters',
                 'scope=library&type=IMAGE&hasAnimation=true&page=bad&categoryId=invalid',
             ),
         ),
-        '/library?view=assets&type=IMAGE',
+        '/resources?type=IMAGE',
     );
     assert.equal(
         libraryAssetLocation(new URLSearchParams('type=UNKNOWN&tag=hidden')),
-        '/library?view=assets',
+        '/resources',
     );
 });

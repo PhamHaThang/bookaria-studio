@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { SceneObject } from '@/shared/contracts/scene.schema';
+import { isVisibleInEditor } from './objects';
 
 export function isPlanarObject(spec: SceneObject) {
     return (
@@ -10,7 +11,7 @@ export function isPlanarObject(spec: SceneObject) {
 
 /** A flat selection is expressed in its visible plane, including the whole annotation callout. */
 export function planarSelectionFrame(spec: SceneObject, content: THREE.Object3D) {
-    if (!spec.visible || !isPlanarObject(spec)) return;
+    if (!isVisibleInEditor(spec) || !isPlanarObject(spec)) return;
     content.updateWorldMatrix(true, true);
     if (
         spec.type === 'label' ||

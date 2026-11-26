@@ -3,6 +3,8 @@ import { PaginationQuerySchema } from '../../shared/contracts/common.schema';
 export const notificationKeys = {
     all: (userId: string) => ['notifications', userId] as const,
     list: (userId: string, query: object) => ['notifications', userId, 'list', query] as const,
+    infinite: (userId: string, query: object) =>
+        ['notifications', userId, 'infinite', query] as const,
     count: (userId: string) => ['notifications', userId, 'unread-count'] as const,
 };
 export function readNotificationSearch(params: URLSearchParams) {

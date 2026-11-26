@@ -6,6 +6,15 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@utility no-scrollbar {
+    @media (forced-colors: none) {
+        scrollbar-width: none;
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+}
+
 /* Product tokens are shared by utilities and shadcn primitives. */
 @theme inline {
     --font-sans: var(--font-body);
@@ -32,6 +41,8 @@
     --color-card-foreground: var(--text-primary);
     --color-popover: var(--bg-surface);
     --color-popover-foreground: var(--text-primary);
+    --color-highlight: var(--action-highlight);
+    --color-highlight-foreground: var(--text-highlight);
     --color-primary: var(--action-primary);
     --color-primary-foreground: var(--text-on-primary);
     --color-primary-hover: var(--action-primary-hover);
@@ -44,6 +55,7 @@
     --color-accent-foreground: var(--action-primary);
     --color-selected: var(--bg-selected);
     --color-hover: var(--bg-hover);
+    --color-option-hover: var(--bg-option-hover);
     --color-destructive: var(--action-danger);
     --color-destructive-hover: var(--action-danger-hover);
     --color-destructive-foreground: var(--text-on-danger);
@@ -51,14 +63,25 @@
     --color-line: var(--border-default);
     --color-input: var(--border-input);
     --color-ring: var(--focus-color);
+    --color-axis-x: var(--editor-axis-x);
+    --color-axis-y: var(--editor-axis-y);
+    --color-axis-z: var(--editor-axis-z);
     --color-neutral: var(--status-neutral-bg);
     --color-neutral-foreground: var(--status-neutral-text);
     --color-success: var(--status-success-bg);
     --color-success-foreground: var(--status-success-text);
+    --color-success-solid: var(--status-success-solid);
+    --color-danger-solid: var(--status-danger-solid);
     --color-warning: var(--status-warning-bg);
     --color-warning-foreground: var(--status-warning-text);
     --color-danger: var(--status-danger-bg);
     --color-danger-foreground: var(--status-danger-text);
     --color-info: var(--status-info-bg);
     --color-info-foreground: var(--status-info-text);
+    --color-processing: var(--status-processing);
+}
+
+[data-loading-completing] {
+    opacity: 0;
+    transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }

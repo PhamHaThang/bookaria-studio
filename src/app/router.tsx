@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useLayoutEffect } from 'react';
 import {
     createBrowserRouter,
     createRoutesFromElements,
@@ -8,11 +8,20 @@ import {
     Route,
     RouterProvider,
     useLocation,
+    useMatches,
+    useParams,
 } from 'react-router-dom';
+import { IdSchema } from '@/shared/contracts/common.schema';
+import { Button } from '@/shared/ui/Button';
+import { LoadingBoundary } from '@/shared/ui/LoadingBoundary';
+import { LoadingScreen } from '@/shared/ui/LoadingScreen';
 import { FloatingThemeSwitcher } from '@/shared/ui/ThemeSwitcher';
-import { RequireSession, SessionBoundary } from '../features/auth';
+import { RequireSession, SessionBoundary, useAuth } from '../features/auth';
 import { AuthDialog, LegacyAuthRoute } from '../features/auth/ui/AuthDialog';
+import { RequireVerifiedEmail } from '../features/auth/ui/SessionBoundary';
+import { HomePage } from '../pages/HomePage';
 import { AdminLayout, AdminNotFoundPage } from './AdminLayout';
+import { PublicHeader } from './PublicHeader';
 import { PublicLayout } from './PublicLayout';
 import { StudioLayout } from './StudioLayout';
 
@@ -84,9 +93,6 @@ const AdminCategoryEditPage = lazy(() =>
 const AdminMarkersPage = lazy(() =>
     import('../pages/AdminMarkersPage').then((module) => ({ default: module.AdminMarkersPage })),
 );
-const HomePage = lazy(() =>
-    import('../pages/HomePage').then((module) => ({ default: module.HomePage })),
-);
 const HelpPage = lazy(() =>
     import('../pages/HelpPage').then((module) => ({ default: module.HelpPage })),
 );
@@ -94,6 +100,9 @@ const NotFoundPage = lazy(() =>
     import('../pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })),
 );
 
+const ExploreAssetsPage = lazy(() =>
+    import('../pages/ExploreAssetsPage').then((module) => ({ default: module.ExploreAssetsPage })),
+);
 const ExplorePage = lazy(() =>
     import('../pages/ExplorePage').then((module) => ({ default: module.ExplorePage })),
 );
@@ -104,12 +113,27 @@ const AuthorPage = lazy(() =>
 const StatsBooksPage = lazy(() =>
     import('../pages/StatsBooksPage').then((module) => ({ default: module.StatsBooksPage })),
 );
-const BookStatsPage = lazy(() =>
-    import('../pages/BookStatsPage').then((module) => ({ default: module.BookStatsPage })),
-);
 
+const StudioOverviewPage = lazy(() =>
+    import('../pages/StudioOverviewPage').then((module) => ({
+        default: module.StudioOverviewPage,
+    })),
+);
+const StudioBookCreateDialog = lazy(() =>
+    import('../features/books/ui/BookCreateDialog').then((module) => ({
+        default: module.BookCreateDialog,
+    })),
+);
+const StudioAssetUploadDialog = lazy(() =>
+    import('../features/assets/ui/AssetUploadDialog').then((module) => ({
+        default: module.AssetUploadDialog,
+    })),
+);
 const BooksPage = lazy(() =>
     import('../pages/BooksPage').then((module) => ({ default: module.BooksPage })),
+);
+const TrashPage = lazy(() =>
+    import('../pages/TrashPage').then((module) => ({ default: module.TrashPage })),
 );
 const BookCreatePage = lazy(() =>
     import('../pages/BookCreatePage').then((module) => ({ default: module.BookCreatePage })),
@@ -142,20 +166,39 @@ const AssetsPage = lazy(() =>
 const AssetUploadPage = lazy(() =>
     import('../pages/AssetUploadPage').then((module) => ({ default: module.AssetUploadPage })),
 );
-const AssetDetailPage = lazy(() =>
-    import('../pages/AssetDetailPage').then((module) => ({ default: module.AssetDetailPage })),
-);
 const StyleGuidePage = import.meta.env.DEV
     ? lazy(() =>
           import('../pages/StyleGuidePage').then((module) => ({ default: module.StyleGuidePage })),
       )
     : null;
 
+function SiteLayout() {
+    const { pathname } = useLocation();
+    // biome-ignore lint/correctness/useExhaustiveDependencies: Reset on route changes, not on search filters.
+    useLayoutEffect(() => {
+        window.scrollTo(0, 0);
+    }, [pathname]);
+    return (
+        <div className="site-shell flex min-h-dvh flex-col bg-background">
+            <PublicHeader />
+            <Outlet />
+        </div>
+    );
+}
+
 function RouterLayout() {
     const { pathname } = useLocation();
+    const matches = useMatches();
+    const { status } = useAuth();
     const inEditor = Boolean(
         matchPath('/books/:bookId/edit', pathname) ||
             matchPath('/books/:bookId/pages/:pageId', pathname),
+    );
+    const showSiteLayout = matches.some(
+        ({ id }) =>
+            id === 'public-pages' ||
+            (status === 'authenticated' &&
+                (id === 'account-pages' || (id === 'studio-pages' && !inEditor))),
     );
     return (
         <>
@@ -165,10 +208,28 @@ function RouterLayout() {
             >
                 Đến nội dung chính
             </a>
-            <Outlet />
+            <LoadingBoundary fullScreen editor={inEditor}>
+                {showSiteLayout ? <SiteLayout /> : <Outlet />}
+            </LoadingBoundary>
             {!inEditor && <FloatingThemeSwitcher />}
             <AuthDialog />
         </>
+    );
+}
+
+function RouteErrorPage() {
+    return (
+        <LoadingBoundary fullScreen>
+            <main id="main" className="grid min-h-dvh place-items-center bg-background px-6 py-12">
+                <div className="max-w-sm text-center">
+                    <h1 className="m-0 font-semibold text-2xl">Không mở được trang</h1>
+                    <p className="mt-3 mb-6 text-muted-foreground text-sm">
+                        Hãy tải lại để mở trang này.
+                    </p>
+                    <Button onClick={() => window.location.reload()}>Tải lại trang</Button>
+                </div>
+            </main>
+        </LoadingBoundary>
     );
 }
 
@@ -177,12 +238,19 @@ function LegacyExploreRedirect() {
     return <Navigate to={{ pathname: '/library', search, hash }} replace />;
 }
 
+function LegacyAssetRedirect() {
+    const { assetId } = useParams();
+    const id = IdSchema.safeParse(assetId);
+    return <Navigate to={id.success ? `/assets?asset=${id.data}` : '/assets'} replace />;
+}
+
 const router = createBrowserRouter(
     createRoutesFromElements(
-        <Route element={<RouterLayout />}>
-            <Route element={<PublicLayout />}>
+        <Route element={<RouterLayout />} errorElement={<RouteErrorPage />}>
+            <Route id="public-pages" element={<PublicLayout />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/library" element={<ExplorePage />} />
+                <Route path="/resources" element={<ExploreAssetsPage />} />
                 <Route path="/explore" element={<LegacyExploreRedirect />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="*" element={<NotFoundPage />} />
@@ -199,15 +267,7 @@ const router = createBrowserRouter(
                     path="/style-guide"
                     element={
                         <Suspense
-                            fallback={
-                                <main
-                                    id="main"
-                                    className="session-state mx-auto my-[12vh] max-w-130 p-8 text-center"
-                                    role="status"
-                                >
-                                    Đang mở bộ giao diện…
-                                </main>
-                            }
+                            fallback={<LoadingScreen fullScreen message="Đang mở bộ giao diện…" />}
                         >
                             <StyleGuidePage />
                         </Suspense>
@@ -216,7 +276,7 @@ const router = createBrowserRouter(
             )}
             <Route element={<SessionBoundary />}>
                 <Route element={<RequireSession />}>
-                    <Route element={<PublicLayout />}>
+                    <Route id="account-pages" element={<PublicLayout />}>
                         <Route path="/profile" element={<ProfilePage />} />
                         <Route path="/change-password" element={<ChangePasswordPage />} />
                     </Route>
@@ -226,12 +286,17 @@ const router = createBrowserRouter(
                         <Route path="jobs" element={<AdminJobsPage />} />
                         <Route path="audit-logs" element={<AdminAuditPage />} />
                         <Route path="audit-logs/:logId" element={<AdminAuditDetailPage />} />
-                        <Route path="library" element={<AdminLibraryPage />} />
-                        <Route path="library/new" element={<AdminLibraryNewPage />} />
-                        <Route path="library/:assetId" element={<AdminLibraryDetailPage />} />
-                        <Route path="categories" element={<AdminCategoriesPage />} />
-                        <Route path="categories/new" element={<AdminCategoryEditPage />} />
-                        <Route path="categories/:categoryId" element={<AdminCategoryEditPage />} />
+                        <Route element={<RequireVerifiedEmail />}>
+                            <Route path="library" element={<AdminLibraryPage />} />
+                            <Route path="library/new" element={<AdminLibraryNewPage />} />
+                            <Route path="library/:assetId" element={<AdminLibraryDetailPage />} />
+                            <Route path="categories" element={<AdminCategoriesPage />} />
+                            <Route path="categories/new" element={<AdminCategoryEditPage />} />
+                            <Route
+                                path="categories/:categoryId"
+                                element={<AdminCategoryEditPage />}
+                            />
+                        </Route>
                         <Route path="markers" element={<AdminMarkersPage />} />
                         <Route
                             path="markers/new"
@@ -241,19 +306,33 @@ const router = createBrowserRouter(
                         <Route path="users/new" element={<AdminUserCreatePage />} />
                         <Route path="users/:userId" element={<AdminUserDetailPage />} />
                         <Route path="moderation" element={<AdminModerationPage />} />
+                        <Route
+                            path="moderator"
+                            element={<Navigate to="/admin/moderation" replace />}
+                        />
                         <Route path="books" element={<AdminBooksPage />} />
                         <Route path="books/:bookId" element={<AdminBookDetailPage />} />
                         <Route path="*" element={<AdminNotFoundPage />} />
                     </Route>
-                    <Route element={<StudioLayout />}>
-                        <Route path="/books" element={<BooksPage key="active" />} />
+                    <Route id="studio-pages" element={<StudioLayout />}>
+                        <Route path="/studio" element={<StudioOverviewPage />}>
+                            <Route
+                                path="new-book"
+                                element={<StudioBookCreateDialog backTo="/studio" />}
+                            />
+                            <Route
+                                path="upload"
+                                element={<StudioAssetUploadDialog backTo="/studio" />}
+                            />
+                        </Route>
+                        <Route path="/books" element={<BooksPage />} />
                         <Route path="/stats" element={<StatsBooksPage />} />
-                        <Route path="/books/:bookId/stats" element={<BookStatsPage />} />
+                        <Route path="/books/:bookId/stats" element={<StatsBooksPage />} />
                         <Route
                             path="/notifications"
                             element={<Navigate to="/books?notifications=open" replace />}
                         />
-                        <Route path="/books/trash" element={<BooksPage key="trash" trash />} />
+                        <Route path="/books/trash" element={<TrashPage />} />
                         <Route path="/books/new" element={<BookCreatePage />} />
 
                         <Route path="/books/:bookId" element={<BookDetailPage />} />
@@ -266,7 +345,11 @@ const router = createBrowserRouter(
                         </Route>
                         <Route path="/assets" element={<AssetsPage />} />
                         <Route path="/assets/upload" element={<AssetUploadPage />} />
-                        <Route path="/assets/:assetId" element={<AssetDetailPage />} />
+                        <Route
+                            path="/assets/generate-3d"
+                            element={<AssetUploadPage generateModel />}
+                        />
+                        <Route path="/assets/:assetId" element={<LegacyAssetRedirect />} />
                     </Route>
                 </Route>
             </Route>

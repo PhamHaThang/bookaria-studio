@@ -5,18 +5,36 @@ import {
 } from '../../shared/contracts/api/admin.schema';
 import { PaginationQuerySchema } from '../../shared/contracts/common.schema';
 import type { AdminUser } from '../../shared/contracts/dto.schema';
+import { ReportReasonSchema } from '../../shared/contracts/enums.schema';
 
 const page = (params: URLSearchParams) => {
     const parsed = PaginationQuerySchema.shape.page.safeParse(params.get('page') || '1');
     return parsed.success ? parsed.data : 1;
 };
+
+export function adminPageMarkerLabel(page: {
+    markerMode: string;
+    markerWarnings: readonly string[];
+}) {
+    if (page.markerMode === 'NONE') return 'Không dùng AR';
+    if (page.markerMode !== 'CUSTOM_MARKER') return 'Bookaria';
+    if (page.markerWarnings.includes('NOT_SCORED')) return 'Chưa phân tích';
+    if (
+        page.markerWarnings.some((warning) =>
+            ['LOW_SCORE', 'REANALYZE_REQUIRED', 'STALE_MARKER', 'NO_FEATURES'].includes(warning),
+        )
+    )
+        return 'Cần phân tích lại';
+    return 'Đã phân tích';
+}
 export function readAdminUsersSearch(params: URLSearchParams) {
+    const limit = PaginationQuerySchema.shape.limit.safeParse(params.get('limit') || '12');
     const role = AdminUsersQuerySchema.shape.role.safeParse(params.get('role') || undefined);
     const status = AdminUsersQuerySchema.shape.status.safeParse(params.get('status') || undefined);
     const sort = AdminUsersQuerySchema.shape.sort.safeParse(params.get('sort') || '-createdAt');
     return AdminUsersQuerySchema.parse({
         page: page(params),
-        limit: 12,
+        limit: limit.success ? limit.data : 12,
         q: (params.get('q') || '').trim().slice(0, 100) || undefined,
         role: role.success ? role.data : undefined,
         status: status.success ? status.data : undefined,
@@ -27,17 +45,26 @@ export function readAdminBooksSearch(params: URLSearchParams) {
     const visibility = AdminBooksQuerySchema.shape.visibility.safeParse(
         params.get('visibility') || 'PUBLIC',
     );
+    const rawLimit = Number(params.get('limit'));
+    const limit = [5, 10, 12, 20].includes(rawLimit) ? rawLimit : 12;
     return AdminBooksQuerySchema.parse({
         page: page(params),
-        limit: 12,
+        limit,
         q: (params.get('q') || '').trim().slice(0, 100) || undefined,
         visibility: visibility.success ? visibility.data : 'PUBLIC',
     });
 }
-export const readAdminQueueSearch = (params: URLSearchParams) => ({
-    page: page(params),
-    limit: 12,
-});
+export const readAdminQueueSearch = (params: URLSearchParams) => {
+    const rawLimit = Number(params.get('limit'));
+    const limit = [5, 10, 12, 20].includes(rawLimit) ? rawLimit : 12;
+    const reason = ReportReasonSchema.safeParse(params.get('reason') || undefined);
+    return {
+        page: page(params),
+        limit,
+        q: (params.get('q') || '').trim().slice(0, 100) || undefined,
+        reason: reason.success ? reason.data : undefined,
+    };
+};
 export const adminKeys = {
     all: (user: string) => ['admin', user] as const,
     dashboard: (user: string) => ['admin', user, 'dashboard'] as const,

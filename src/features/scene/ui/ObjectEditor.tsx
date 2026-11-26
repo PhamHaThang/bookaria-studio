@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { Copy, Eye, Info, Move, Play, SlidersHorizontal, Trash2 } from 'lucide-react';
-import { useSyncExternalStore } from 'react';
-import { Link } from 'react-router-dom';
+import { Copy, Eye, Gamepad2, Info, Move, Play, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { useState, useSyncExternalStore } from 'react';
+import { AssetPreviewDialog } from '@/features/assets/ui/LibraryAssetPreview';
 import { facesCamera } from '@/shared/scene/audio-kind';
+import { BufferedInput } from '@/shared/ui/BufferedTextInput';
 import { Disclosure, DisclosureGroup } from '@/shared/ui/Disclosure';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
@@ -13,7 +14,6 @@ import {
     FieldLabel,
     FieldSet,
 } from '@/shared/ui/primitives/field';
-import { Input } from '@/shared/ui/primitives/input';
 import { Switch } from '@/shared/ui/primitives/switch';
 import { errorMessage } from '../../../shared/api/errors';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
@@ -27,6 +27,7 @@ import type { SceneAudioStore } from '../model/scene-audio-store';
 import type { SceneLoadStore } from '../model/scene-load-store';
 import { isPlanarObject } from '../model/selection-frame';
 import { withObjectPosition } from '../model/transforms';
+import { ModelControlProperties } from './ModelControlProperties';
 import { VectorFields } from './NumericField';
 import { ObjectSpecificProperties } from './ObjectSpecificProperties';
 import { useSceneWidthMm } from './SceneUnits';
@@ -68,6 +69,7 @@ export function ObjectEditor({
     );
     const { user } = useAuth();
     const assetId = 'assetId' in object ? object.assetId : null;
+    const [previewAssetId, setPreviewAssetId] = useState<string | null>(null);
     const detail = useQuery({
         queryKey: assetKeys.detail(user?.id || '', assetId || ''),
         queryFn: ({ signal }) => assetsApi.detail(assetId || '', signal),
@@ -86,6 +88,14 @@ export function ObjectEditor({
     const id = `object-${object.id}`;
     return (
         <section className="scene-inspector min-w-0" aria-labelledby="inspector-heading">
+            {previewAssetId && previewAssetId === assetId && (
+                <AssetPreviewDialog
+                    key={previewAssetId}
+                    assetId={previewAssetId}
+                    asset={detail.data}
+                    onClose={() => setPreviewAssetId(null)}
+                />
+            )}
             <Field
                 orientation="horizontal"
                 className="mb-4 items-center justify-between gap-3 rounded-lg border border-border px-3 py-3"
@@ -126,13 +136,11 @@ export function ObjectEditor({
                             <Field orientation="contents">
                                 <FieldLabel htmlFor={`${id}-name`}>
                                     Tên đối tượng
-                                    <Input
+                                    <BufferedInput
                                         id={`${id}-name`}
                                         maxLength={100}
                                         value={object.name || ''}
-                                        onChange={(event) =>
-                                            patch({ name: event.currentTarget.value })
-                                        }
+                                        onValueChange={(name) => patch({ name })}
                                     />
                                 </FieldLabel>
                             </Field>
@@ -145,7 +153,13 @@ export function ObjectEditor({
                                         <Button variant="secondary" onClick={onChooseAsset}>
                                             Đổi tài nguyên
                                         </Button>
-                                        <Link to={`/assets/${assetId}`}>Xem tài nguyên</Link>
+                                        <Button
+                                            variant="link"
+                                            aria-haspopup="dialog"
+                                            onClick={() => setPreviewAssetId(assetId)}
+                                        >
+                                            Xem tài nguyên
+                                        </Button>
                                     </div>
                                     {detail.isError && (
                                         <>
@@ -283,58 +297,78 @@ export function ObjectEditor({
                             </FieldGroup>
                         </Disclosure>
                     )}
-                    <Disclosure
-                        value="display"
-                        title={
-                            <>
-                                <Eye size={17} />
-                                Hiển thị & hành vi
-                            </>
-                        }
-                        variant="panel"
-                        className="property-section"
-                    >
-                        <div>
-                            {' '}
-                            <div className="scene-flags grid gap-3 max-[1200px]:col-[1_/_-1]">
-                                {(
-                                    [
-                                        ['visible', 'Hiển thị đối tượng'],
-                                        ['billboard', 'Luôn hướng về camera'],
-                                    ] as const
-                                ).map(([key, label]) => (
-                                    <Field
-                                        orientation="horizontal"
-                                        className="items-center justify-between gap-3"
-                                        key={key}
-                                    >
-                                        <FieldLabel
-                                            htmlFor={`${id}-${key}`}
-                                            className="m-0 flex-1 font-normal"
+                    {object.type === 'model' && (
+                        <Disclosure
+                            value="controls"
+                            title={
+                                <>
+                                    <Gamepad2 size={17} />
+                                    Điều khiển
+                                </>
+                            }
+                            variant="panel"
+                            className="property-section"
+                        >
+                            <ModelControlProperties
+                                object={object}
+                                clips={clips}
+                                id={id}
+                                disabled={disabled || object.locked}
+                                onChange={(controls) => patch({ controls })}
+                            />
+                        </Disclosure>
+                    )}
+                    {object.type !== 'audio' && (
+                        <Disclosure
+                            value="display"
+                            title={
+                                <>
+                                    <Eye size={17} />
+                                    Hiển thị & hành vi
+                                </>
+                            }
+                            variant="panel"
+                            className="property-section"
+                        >
+                            <div>
+                                {' '}
+                                <div className="scene-flags grid gap-3 max-[1200px]:col-[1_/_-1]">
+                                    {(
+                                        [
+                                            ['visible', 'Hiển thị đối tượng'],
+                                            ['billboard', 'Luôn hướng về camera'],
+                                        ] as const
+                                    ).map(([key, label]) => (
+                                        <Field
+                                            orientation="horizontal"
+                                            className="items-center justify-between gap-3"
+                                            key={key}
                                         >
-                                            {label}
-                                        </FieldLabel>
-                                        <Switch
-                                            id={`${id}-${key}`}
-                                            checked={
-                                                key === 'billboard'
-                                                    ? facesCamera(object)
-                                                    : object[key]
-                                            }
-                                            disabled={
-                                                key === 'billboard' && object.type === 'audio'
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                key === 'billboard'
-                                                    ? onBillboardChange(checked)
-                                                    : patch({ [key]: checked })
-                                            }
-                                        />
-                                    </Field>
-                                ))}
+                                            <FieldLabel
+                                                htmlFor={`${id}-${key}`}
+                                                className="m-0 flex-1 font-normal"
+                                            >
+                                                {label}
+                                            </FieldLabel>
+                                            <Switch
+                                                id={`${id}-${key}`}
+                                                checked={
+                                                    key === 'billboard'
+                                                        ? facesCamera(object)
+                                                        : object[key]
+                                                }
+                                                onCheckedChange={(checked) =>
+                                                    key === 'billboard'
+                                                        ? onBillboardChange(checked)
+                                                        : patch({ [key]: checked })
+                                                }
+                                            />
+                                        </Field>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    </Disclosure>
+                        </Disclosure>
+                    )}
                     <Disclosure
                         value="transform"
                         title={
@@ -386,16 +420,12 @@ export function ObjectEditor({
                                 />
                             ))}
                             {facesCamera(object) && (
-                                <p className="m-0 text-muted-foreground text-xs">
+                                <p className="m-0 text-muted-foreground text-xs leading-relaxed">
                                     {object.type === 'audio'
-                                        ? 'Thẻ âm thanh luôn hướng về camera; góc xoay được khóa.'
+                                        ? 'Thẻ âm thanh luôn hướng về camera nên góc xoay được khóa.'
                                         : 'Tắt “Luôn hướng về camera” để chỉnh góc xoay.'}
                                 </p>
                             )}
-                            <p className="m-0 text-muted-foreground text-xs leading-relaxed">
-                                Tâm trang là (0, 0, 0) mm. X sang phải, Y lên trên, Z nhô khỏi
-                                trang.
-                            </p>
                         </div>
                     </Disclosure>
                 </fieldset>

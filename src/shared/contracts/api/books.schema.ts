@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+    BOOK_AGE_MAX,
     HttpUrlSchema,
     IdSchema,
     IsoDateTimeSchema,
@@ -29,6 +30,11 @@ export const ListBooksQuerySchema = PaginationQuerySchema.extend({
 });
 export type ListBooksQuery = z.infer<typeof ListBooksQuerySchema>;
 
+export const TrashBooksQuerySchema = PaginationQuerySchema.extend({
+    status: BookStatusSchema.optional(),
+});
+export type TrashBooksQuery = z.infer<typeof TrashBooksQuerySchema>;
+
 export const TrashBookItemSchema = BookSummarySchema.extend({
     deletedAt: IsoDateTimeSchema,
 });
@@ -44,7 +50,7 @@ export const CreateBookSourceSchema = z.discriminatedUnion('type', [
 ]);
 export type CreateBookSource = z.infer<typeof CreateBookSourceSchema>;
 
-const AgeSchema = z.int().min(0).max(150);
+const AgeSchema = z.int().min(0).max(BOOK_AGE_MAX);
 
 const checkAges = (b: { ageMin?: number | null | undefined; ageMax?: number | null | undefined }) =>
     b.ageMin == null || b.ageMax == null || b.ageMin <= b.ageMax;
@@ -159,3 +165,18 @@ export const BookStatsSchema = z.object({
 });
 
 export type BookStats = z.infer<typeof BookStatsSchema>;
+
+/** Aggregate reading activity for the signed-in author. Windows end today in UTC. */
+export const StudioReadingStatsSchema = z.object({
+    opensLast7Days: z.int().nonnegative(),
+    opensPrevious7Days: z.int().nonnegative(),
+    opensByDay: z.array(BookStatsSchema.shape.opensByDay.element).length(14),
+    topBooks: z
+        .array(
+            BookSummarySchema.pick({ id: true, title: true, coverUrl: true }).extend({
+                opens: z.int().positive(),
+            }),
+        )
+        .max(3),
+});
+export type StudioReadingStats = z.infer<typeof StudioReadingStatsSchema>;

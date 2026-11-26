@@ -11,7 +11,7 @@ export function sceneObjectLabel(object: SceneObject) {
     }
     return objectLabels[object.type];
 }
-const searchable = (value: string) =>
+export const searchable = (value: string) =>
     value
         .trim()
         .toLocaleLowerCase('vi')

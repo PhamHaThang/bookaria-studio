@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import type { ManifestAsset } from '../contracts/asset.schema';
+import { type ManifestAsset, MODEL_MAX_DOWNLOAD_BYTES } from '../contracts/asset.schema';
 import type { ManifestPage } from '../contracts/manifest.schema';
 import type { Action, SceneObject } from '../contracts/scene.schema';
 import { createAudioCard, observeAudio } from '../scene/audio-card';
@@ -9,12 +9,24 @@ import { facesCamera } from '../scene/audio-kind';
 import { createBillboard } from '../scene/billboard';
 import { pageImageSize } from '../scene/page-image-fit';
 import { createTextVisual } from '../scene/text-renderer';
+import type { AssetCache } from './asset-cache';
 import { fetchBytes } from './fetchBytes';
-import { InteractionRunner, sleep } from './InteractionRunner';
+import {
+    InteractionRunner,
+    type InteractionStepEvent,
+    sleep,
+    type WorkflowEnvironment,
+} from './InteractionRunner';
+import type { MediaElementPool } from './MediaElementPool';
+import { ModelControlAnimations } from './ModelControlAnimations';
+import { ModelControls } from './ModelControls';
+import type { ReaderNoticeOptions } from './reader-feedback';
+import { askWorkflowQuestion } from './WorkflowPrompt';
 
-type Hooks = {
+type Hooks = WorkflowEnvironment & {
+    step?: (event: InteractionStepEvent) => void;
     tap?: (id: string) => void;
-    notice: (message: string) => void;
+    notice: (message: string, options?: ReaderNoticeOptions) => void;
     link: (url: string) => void;
     log: (message: string) => void;
 };
@@ -44,6 +56,7 @@ export async function buildScene(
     assets: Record<string, ManifestAsset>,
     signal: AbortSignal,
     hooks: Hooks,
+    options: { background?: boolean; bytes?: AssetCache; mediaPool?: MediaElementPool } = {},
 ) {
     const group = new THREE.Group();
     const nodes = new Map<string, Node>(),
@@ -53,8 +66,17 @@ export async function buildScene(
     const audioAssets = new Map<HTMLAudioElement, string>();
     const playAttempts = new WeakMap<HTMLMediaElement, number>();
     const blockedMedia = new Set<HTMLMediaElement>();
+    const suspendedMedia = new Set<HTMLMediaElement>();
+    const pendingMedia = new Set<HTMLMediaElement>();
+    let suspended = false;
+    let dirty = true;
+    let modelControls: ModelControls | undefined;
+    let controlAnimations: ModelControlAnimations | undefined;
     let lifecycle = 0;
     const blobUrls: string[] = [];
+    const mediaListeners: (() => void)[] = [];
+    let audioChannel = 0,
+        videoChannel = 0;
     const draco = new DRACOLoader().setDecoderPath('/vendor/draco-0.161.0/');
     const loader = new GLTFLoader().setDRACOLoader(draco);
     let muted = false,
@@ -65,17 +87,30 @@ export async function buildScene(
         { opacity: number; transparent: boolean }
     >();
     const visibilityGeneration = new Map<string, number>();
+    const animationListeners = new Map<string, () => void>();
     const visibilityProgress = new Map<string, number>();
-    const runner = new InteractionRunner(page.scene.interactions, execute, hooks.notice);
+    const runner = new InteractionRunner(page.scene.interactions, execute, hooks.notice, sleep, {
+        ...hooks,
+        pageId: page.pageId,
+        visible: (id) => nodes.get(id)?.root.visible || false,
+        question: hooks.question || askWorkflowQuestion,
+    });
+    runner.onStep = hooks.step;
     function dispose() {
         if (disposed) return;
         disposed = true;
         runner.dispose();
+        modelControls?.dispose();
+        controlAnimations?.dispose();
+        for (const cleanup of animationListeners.values()) cleanup();
         for (const tween of activeTweens.values()) tween.abort();
+        for (const remove of mediaListeners) remove();
         for (const item of media) {
             item.pause();
-            item.removeAttribute('src');
-            item.load();
+            if (!options.mediaPool) {
+                item.removeAttribute('src');
+                item.load();
+            }
         }
         for (const node of nodes.values()) {
             node.releaseAudio?.();
@@ -83,6 +118,7 @@ export async function buildScene(
             node.mixer?.stopAllAction();
             if (node.mixer) node.mixer.uncacheRoot(node.mixer.getRoot());
         }
+        for (const item of media) options.mediaPool?.release(item);
         group.traverse((object) => {
             if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.Line)) return;
             object.geometry.dispose();
@@ -102,11 +138,23 @@ export async function buildScene(
         draco.dispose();
         group.clear();
     }
-    async function texture(url: string) {
-        const bytes = await fetchBytes(url, signal, 20 * 1024 * 1024);
+    const readBytes = (url: string, limit?: number) =>
+        options.bytes ? options.bytes.get(url, signal, limit) : fetchBytes(url, signal, limit);
+    async function imageBitmap(url: string, flipY = false) {
+        const bytes = await readBytes(url, 20 * 1024 * 1024);
         signal.throwIfAborted();
-        const blob = new Blob([bytes]);
-        const bitmap = await createImageBitmap(blob, { imageOrientation: 'flipY' });
+        try {
+            return await createImageBitmap(new Blob([bytes]), {
+                imageOrientation: flipY ? 'flipY' : 'from-image',
+            });
+        } catch (error) {
+            if (!signal.aborted) options.bytes?.delete(url);
+            throw error;
+        }
+    }
+    async function texture(url: string) {
+        signal.throwIfAborted();
+        const bitmap = await imageBitmap(url, true);
         if (signal.aborted || disposed) {
             bitmap.close();
             signal.throwIfAborted();
@@ -118,22 +166,58 @@ export async function buildScene(
         textures.add(result);
         return result;
     }
+    async function textImage(url: string) {
+        const bitmap = await imageBitmap(url);
+        try {
+            signal.throwIfAborted();
+            const scale = Math.min(1, 1024 / bitmap.width, 640 / bitmap.height);
+            const image = document.createElement('canvas');
+            image.width = Math.max(1, Math.ceil(bitmap.width * scale));
+            image.height = Math.max(1, Math.ceil(bitmap.height * scale));
+            const context = image.getContext('2d');
+            if (!context) throw new Error('Không tạo được ảnh xem trước.');
+            context.drawImage(bitmap, 0, 0, image.width, image.height);
+            return image;
+        } finally {
+            bitmap.close();
+        }
+    }
     const plane = (width: number, height: number, material: THREE.Material) =>
         new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
     const material = (map: THREE.Texture) =>
         new THREE.MeshBasicMaterial({ map, transparent: true, side: THREE.DoubleSide });
     function safePlay(element: HTMLMediaElement) {
         if (disposed) return;
+        if (suspended) {
+            suspendedMedia.add(element);
+            return;
+        }
         const attempt = (playAttempts.get(element) || 0) + 1;
         playAttempts.set(element, attempt);
-        const playing = element.play();
+        pendingMedia.add(element);
+        // Some engines throw synchronously. Preserve the gesture by calling play directly.
+        let playing: Promise<void> | undefined;
+        try {
+            playing = element.play();
+        } catch (error) {
+            playing = Promise.reject(error);
+        }
         playing
             ?.then(() => {
-                if (!disposed && playAttempts.get(element) === attempt)
+                if (!disposed && playAttempts.get(element) === attempt) {
+                    pendingMedia.delete(element);
                     blockedMedia.delete(element);
+                    if (suspended) {
+                        suspendedMedia.add(element);
+                        element.pause();
+                    }
+                }
             })
-            .catch(() => {
-                if (disposed || playAttempts.get(element) !== attempt) return;
+            .catch((error: unknown) => {
+                if (disposed || signal.aborted || playAttempts.get(element) !== attempt) return;
+                pendingMedia.delete(element);
+                if (error instanceof Error && error.name === 'AbortError') return;
+                dirty = true;
                 blockedMedia.add(element);
                 for (const node of nodes.values())
                     if (node.audio === element)
@@ -144,10 +228,13 @@ export async function buildScene(
                             duration: Number.isFinite(element.duration) ? element.duration : 0,
                             error: 'Không phát được âm thanh. Hãy thử lại.',
                         });
-                if (!disposed)
-                    hooks.notice(
-                        'Trình duyệt chưa phát được âm thanh/video. Chạm “Thử phát media” hoặc kiểm tra tệp.',
-                    );
+                const permission = error instanceof Error && error.name === 'NotAllowedError';
+                hooks.notice(
+                    permission
+                        ? 'Chạm để cho phép phát âm thanh/video của sách.'
+                        : 'Không phát được âm thanh/video. Hãy thử lại hoặc kiểm tra tệp.',
+                    { kind: 'error', action: 'media', mediaPermission: permission },
+                );
             });
     }
     function getAudio(id: string, key = id) {
@@ -155,21 +242,31 @@ export async function buildScene(
         if (element) return element;
         const asset = assets[id];
         if (asset?.type !== 'AUDIO') throw new Error('Thiếu tài nguyên âm thanh.');
-        element = new Audio();
+        element =
+            options.mediaPool?.audio(
+                key === 'background' || key === 'narration' ? key : `audio:${audioChannel++}`,
+            ) ?? new Audio();
         element.crossOrigin = 'anonymous';
         element.preload = 'metadata';
         element.src = asset.url;
         element.muted = muted;
-        element.addEventListener('error', () => {
+        const onError = () => {
             if (!disposed)
-                hooks.notice('Không tải được âm thanh. Kiểm tra tài nguyên hoặc thử lại.');
-        });
+                hooks.notice('Không tải được âm thanh. Kiểm tra tài nguyên hoặc thử lại.', {
+                    kind: 'error',
+                    action: 'media',
+                });
+        };
+        element.addEventListener('error', onError);
+        mediaListeners.push(() => element.removeEventListener('error', onError));
         audio.set(key, element);
         audioAssets.set(element, id);
         media.add(element);
         return element;
     }
     function stopMedia() {
+        pendingMedia.clear();
+        suspendedMedia.clear();
         blockedMedia.clear();
         for (const element of media) {
             playAttempts.set(element, (playAttempts.get(element) || 0) + 1);
@@ -194,12 +291,14 @@ export async function buildScene(
             if (!duration) {
                 combined.throwIfAborted();
                 update(1);
+                dirty = true;
                 return true;
             }
             while (true) {
                 combined.throwIfAborted();
                 const t = Math.min(1, (performance.now() - start) / duration);
                 update(t);
+                dirty = true;
                 if (t === 1) break;
                 await sleep(16, combined);
             }
@@ -212,7 +311,17 @@ export async function buildScene(
         }
     }
     async function execute(action: Exclude<Action, { type: 'wait' }>, actionSignal: AbortSignal) {
+        dirty = true;
         hooks.log(action.type);
+        if (action.type === 'controlModel') {
+            if (action.operation === 'reset') {
+                const key = `${action.objectId}:transform`;
+                activeTweens.get(key)?.abort();
+                activeTweens.delete(key);
+            }
+            modelControls?.command(action.objectId, action.operation);
+            return;
+        }
         if (action.type === 'playAudio') {
             const element = getAudio(action.assetId);
             element.loop = action.loop;
@@ -228,6 +337,8 @@ export async function buildScene(
                     (!action.assetId || audioAssets.get(element) === action.assetId)
                 ) {
                     playAttempts.set(element, (playAttempts.get(element) || 0) + 1);
+                    pendingMedia.delete(element);
+                    suspendedMedia.delete(element);
                     element.pause();
                     blockedMedia.delete(element);
                     element.currentTime = 0;
@@ -239,11 +350,14 @@ export async function buildScene(
             hooks.link(action.url);
             return;
         }
+        if (!('objectId' in action)) return;
         const node = nodes.get(action.objectId);
         if (!node) throw new Error('Không tìm thấy đối tượng của hành động.');
         if (action.type === 'playAnimation') {
+            controlAnimations?.release(action.objectId);
             const clip = node.clips?.find((clip) => clip.name === action.clip);
             if (!clip || !node.mixer) throw new Error(`Mô hình không có clip “${action.clip}”.`);
+            animationListeners.get(action.objectId)?.();
             node.mixer.stopAllAction();
             const animation = node.mixer.clipAction(clip);
             animation.reset();
@@ -253,6 +367,25 @@ export async function buildScene(
             );
             animation.clampWhenFinished = !action.loop;
             animation.play();
+            if (!action.loop) {
+                const mixer = node.mixer;
+                const finished = (event: { action: THREE.AnimationAction }) => {
+                    if (event.action !== animation) return;
+                    cleanup();
+                    if (!disposed && !suspended)
+                        void runner.fire({
+                            type: 'onAnimationEnd',
+                            objectId: action.objectId,
+                            clip: action.clip,
+                        });
+                };
+                const cleanup = () => {
+                    mixer.removeEventListener('finished', finished);
+                    animationListeners.delete(action.objectId);
+                };
+                animationListeners.set(action.objectId, cleanup);
+                mixer.addEventListener('finished', finished);
+            }
             return;
         }
         if (action.type === 'playVideo') {
@@ -281,7 +414,9 @@ export async function buildScene(
                     }
             });
             const start = visibilityProgress.get(node.spec.id) ?? (node.root.visible ? 1 : 0);
-            node.root.visible = true;
+            // Hiding an already hidden object must not briefly satisfy a visible condition.
+            node.root.visible = visible || start > 0;
+            runner.progress.notify();
             try {
                 const completed = await tween(
                     `${node.spec.id}:visible`,
@@ -298,6 +433,7 @@ export async function buildScene(
                 );
                 if (completed && visibilityGeneration.get(node.spec.id) === generation) {
                     node.root.visible = visible;
+                    runner.progress.notify();
                     visibilityProgress.set(node.spec.id, visible ? 1 : 0);
                 }
             } finally {
@@ -345,32 +481,34 @@ export async function buildScene(
         }
     }
     try {
-        const background = await texture(page.imageUrl);
-        signal.throwIfAborted();
-        const paper = plane(
-            1,
-            page.aspect,
-            new THREE.MeshBasicMaterial({
-                color: 0xffffff,
-                side: THREE.DoubleSide,
-                polygonOffset: true,
-                polygonOffsetFactor: 1,
-                polygonOffsetUnits: 1,
-            }),
-        );
-        paper.position.z = -0.003;
-        paper.name = 'page-background';
-        group.add(paper);
-        const bitmap = background.image as ImageBitmap;
-        const size = pageImageSize(bitmap.width, bitmap.height, page.aspect);
-        const paperImage = plane(
-            size.width,
-            size.height,
-            new THREE.MeshBasicMaterial({ map: background, side: THREE.DoubleSide }),
-        );
-        paperImage.position.copy(paper.position);
-        paperImage.name = 'page-background-image';
-        group.add(paperImage);
+        if (options.background !== false) {
+            const background = await texture(page.imageUrl);
+            signal.throwIfAborted();
+            const paper = plane(
+                1,
+                page.aspect,
+                new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    side: THREE.DoubleSide,
+                    polygonOffset: true,
+                    polygonOffsetFactor: 1,
+                    polygonOffsetUnits: 1,
+                }),
+            );
+            paper.position.z = -0.003;
+            paper.name = 'page-background';
+            group.add(paper);
+            const bitmap = background.image as ImageBitmap;
+            const size = pageImageSize(bitmap.width, bitmap.height, page.aspect);
+            const paperImage = plane(
+                size.width,
+                size.height,
+                new THREE.MeshBasicMaterial({ map: background, side: THREE.DoubleSide }),
+            );
+            paperImage.position.copy(paper.position);
+            paperImage.name = 'page-background-image';
+            group.add(paperImage);
+        }
         // Sequential loading bounds peak memory and makes cancellation deterministic.
         for (const spec of page.scene.objects) {
             signal.throwIfAborted();
@@ -389,8 +527,15 @@ export async function buildScene(
             if (spec.type === 'model') {
                 const asset = assets[spec.assetId];
                 if (asset?.type !== 'MODEL') throw new Error('Thiếu tài nguyên mô hình.');
-                const bytes = await fetchBytes(asset.url, signal);
-                const gltf = await loader.parseAsync(bytes, new URL('.', asset.url).href);
+                const bytes = await readBytes(asset.url, MODEL_MAX_DOWNLOAD_BYTES);
+                // GLTFLoader r161 slices GLB chunks/bufferViews before Draco transfers them.
+                // The original cached buffer remains read-only and reusable by later pages.
+                const gltf = await loader
+                    .parseAsync(bytes, new URL('.', asset.url).href)
+                    .catch((error) => {
+                        if (!signal.aborted) options.bytes?.delete(asset.url);
+                        throw error;
+                    });
                 node.billboard.content.add(gltf.scene);
                 node.mixer = new THREE.AnimationMixer(gltf.scene);
                 node.clips = gltf.animations;
@@ -410,6 +555,7 @@ export async function buildScene(
                             ? assets[presentation.imageAssetId]?.url
                             : undefined,
                     signal,
+                    loadImage: options.bytes ? textImage : undefined,
                 });
                 node.billboard.content.add(visual.group);
                 node.textTap = visual.tap ?? visual.next;
@@ -432,7 +578,9 @@ export async function buildScene(
             } else if (spec.type === 'video') {
                 const asset = assets[spec.assetId];
                 if (asset?.type !== 'VIDEO') throw new Error('Thiếu tài nguyên video.');
-                const element = document.createElement('video');
+                const element =
+                    options.mediaPool?.video(`video:${videoChannel++}`) ??
+                    document.createElement('video');
                 element.crossOrigin = 'anonymous';
                 element.playsInline = true;
                 element.preload = 'metadata';
@@ -442,9 +590,15 @@ export async function buildScene(
                 element.src = asset.url;
                 node.video = element;
                 media.add(element);
-                element.addEventListener('error', () => {
-                    if (!disposed) hooks.notice('Không tải được video của trang.');
-                });
+                const onError = () => {
+                    if (!disposed)
+                        hooks.notice('Không tải được video của trang.', {
+                            kind: 'error',
+                            action: 'media',
+                        });
+                };
+                element.addEventListener('error', onError);
+                mediaListeners.push(() => element.removeEventListener('error', onError));
                 const map = new THREE.VideoTexture(element);
                 map.colorSpace = THREE.SRGBColorSpace;
                 textures.add(map);
@@ -453,26 +607,62 @@ export async function buildScene(
                     (asset.meta?.height || 1) / (asset.meta?.width || 1),
                     material(map),
                 );
-                if (!asset.meta?.width || !asset.meta?.height)
-                    element.addEventListener(
-                        'loadedmetadata',
-                        () => {
-                            if (
-                                disposed ||
-                                signal.aborted ||
-                                !element.videoWidth ||
-                                !element.videoHeight
-                            )
-                                return;
-                            surface.geometry.dispose();
-                            surface.geometry = new THREE.PlaneGeometry(
-                                1,
-                                element.videoHeight / element.videoWidth,
-                            );
-                        },
-                        { once: true },
+                if (!asset.meta?.width || !asset.meta?.height) {
+                    const onMetadata = () => {
+                        if (
+                            disposed ||
+                            signal.aborted ||
+                            !element.videoWidth ||
+                            !element.videoHeight
+                        )
+                            return;
+                        surface.geometry.dispose();
+                        surface.geometry = new THREE.PlaneGeometry(
+                            1,
+                            element.videoHeight / element.videoWidth,
+                        );
+                        dirty = true;
+                    };
+                    element.addEventListener('loadedmetadata', onMetadata, { once: true });
+                    mediaListeners.push(() =>
+                        element.removeEventListener('loadedmetadata', onMetadata),
                     );
+                }
                 node.billboard.content.add(surface);
+                const hint = new THREE.Group();
+                hint.name = 'video-play-hint';
+                hint.position.z = 0.001;
+                hint.add(
+                    new THREE.Mesh(
+                        new THREE.CircleGeometry(0.065, 24),
+                        new THREE.MeshBasicMaterial({
+                            color: 0x252525,
+                            transparent: true,
+                            opacity: 0.8,
+                            side: THREE.DoubleSide,
+                        }),
+                    ),
+                );
+                const triangle = new THREE.Shape()
+                    .moveTo(-0.02, -0.03)
+                    .lineTo(0.035, 0)
+                    .lineTo(-0.02, 0.03)
+                    .closePath();
+                const icon = new THREE.Mesh(
+                    new THREE.ShapeGeometry(triangle),
+                    new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
+                );
+                icon.position.z = 0.0001;
+                hint.add(icon);
+                node.billboard.content.add(hint);
+                const refreshVideo = () => {
+                    hint.visible = element.paused || element.ended;
+                    dirty = true;
+                };
+                for (const event of ['playing', 'pause', 'ended', 'loadeddata', 'seeked']) {
+                    element.addEventListener(event, refreshVideo);
+                    mediaListeners.push(() => element.removeEventListener(event, refreshVideo));
+                }
             } else if (spec.type === 'hotspot') {
                 const hitArea = plane(
                     spec.size[0],
@@ -508,7 +698,10 @@ export async function buildScene(
                 const card = createAudioCard(spec, assets[spec.assetId]?.meta?.durationSec);
                 node.audioCard = card;
                 node.billboard.content.add(card.group);
-                node.releaseAudio = observeAudio(element, card.setPlayback);
+                node.releaseAudio = observeAudio(element, (state) => {
+                    card.setPlayback(state);
+                    dirty = true;
+                });
                 // Asset actions control the first visible player for this asset as well.
                 if (!audio.has(spec.assetId)) audio.set(spec.assetId, element);
             }
@@ -517,13 +710,70 @@ export async function buildScene(
             getAudio(page.settings.backgroundAudioAssetId, 'background');
         if (page.settings.narrationAssetId) getAudio(page.settings.narrationAssetId, 'narration');
         signal.throwIfAborted();
+        controlAnimations = new ModelControlAnimations(nodes, (id) => {
+            animationListeners.get(id)?.();
+        });
+        modelControls = new ModelControls(
+            nodes,
+            page.aspect,
+            (id) => activeTweens.has(`${id}:transform`),
+            (id, motion) => controlAnimations?.set(id, motion),
+        );
         return {
             group,
             runner,
             nodes,
-            update(delta: number, camera: THREE.Camera) {
+            async previewMovement(actions: Action[], signal: AbortSignal) {
+                for (const action of actions) {
+                    signal.throwIfAborted();
+                    if (action.type !== 'transformTo' && action.type !== 'wait')
+                        throw new Error('Chạy thử chuyển động chỉ hỗ trợ chuyển đổi và chờ.');
+                    const delay = action.type === 'wait' ? action.ms : action.delayMsSchema;
+                    if (delay) await sleep(delay, signal);
+                    if (action.type === 'transformTo') await execute(action, signal);
+                }
+            },
+            modelControls,
+            attachControls(host: HTMLElement, keyboardTarget: HTMLElement) {
+                modelControls?.attach(host, keyboardTarget);
+            },
+            startControls() {
+                modelControls?.activate();
+            },
+            markerFound() {
+                modelControls?.pause(false);
+                if (!disposed) void runner.fire({ type: 'onMarkerFound' });
+            },
+            markerLost() {
+                modelControls?.pause(true);
+                if (!disposed) void runner.fire({ type: 'onMarkerLost' });
+            },
+            advanceHiddenAnimations(delta: number) {
+                if (disposed || suspended) return;
+                for (const id of animationListeners.keys()) {
+                    const node = nodes.get(id);
+                    if (node && !node.root.visible) node.mixer?.update(delta);
+                }
+            },
+            needsFrame() {
+                if (disposed) return false;
+                if (dirty) return true;
+                if (suspended) return false;
+                if (activeTweens.size) return true;
+                if (modelControls?.needsUpdate()) return true;
                 for (const node of nodes.values()) {
-                    node.mixer?.update(delta);
+                    if (!node.root.visible) continue;
+                    if (node.video && !node.video.paused && !node.video.ended) return true;
+                    if (node.clips?.some((clip) => node.mixer?.existingAction(clip)?.isRunning()))
+                        return true;
+                }
+                return false;
+            },
+            update(delta: number, camera: THREE.Camera) {
+                modelControls?.update(delta);
+                if (!suspended) controlAnimations?.update(delta);
+                for (const node of nodes.values()) {
+                    if (!suspended) node.mixer?.update(delta);
                     const spec = node.spec;
                     node.billboard.update(
                         camera,
@@ -532,8 +782,13 @@ export async function buildScene(
                             spec.presentation?.kind !== 'extruded',
                     );
                 }
+                dirty = false;
             },
             start() {
+                dirty = true;
+                modelControls?.start();
+                suspended = false;
+                suspendedMedia.clear();
                 lifecycle++;
                 runner.cancelAll();
                 for (const node of nodes.values()) {
@@ -541,7 +796,14 @@ export async function buildScene(
                         safePlay(node.audio);
                     if (node.spec.type === 'video' && node.spec.autoplay && node.video)
                         safePlay(node.video);
-                    if (node.spec.type === 'model' && node.spec.animation?.autoplay)
+                    if (
+                        node.spec.type === 'model' &&
+                        node.spec.animation?.autoplay &&
+                        !(
+                            node.spec.controls?.enabled &&
+                            (node.spec.controls.idleClip || node.spec.controls.moveClip)
+                        )
+                    )
                         void execute(
                             {
                                 type: 'playAnimation',
@@ -562,7 +824,28 @@ export async function buildScene(
                     safePlay(getAudio(page.settings.narrationAssetId, 'narration'));
                 void runner.fire({ type: 'onPageEnter' });
             },
+            suspend() {
+                if (disposed || suspended) return;
+                modelControls?.pause(true);
+                suspended = true;
+                for (const element of media) {
+                    if (!element.paused || pendingMedia.has(element)) {
+                        suspendedMedia.add(element);
+                        pendingMedia.delete(element);
+                        playAttempts.set(element, (playAttempts.get(element) || 0) + 1);
+                        element.pause();
+                    }
+                }
+            },
+            resume() {
+                if (disposed || !suspended) return;
+                modelControls?.pause(false);
+                suspended = false;
+                for (const element of suspendedMedia) safePlay(element);
+                suspendedMedia.clear();
+            },
             async leave() {
+                modelControls?.pause(true);
                 const current = ++lifecycle;
                 runner.cancelAll();
                 stopMedia();
@@ -578,6 +861,7 @@ export async function buildScene(
             },
             tap(id: string, uv?: { x: number; y: number }) {
                 if (disposed) return;
+                dirty = true;
                 const tapped = nodes.get(id);
                 if (tapped?.root.visible) {
                     const ownTap = page.scene.interactions.some(
@@ -599,6 +883,14 @@ export async function buildScene(
                         hooks.tap?.(id);
                         return;
                     }
+                    if (tapped.video && !ownTap) {
+                        if (tapped.video.paused || tapped.video.error) {
+                            if (tapped.video.error) tapped.video.load();
+                            safePlay(tapped.video);
+                        } else tapped.video.pause();
+                        hooks.tap?.(id);
+                        return;
+                    }
                     for (const [otherId, node] of nodes)
                         if (otherId !== id) node.setTextExpanded?.(false);
                     nodes.get(id)?.textTap?.(uv);
@@ -615,7 +907,11 @@ export async function buildScene(
                 }
             },
             retryMedia() {
-                for (const element of blockedMedia) safePlay(element);
+                if (disposed || suspended) return;
+                for (const element of blockedMedia) {
+                    if (element.error) element.load();
+                    safePlay(element);
+                }
             },
             stopMedia,
             dispose,

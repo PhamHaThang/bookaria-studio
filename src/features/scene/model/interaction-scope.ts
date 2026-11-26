@@ -3,8 +3,10 @@ import type {
     ActionType,
     InteractionRule,
     SceneObject,
+    WorkflowVariable,
 } from '@/shared/contracts/scene.schema';
 import { newAction, newRule, targetObjects, triggerLabels } from './interactions';
+import { memorySummary } from './memory-variables';
 import { objectLabels } from './objects';
 
 export type InteractionScope =
@@ -17,8 +19,8 @@ export function rulesInScope(rules: InteractionRule[], scope: InteractionScope) 
         (rule) =>
             scope.type === 'all' ||
             (scope.type === 'page'
-                ? rule.trigger.type !== 'onTap'
-                : rule.trigger.type === 'onTap' && rule.trigger.objectId === scope.objectId),
+                ? !('objectId' in rule.trigger)
+                : 'objectId' in rule.trigger && rule.trigger.objectId === scope.objectId),
     );
 }
 
@@ -64,9 +66,15 @@ export function moveScopedRule(
     return next;
 }
 
-export function ruleTriggerLabel(rule: InteractionRule, objects: SceneObject[]) {
-    if (rule.trigger.type !== 'onTap') return triggerLabels[rule.trigger.type];
+export function ruleTriggerLabel(
+    rule: InteractionRule,
+    objects: SceneObject[],
+    definitions: WorkflowVariable[] = [],
+) {
+    if (rule.trigger.type === 'onStateCondition')
+        return memorySummary(rule.trigger, definitions) || triggerLabels.onStateCondition;
+    if (!('objectId' in rule.trigger)) return triggerLabels[rule.trigger.type];
     const id = rule.trigger.objectId,
         object = objects.find((item) => item.id === id);
-    return `Khi chạm ${object ? object.name || objectLabels[object.type] : id ? 'đối tượng đã xóa' : 'đối tượng chưa chọn'}`;
+    return `${rule.trigger.type === 'onAnimationEnd' ? 'Khi hoạt ảnh kết thúc ở' : 'Khi chạm'} ${object ? object.name || objectLabels[object.type] : id ? 'đối tượng đã xóa' : 'đối tượng chưa chọn'}`;
 }

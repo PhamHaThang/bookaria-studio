@@ -19,6 +19,7 @@ import {
 import { Input } from '@/shared/ui/primitives/input';
 import { RadioGroup, RadioGroupItem } from '@/shared/ui/primitives/radio-group';
 import { Spinner } from '@/shared/ui/primitives/spinner';
+import { Switch } from '@/shared/ui/primitives/switch';
 import { Textarea } from '@/shared/ui/primitives/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
 import { SearchInput } from '@/shared/ui/SearchInput';
@@ -291,6 +292,73 @@ export function ControlSamples() {
                             </div>
                         </FieldGroup>
                     </form>
+                </Sample>
+                <Sample
+                    title="Trạng thái ô nhập"
+                    source="Input / Textarea / FormSelect · focus, readOnly, disabled, aria-invalid"
+                >
+                    <FieldGroup className="grid grid-cols-2 gap-6 max-[800px]:grid-cols-1">
+                        <Field>
+                            <FieldLabel htmlFor="guide-input-ready">Có thể chỉnh sửa</FieldLabel>
+                            <Input id="guide-input-ready" defaultValue="Tên sách mẫu" />
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="guide-input-readonly">Chỉ đọc</FieldLabel>
+                            <Input id="guide-input-readonly" value="BK-001" readOnly />
+                        </Field>
+                        <Field data-disabled>
+                            <FieldLabel htmlFor="guide-input-disabled">Ô nhập bị khóa</FieldLabel>
+                            <Input id="guide-input-disabled" value="Đang xử lý" disabled />
+                        </Field>
+                        <Field data-disabled>
+                            <FieldLabel htmlFor="guide-select-disabled">Select bị khóa</FieldLabel>
+                            <FormSelect
+                                id="guide-select-disabled"
+                                disabled
+                                defaultValue="A4"
+                                options={[{ value: 'A4', label: 'A4' }]}
+                            />
+                        </Field>
+                        <Field data-invalid>
+                            <FieldLabel htmlFor="guide-input-invalid">
+                                Thông tin chưa hợp lệ
+                            </FieldLabel>
+                            <Input
+                                id="guide-input-invalid"
+                                aria-invalid
+                                placeholder="Nhập tên sách"
+                            />
+                            <FieldError>Vui lòng nhập tên sách.</FieldError>
+                        </Field>
+                        <Field data-disabled>
+                            <FieldLabel htmlFor="guide-textarea-disabled">Mô tả bị khóa</FieldLabel>
+                            <Textarea
+                                id="guide-textarea-disabled"
+                                value="Nội dung đang xử lý."
+                                rows={2}
+                                disabled
+                            />
+                        </Field>
+                    </FieldGroup>
+                </Sample>
+                <Sample
+                    title="Bật / tắt"
+                    source="primitives/switch · checked / unchecked / disabled"
+                >
+                    <FieldGroup className="grid grid-cols-2 gap-6 max-[800px]:grid-cols-1">
+                        <Field orientation="horizontal">
+                            <Switch id="guide-switch" defaultChecked />
+                            <FieldLabel htmlFor="guide-switch" className="m-0">
+                                Phát âm thanh
+                            </FieldLabel>
+                        </Field>
+                        <Field orientation="horizontal" data-disabled>
+                            <Switch id="guide-switch-disabled" disabled />
+                            <FieldLabel htmlFor="guide-switch-disabled" className="m-0">
+                                Chưa khả dụng
+                            </FieldLabel>
+                        </Field>
+                    </FieldGroup>
                 </Sample>
                 <div className="grid grid-cols-2 gap-8 max-[800px]:grid-cols-1">
                     <Sample

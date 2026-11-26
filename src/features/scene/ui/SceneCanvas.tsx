@@ -1,4 +1,4 @@
-import { Box, Globe2, MousePointerClick, X } from 'lucide-react';
+import { MousePointerClick, X } from 'lucide-react';
 import {
     type ReactNode,
     type Ref,
@@ -11,49 +11,27 @@ import {
 import { createPortal } from 'react-dom';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import {
-    TransformControls,
-    TransformControlsGizmo,
-} from 'three/addons/controls/TransformControls.js';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { isHexColor } from '@/shared/lib/color-change-session';
-import { annotationConnectorSide } from '@/shared/scene/annotation-connector';
-import { createAudioCard } from '@/shared/scene/audio-card';
 import { facesCamera } from '@/shared/scene/audio-kind';
-import { createBillboard } from '@/shared/scene/billboard';
 import { configureSceneOrbit, stopSceneOrbit } from '@/shared/scene/camera-navigation';
 import { createPageLighting } from '@/shared/scene/page-lighting';
-import { createTextVisual, disposeTextVisual } from '@/shared/scene/text-renderer';
 import { observeTheme } from '@/shared/theme/observe-theme';
 import { Button as ActionButton } from '@/shared/ui/primitives/button';
 import type { AssetRef } from '../../../shared/contracts/asset.schema';
 import type { Page } from '../../../shared/contracts/dto.schema';
 import type { Scene, SceneObject } from '../../../shared/contracts/scene.schema';
 import type { PreviewView } from '../../preview/model/LocalPreviewStage';
-import {
-    type AnnotationLabelDrag,
-    annotationLabelOffset,
-    beginAnnotationLabelDrag,
-} from '../model/annotation-label-drag';
 import type { AnnotationObject, AnnotationPlacement } from '../model/annotation-placement';
-import { createAssetPlaceholder, waitForVideo } from '../model/asset-placeholder';
-import { beginDolly, type DollyStart, dragDolly } from '../model/dolly';
 import {
     createEditorGrid,
     DEFAULT_EDITOR_GRID,
     type EditorGridSettings,
 } from '../model/editor-grid';
 import { createFrontGuide } from '../model/front-guide';
-import { beginLocalDepthDrag, type LocalDepthDrag, localDepthPosition } from '../model/local-depth';
-import { createModelSelectionBounds } from '../model/model-selection-bounds';
-import { objectLabels } from '../model/objects';
-import { pageImageSize } from '../model/page-image-fit';
 import { fitPreviewCamera } from '../model/preview-fit';
-import { scaleConstraint, scaleFromGesture } from '../model/scale-gesture';
+import { canRenderTransform } from '../model/render-transform';
 import type { SceneAudioStore } from '../model/scene-audio-store';
 import type { SceneLoadStore } from '../model/scene-load-store';
-import { createSceneNodeKey } from '../model/scene-node-key';
 import { formatTransformValue, mmToPageUnits, pageUnitsToMm } from '../model/scene-units';
 import type { SelectionMode } from '../model/selection';
 import {
@@ -61,11 +39,8 @@ import {
     paddedSelectionBounds,
     planarSelectionFrame,
 } from '../model/selection-frame';
-import { layoutSelectionTools, projectSelectionBounds } from '../model/selection-tools';
-import { selectionFrustum, transformSelection } from '../model/selection-transform';
-import { defaultSnapStepsForPage, type SnapSteps, transformSnapSteps } from '../model/snap';
+import { defaultSnapStepsForPage, type SnapSteps } from '../model/snap';
 import { textVisualColors } from '../model/text-visual-colors';
-import { objectFromGizmo } from '../model/transforms';
 import {
     createViewGizmoProjection,
     rotateSceneView,
@@ -74,12 +49,18 @@ import {
 } from '../model/view-gizmo';
 import { SceneAssetLoading } from './SceneAssetLoading';
 import { SceneCanvasHints } from './SceneCanvasHints';
+import { SceneCanvasToolbar } from './SceneCanvasToolbar';
 import { SceneDepthGizmo } from './SceneDepthGizmo';
-import { SceneGridSettings } from './SceneGridSettings';
+import { useBookSceneRenderer } from './SceneRendererProvider';
 import { SceneSelectionTools, type SelectionActions } from './SceneSelectionTools';
-import { SceneSnapSettings } from './SceneSnapSettings';
 import { useSceneWidthMm } from './SceneUnits';
 import { SceneViewGizmo } from './SceneViewGizmo';
+import { createSceneCanvasNodes, type SceneCanvasNode } from './scene-canvas-nodes';
+import { createSceneCanvasOverlays, observeSceneCanvasLayout } from './scene-canvas-overlays';
+import { createSceneCanvasPaper } from './scene-canvas-paper';
+import { bindSceneCanvasPointer } from './scene-canvas-pointer';
+import { bindSceneCanvasTransforms, createSceneCanvasControls } from './scene-canvas-transforms';
+import { useSceneCanvasShortcuts } from './use-scene-canvas-shortcuts';
 
 type Mode = 'translate' | 'rotate' | 'scale';
 type Space = 'world' | 'local';
@@ -112,24 +93,9 @@ type Props = {
     onEnd: () => void;
     selectionActions: SelectionActions;
 };
-type Node = {
-    root: THREE.Group;
-    billboard: ReturnType<typeof createBillboard>;
-    key: string;
-    spec: SceneObject;
-    mixer?: THREE.AnimationMixer;
-    audio?: HTMLAudioElement;
-    audioCard?: ReturnType<typeof createAudioCard>;
-    releaseAudio?: () => void;
-    modelBounds?: ReturnType<typeof createModelSelectionBounds>;
-    textVisual?: Awaited<ReturnType<typeof createTextVisual>>;
-    status: 'loading' | 'ready' | 'failed';
-    placeholder?: ReturnType<typeof createAssetPlaceholder>;
-    abort: AbortController;
-    dispose: () => void;
-};
 
 export function SceneCanvas(props: Props) {
+    const bookRenderer = useBookSceneRenderer();
     const widthMm = useSceneWidthMm();
     const widthMmRef = useRef(widthMm);
     const host = useRef<HTMLDivElement>(null),
@@ -208,7 +174,9 @@ export function SceneCanvas(props: Props) {
         if (!element) return;
         let renderer: THREE.WebGLRenderer;
         try {
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer =
+                bookRenderer?.current ?? new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            if (bookRenderer) bookRenderer.current = renderer;
         } catch {
             setFailure(
                 'Không mở được canvas 3D. Hãy bật tăng tốc đồ họa hoặc dùng bảng thuộc tính để tiếp tục chỉnh sửa.',
@@ -216,16 +184,14 @@ export function SceneCanvas(props: Props) {
             return;
         }
         let placingAnnotation = false;
-        let spaceHeld = false,
-            shiftHeld = false;
-        let cameraPointer: number | null = null;
-        let cameraClick = false;
-        let zoomDrag: { id: number; y: number; start: DollyStart } | null = null;
         const settings = { mode, snap, space, steps: snapSteps };
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         let disposed = false,
             dragging = false,
             frame = 0;
+        function setDragging(active: boolean) {
+            dragging = active;
+        }
         const scene = new THREE.Scene();
         const theme = getComputedStyle(element);
         const themeColor = (token: string) =>
@@ -284,57 +250,10 @@ export function SceneCanvas(props: Props) {
                 if (!disposed) orbit.enabled = !dragging;
             },
         };
-        const controls = new TransformControls(camera, renderer.domElement);
-        // These runtime fields are public in installed r161 but absent from its declaration file.
-        const scaleControls = controls as TransformControls & {
-            pointStart: THREE.Vector3;
-            pointEnd: THREE.Vector3;
-            worldQuaternionStart: THREE.Quaternion;
-        };
-        controls.setSize(1);
-        // r161 bakes handle positions into geometry. Remove negative caps and their
-        // pickers together so the hidden side cannot still capture pointer input.
-        for (const gizmo of controls.children) {
-            if (!(gizmo instanceof TransformControlsGizmo)) continue;
-            for (const mode of ['translate', 'scale'] as const) {
-                for (const group of [gizmo.gizmo[mode], gizmo.picker[mode]]) {
-                    for (const handle of [...group.children]) {
-                        const axis = ['X', 'Y', 'Z'].indexOf(handle.name);
-                        if (axis < 0 || !(handle instanceof THREE.Mesh)) continue;
-                        handle.geometry.computeBoundingBox();
-                        const bounds = handle.geometry.boundingBox;
-                        if (
-                            bounds &&
-                            bounds.min.getComponent(axis) + bounds.max.getComponent(axis) < -1e-6
-                        ) {
-                            group.remove(handle);
-                            handle.geometry.dispose();
-                        }
-                    }
-                }
-            }
-        }
-        // Keep drag guides legible over the light page and editor grid.
-        controls.traverse((node) => {
-            if (!('tag' in node) || node.tag !== 'helper') return;
-            if (!(node instanceof THREE.Line || node instanceof THREE.Mesh)) return;
-            const materials = Array.isArray(node.material) ? node.material : [node.material];
-            for (const material of materials) {
-                if (!(material instanceof THREE.LineBasicMaterial)) continue;
-                material.color.copy(themeColor('--editor-transform-guide'));
-                material.opacity = 0.6;
-            }
-        });
-        function applySnapping() {
-            const enabled = settings.snap || (shiftHeld && controls.mode !== 'scale');
-            const steps = transformSnapSteps(settings.steps);
-            controls.setTranslationSnap(enabled ? steps.translation : null);
-            controls.setRotationSnap(enabled ? steps.rotation : null);
-            // Scale snapping is applied to a shared relative factor, preserving existing proportions.
-            controls.setScaleSnap(null);
-        }
+        const controls = createSceneCanvasControls(camera, renderer.domElement, themeColor);
         scene.add(controls);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        const pixelRatio = Math.min(window.devicePixelRatio, 2);
+        if (renderer.getPixelRatio() !== pixelRatio) renderer.setPixelRatio(pixelRatio);
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.domElement.setAttribute(
             'aria-label',
@@ -361,68 +280,16 @@ export function SceneCanvas(props: Props) {
             anisotropy: renderer.capabilities.getMaxAnisotropy(),
         });
         if (frontGuide) scene.add(frontGuide.mesh);
-        const paper = new THREE.Mesh(
-            new THREE.PlaneGeometry(1, latest.current.aspect),
-            new THREE.MeshBasicMaterial({
-                color: 0xffffff,
-                side: THREE.DoubleSide,
-                polygonOffset: true,
-                polygonOffsetFactor: 1,
-                polygonOffsetUnits: 1,
-            }),
-        );
-        paper.position.z = -0.003;
-        scene.add(paper);
-        const paperImage = new THREE.Mesh(
-            new THREE.PlaneGeometry(1, 1),
-            new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
-        );
-        paperImage.name = 'bookaria-page-image';
-        paperImage.position.copy(paper.position);
-        paperImage.visible = false;
-        scene.add(paperImage);
-        const paperTexture = new THREE.TextureLoader();
-        paperTexture.setCrossOrigin('anonymous');
-        let paperSource = '';
-        function updatePaperImage(source: string) {
-            if (source === paperSource) return;
-            paperSource = source;
-            paperTexture.load(
-                source,
-                (texture) => {
-                    if (disposed || source !== paperSource) {
-                        texture.dispose();
-                        return;
-                    }
-                    texture.colorSpace = THREE.SRGBColorSpace;
-                    const size = pageImageSize(
-                        texture.image.naturalWidth || texture.image.width,
-                        texture.image.naturalHeight || texture.image.height,
-                        latest.current.aspect,
-                    );
-                    paperImage.scale.set(size.width, size.height, 1);
-                    const previous = paperImage.material.map;
-                    paperImage.material.map = texture;
-                    paperImage.material.needsUpdate = true;
-                    paperImage.visible = true;
-                    previous?.dispose();
-                    setIssues((current) => {
-                        if (!current.page) return current;
-                        const next = { ...current };
-                        delete next.page;
-                        return next;
-                    });
-                },
-                undefined,
-                () => {
-                    if (!disposed && source === paperSource)
-                        setIssues((current) => ({
-                            ...current,
-                            page: 'Không tải được ảnh trang. Kiểm tra kết nối và chọn lại ảnh.',
-                        }));
-                },
-            );
-        }
+        const {
+            paper,
+            updatePaperImage,
+            dispose: disposePaper,
+        } = createSceneCanvasPaper({
+            scene,
+            getAspect: () => latest.current.aspect,
+            isDisposed: () => disposed,
+            setIssues,
+        });
         const outline = new THREE.Box3Helper(
             new THREE.Box3(),
             themeColor('--editor-selection-outline'),
@@ -435,7 +302,6 @@ export function SceneCanvas(props: Props) {
         const worldFrameMatrix = new THREE.Matrix4();
         outlineSpace.add(outline);
         scene.add(outlineSpace);
-        const nodes = new Map<string, Node>();
         const selectionPivot = new THREE.Group();
         selectionPivot.name = 'bookaria-selection-pivot';
         selectionPivot.userData.editorHelper = true;
@@ -445,7 +311,7 @@ export function SceneCanvas(props: Props) {
         billboardPivot.name = 'bookaria-billboard-transform-pivot';
         billboardPivot.userData.editorHelper = true;
         scene.add(billboardPivot);
-        function updateBillboardPivot(node: Node) {
+        function updateBillboardPivot(node: SceneCanvasNode) {
             node.billboard.content.matrixWorld.decompose(
                 billboardPivot.position,
                 billboardPivot.quaternion,
@@ -454,42 +320,8 @@ export function SceneCanvas(props: Props) {
             billboardPivot.userData.objectId = node.spec.id;
             billboardPivot.updateMatrixWorld(true);
         }
-        let transformDrag: {
-            objects: SceneObject[];
-            inverse: THREE.Matrix4;
-            group: boolean;
-            scale?: {
-                initial: [number, number, number];
-                start: THREE.Vector3;
-                inverseRotation: THREE.Quaternion;
-                axis: string;
-                planar: boolean;
-                pointer: THREE.Vector2;
-                currentPointer: THREE.Vector2;
-                moved: boolean;
-            };
-        } | null = null;
-        let depthDrag: {
-            id?: number;
-            x: number;
-            y: number;
-            direction: THREE.Vector2;
-            pointerSign: 1 | -1;
-            start: LocalDepthDrag;
-        } | null = null;
-        let annotationDrag: {
-            pointerId: number;
-            x: number;
-            y: number;
-            node: Node;
-            original: SceneObject;
-            start: AnnotationLabelDrag;
-            moved: boolean;
-        } | null = null;
         const depthButton = depthHandle.current;
-        const depthFeedback = depthButton?.querySelector('[data-depth-feedback]');
         const depthLink = depthButton?.querySelector('[data-depth-axis-link]');
-        const depthFormat = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 });
         function selectedNodes() {
             return latest.current.selectedIds.flatMap((id) => {
                 const node = nodes.get(id);
@@ -513,7 +345,7 @@ export function SceneCanvas(props: Props) {
                   }
                 : undefined;
         }
-        function nodeBounds(node: Node) {
+        function nodeBounds(node: SceneCanvasNode) {
             return node.modelBounds?.() ?? new THREE.Box3().setFromObject(node.root);
         }
         function selectionBounds() {
@@ -526,288 +358,25 @@ export function SceneCanvas(props: Props) {
             }
             return box;
         }
-        function applyTransform(node: Node, object: SceneObject) {
-            node.root.position.fromArray(object.transform.position);
-            node.root.rotation.set(
-                ...(object.transform.rotation.map(THREE.MathUtils.degToRad) as [
-                    number,
-                    number,
-                    number,
-                ]),
-            );
-            node.root.scale.fromArray(object.transform.scale);
-            node.root.updateMatrixWorld(true);
-        }
-
-        const draco = new DRACOLoader().setDecoderPath('/vendor/draco-0.161.0/');
-        const loader = new GLTFLoader().setDRACOLoader(draco);
-        function resources(root: THREE.Object3D) {
-            root.traverse((object) => {
-                if (
-                    !(
-                        object instanceof THREE.Mesh ||
-                        object instanceof THREE.Line ||
-                        object instanceof THREE.Sprite
-                    )
-                )
-                    return;
-                if ('geometry' in object) object.geometry.dispose();
-                for (const mat of Array.isArray(object.material)
-                    ? object.material
-                    : [object.material]) {
-                    for (const item of Object.values(mat))
-                        if (item instanceof THREE.Texture) item.dispose();
-                    mat.dispose();
-                }
-            });
-        }
-        const basic = (map: THREE.Texture) =>
-            new THREE.MeshBasicMaterial({ map, transparent: true, side: THREE.DoubleSide });
-        const plane = (w: number, h: number, mat: THREE.Material) =>
-            new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
-        async function build(spec: SceneObject, key: string) {
-            const root = new THREE.Group();
-            root.userData.objectId = spec.id;
-            scene.add(root);
-            let media: HTMLMediaElement | undefined;
-            const node: Node = {
-                root,
-                billboard: createBillboard(root),
-                key,
-                spec,
-                status: 'loading',
-                abort: new AbortController(),
-                dispose() {
-                    node.abort.abort();
-                    node.releaseAudio?.();
-                    node.audioCard?.dispose();
-                    node.placeholder?.dispose();
-                    node.placeholder = undefined;
-                    scene.remove(root);
-                    node.mixer?.stopAllAction();
-                    if (node.mixer) node.mixer.uncacheRoot(node.mixer.getRoot());
-                    if (media) {
-                        media.pause();
-                        media.removeAttribute('src');
-                        media.load();
-                    }
-                    resources(root);
-                    root.clear();
-                },
-            };
-            nodes.set(spec.id, node);
-            latest.current.loadStore.set(spec.id, { status: 'loading' });
-            setIssues((current) => {
-                if (!(spec.id in current)) return current;
-                const next = { ...current };
-                delete next[spec.id];
-                return next;
-            });
-            const initialAsset =
-                'assetId' in spec ? latest.current.assets[spec.assetId] : undefined;
-            setLoading((count) => count + 1);
-            try {
-                node.placeholder = createAssetPlaceholder(
-                    spec,
-                    initialAsset,
-                    latest.current.aspect,
-                    themeColor('--text-muted'),
-                );
-                if (node.placeholder) node.billboard.content.add(node.placeholder.group);
-                if (
-                    [
-                        ...spec.transform.position,
-                        ...spec.transform.rotation,
-                        ...spec.transform.scale,
-                    ].every(Number.isFinite)
-                )
-                    applyTransform(node, spec);
-                const asset = 'assetId' in spec ? latest.current.assets[spec.assetId] : undefined;
-                if ('assetId' in spec && !asset)
-                    throw new Error('Thiếu tài nguyên. Chọn lại tài nguyên trong bảng thuộc tính.');
-                if (spec.type === 'model' && asset) {
-                    const model = await loader.loadAsync(asset.url);
-                    if (disposed || nodes.get(spec.id) !== node) {
-                        resources(model.scene);
-                        return;
-                    }
-                    node.billboard.content.add(model.scene);
-                    node.modelBounds = createModelSelectionBounds(model.scene);
-                    node.mixer = new THREE.AnimationMixer(model.scene);
-                    if (spec.animation?.autoplay) {
-                        const clip = model.animations.find(
-                            (clip) => clip.name === spec.animation?.clip,
-                        );
-                        if (clip) {
-                            const action = node.mixer.clipAction(clip);
-                            action.setLoop(
-                                spec.animation.loop ? THREE.LoopRepeat : THREE.LoopOnce,
-                                spec.animation.loop ? Infinity : 1,
-                            );
-                            action.clampWhenFinished = true;
-                            action.play();
-                        }
-                    }
-                } else if (spec.type === 'image' && asset) {
-                    const texture = await new THREE.TextureLoader()
-                        .setCrossOrigin('anonymous')
-                        .loadAsync(asset.url);
-                    if (disposed || nodes.get(spec.id) !== node) {
-                        texture.dispose();
-                        return;
-                    }
-                    texture.colorSpace = THREE.SRGBColorSpace;
-                    const mat = basic(texture);
-                    mat.opacity = spec.opacity;
-                    node.billboard.content.add(
-                        plane(1, texture.image.height / texture.image.width, mat),
-                    );
-                } else if (spec.type === 'text' || spec.type === 'label') {
-                    const imageId =
-                        spec.presentation?.kind === 'screen'
-                            ? spec.presentation.imageAssetId
-                            : undefined;
-                    const visual = await createTextVisual(spec, {
-                        imageUrl: imageId ? latest.current.assets[imageId]?.url : undefined,
-                    });
-                    if (disposed || nodes.get(spec.id) !== node) {
-                        disposeTextVisual(visual.group);
-                        return;
-                    }
-                    node.textVisual = visual;
-                    if (node.spec.type === 'text' || node.spec.type === 'label')
-                        visual.updateColors?.(textVisualColors(node.spec));
-                    visual.setExpanded?.(latest.current.selectedIds.includes(spec.id));
-                    node.billboard.content.add(visual.group);
-                } else if (spec.type === 'video' && asset) {
-                    const video = document.createElement('video');
-                    media = video;
-                    video.crossOrigin = 'anonymous';
-                    video.playsInline = true;
-                    video.preload = 'auto';
-                    video.muted = true;
-                    video.src = asset.url;
-                    video.addEventListener(
-                        'loadeddata',
-                        () => {
-                            if (!disposed && nodes.get(spec.id) === node)
-                                video.currentTime = Math.min(0.05, video.duration || 0);
-                        },
-                        { once: true },
-                    );
-                    video.addEventListener('error', () => {
-                        if (!disposed && nodes.get(spec.id) === node)
-                            setIssues((current) => ({
-                                ...current,
-                                [spec.id]: 'Không tải được video. Kiểm tra tệp tài nguyên.',
-                            }));
-                    });
-                    const texture = new THREE.VideoTexture(video);
-                    texture.colorSpace = THREE.SRGBColorSpace;
-                    const surface = plane(
-                        1,
-                        (asset.meta.height || 1) / (asset.meta.width || 1),
-                        basic(texture),
-                    );
-                    if (!asset.meta.width || !asset.meta.height)
-                        video.addEventListener(
-                            'loadedmetadata',
-                            () => {
-                                if (
-                                    disposed ||
-                                    nodes.get(spec.id) !== node ||
-                                    !video.videoWidth ||
-                                    !video.videoHeight
-                                )
-                                    return;
-                                surface.geometry.dispose();
-                                surface.geometry = new THREE.PlaneGeometry(
-                                    1,
-                                    video.videoHeight / video.videoWidth,
-                                );
-                            },
-                            { once: true },
-                        );
-                    node.billboard.content.add(surface);
-                    await waitForVideo(video, node.abort.signal);
-                } else if (spec.type === 'hotspot')
-                    node.billboard.content.add(
-                        plane(
-                            spec.size[0],
-                            spec.size[1],
-                            new THREE.MeshBasicMaterial({
-                                // This editor-only touch area sits on white paper in either theme.
-                                color: 0x333333,
-                                transparent: true,
-                                opacity: 0.28,
-                                side: THREE.DoubleSide,
-                                depthWrite: false,
-                            }),
-                        ),
-                    );
-                else if (spec.type === 'audio' && asset) {
-                    const element = new Audio();
-                    media = element;
-                    node.audio = element;
-                    element.crossOrigin = 'anonymous';
-                    element.preload = 'metadata';
-                    element.loop = spec.loop;
-                    element.volume = spec.volume;
-                    element.src = asset.url;
-                    const card = createAudioCard(spec, asset.meta.durationSec);
-                    node.audioCard = card;
-                    node.billboard.content.add(card.group);
-                    node.releaseAudio = latest.current.audioStore.register(
-                        spec.id,
-                        element,
-                        (state) => {
-                            card.setPlayback(state);
-                            if (
-                                state.playing &&
-                                !state.error &&
-                                !disposed &&
-                                nodes.get(spec.id) === node
-                            )
-                                setIssues((current) => {
-                                    if (!current[spec.id]) return current;
-                                    const next = { ...current };
-                                    delete next[spec.id];
-                                    return next;
-                                });
-                        },
-                        (message) => {
-                            if (!disposed && nodes.get(spec.id) === node)
-                                setIssues((current) => ({ ...current, [spec.id]: message }));
-                        },
-                    );
-                }
-                if (disposed || nodes.get(spec.id) !== node) {
-                    node.dispose();
-                    return;
-                }
-                node.placeholder?.dispose();
-                node.placeholder = undefined;
-                node.status = 'ready';
-                latest.current.loadStore.set(spec.id);
-                setIssues((current) => {
-                    const copy = { ...current };
-                    delete copy[spec.id];
-                    return copy;
-                });
-                sync();
-            } catch (cause) {
-                if (!disposed && nodes.get(spec.id) === node) {
-                    node.status = 'failed';
-                    const message = `${spec.name || objectLabels[spec.type]}: ${cause instanceof Error ? cause.message : 'Không tải được đối tượng.'}`;
-                    latest.current.loadStore.set(spec.id, { status: 'failed', message });
-                    setIssues((current) => ({ ...current, [spec.id]: message }));
-                    sync();
-                }
-            } finally {
-                if (!disposed) setLoading((count) => Math.max(0, count - 1));
-            }
-        }
-        const sceneNodeKey = createSceneNodeKey();
+        const {
+            nodes,
+            syncNodes,
+            retryNode,
+            dispose: disposeNodes,
+        } = createSceneCanvasNodes({
+            scene,
+            camera,
+            latest,
+            themeColor,
+            isDisposed: () => disposed,
+            isDragging: () => dragging,
+            detachNode(node) {
+                if (controls.object === node.root) controls.detach();
+            },
+            onLoadSettled: sync,
+            setLoading,
+            setIssues,
+        });
         function sync() {
             if (disposed) return;
             const value = latest.current;
@@ -818,99 +387,7 @@ export function SceneCanvas(props: Props) {
                 renderer.domElement.style.cursor = placingAnnotation ? 'crosshair' : '';
                 hidePlacementMarker();
             }
-            const ids = new Set(value.scene.objects.map((object) => object.id));
-            for (const [id, node] of nodes)
-                if (!ids.has(id)) {
-                    if (controls.object === node.root) controls.detach();
-                    node.dispose();
-                    nodes.delete(id);
-                    latest.current.loadStore.set(id);
-                }
-            for (const spec of value.scene.objects) {
-                const asset = 'assetId' in spec ? value.assets[spec.assetId] : undefined;
-                const imageId =
-                    (spec.type === 'text' || spec.type === 'label') &&
-                    spec.presentation?.kind === 'screen'
-                        ? spec.presentation.imageAssetId
-                        : undefined;
-                const key = sceneNodeKey(
-                    spec,
-                    asset,
-                    imageId ? value.assets[imageId]?.url : undefined,
-                );
-                let node = nodes.get(spec.id);
-                if (node && node.key !== key) {
-                    if (controls.object === node.root) controls.detach();
-                    node.dispose();
-                    nodes.delete(spec.id);
-                    node = undefined;
-                }
-                if (!node) {
-                    void build(spec, key);
-                    node = nodes.get(spec.id);
-                }
-                if (!node) continue;
-                if (
-                    (spec.type === 'text' || spec.type === 'label') &&
-                    (node.spec.type === 'text' || node.spec.type === 'label') &&
-                    node.spec !== spec &&
-                    node.textVisual?.updateColors &&
-                    JSON.stringify(textVisualColors(node.spec)) !==
-                        JSON.stringify(textVisualColors(spec))
-                ) {
-                    node.textVisual.updateColors(textVisualColors(spec));
-                }
-                node.spec = spec;
-                if (
-                    (spec.type === 'text' || spec.type === 'label') &&
-                    spec.presentation?.kind === 'annotation'
-                )
-                    node.textVisual?.setAnnotationOffset?.(spec.presentation.labelOffset ?? [0, 0]);
-                if (
-                    (spec.type === 'text' || spec.type === 'label') &&
-                    spec.presentation?.kind === 'annotation'
-                )
-                    node.textVisual?.setAnnotationConnectorSide?.(
-                        annotationConnectorSide(
-                            spec.presentation,
-                            spec.type === 'label' ? spec.target : [-0.3, 0, 0],
-                        ),
-                    );
-                node.textVisual?.setExpanded?.(value.selectedIds.includes(spec.id));
-                if (spec.type === 'audio' && node.audio) {
-                    node.audio.loop = spec.loop;
-                    node.audio.volume = spec.volume;
-                    node.audioCard?.setTitle(spec.name || 'Âm thanh');
-                    node.audioCard?.setKind(spec.audioKind);
-                    if (value.suspended && !node.audio.paused) value.audioStore.pause(spec.id);
-                }
-                if (!(dragging && latest.current.selectedIds.includes(spec.id))) {
-                    if (
-                        [
-                            ...spec.transform.position,
-                            ...spec.transform.rotation,
-                            ...spec.transform.scale,
-                        ].every(Number.isFinite)
-                    ) {
-                        node.root.position.fromArray(spec.transform.position);
-                        node.root.rotation.set(
-                            ...(spec.transform.rotation.map(THREE.MathUtils.degToRad) as [
-                                number,
-                                number,
-                                number,
-                            ]),
-                        );
-                        node.root.scale.fromArray(spec.transform.scale);
-                    }
-                }
-                node.root.visible = spec.visible;
-                node.billboard.update(
-                    camera,
-                    facesCamera(spec),
-                    (spec.type === 'text' || spec.type === 'label') &&
-                        spec.presentation?.kind !== 'extruded',
-                );
-            }
+            syncNodes(value);
             const selected = selectedNodes();
             if (controls.mode === 'rotate' && selected.some((node) => facesCamera(node.spec))) {
                 settings.mode = 'translate';
@@ -924,18 +401,13 @@ export function SceneCanvas(props: Props) {
                 selected.every(
                     (node) =>
                         node.status === 'ready' &&
-                        node.spec.visible &&
+                        node.root.visible &&
                         !node.spec.locked &&
-                        [
-                            ...node.spec.transform.position,
-                            ...node.spec.transform.rotation,
-                            ...node.spec.transform.scale,
-                        ].every(Number.isFinite) &&
-                        node.spec.transform.scale.every((n) => n > 0),
+                        canRenderTransform(node.spec.transform),
                 ) &&
                 !value.disabled &&
                 !value.annotationToPlace &&
-                !annotationDrag?.moved;
+                !hasMovedAnnotation();
             if (canTransform) {
                 const single = selected.length === 1 ? selected[0] : undefined;
                 const target = single
@@ -961,1017 +433,99 @@ export function SceneCanvas(props: Props) {
             outline.box.copy(bounds);
             outline.visible = !bounds.isEmpty();
         }
-        const changed = () => {
-            const root = controls.object;
-            if (!root || latest.current.disabled) return;
-            const scaling = transformDrag?.scale;
-            if (controls.mode === 'scale' && scaling) {
-                const end = scaleControls.pointEnd.clone().applyQuaternion(scaling.inverseRotation);
-                const fallback = Math.exp(
-                    (scaling.currentPointer.x -
-                        scaling.pointer.x -
-                        (scaling.currentPointer.y - scaling.pointer.y)) /
-                        160,
-                );
-                root.scale.fromArray(
-                    scaling.moved
-                        ? scaleFromGesture(
-                              scaling.initial,
-                              scaling.start.toArray(),
-                              end.toArray(),
-                              scaling.axis,
-                              scaling.planar,
-                              shiftHeld,
-                              settings.snap ? transformSnapSteps(settings.steps).scale : null,
-                              fallback,
-                          )
-                        : scaling.initial,
-                );
-            }
-            if (transformDrag?.group) {
-                if (controls.mode === 'scale') {
-                    const minimum = Math.min(
-                        1,
-                        Math.max(
-                            ...transformDrag.objects.flatMap((object) =>
-                                object.transform.scale.map((value) => 0.001 / value),
-                            ),
-                        ),
-                    );
-                    selectionPivot.scale.setScalar(Math.max(minimum, selectionPivot.scale.x));
-                }
-                selectionPivot.updateMatrixWorld(true);
-                const delta = selectionPivot.matrixWorld.clone().multiply(transformDrag.inverse);
-                const next = transformSelection(
-                    transformDrag.objects,
-                    delta,
-                    controls.mode === 'translate',
-                    controls.axis,
-                    controls.mode === 'scale',
-                );
-                if (!next) return;
-                for (const object of next) {
-                    const node = nodes.get(object.id);
-                    if (node) applyTransform(node, object);
-                }
-                latest.current.onChange(next);
-                return;
-            }
-            const spec = latest.current.scene.objects.find(
-                (object) => object.id === root.userData.objectId,
-            );
-            if (!spec || spec.locked) return;
-            const next = objectFromGizmo(
-                spec,
-                {
-                    position: root.position.toArray(),
-                    rotation:
-                        root === billboardPivot
-                            ? spec.transform.rotation
-                            : ([root.rotation.x, root.rotation.y, root.rotation.z].map(
-                                  THREE.MathUtils.radToDeg,
-                              ) as [number, number, number]),
-                    scale: root.scale.toArray(),
-                },
-                controls.mode === 'translate',
-                controls.axis,
-                controls.space,
-                controls.mode === 'scale',
-            );
-            if (next) {
-                if (root === billboardPivot) {
-                    const node = nodes.get(spec.id);
-                    if (node) applyTransform(node, next);
-                }
-                latest.current.onChange([next]);
-            }
-        };
-        function finishTransform(cancelled = false) {
-            if (!dragging) return false;
-            if (cancelled && transformDrag) {
-                for (const object of transformDrag.objects) {
-                    const node = nodes.get(object.id);
-                    if (node) applyTransform(node, object);
-                }
-                latest.current.onChange(transformDrag.objects);
-            } else changed();
-            dragging = false;
-            setTransforming(false);
-            controls.dragging = false;
-            transformDrag = null;
-            latest.current.onEnd();
-            orbit.enabled = true;
-            if (depthDrag) {
-                const id = depthDrag.id;
-                depthDrag = null;
-                controls.enabled = true;
-                controls.axis = null;
-                if (id !== undefined && depthButton?.hasPointerCapture(id))
-                    depthButton.releasePointerCapture(id);
-            }
-            return true;
-        }
-        controls.addEventListener('objectChange', changed);
-        controls.addEventListener('mouseDown', () => {
-            const root = controls.object;
-            if (!root || latest.current.disabled) return;
-            const group = root === selectionPivot;
-            root.updateMatrixWorld(true);
-            transformDrag = {
-                objects: structuredClone(selectedNodes().map((node) => node.spec)),
-                inverse: root.matrixWorld.clone().invert(),
-                group,
-            };
-            if (group && controls.mode === 'scale') controls.axis = 'XYZ';
-            if (controls.mode === 'scale' && controls.axis) {
-                const inverseRotation = scaleControls.worldQuaternionStart.clone().invert();
-                const chosen = selectedNodes();
-                transformDrag.scale = {
-                    initial: root.scale.toArray(),
-                    start: scaleControls.pointStart.clone().applyQuaternion(inverseRotation),
-                    inverseRotation,
-                    axis: controls.axis,
-                    planar: !group && chosen.length === 1 && isPlanarObject(chosen[0].spec),
-                    pointer: start.clone(),
-                    currentPointer: start.clone(),
-                    moved: false,
-                };
-            }
-            stopOrbitMomentum();
-            dragging = true;
-            setTransforming(true);
-            latest.current.onBegin();
-            orbit.enabled = false;
-        });
-        controls.addEventListener('mouseUp', () => finishTransform());
-        function setShift(active: boolean) {
-            const scaling = transformDrag?.scale;
-            if (
-                scaling &&
-                controls.object &&
-                shiftHeld !== active &&
-                scaleConstraint(scaling.axis, scaling.planar, shiftHeld) !==
-                    scaleConstraint(scaling.axis, scaling.planar, active)
-            ) {
-                // Rebase at the currently displayed size; pressing/releasing Shift must not jump.
-                scaling.initial = controls.object.scale.toArray();
-                if (scaling.moved)
-                    scaling.start
-                        .copy(scaleControls.pointEnd)
-                        .applyQuaternion(scaling.inverseRotation);
-                scaling.pointer.copy(scaling.currentPointer);
-                scaling.moved = false;
-            }
-            shiftHeld = active;
-            applySnapping();
-        }
-        function canUseDepth() {
-            const selected = selectedNodes();
-            return (
-                controls.object === billboardPivot &&
-                controls.mode === 'translate' &&
-                controls.space === 'local' &&
-                selected.length === 1 &&
-                selected[0].status === 'ready' &&
-                facesCamera(selected[0].spec) &&
-                !selected[0].spec.locked &&
-                selected[0].spec.visible &&
-                !latest.current.disabled
-            );
-        }
-        function beginDepth(x: number, y: number, id?: number) {
-            if (dragging || !canUseDepth()) return false;
-            const start = beginLocalDepthDrag(
-                camera,
-                billboardPivot,
-                renderer.domElement.clientHeight,
-            );
-            if (!start) return false;
-            stopOrbitMomentum();
-            transformDrag = {
-                objects: structuredClone(selectedNodes().map((node) => node.spec)),
-                inverse: billboardPivot.matrixWorld.clone().invert(),
-                group: false,
-            };
-            // Constrain the pointer to the displayed Z arm, using a fixed direction
-            // for this gesture even while the card and handle move on screen.
-            const direction = new THREE.Vector2(
-                20 - Number(depthLink?.getAttribute('x1') ?? 56),
-                20 - Number(depthLink?.getAttribute('y1') ?? -16),
-            );
-            if (direction.lengthSq() < 1e-6) direction.set(-1, 1);
-            direction.normalize();
-            // Local +Z can project opposite the virtual arm after camera pan.
-            // Choose the sign once so the object moves with the pointer on screen.
-            const from = start.position.clone().project(camera);
-            const to = start.position
-                .clone()
-                .addScaledVector(start.axis, start.distance * 0.1)
-                .project(camera);
-            const projectedZ = new THREE.Vector2(
-                (to.x - from.x) * renderer.domElement.clientWidth,
-                -(to.y - from.y) * renderer.domElement.clientHeight,
-            );
-            const pointerSign = projectedZ.dot(direction) > 1e-6 ? -1 : 1;
-            depthDrag = { id, x, y, direction, pointerSign, start };
-            controls.axis = 'Z';
-            controls.enabled = false;
-            controls.dragging = true;
-            dragging = true;
-            orbit.enabled = false;
-            setTransforming(true);
-            latest.current.onBegin();
-            return true;
-        }
-        function moveDepth(delta: number, shift: boolean) {
-            if (!depthDrag) return;
-            const position = localDepthPosition(
-                depthDrag.start,
-                delta,
-                settings.snap || shift ? settings.steps.translation : 0,
-            );
-            if (!position) return;
-            billboardPivot.position.copy(position);
-            billboardPivot.updateMatrixWorld(true);
-            changed();
-        }
-        const depthDown = (event: PointerEvent) => {
-            if (event.button !== 0 || !beginDepth(event.clientX, event.clientY, event.pointerId))
-                return;
-            event.preventDefault();
-            event.stopPropagation();
-            depthButton?.focus({ preventScroll: true });
-            depthButton?.setPointerCapture(event.pointerId);
-        };
-        const depthMove = (event: PointerEvent) => {
-            if (depthDrag?.id !== event.pointerId) return;
-            event.preventDefault();
-            event.stopPropagation();
-            const alongAxis =
-                (event.clientX - depthDrag.x) * depthDrag.direction.x +
-                (event.clientY - depthDrag.y) * depthDrag.direction.y;
-            moveDepth(alongAxis * depthDrag.pointerSign, event.shiftKey);
-        };
-        const depthUp = (event: PointerEvent) => {
-            if (depthDrag?.id !== event.pointerId) return;
-            event.preventDefault();
-            event.stopPropagation();
-            finishTransform();
-        };
-        const depthCancel = () => {
-            if (depthDrag) finishTransform(true);
-        };
-        function nudgeDepth(toward: boolean, snapped: boolean) {
-            if (!beginDepth(0, 0) || !depthDrag) return;
-            const step = settings.snap || snapped ? settings.steps.translation : 0.01;
-            moveDepth((toward ? -step : step) / depthDrag.start.unitsPerPixel, snapped);
-            finishTransform();
-        }
-        const depthKey = (event: KeyboardEvent) => {
-            if (event.key === 'Escape' && depthDrag) {
-                event.preventDefault();
-                event.stopPropagation();
-                finishTransform(true);
-                return;
-            }
-            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-            event.preventDefault();
-            event.stopPropagation();
-            nudgeDepth(event.key === 'ArrowUp', event.shiftKey);
-        };
-        const depthClick = (event: MouseEvent) => {
-            if (event.detail === 0) nudgeDepth(true, event.shiftKey);
-        };
-        const depthEnter = () => {
-            if (!dragging && canUseDepth()) controls.axis = 'Z';
-        };
-        const depthLeave = () => {
-            if (!depthDrag && controls.axis === 'Z') controls.axis = null;
-        };
-        depthButton?.addEventListener('pointerenter', depthEnter);
-        depthButton?.addEventListener('pointerleave', depthLeave);
-        depthButton?.addEventListener('pointerdown', depthDown);
-        depthButton?.addEventListener('pointermove', depthMove);
-        depthButton?.addEventListener('pointerup', depthUp);
-        depthButton?.addEventListener('pointercancel', depthCancel);
-        depthButton?.addEventListener('lostpointercapture', depthCancel);
-        depthButton?.addEventListener('keydown', depthKey);
-        depthButton?.addEventListener('click', depthClick);
-        const placementMarker = element.parentElement?.querySelector<HTMLElement>(
-            '[data-annotation-placement-marker]',
-        );
-        const placementRay = new THREE.Raycaster();
-        const placementPointer = new THREE.Vector2();
-        function hidePlacementMarker() {
-            if (placementMarker) placementMarker.hidden = true;
-        }
-        function annotationSurface(event: PointerEvent) {
-            const rect = renderer.domElement.getBoundingClientRect();
-            placementPointer.set(
-                ((event.clientX - rect.left) / rect.width) * 2 - 1,
-                (-(event.clientY - rect.top) / rect.height) * 2 + 1,
-            );
-            placementRay.setFromCamera(placementPointer, camera);
-            const surfaces = [...nodes.values()]
-                .filter(
-                    (node) =>
-                        node.status === 'ready' &&
-                        node.root.visible &&
-                        node.spec.type !== 'label' &&
-                        !(
-                            node.spec.type === 'text' &&
-                            node.spec.presentation?.kind === 'annotation'
-                        ),
-                )
-                .map((node) => node.root);
-            return placementRay.intersectObjects([...surfaces, paper], true)[0]?.point;
-        }
-        function placeAtPointer(event: PointerEvent) {
-            const point = annotationSurface(event);
-            if (!point) return;
-            const angles = new THREE.Euler().setFromQuaternion(
-                camera.getWorldQuaternion(new THREE.Quaternion()),
-                'XYZ',
-            );
-            latest.current.onPlaceAnnotation({
-                position: point.toArray(),
-                rotation: [angles.x, angles.y, angles.z].map(THREE.MathUtils.radToDeg) as [
-                    number,
-                    number,
-                    number,
-                ],
-            });
-            hidePlacementMarker();
-        }
-        let audioPress: { id: string; pointerId: number; x: number; y: number } | null = null;
-        function audioButton(event: PointerEvent) {
-            const detail = hitDetail(event);
-            if (!detail?.hit.uv) return;
-            return nodes.get(detail.id)?.audioCard?.isPlayHit(detail.hit.uv)
-                ? detail.id
-                : undefined;
-        }
-        function finishAudioPress() {
-            const previous = audioPress;
-            audioPress = null;
-            if (!previous) return;
-            controls.enabled = true;
-            orbit.enabled = !dragging;
-            if (renderer.domElement.hasPointerCapture(previous.pointerId))
-                renderer.domElement.releasePointerCapture(previous.pointerId);
-        }
         const start = new THREE.Vector2();
-        let selecting: { id: number; x: number; y: number; moved: boolean; box: boolean } | null =
-            null;
-        function hitDetail(event: PointerEvent, selectedOnly = false) {
-            const rect = renderer.domElement.getBoundingClientRect();
-            const ray = new THREE.Raycaster();
-            ray.setFromCamera(
-                new THREE.Vector2(
-                    ((event.clientX - rect.left) / rect.width) * 2 - 1,
-                    (-(event.clientY - rect.top) / rect.height) * 2 + 1,
-                ),
-                camera,
-            );
-            const hits = ray.intersectObjects(
-                [...nodes.values()]
-                    .filter(
-                        (node) =>
-                            node.root.visible &&
-                            (!selectedOnly || latest.current.selectedIds.includes(node.spec.id)),
-                    )
-                    .map((node) => node.root),
-                true,
-            );
-            for (const hit of hits) {
-                let root: THREE.Object3D | null = hit.object;
-                while (root && !root.userData.objectId) root = root.parent;
-                if (root) return { id: root.userData.objectId as string, hit };
-            }
-            return null;
-        }
-        function hitObject(event: PointerEvent) {
-            return hitDetail(event)?.id ?? null;
-        }
-        function draggableAnnotation(event: PointerEvent) {
-            if (
-                latest.current.selectedIds.length !== 1 ||
-                latest.current.disabled ||
-                latest.current.annotationToPlace
-            )
-                return;
-            const detail = hitDetail(event, true);
-            if (!detail || detail.id !== latest.current.selectedIds[0]) return;
-            const node = nodes.get(detail.id),
-                spec = node?.spec;
-            if (
-                !node?.textVisual ||
-                !spec ||
-                spec.locked ||
-                !spec.visible ||
-                !(spec.type === 'label' || spec.type === 'text') ||
-                spec.presentation?.kind !== 'annotation'
-            )
-                return;
-            const part =
-                spec.presentation.shape === 'circle'
-                    ? 'annotation-description'
-                    : 'annotation-label';
-            if (detail.hit.object.name !== part || !detail.hit.object.visible) return;
-            return {
-                node,
-                spec,
-                visual: node.textVisual,
-                offset: spec.presentation.labelOffset ?? ([0, 0] as [number, number]),
-                hit: detail.hit,
-            };
-        }
-        function finishAnnotationDrag(cancelled = false) {
-            const previous = annotationDrag;
-            if (!previous) return false;
-            annotationDrag = null;
-            if (previous.moved) {
-                if (cancelled) {
-                    const spec = previous.original;
-                    if (
-                        (spec.type === 'text' || spec.type === 'label') &&
-                        spec.presentation?.kind === 'annotation'
-                    )
-                        previous.node.textVisual?.setAnnotationOffset?.(
-                            spec.presentation.labelOffset ?? [0, 0],
-                        );
-                    latest.current.onChange([spec]);
-                }
-                dragging = false;
-                setTransforming(false);
-                latest.current.onEnd();
-            }
-            controls.enabled = true;
-            orbit.enabled = true;
-            renderer.domElement.style.cursor = spaceHeld ? 'all-scroll' : 'grab';
-            if (renderer.domElement.hasPointerCapture(previous.pointerId))
-                renderer.domElement.releasePointerCapture(previous.pointerId);
-            return true;
-        }
-        function marqueeRect(x: number, y: number) {
-            const rect = renderer.domElement.getBoundingClientRect();
-            const clamp = (v: number, max: number) => Math.max(0, Math.min(max, v));
-            const x1 = clamp((selecting?.x || 0) - rect.left, rect.width),
-                x2 = clamp(x - rect.left, rect.width);
-            const y1 = clamp((selecting?.y || 0) - rect.top, rect.height),
-                y2 = clamp(y - rect.top, rect.height);
-            return {
-                left: Math.min(x1, x2),
-                right: Math.max(x1, x2),
-                top: Math.min(y1, y2),
-                bottom: Math.max(y1, y2),
-            };
-        }
-        function clearMarquee() {
-            const previous = selecting;
-            selecting = null;
-            if (marqueeHost.current) marqueeHost.current.hidden = true;
-            controls.enabled = true;
-            orbit.enabled = !dragging;
-            if (previous && renderer.domElement.hasPointerCapture(previous.id))
-                renderer.domElement.releasePointerCapture(previous.id);
-            return Boolean(previous);
-        }
-        function restoreNavigation() {
-            cameraPointer = null;
-            cameraClick = false;
-            zoomDrag = null;
-            controls.enabled = true;
-            orbit.enabled = !dragging;
-            orbit.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
-            renderer.domElement.style.cursor = spaceHeld
-                ? 'all-scroll'
-                : latest.current.annotationToPlace
-                  ? 'crosshair'
-                  : '';
-        }
-        function beginCameraNavigation(event: PointerEvent, pan: boolean, selectOnClick = false) {
-            stopOrbitMomentum();
-            cameraPointer = event.pointerId;
-            cameraClick = selectOnClick;
-            controls.enabled = false;
-            orbit.enabled = true;
-            const inverted = event.shiftKey || event.ctrlKey || event.metaKey;
-            orbit.mouseButtons.LEFT = pan !== inverted ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
-            renderer.domElement.style.cursor = pan ? 'all-scroll' : 'move';
-        }
-        const pointerDown = (event: PointerEvent) => {
-            start.set(event.clientX, event.clientY);
-            renderer.domElement.focus({ preventScroll: true });
-            if (dragging || zoomDrag) return;
-            if (event.button === 1) {
-                stopOrbitMomentum();
-                const rect = renderer.domElement.getBoundingClientRect();
-                zoomDrag = {
-                    id: event.pointerId,
-                    y: event.clientY,
-                    start: beginDolly(
-                        camera,
-                        orbit.target,
-                        new THREE.Vector2(
-                            ((event.clientX - rect.left) / rect.width) * 2 - 1,
-                            -((event.clientY - rect.top) / rect.height) * 2 + 1,
-                        ),
-                    ),
-                };
-                controls.enabled = false;
-                orbit.enabled = false;
-                renderer.domElement.style.cursor = 'ns-resize';
-                renderer.domElement.setPointerCapture(event.pointerId);
-                // Prevent browser auto-scroll and let only this zoom handler own the gesture.
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                return;
-            }
-            if (event.button === 2) {
-                const rotate = event.ctrlKey || event.shiftKey || event.metaKey;
-                // Keep native right-button mapping; report its modifier-switched action correctly.
-                beginCameraNavigation(event, !rotate);
-                return;
-            }
-            if (event.button !== 0) return;
-            if (spaceHeld) {
-                beginCameraNavigation(event, true);
-                return;
-            }
-            if (latest.current.disabled) {
-                beginCameraNavigation(event, false);
-                return;
-            }
-            if (latest.current.annotationToPlace) {
-                beginCameraNavigation(event, false, true);
-                return;
-            }
-            // A visible gizmo takes priority over Shift marquee selection.
-            if (controls.axis && controls.object && !event.ctrlKey && !event.metaKey) {
-                setShift(event.shiftKey);
-                stopOrbitMomentum();
-                orbit.enabled = false;
-                return;
-            }
-            if (!(event.shiftKey || event.ctrlKey || event.metaKey || event.altKey)) {
-                const audio = audioButton(event);
-                if (audio) {
-                    stopOrbitMomentum();
-                    audioPress = {
-                        id: audio,
-                        pointerId: event.pointerId,
-                        x: event.clientX,
-                        y: event.clientY,
-                    };
-                    controls.enabled = false;
-                    orbit.enabled = false;
-                    renderer.domElement.setPointerCapture(event.pointerId);
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                    return;
-                }
-                const hit = draggableAnnotation(event);
-                if (hit) {
-                    stopOrbitMomentum();
-                    annotationDrag = {
-                        pointerId: event.pointerId,
-                        x: event.clientX,
-                        y: event.clientY,
-                        node: hit.node,
-                        original: structuredClone(hit.spec),
-                        moved: false,
-                        start: beginAnnotationLabelDrag(
-                            hit.visual.group,
-                            hit.hit.point,
-                            hit.offset,
-                        ),
-                    };
-                    controls.enabled = false;
-                    orbit.enabled = false;
-                    renderer.domElement.style.cursor = 'grabbing';
-                    renderer.domElement.setPointerCapture(event.pointerId);
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                    return;
-                }
-            }
-            if (!(event.shiftKey || event.ctrlKey || event.metaKey)) {
-                beginCameraNavigation(event, false, true);
-                return;
-            }
-            selecting = {
-                id: event.pointerId,
-                x: event.clientX,
-                y: event.clientY,
-                moved: false,
-                box: event.shiftKey,
-            };
-            stopOrbitMomentum();
-            orbit.enabled = false;
-            controls.enabled = false;
-            renderer.domElement.setPointerCapture(event.pointerId);
-            event.preventDefault();
-            event.stopImmediatePropagation();
-        };
-        const pointerMove = (event: PointerEvent) => {
-            if (audioPress?.pointerId === event.pointerId) {
-                event.stopImmediatePropagation();
-                return;
-            }
-            if (transformDrag?.scale) {
-                setShift(event.shiftKey);
-                transformDrag.scale.currentPointer.set(event.clientX, event.clientY);
-                transformDrag.scale.moved = true;
-            }
-            if (annotationDrag?.pointerId === event.pointerId) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                if (
-                    !annotationDrag.moved &&
-                    Math.hypot(
-                        event.clientX - annotationDrag.x,
-                        event.clientY - annotationDrag.y,
-                    ) <= 4
-                )
-                    return;
-                const offset = annotationLabelOffset(
-                    annotationDrag.start,
-                    camera,
-                    renderer.domElement.getBoundingClientRect(),
-                    event.clientX,
-                    event.clientY,
-                );
-                const spec = annotationDrag.original;
-                if (
-                    !offset ||
-                    !(spec.type === 'text' || spec.type === 'label') ||
-                    spec.presentation?.kind !== 'annotation'
-                )
-                    return;
-                if (!annotationDrag.moved) {
-                    annotationDrag.moved = true;
-                    dragging = true;
-                    setTransforming(true);
-                    latest.current.onBegin();
-                }
-                annotationDrag.node.textVisual?.setAnnotationOffset?.(offset);
-                latest.current.onChange([
-                    { ...spec, presentation: { ...spec.presentation, labelOffset: offset } },
-                ]);
-                return;
-            }
-            if (
-                !event.buttons &&
-                !dragging &&
-                !cameraPointer &&
-                !spaceHeld &&
-                !latest.current.annotationToPlace
-            )
-                renderer.domElement.style.cursor =
-                    !controls.axis && audioButton(event)
-                        ? 'pointer'
-                        : !controls.axis && draggableAnnotation(event)
-                          ? 'grab'
-                          : '';
-            if (zoomDrag?.id === event.pointerId) {
-                dragDolly(
-                    camera,
-                    orbit.target,
-                    zoomDrag.start,
-                    event.clientY - zoomDrag.y,
-                    renderer.domElement.clientHeight,
-                    orbit.minDistance,
-                    orbit.maxDistance,
-                );
-                orbit.update();
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                return;
-            }
-            if (latest.current.annotationToPlace && placementMarker) {
-                const point = event.buttons === 0 ? annotationSurface(event) : undefined;
-                placementMarker.hidden = !point;
-                if (point) {
-                    const rect = renderer.domElement.getBoundingClientRect();
-                    placementMarker.style.transform = `translate3d(${event.clientX - rect.left - 6}px, ${event.clientY - rect.top - 6}px, 0)`;
-                }
-            }
-            if (!selecting || selecting.id !== event.pointerId) return;
-            event.stopImmediatePropagation();
-            if (
-                Math.hypot(event.clientX - selecting.x, event.clientY - selecting.y) <= 4 &&
-                !selecting.moved
-            )
-                return;
-            selecting.moved = true;
-            if (!selecting.box || !marqueeHost.current) return;
-            const box = marqueeRect(event.clientX, event.clientY);
-            const overlay = marqueeHost.current;
-            overlay.hidden = false;
-            overlay.style.left = `${box.left}px`;
-            overlay.style.top = `${box.top}px`;
-            overlay.style.width = `${box.right - box.left}px`;
-            overlay.style.height = `${box.bottom - box.top}px`;
-        };
-        const pointerUp = (event: PointerEvent) => {
-            if (audioPress?.pointerId === event.pointerId) {
-                const pressed = audioPress;
-                finishAudioPress();
-                if (
-                    Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) <= 4 &&
-                    audioButton(event) === pressed.id
-                ) {
-                    latest.current.onSelect([pressed.id]);
-                    void latest.current.audioStore.toggle(pressed.id);
-                }
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                return;
-            }
-            if (annotationDrag?.pointerId === event.pointerId) {
-                finishAnnotationDrag();
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                return;
-            }
-            if (zoomDrag?.id === event.pointerId) {
-                restoreNavigation();
-                if (renderer.domElement.hasPointerCapture(event.pointerId))
-                    renderer.domElement.releasePointerCapture(event.pointerId);
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                return;
-            }
-            if (cameraPointer === event.pointerId) {
-                const select =
-                    cameraClick &&
-                    event.button === 0 &&
-                    !latest.current.disabled &&
-                    start.distanceTo(new THREE.Vector2(event.clientX, event.clientY)) <= 4;
-                restoreNavigation();
-                if (select && latest.current.annotationToPlace) {
-                    placeAtPointer(event);
-                    return;
-                }
-                if (select) {
-                    const id = hitObject(event);
-                    latest.current.onSelect(id ? [id] : [], 'replace');
-                }
-                return;
-            }
-            if (selecting?.id === event.pointerId) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                if (!latest.current.disabled) {
-                    if (selecting.box && selecting.moved) {
-                        const rect = renderer.domElement.getBoundingClientRect();
-                        const frustum = selectionFrustum(
-                            camera,
-                            marqueeRect(event.clientX, event.clientY),
-                            rect,
-                        );
-                        const ids = [...nodes.values()]
-                            .filter(
-                                (node) =>
-                                    !node.spec.locked &&
-                                    node.root.visible &&
-                                    frustum?.intersectsBox(nodeBounds(node)),
-                            )
-                            .map((node) => node.spec.id);
-                        latest.current.onSelect(ids, 'add');
-                    } else if (!selecting.moved) {
-                        const id = hitObject(event);
-                        if (id) latest.current.onSelect([id], 'toggle');
-                    }
-                }
-                clearMarquee();
-                return;
-            }
-            if (
-                event.button !== 0 ||
-                controls.axis ||
-                dragging ||
-                start.distanceTo(new THREE.Vector2(event.clientX, event.clientY)) > 4 ||
-                latest.current.disabled
-            )
-                return;
-            const id = hitObject(event);
-            latest.current.onSelect(id ? [id] : [], 'replace');
-        };
-        const pointerCancel = () => {
-            finishAudioPress();
-            finishAnnotationDrag(true);
-            hidePlacementMarker();
-            clearMarquee();
-            finishTransform(true);
-            restoreNavigation();
-        };
-        const lostCapture = (event: PointerEvent) => {
-            if (selecting) clearMarquee();
-            // TransformControls releases capture just before its normal mouseUp handler.
-            // Wait for that handler; unexpected capture loss cancels the gesture instead.
-            queueMicrotask(() => {
-                if (disposed || renderer.domElement.hasPointerCapture(event.pointerId)) return;
-                if (audioPress?.pointerId === event.pointerId) finishAudioPress();
-                if (annotationDrag?.pointerId === event.pointerId) finishAnnotationDrag(true);
-                else if (dragging) finishTransform(true);
-                if (cameraPointer === event.pointerId || zoomDrag?.id === event.pointerId)
-                    restoreNavigation();
-            });
-        };
-        const blur = () => {
-            spaceHeld = false;
-            shiftHeld = false;
-            applySnapping();
-            pointerCancel();
-        };
-        renderer.domElement.addEventListener('pointerleave', hidePlacementMarker);
-        window.addEventListener('blur', blur);
-        renderer.domElement.addEventListener('pointerdown', pointerDown, true);
-        renderer.domElement.addEventListener('pointermove', pointerMove, true);
-        renderer.domElement.addEventListener('pointerup', pointerUp, true);
-        renderer.domElement.addEventListener('pointercancel', pointerCancel);
-        renderer.domElement.addEventListener('lostpointercapture', lostCapture);
-        const resize = new ResizeObserver(() => {
+        const {
+            applySnapping,
+            finishTransform,
+            setShift,
+            resetShift,
+            trackScalePointer,
+            canUseDepth,
+            getDepthDrag,
+            removeDepthListeners,
+        } = bindSceneCanvasTransforms({
+            canvas: renderer.domElement,
+            camera,
+            orbit,
+            controls,
+            settings,
+            start,
+            latest,
+            nodes,
+            selectionPivot,
+            billboardPivot,
+            depthButton,
+            depthLink,
+            selectedNodes,
+            stopOrbitMomentum,
+            isDragging: () => dragging,
+            setDragging,
+            setTransforming,
+        });
+        const {
+            hidePlacementMarker,
+            finishAudioPress,
+            finishAnnotationDrag,
+            hasMovedAnnotation,
+            clearMarquee,
+            pointerCancel,
+            pan,
+            removePointerListeners,
+        } = bindSceneCanvasPointer({
+            element,
+            canvas: renderer.domElement,
+            camera,
+            orbit,
+            controls,
+            paper,
+            nodes,
+            latest,
+            marqueeHost,
+            start,
+            nodeBounds,
+            stopOrbitMomentum,
+            isDisposed: () => disposed,
+            isDragging: () => dragging,
+            setDragging,
+            setTransforming,
+            setShift,
+            resetShift,
+            trackScalePointer,
+            finishTransform,
+        });
+        const viewportSize = new THREE.Vector2();
+        const fitViewport = () => {
             const rect = element.getBoundingClientRect();
             if (!rect.width || !rect.height) return;
-            renderer.setSize(rect.width, rect.height);
+            renderer.getSize(viewportSize);
+            if (viewportSize.x !== rect.width || viewportSize.y !== rect.height)
+                renderer.setSize(rect.width, rect.height);
             camera.aspect = rect.width / rect.height;
             camera.updateProjectionMatrix();
-        });
+        };
+        fitViewport();
+        const resize = new ResizeObserver(fitViewport);
         resize.observe(element);
-        const viewport = element.parentElement;
-        const pageDock = element
-            .closest('.scene-editor')
-            ?.querySelector<HTMLElement>('[data-page-dock]');
-        const workspace = element.closest<HTMLElement>('.scene-workspace');
-        const workbench = workspace?.closest<HTMLElement>('.workbench-body');
-        const hints = workbench?.querySelector<HTMLElement>('[data-canvas-hints-host]');
-        // The page dock grows when unsaved changes or feedback appear.
-        // Measure it on resize instead of guessing a fixed bottom offset.
-        const feedbackLayout = new ResizeObserver(() => {
-            if (workspace && hints && hints.getBoundingClientRect().height > 0) {
-                const reserved =
-                    workspace.getBoundingClientRect().bottom - hints.getBoundingClientRect().top;
-                workbench?.style.setProperty('--canvas-hints-height', `${Math.ceil(reserved)}px`);
-            }
-            if (!viewport || !pageDock) return;
-            const bottom = Math.max(
-                16,
-                element.getBoundingClientRect().bottom - pageDock.getBoundingClientRect().top + 12,
-            );
-            viewport.style.setProperty('--transform-feedback-bottom', `${bottom}px`);
-            const dock = pageDock.querySelector<HTMLElement>('.page-strip-region');
-            if (workspace && dock) {
-                const area = element.getBoundingClientRect(),
-                    pages = dock.getBoundingClientRect();
-                const space = area.right - 18 - pages.right - 12;
-                const panelBottom =
-                    space >= 320
-                        ? 100
-                        : Math.max(100, workspace.getBoundingClientRect().bottom - pages.top + 12);
-                workspace.style.setProperty('--scene-layers-bottom', `${panelBottom}px`);
-            }
-        });
-        feedbackLayout.observe(element);
-        if (hints) feedbackLayout.observe(hints);
-        if (pageDock) feedbackLayout.observe(pageDock);
-        const dockSurface = pageDock?.querySelector<HTMLElement>('.page-strip-region');
-        if (dockSurface) feedbackLayout.observe(dockSurface);
-        function positionSelectionTools() {
-            const left = leftTools.current,
-                right = rightTools.current;
-            if (!left || !right) return;
-            const viewport = {
-                width: renderer.domElement.clientWidth,
-                height: renderer.domElement.clientHeight,
-            };
-            const frame = selectionFrame();
-            const bounds =
-                !dragging && outline.visible
-                    ? frame
-                        ? projectSelectionBounds(frame.bounds, camera, viewport, frame.matrix)
-                        : projectSelectionBounds(selectionBounds(), camera, viewport)
-                    : null;
-            if (!bounds) {
-                left.style.visibility = 'hidden';
-                right.style.visibility = 'hidden';
-                return;
-            }
-            const inspector = renderer.domElement
-                .closest('.scene-workspace')
-                ?.querySelector('aside[aria-label="Bảng chỉnh sửa"]');
-            const covered = inspector
-                ? Math.max(
-                      0,
-                      renderer.domElement.getBoundingClientRect().right -
-                          inspector.getBoundingClientRect().left,
-                  )
-                : 0;
-            const positions = layoutSelectionTools(
-                bounds,
-                { ...viewport, width: Math.max(1, viewport.width - covered) },
-                { width: left.offsetWidth, height: left.offsetHeight },
-                { width: right.offsetWidth, height: right.offsetHeight },
-            );
-            for (const [rail, position] of [
-                [left, positions.left],
-                [right, positions.right],
-            ] as const) {
-                const transform = `translate3d(${Math.round(position.x)}px, ${Math.round(position.y)}px, 0)`;
-                if (rail.style.transform !== transform) rail.style.transform = transform;
-                rail.style.visibility = 'visible';
-            }
-        }
-        const depthScreen = new THREE.Vector3(),
-            depthOffset = new THREE.Vector3();
-        function positionDepthHandle() {
-            if (!depthButton) return;
-            const show = Boolean(depthDrag) || (!dragging && canUseDepth());
-            if (!show) {
-                depthButton.style.visibility = 'hidden';
-                return;
-            }
-            billboardPivot.getWorldPosition(depthScreen).project(camera);
-            if (depthScreen.z < -1 || depthScreen.z > 1) {
-                depthButton.style.visibility = 'hidden';
-                return;
-            }
-            const width = renderer.domElement.clientWidth,
-                height = renderer.domElement.clientHeight;
-            const originX = ((depthScreen.x + 1) * width) / 2;
-            const originY = ((1 - depthScreen.y) * height) / 2;
-            const x = Math.round(
-                THREE.MathUtils.clamp(
-                    originX - 36 - depthButton.offsetWidth / 2,
-                    8,
-                    Math.max(8, width - depthButton.offsetWidth - 8),
-                ),
-            );
-            const y = Math.round(
-                THREE.MathUtils.clamp(
-                    originY + 36 - depthButton.offsetHeight / 2,
-                    8,
-                    Math.max(8, height - depthButton.offsetHeight - 8),
-                ),
-            );
-            if (depthLink) {
-                const linkX = String(Number((originX - x).toFixed(2)));
-                const linkY = String(Number((originY - y).toFixed(2)));
-                if (depthLink.getAttribute('x1') !== linkX) depthLink.setAttribute('x1', linkX);
-                if (depthLink.getAttribute('y1') !== linkY) depthLink.setAttribute('y1', linkY);
-            }
-            const transform = `translate3d(${x}px, ${y}px, 0)`;
-            if (depthButton.style.transform !== transform) depthButton.style.transform = transform;
-            const active = String(Boolean(depthDrag));
-            if (depthButton.dataset.dragging !== active) depthButton.dataset.dragging = active;
-            if (depthDrag && depthFeedback) {
-                const offset = depthOffset
-                    .copy(billboardPivot.position)
-                    .sub(depthDrag.start.position)
-                    .dot(depthDrag.start.axis);
-                const text = `Z ${offset >= 0 ? '+' : ''}${depthFormat.format(pageUnitsToMm(offset, widthMmRef.current))} mm`;
-                if (depthFeedback.textContent !== text) depthFeedback.textContent = text;
-            }
-            depthButton.style.visibility = 'visible';
-        }
-        const loadingBounds = new THREE.Box3();
-        function positionLoadingCards() {
-            const host = loadingHost.current;
-            if (!host?.childElementCount) return;
-            const width = renderer.domElement.clientWidth,
-                height = renderer.domElement.clientHeight;
-            for (const child of host.children) {
-                if (!(child instanceof HTMLElement)) continue;
-                const node = nodes.get(child.dataset.assetLoading || '');
-                const bounds =
-                    node?.placeholder && node.root.visible
-                        ? projectSelectionBounds(
-                              loadingBounds.setFromObject(node.placeholder.group),
-                              camera,
-                              { width, height },
-                          )
-                        : null;
-                if (!bounds) {
-                    child.style.visibility = 'hidden';
-                    continue;
-                }
-                const x = THREE.MathUtils.clamp(
-                    (bounds.left + bounds.right - child.offsetWidth) / 2,
-                    12,
-                    Math.max(12, width - child.offsetWidth - 12),
-                );
-                const y = THREE.MathUtils.clamp(
-                    (bounds.top + bounds.bottom - child.offsetHeight) / 2,
-                    70,
-                    Math.max(70, height - child.offsetHeight - 70),
-                );
-                const transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
-                if (child.style.transform !== transform) child.style.transform = transform;
-                child.style.visibility = 'visible';
-            }
-        }
+        const stopLayout = observeSceneCanvasLayout(element);
+        const { positionSelectionTools, positionDepthHandle, positionLoadingCards } =
+            createSceneCanvasOverlays({
+                canvas: renderer.domElement,
+                camera,
+                leftTools,
+                rightTools,
+                loadingHost,
+                depthButton,
+                depthLink,
+                widthMmRef,
+                billboardPivot,
+                nodes,
+                selectionFrame,
+                selectionBounds,
+                isDragging: () => dragging,
+                isOutlineVisible: () => outline.visible,
+                getDepthDrag,
+                canUseDepth,
+            });
         const clock = new THREE.Clock();
         function tick() {
             if (disposed) return;
@@ -2068,14 +622,7 @@ export function SceneCanvas(props: Props) {
                 maxDistance: orbit.maxDistance,
             }),
             sync,
-            retry(id) {
-                const node = nodes.get(id);
-                if (node?.status !== 'failed' || latest.current.disabled) return;
-                if (controls.object === node.root) controls.detach();
-                node.dispose();
-                nodes.delete(id);
-                sync();
-            },
+            retry: retryNode,
             getDisplayedRotation(id) {
                 const node = nodes.get(id);
                 return node?.billboard.getDisplayedRotation();
@@ -2098,15 +645,7 @@ export function SceneCanvas(props: Props) {
             shift(active) {
                 setShift(active);
             },
-            pan(active) {
-                spaceHeld = active;
-                if (cameraPointer === null && !zoomDrag)
-                    renderer.domElement.style.cursor = active
-                        ? 'all-scroll'
-                        : latest.current.annotationToPlace
-                          ? 'crosshair'
-                          : '';
-            },
+            pan,
             isDragging: () => dragging,
             getMode: () => controls.mode,
             view(view) {
@@ -2181,13 +720,16 @@ export function SceneCanvas(props: Props) {
                 for (const material of Array.isArray(node.material)
                     ? node.material
                     : [node.material]) {
-                    if (material instanceof THREE.LineBasicMaterial)
-                        material.color.copy(themeColor('--editor-transform-guide'));
+                    if (material instanceof THREE.LineBasicMaterial) {
+                        const axis = ['X', 'Y', 'Z'].includes(node.name)
+                            ? node.name.toLowerCase()
+                            : 'z';
+                        material.color.copy(themeColor(`--editor-axis-${axis}`));
+                    }
                 }
             });
         });
         api.current.mode(mode, snap, space, snapSteps);
-        sync();
         tick();
         return () => {
             stopTheme();
@@ -2201,46 +743,25 @@ export function SceneCanvas(props: Props) {
             gizmoController.current = null;
             viewGizmo?.dispose();
             resize.disconnect();
-            feedbackLayout.disconnect();
-            workbench?.style.removeProperty('--canvas-hints-height');
-            viewport?.style.removeProperty('--transform-feedback-bottom');
-            renderer.domElement.removeEventListener('pointerdown', pointerDown, true);
-            renderer.domElement.removeEventListener('pointermove', pointerMove, true);
-            renderer.domElement.removeEventListener('pointerup', pointerUp, true);
-            renderer.domElement.removeEventListener('pointercancel', pointerCancel);
-            renderer.domElement.removeEventListener('lostpointercapture', lostCapture);
-            window.removeEventListener('blur', blur);
-            renderer.domElement.removeEventListener('pointerleave', hidePlacementMarker);
-            depthButton?.removeEventListener('pointerenter', depthEnter);
-            depthButton?.removeEventListener('pointerleave', depthLeave);
-            depthButton?.removeEventListener('pointerdown', depthDown);
-            depthButton?.removeEventListener('pointermove', depthMove);
-            depthButton?.removeEventListener('pointerup', depthUp);
-            depthButton?.removeEventListener('pointercancel', depthCancel);
-            depthButton?.removeEventListener('lostpointercapture', depthCancel);
-            depthButton?.removeEventListener('keydown', depthKey);
-            depthButton?.removeEventListener('click', depthClick);
-            if (depthButton) depthButton.style.visibility = 'hidden';
+            stopLayout();
+            removePointerListeners();
+            removeDepthListeners();
             controls.detach();
             controls.dispose();
             orbit.dispose();
-            for (const node of nodes.values()) node.dispose();
-            draco.dispose();
+            disposeNodes();
             frontGuide?.dispose();
-            paperImage.material.map?.dispose();
-            paperImage.geometry.dispose();
-            paperImage.material.dispose();
-            paper.geometry.dispose();
-            paper.material.dispose();
+            disposePaper();
             editorGrid.dispose();
             outline.geometry.dispose();
             (outline.material as THREE.Material).dispose();
-            renderer.dispose();
+            if (!bookRenderer) renderer.dispose();
+            renderer.domElement.style.cursor = '';
             renderer.domElement.remove();
         };
-    }, [props.page.id, props.aspect]);
+    }, [props.page.id, props.aspect, bookRenderer]);
     useEffect(() => {
-        api.current?.sync();
+        if (!props.suspended) api.current?.sync();
     });
     useEffect(() => {
         api.current?.mode(mode, snap, space, snapSteps);
@@ -2248,72 +769,7 @@ export function SceneCanvas(props: Props) {
     useEffect(() => {
         api.current?.grid(gridSettings, widthMm);
     }, [gridSettings, widthMm]);
-    useEffect(() => {
-        const key = (event: KeyboardEvent) => {
-            if (
-                event.defaultPrevented ||
-                document.querySelector(
-                    '[role=dialog], [role=alertdialog], [role=menu], [data-slot=select-content][data-state=open]',
-                )
-            )
-                return;
-            if (
-                (event.target as HTMLElement)?.closest(
-                    'input,textarea,select,[role="combobox"],[role="checkbox"],[role="radio"],[role="switch"],[role="tab"],[data-slot="accordion-trigger"],[contenteditable="true"]',
-                ) ||
-                event.ctrlKey ||
-                event.metaKey ||
-                event.altKey
-            )
-                return;
-            if (document.getElementById('scene-heading')?.closest('[hidden]')) return;
-            const value = event.key.toLowerCase();
-            if (value === 'shift') api.current?.shift(true);
-            if (event.code === 'Space' && event.target === host.current?.querySelector('canvas')) {
-                event.preventDefault();
-                api.current?.pan(true);
-                return;
-            }
-            if (value === 'escape' && api.current?.cancel()) {
-                event.preventDefault();
-                return;
-            }
-            if (
-                latest.current.disabled ||
-                latest.current.annotationToPlace ||
-                api.current?.isDragging()
-            )
-                return;
-            if (
-                value === 'l' &&
-                latest.current.selectedIds.length <= 1 &&
-                api.current?.getMode() !== 'scale'
-            )
-                setSpace((current) => (current === 'world' ? 'local' : 'world'));
-            if (value === 'n') setSnap((current) => !current);
-            if (value === 'w') setMode('translate');
-            if (
-                value === 'e' &&
-                !latest.current.scene.objects.some(
-                    (object) =>
-                        facesCamera(object) && latest.current.selectedIds.includes(object.id),
-                )
-            )
-                setMode('rotate');
-            if (value === 'r') setMode('scale');
-            if (value === 'f') api.current?.focus();
-        };
-        const release = (event: KeyboardEvent) => {
-            if (event.key === 'Shift') api.current?.shift(false);
-            if (event.code === 'Space') api.current?.pan(false);
-        };
-        window.addEventListener('keydown', key);
-        window.addEventListener('keyup', release);
-        return () => {
-            window.removeEventListener('keydown', key);
-            window.removeEventListener('keyup', release);
-        };
-    }, []);
+    useSceneCanvasShortcuts(host, latest, api, setMode, setSnap, setSpace);
     const localAxes = props.selectedIds.length <= 1 && (space === 'local' || mode === 'scale');
     const selectedObject = props.scene.objects.find(
         (object) => object.id === props.selectedIds.at(-1),
@@ -2377,72 +833,24 @@ export function SceneCanvas(props: Props) {
                     data-selection-marquee
                     className="pointer-events-none absolute border border-primary bg-primary/10"
                 />
-                <div
-                    className="canvas-toolbar absolute top-[18px] left-[18px] z-2 flex max-w-[calc(100%_-_var(--inspector-offset,0px)_-_var(--sidebar-toolbar-offset,0px)_-_176px)] translate-x-[var(--sidebar-toolbar-offset,0px)] flex-wrap items-center gap-1 rounded-xl bg-surface p-1 shadow-[0_4px_14px_#00000014] transition-[translate] duration-200 ease-out motion-reduce:transition-none [&_button.primary:disabled]:bg-primary [&_button.primary:disabled]:text-primary-foreground [&_button:disabled]:border-transparent [.workbench-body[data-sidebar-expanded=false]_&]:duration-150"
-                    role="toolbar"
-                    aria-label="Công cụ canvas"
-                >
-                    <ActionButton
-                        variant="ghost"
-                        size="sm"
-                        title="Mặt trang · Đưa toàn bộ trang vào khung nhìn"
-                        disabled={transforming}
-                        onClick={() => api.current?.view('front')}
-                    >
-                        Mặt trang
-                    </ActionButton>
-                    <ActionButton
-                        variant="ghost"
-                        size="sm"
-                        title="Phối cảnh · Xem trang theo phối cảnh 3D"
-                        disabled={transforming}
-                        onClick={() => api.current?.view('iso')}
-                    >
-                        Phối cảnh
-                    </ActionButton>
-                    <ActionButton
-                        variant="ghost"
-                        size="sm"
-                        type="button"
-                        title={
-                            props.selectedIds.length > 1
-                                ? 'Nhóm dùng trục thế giới'
-                                : mode === 'scale'
-                                  ? 'Kích thước theo trục đối tượng'
-                                  : 'Đổi trục thế giới / cục bộ (L)'
-                        }
-                        aria-label={localAxes ? 'Trục cục bộ (L)' : 'Trục thế giới (L)'}
-                        aria-pressed={localAxes}
-                        disabled={
-                            props.disabled ||
-                            transforming ||
-                            props.selectedIds.length > 1 ||
-                            mode === 'scale'
-                        }
-                        onClick={() =>
-                            setSpace((current) => (current === 'world' ? 'local' : 'world'))
-                        }
-                    >
-                        {localAxes ? (
-                            <Box data-icon="inline-start" />
-                        ) : (
-                            <Globe2 data-icon="inline-start" />
-                        )}
-                        <span>{localAxes ? 'Cục bộ' : 'Thế giới'}</span>
-                    </ActionButton>
-                    <SceneSnapSettings
-                        steps={snapSteps}
-                        enabled={snap}
-                        disabled={props.disabled || transforming}
-                        onChange={setSnapSteps}
-                        onEnabledChange={setSnap}
-                    />
-                    <SceneGridSettings
-                        value={gridSettings}
-                        disabled={transforming || Boolean(failure)}
-                        onChange={setGridSettings}
-                    />
-                </div>
+                <SceneCanvasToolbar
+                    mode={mode}
+                    localAxes={localAxes}
+                    selectedCount={props.selectedIds.length}
+                    disabled={props.disabled}
+                    transforming={transforming}
+                    failed={Boolean(failure)}
+                    snap={snap}
+                    snapSteps={snapSteps}
+                    gridSettings={gridSettings}
+                    onView={(view) => api.current?.view(view)}
+                    onToggleSpace={() =>
+                        setSpace((current) => (current === 'world' ? 'local' : 'world'))
+                    }
+                    onSnapChange={setSnap}
+                    onSnapStepsChange={setSnapSteps}
+                    onGridChange={setGridSettings}
+                />
                 {!failure && (
                     <SceneViewGizmo
                         key={`${props.page.id}:${props.page.image.url}:${props.aspect}`}
@@ -2500,7 +908,7 @@ export function SceneCanvas(props: Props) {
                 )}
                 {loading > 0 && (
                     <p
-                        className="canvas-loading absolute bottom-2 left-[74px] m-0 max-w-[calc(100%_-_var(--inspector-offset,0px)_-_100px)] translate-x-[var(--sidebar-toolbar-offset,0px)] rounded-[5px] bg-surface px-[10px] py-[5px] text-[length:12px] transition-[translate] duration-200 ease-out motion-reduce:transition-none"
+                        className="canvas-loading pointer-events-none absolute @max-[72rem]:bottom-[var(--transform-feedback-bottom,148px)] bottom-4 left-[18px] m-0 max-w-[calc(100%_-_var(--inspector-offset,0px)_-_var(--sidebar-toolbar-offset,0px)_-_36px)] translate-x-[var(--sidebar-toolbar-offset,0px)] rounded-[5px] bg-surface px-[10px] py-[5px] text-[length:12px] transition-[translate] duration-(--sidebar-motion-duration) ease-(--sidebar-motion-ease) motion-reduce:transition-none"
                         role="status"
                     >
                         Đang tải {loading} đối tượng…
@@ -2508,7 +916,10 @@ export function SceneCanvas(props: Props) {
                 )}
             </div>
             {props.footer && (
-                <div className="canvas-footer absolute right-[18px] bottom-12 z-3 -translate-x-[var(--inspector-offset,0px)] transition-[translate] duration-200 ease-out motion-reduce:transition-none">
+                <div
+                    data-canvas-footer
+                    className="canvas-footer absolute right-[18px] bottom-[calc(var(--canvas-tools-inset,3.5rem)_-_7px)] z-3 flex -translate-x-[var(--inspector-offset,0px)] items-end gap-1.5 transition-[translate] duration-200 ease-out motion-reduce:transition-none"
+                >
                     {props.footer}
                 </div>
             )}

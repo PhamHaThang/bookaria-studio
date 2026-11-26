@@ -6,9 +6,10 @@ import {
     CreateBookResultSchema,
     ListBooksQuerySchema,
     TrashBookItemSchema,
+    TrashBooksQuerySchema,
     UpdateBookBodySchema,
 } from '../../../shared/contracts/api/books.schema';
-import { IdSchema, PaginationQuerySchema } from '../../../shared/contracts/common.schema';
+import { IdSchema } from '../../../shared/contracts/common.schema';
 import { BookDetailSchema, BookSummarySchema } from '../../../shared/contracts/dto.schema';
 
 export function createBooksApi(http: AxiosInstance) {
@@ -19,10 +20,10 @@ export function createBooksApi(http: AxiosInstance) {
                 BookSummarySchema,
             );
         },
-        async trash(query: z.input<typeof PaginationQuerySchema>, signal?: AbortSignal) {
+        async trash(query: z.input<typeof TrashBooksQuerySchema>, signal?: AbortSignal) {
             return readPage(
                 await http.get('/books/trash', {
-                    params: PaginationQuerySchema.parse(query),
+                    params: TrashBooksQuerySchema.parse(query),
                     signal,
                 }),
                 TrashBookItemSchema,

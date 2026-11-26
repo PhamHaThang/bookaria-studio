@@ -2,6 +2,11 @@ import * as THREE from 'three';
 import type { SceneObject } from '../contracts/scene.schema';
 
 type AudioObject = Extract<SceneObject, { type: 'audio' }>;
+const audioKindLabel = {
+    BGM: 'Nhạc nền',
+    SFX: 'Hiệu ứng',
+    VOICE: 'Thuyết minh',
+};
 export type AudioPlaybackState = {
     playing: boolean;
     waiting: boolean;
@@ -60,7 +65,10 @@ export function observeAudio(
 
 export function createAudioCard(spec: AudioObject, duration = 0) {
     const width = 768,
-        height = 360;
+        height = 208;
+    const button = { x: 94, y: height / 2, radius: 56 };
+    const contentLeft = 174;
+    const contentRight = width - 34;
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -87,6 +95,7 @@ export function createAudioCard(spec: AudioObject, duration = 0) {
     let disposed = false,
         key = '';
     let name = spec.name || 'Âm thanh';
+    let fittedTitle: string | undefined;
     let kind = spec.audioKind || 'BGM';
     let state: AudioPlaybackState = {
         playing: false,
@@ -98,89 +107,97 @@ export function createAudioCard(spec: AudioObject, duration = 0) {
     function draw() {
         if (disposed || !ctx) return;
         ctx.clearRect(0, 0, width, height);
-        ctx.save();
         ctx.beginPath();
-        ctx.roundRect(2, 2, width - 4, height - 4, 22);
-        ctx.clip();
+        ctx.roundRect(2, 2, width - 4, height - 4, 28);
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, width, height);
-        ctx.fillStyle = '#252525';
-        ctx.fillRect(0, 0, width, 92);
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = '700 38px "Be Vietnam Pro", Arial, sans-serif';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(kind, width / 2, 46);
-        ctx.fillStyle = '#252525';
-        ctx.font = '600 36px "Be Vietnam Pro", Arial, sans-serif';
-        let title = name.normalize('NFC');
-        if (ctx.measureText(title).width > width - 80) {
-            while (title.length && ctx.measureText(`${title}…`).width > width - 80)
-                title = title.slice(0, -1);
-            title += '…';
-        }
-        ctx.fillText(title, width / 2, 151);
+        ctx.fill();
+        ctx.strokeStyle = '#d4d4d4';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.fillStyle = '#242424';
         ctx.beginPath();
-        ctx.arc(72, 273, 31, 0, Math.PI * 2);
+        ctx.arc(button.x, button.y, button.radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#ffffff';
-        if (state.playing) {
-            ctx.fillRect(62, 261, 7, 24);
-            ctx.fillRect(76, 261, 7, 24);
+        if (state.waiting) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 7;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(button.x, button.y, 21, -Math.PI / 2, Math.PI);
+            ctx.stroke();
+        } else if (state.playing) {
+            ctx.fillRect(button.x - 16, button.y - 20, 11, 40);
+            ctx.fillRect(button.x + 5, button.y - 20, 11, 40);
         } else {
             ctx.beginPath();
-            ctx.moveTo(64, 258);
-            ctx.lineTo(87, 273);
-            ctx.lineTo(64, 288);
+            ctx.moveTo(button.x - 13, button.y - 22);
+            ctx.lineTo(button.x + 23, button.y);
+            ctx.lineTo(button.x - 13, button.y + 22);
             ctx.closePath();
             ctx.fill();
         }
+
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#242424';
+        ctx.font = '600 44px "Be Vietnam Pro", Arial, sans-serif';
+        if (fittedTitle === undefined) {
+            fittedTitle = name.normalize('NFC');
+            const titleWidth = contentRight - contentLeft;
+            if (ctx.measureText(fittedTitle).width > titleWidth) {
+                const letters = Array.from(fittedTitle);
+                while (letters.length && ctx.measureText(`${letters.join('')}…`).width > titleWidth)
+                    letters.pop();
+                fittedTitle = `${letters.join('')}…`;
+            }
+        }
+        ctx.fillText(fittedTitle, contentLeft, 59);
+
         const total = state.duration > 0 ? state.duration : duration;
+        ctx.font = '500 34px "Be Vietnam Pro", Arial, sans-serif';
+        ctx.fillStyle = state.error ? '#b42318' : '#595959';
+        ctx.fillText(
+            state.error ? 'Lỗi phát · Thử lại' : state.waiting ? 'Đang tải…' : audioKindLabel[kind],
+            contentLeft,
+            118,
+            300,
+        );
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#595959';
+        ctx.fillText(
+            `${audioTime(state.currentTime)} / ${total > 0 ? audioTime(total) : '–:––'}`,
+            contentRight,
+            118,
+            232,
+        );
+
         const ratio = total > 0 ? Math.min(1, Math.max(0, state.currentTime / total)) : 0;
+        const trackWidth = contentRight - contentLeft;
+        const progressY = 162;
+        ctx.lineWidth = 8;
         ctx.lineCap = 'round';
-        ctx.lineWidth = 6;
-        ctx.strokeStyle = '#dedede';
+        ctx.strokeStyle = '#dadada';
         ctx.beginPath();
-        ctx.moveTo(131, 263);
-        ctx.lineTo(476, 263);
+        ctx.moveTo(contentLeft, progressY);
+        ctx.lineTo(contentRight, progressY);
         ctx.stroke();
         if (ratio > 0) {
-            ctx.strokeStyle = '#252525';
+            ctx.strokeStyle = '#242424';
             ctx.beginPath();
-            ctx.moveTo(131, 263);
-            ctx.lineTo(131 + 345 * ratio, 263);
+            ctx.moveTo(contentLeft, progressY);
+            ctx.lineTo(contentLeft + trackWidth * ratio, progressY);
             ctx.stroke();
         }
-        ctx.font = '400 24px "Be Vietnam Pro", Arial, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillStyle = '#525252';
-        ctx.fillText(`${audioTime(state.currentTime)} / ${audioTime(total)}`, 725, 273);
-        ctx.textAlign = 'left';
-        ctx.font = '400 23px "Be Vietnam Pro", Arial, sans-serif';
-        ctx.fillStyle = state.error ? '#b42318' : '#525252';
-        ctx.fillText(
-            state.error
-                ? 'Không phát được. Chạm để thử lại.'
-                : state.waiting
-                  ? 'Đang tải âm thanh…'
-                  : state.playing
-                    ? 'Đang phát'
-                    : state.currentTime > 0
-                      ? 'Tạm dừng'
-                      : 'Phát âm thanh',
-            131,
-            307,
-        );
-        ctx.restore();
-        ctx.strokeStyle = '#d4d4d4';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.roundRect(2, 2, width - 4, height - 4, 22);
-        ctx.stroke();
         texture.needsUpdate = true;
     }
     draw();
-    if (document.fonts) void document.fonts.ready.then(draw);
+    if (document.fonts)
+        void document.fonts.ready.then(() => {
+            fittedTitle = undefined;
+            draw();
+        });
     return {
         group,
         setKind(next: AudioObject['audioKind']) {
@@ -192,12 +209,13 @@ export function createAudioCard(spec: AudioObject, duration = 0) {
         setTitle(next: string) {
             if (name === next) return;
             name = next;
+            fittedTitle = undefined;
             draw();
         },
         isPlayHit(uv: { x: number; y: number }) {
             const x = uv.x * width,
                 y = (1 - uv.y) * height;
-            return x >= 25 && x <= 119 && y >= 226 && y <= 320;
+            return Math.hypot(x - button.x, y - button.y) <= button.radius + 16;
         },
         setPlayback(next: AudioPlaybackState) {
             const nextKey = [

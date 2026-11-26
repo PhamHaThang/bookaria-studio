@@ -17,15 +17,21 @@ import {
     type PageSummary,
     PageSummarySchema,
 } from '@/shared/contracts/dto.schema';
-import { SceneSchema } from '@/shared/contracts/scene.schema';
+import {
+    SceneSchema,
+    type WorkflowVariable,
+    WorkflowVariablesSchema,
+} from '@/shared/contracts/scene.schema';
 
 export type WorkingBook = {
+    workflowVariables?: WorkflowVariable[];
     pages: PageSummary[];
     overrides: Record<string, Page>;
     minds: Record<string, string>;
     blankPages: Record<string, boolean>;
 };
 export const WorkingBookSchema = z.object({
+    workflowVariables: WorkflowVariablesSchema.optional(),
     pages: z.array(PageSummarySchema),
     overrides: z.record(IdSchema, PageSchema),
     minds: z.record(IdSchema, z.string()),
@@ -68,7 +74,13 @@ export function fingerprint(value: unknown): string {
     return JSON.stringify(value) ?? 'null';
 }
 export function freshWorking(snapshot: BookDraftSnapshot): WorkingBook {
-    return { pages: snapshot.pages, overrides: {}, minds: {}, blankPages: {} };
+    return {
+        pages: snapshot.pages,
+        overrides: {},
+        minds: {},
+        blankPages: {},
+        ...(snapshot.workflowVariables ? { workflowVariables: snapshot.workflowVariables } : {}),
+    };
 }
 export function draftChanges(
     base: BookDraftSnapshot,
@@ -106,6 +118,8 @@ export function workingDirty(
     loaded: Record<string, Page>,
 ) {
     return (
+        fingerprint(base.workflowVariables || []) !==
+            fingerprint(working.workflowVariables || []) ||
         base.pages.length !== working.pages.length ||
         base.pages.some((page, index) => page.id !== working.pages[index]?.id) ||
         draftChanges(base, working, loaded).length > 0
