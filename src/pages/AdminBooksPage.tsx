@@ -33,6 +33,7 @@ import {
     BookModerationDetailModal,
     BookReinstateModal,
     BookTakedownModal,
+    type BookTarget,
     readAdminBooksSearch,
     readAdminQueueSearch,
     reportLabel,
@@ -44,8 +45,8 @@ import { useAuth } from '../features/auth';
 interface AdminModerationItemProps {
     item: ModerationItem;
     onViewDetails: (bookId: string) => void;
-    onTakedown: (book: { id: string; title: string; author?: { displayName: string } }) => void;
-    onDismiss: (book: { id: string; title: string; reportCount?: number }) => void;
+    onTakedown: (book: BookTarget) => void;
+    onDismiss: (book: BookTarget) => void;
 }
 
 /**
@@ -126,7 +127,7 @@ function AdminModerationItem({
                     </div>
                 </div>
 
-                {/* Cụm 4 nút hành động chuẩn hóa A11y & Design tokens */}
+                {/* Thao tác kiểm duyệt */}
                 <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
                     {/* 1. Xem chi tiết báo cáo */}
                     <Button
@@ -147,7 +148,7 @@ function AdminModerationItem({
                         variant="ghost"
                         size="icon-sm"
                         className="text-warning-foreground transition-colors hover:bg-warning hover:text-warning-foreground"
-                        onClick={() => onTakedown(item.book)}
+                        onClick={() => onTakedown({ ...item.book, reportCount: item.reportCount })}
                         title="Gỡ sách vi phạm"
                         aria-label="Gỡ sách vi phạm"
                     >
@@ -160,26 +161,11 @@ function AdminModerationItem({
                         variant="ghost"
                         size="icon-sm"
                         className="text-success-foreground transition-colors hover:bg-success hover:text-success-foreground"
-                        onClick={() => onDismiss(item.book)}
+                        onClick={() => onDismiss({ ...item.book, reportCount: item.reportCount })}
                         title="Bỏ qua các báo cáo đang mở"
                         aria-label="Bỏ qua các báo cáo đang mở"
                     >
                         <CheckCircle2 className="size-4" />
-                    </Button>
-
-                    {/* 4. Mở trang quản trị chuyên sâu */}
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted-foreground transition-colors hover:bg-hover hover:text-foreground active:bg-selected"
-                        asChild
-                        title="Mở trang chi tiết sách"
-                        aria-label="Mở trang chi tiết sách"
-                    >
-                        <Link to={`/admin/books/${item.book.id}`}>
-                            <ExternalLink className="size-4" />
-                        </Link>
                     </Button>
                 </div>
             </div>
@@ -237,12 +223,7 @@ function AdminModerationItem({
 type ModerationModalState = {
     type: 'none' | 'detail' | 'takedown' | 'dismiss' | 'reinstate';
     bookId?: string;
-    book?: {
-        id: string;
-        title: string;
-        author?: { displayName: string };
-        reportCount?: number;
-    } | null;
+    book?: BookTarget;
 };
 
 /**
@@ -274,20 +255,11 @@ export function AdminModerationPage() {
         setModalState({ type: 'detail', bookId });
     };
 
-    const handleTakedown = (book: {
-        id: string;
-        title: string;
-        author?: { displayName: string };
-    }) => {
+    const handleTakedown = (book: BookTarget) => {
         setModalState({ type: 'takedown', book, bookId: book.id });
     };
 
-    const handleDismiss = (book: {
-        id: string;
-        title: string;
-        reportCount?: number;
-        author?: { displayName: string };
-    }) => {
+    const handleDismiss = (book: BookTarget) => {
         setModalState({ type: 'dismiss', book, bookId: book.id });
     };
 
@@ -461,6 +433,7 @@ export function AdminModerationPage() {
 
             {/* Modal xem chi tiết kiểm duyệt sách */}
             <BookModerationDetailModal
+                key={modalState.bookId}
                 bookId={modalState.bookId ?? null}
                 isOpen={modalState.type === 'detail'}
                 onClose={closeModal}
@@ -753,15 +726,15 @@ export function AdminBooksPage() {
         setModalState({ type: 'detail', bookId });
     };
 
-    const handleTakedown = (book: AdminBookItem) => {
+    const handleTakedown = (book: BookTarget) => {
         setModalState({ type: 'takedown', book, bookId: book.id });
     };
 
-    const handleReinstate = (book: AdminBookItem) => {
+    const handleReinstate = (book: BookTarget) => {
         setModalState({ type: 'reinstate', book, bookId: book.id });
     };
 
-    const handleDismiss = (book: AdminBookItem) => {
+    const handleDismiss = (book: BookTarget) => {
         setModalState({ type: 'dismiss', book, bookId: book.id });
     };
 
@@ -919,12 +892,14 @@ export function AdminBooksPage() {
 
             {/* Modal xem chi tiết kiểm duyệt sách */}
             <BookModerationDetailModal
+                key={modalState.bookId}
                 bookId={modalState.bookId ?? null}
                 isOpen={modalState.type === 'detail'}
                 onClose={closeModal}
                 onTakedown={handleTakedown}
                 onReinstate={handleReinstate}
                 onDismiss={handleDismiss}
+                showFullDetails
             />
 
             {/* Modal xác nhận gỡ sách */}

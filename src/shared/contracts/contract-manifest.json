@@ -2,8 +2,8 @@
   "version": 1,
   "zod": "4.6.5",
   "files": {
-    "api/admin.schema.ts": "9997c3e0d6d596a323c499e18bfe07dbec53c53387053225cefc4cfbdf4e792a",
-    "api/assets.schema.ts": "e1fb6a5bded4fd0d76980a934cc5d36010698dd97f0860e311ed38ef7a04b1b4",
+    "api/admin.schema.ts": "bb13677a28d8175942040b2e9504054e1e9208521270be56ca6ca8befd4b9bf9",
+    "api/assets.schema.ts": "d0c1fcc6f60602108ef917d8d3c476a95ae0f9db7386464ce0b8fac50fe73b8b",
     "api/auth.schema.ts": "7b227ba99c21fa7eb81f96cf6ed81cca477299d21706fb558ea514fecfd48b46",
     "api/book-draft.schema.ts": "f5a4783cdd336e6420da3d5de31ddf7bee6da51d1fee897dcd36f74f21799407",
     "api/books.schema.ts": "1f9eeadfea47188c0a12a59a0e1aa72dc42baf1f744121e922da74c1dba77303",
@@ -11,7 +11,7 @@
     "api/me.schema.ts": "09443bfa6b7363c9f115ab9fa04acdd7176a8190dc395ae4831cdb55bf43cfe6",
     "api/narration.schema.ts": "a3d36d26fcf8c33a5b39e31877ad273c815c93324491850375a76fd00a7cffc3",
     "api/pages.schema.ts": "56849a3a39b9dbe3d41b0bb18dabfa8e15aa101e38f3d141d4c3ea1a685c78d0",
-    "api/public.schema.ts": "a59ac9b613088c3dc2413b2eec5e798d73c1fb1b4b9b3fc48f2a4315aba259c6",
+    "api/public.schema.ts": "4d7207957fd04f010a70c1d4f38fec2e87d38a78ec87c9127766ac6ed86f33fd",
     "api/publish.schema.ts": "3b220411b623d845da3ceabd494fae609f4fce0b4a7e534b0c70a33a8b9f91e5",
     "asset.schema.ts": "5fc6c90acfc06d63563da516bd1eb4ab82ef96984df944e313682bc51746fccd",
     "common.schema.ts": "cc09b2cdee4bbf5e8c337e24a0f00f2c40d819dfe5da6c7da9816c9d40c834d8",
@@ -21,7 +21,7 @@
     "manifest.schema.ts": "4110bf4f041c72310bbb40bf29c1402c173062640a5d944dfbc997a63c529611",
     "marker-analysis.schema.ts": "8e2bdcdd3753349c5b386fee0b2d2bb676a7f4e707e9ad809aa5d8fa46b6a685",
     "marker.schema.ts": "c029bfd3c9311657c118d052c7ab9a84a4bcc46dedf2e556e860b4de3fed88fd",
-    "routes.schema.ts": "c48b4251982902c9b0918f31a38e5d20fcc2aa370dea3882d0e559ba2cff6391",
+    "routes.schema.ts": "5f8c0a923967a25810975c1c4d23255920f45359b9f67b6430c45859b7d4e83d",
     "scene.schema.ts": "7cfca11e7c7131a69d505c2d76871a62bbda7c8609fd9331145b088e1e1a5a3f"
   }
 }

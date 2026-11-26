@@ -282,6 +282,7 @@ export function createStudioMockState(options = {}) {
         markers,
         notifications,
         reportsByBook,
+        moderationPreviews: new Map(),
         jobs: jobsMap,
         modelGenerations: [],
         versionsByBook: new Map([
@@ -933,14 +934,18 @@ parent.postMessage({ type: 'ready', id }, location.origin);
                 const bid = path.split('/').at(-1);
                 const book = state.books.get(bid);
                 if (!book) return replyError('NOT_FOUND', 404, 'Không tìm thấy sách.');
+                const preview = state.moderationPreviews.get(url.searchParams.get('preview'));
+                const pages = preview?.pages ?? toBookDetail(book).pages;
                 return reply({
                     book: {
                         ...toBookSummary(book),
                         author: { id: author.id, displayName: author.displayName },
                         description: book.description,
                         takenDownReason: book.takenDownReason || null,
-                        pages: toBookDetail(book).pages,
+                        pages,
+                        pageCount: pages.length,
                     },
+                    preview: preview?.source,
                     reports: state.reportsByBook.get(bid) || [],
                 });
             }

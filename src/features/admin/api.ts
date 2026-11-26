@@ -73,8 +73,12 @@ export function createAdminApi(http: AxiosInstance) {
             list('/moderation', ModerationItemSchema, PaginationQuerySchema.parse(input), signal),
         books: async (input: z.input<typeof AdminBooksQuerySchema>, signal?: AbortSignal) =>
             list('/books', AdminBookItemSchema, AdminBooksQuerySchema.parse(input), signal),
-        book: async (id: string, signal?: AbortSignal) =>
-            get(`/books/${IdSchema.parse(id)}`, AdminBookDetailSchema, signal),
+        book: async (id: string, signal?: AbortSignal, preview?: string) =>
+            get(
+                `/books/${IdSchema.parse(id)}${preview ? `?preview=${encodeURIComponent(preview)}` : ''}`,
+                AdminBookDetailSchema,
+                signal,
+            ),
         takedown: async (id: string, input: z.input<typeof TakedownBodySchema>) =>
             bookAction(id, 'takedown', TakedownBodySchema.parse(input), TakedownResultSchema),
         reinstate: async (id: string, input: z.input<typeof ModerationNoteBodySchema>) =>
