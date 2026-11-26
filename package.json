@@ -20,7 +20,9 @@
         "pdf:assets": "node scripts/sync-pdf-assets.mjs",
         "preview:sync": "node scripts/sync-preview-runtime.mjs",
         "preview:check": "node scripts/sync-preview-runtime.mjs --check",
-        "test:interaction-ui": "playwright test --config=playwright.interactions.config.mjs"
+        "test:interaction-ui": "playwright test --config=playwright.interactions.config.mjs",
+        "test:online": "playwright test --config=playwright.online.config.mjs",
+        "test:online:smoke": "playwright test --config=playwright.online.config.mjs online-smoke.spec.mjs"
     },
     "dependencies": {
         "@animate-ui/react": "2.4.1",

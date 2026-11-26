@@ -46,7 +46,7 @@ export function createAssetsApi(http: AxiosInstance) {
         },
         async narrationVoices(signal?: AbortSignal) {
             return readData(
-                await http.get('/assets/narration/voices', { signal }),
+                await http.get('/assets/narration/voices', { signal, timeout: 45_000 }),
                 NarrationVoicesSchema,
             );
         },

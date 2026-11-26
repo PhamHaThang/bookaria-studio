@@ -12,6 +12,19 @@ const signal = new AbortController().signal;
 const bytes = readFileSync(new URL('./browser/narration.mp3', import.meta.url));
 const mp3 = () => new Blob([bytes], { type: 'audio/mpeg' });
 
+test('narrationVoices allows up to 45s for ZeroTTS cold-start warmup', async () => {
+    let call;
+    const api = createAssetsApi({
+        get: async (...args) => {
+            call = args;
+            return { status: 200, data: { data: [{ id: 'maichi', name: 'Mai Chi' }] } };
+        },
+    });
+    const voices = await api.narrationVoices(signal);
+    assert.deepEqual(voices, [{ id: 'maichi', name: 'Mai Chi' }]);
+    assert.deepEqual(call, ['/assets/narration/voices', { signal, timeout: 45_000 }]);
+});
+
 test('generated MP3 uses the normal local file flow and a timeout long enough for CPU speech', async () => {
     let call;
     const api = createAssetsApi({
