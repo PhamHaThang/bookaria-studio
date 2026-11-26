@@ -138,7 +138,7 @@ test.describe('Studio Admin: RBAC, Dashboard, Users, Moderation, Library, Catego
             .toBe(true);
     });
 
-    test('admin shared library & categories (cycle/non-empty guards)', async ({ page }) => {
+    test('admin category modals and shared library guards', async ({ page }) => {
         const mock = await installStudioMocks(page, {
             role: 'ADMIN',
             libraryAssetInUse: true,
@@ -151,10 +151,48 @@ test.describe('Studio Admin: RBAC, Dashboard, Users, Moderation, Library, Catego
 
         await page.getByRole('button', { name: /Tạo danh mục|Thêm danh mục/i }).click();
         const catModal = page.getByRole('dialog');
+        const createButton = catModal.getByRole('button', { name: 'Tạo danh mục' });
+        const requiredName = catModal.getByText('Tên danh mục không được để trống');
+        await catModal.getByRole('combobox', { name: 'Danh mục cha' }).focus();
+        await expect(requiredName).toBeHidden();
+        await createButton.click();
+        await expect(requiredName).toBeVisible();
         await catModal.locator('#create-category-name').fill('Sinh học Biển');
-        await catModal.getByRole('button', { name: 'Tạo danh mục' }).click();
+        await expect(requiredName).toBeHidden();
+        await createButton.click();
         await expect(catModal).toBeHidden();
         await expect(page.getByRole('link', { name: 'Sinh học Biển', exact: true })).toBeVisible();
+
+        const root = page.getByRole('listitem').filter({
+            has: page.getByRole('link', { name: 'Khoa học & Vũ trụ', exact: true }),
+        });
+        await expect(root.getByRole('button', { name: /Xóa danh mục/ })).toBeDisabled();
+
+        const search = page.getByRole('searchbox', { name: 'Tìm kiếm danh mục' });
+        await search.fill('Sinh học');
+        await page.getByRole('link', { name: 'Chỉnh sửa', exact: true }).click();
+        const edit = page.getByRole('dialog', { name: 'Chỉnh sửa danh mục' });
+        await expect(edit.getByLabel('Tên danh mục')).toHaveValue('Sinh học Biển');
+        await edit.getByLabel('Tên danh mục').fill('Sinh học đại dương');
+        await edit.getByLabel('Thứ tự hiển thị').fill('3');
+        await edit.getByRole('button', { name: 'Lưu thay đổi' }).click();
+        await expect(edit).toBeHidden();
+        await expect(search).toHaveValue('Sinh học');
+        await expect(page.getByRole('link', { name: 'Sinh học đại dương' })).toBeVisible();
+        expect(
+            mock.state.categories.find((category) => category.name === 'Sinh học đại dương'),
+        ).toMatchObject({ sortOrder: 3 });
+
+        const remove = page.getByRole('button', { name: 'Xóa danh mục Sinh học đại dương' });
+        const confirm = page.getByRole('alertdialog', { name: 'Xóa danh mục?' });
+        await remove.click();
+        await confirm.getByRole('button', { name: 'Hủy', exact: true }).click();
+        await expect(remove).toBeVisible();
+        expect(mock.state.calls.some((call) => call.method === 'DELETE')).toBe(false);
+        await remove.click();
+        await confirm.getByRole('button', { name: 'Xóa danh mục', exact: true }).click();
+        await expect(confirm).toBeHidden();
+        await expect(remove).toHaveCount(0);
 
         // Shared library list & 409 ASSET_IN_USE guard on delete
         await page.goto('/admin/library');

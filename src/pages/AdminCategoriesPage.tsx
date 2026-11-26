@@ -1,35 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Folder, FolderTree, Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { Folder, FolderTree, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { CategoryCreateModal } from '../features/admin';
-import { excludedParents } from '../features/admin/library-model';
-import {
-    CategorySelect,
-    LibraryConfirm,
-    libraryApi,
-    useLibraryAction,
-    WriteFeedback,
-} from '../features/admin/library-ui';
+import { CategoryEditDialog } from '../features/admin/components/CategoryEditDialog';
+import { libraryApi, useLibraryAction, WriteFeedback } from '../features/admin/library-ui';
 import { AdminReload } from '../features/admin/ui';
 import { assetKeys, assetsApi } from '../features/assets';
 import { useAuth } from '../features/auth';
 import { errorMessage } from '../shared/api/errors';
-import {
-    type CreateCategoryBody,
-    CreateCategoryBodySchema,
-    type UpdateCategoryBody,
-    UpdateCategoryBodySchema,
-} from '../shared/contracts/api/admin.schema';
 import type { AssetCategory } from '../shared/contracts/dto.schema';
 import { Badge } from '../shared/ui/Badge';
 import { Button } from '../shared/ui/Button';
+import { ConfirmationDialog } from '../shared/ui/ConfirmationDialog';
 import { Feedback } from '../shared/ui/Feedback';
 import { FormSelect } from '../shared/ui/FormSelect';
 import { LoadingState } from '../shared/ui/LoadingState';
+import { AlertDialogFooter } from '../shared/ui/primitives/alert-dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '../shared/ui/primitives/field';
-import { Input } from '../shared/ui/primitives/input';
 import { SearchInput } from '../shared/ui/SearchInput';
 
 function useCategories() {
@@ -44,13 +34,14 @@ interface AdminCategoryItemProps {
     category: AssetCategory;
     categories: AssetCategory[];
     childCount: number;
+    onDelete: () => void;
 }
 
 /**
  * Thẻ hiển thị một danh mục tài nguyên.
  * Đồng bộ phong cách thẻ dữ liệu với trang /admin/users, /admin/books và /admin/library.
  */
-function AdminCategoryItem({ category, categories, childCount }: AdminCategoryItemProps) {
+function AdminCategoryItem({ category, categories, childCount, onDelete }: AdminCategoryItemProps) {
     const isRoot = !category.parentId;
     const parentCategory = category.parentId
         ? categories.find((c) => c.id === category.parentId)
@@ -128,6 +119,19 @@ function AdminCategoryItem({ category, categories, childCount }: AdminCategoryIt
                             Chỉnh sửa
                         </Link>
                     </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1.5 px-3 text-destructive text-xs hover:text-destructive"
+                        aria-label={`Xóa danh mục ${category.name}`}
+                        title={childCount ? 'Hãy chuyển hoặc xóa danh mục con trước' : undefined}
+                        disabled={childCount > 0}
+                        onClick={onDelete}
+                    >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        Xóa
+                    </Button>
                 </div>
             </div>
         </li>
@@ -136,11 +140,18 @@ function AdminCategoryItem({ category, categories, childCount }: AdminCategoryIt
 
 export function AdminCategoriesPage() {
     const list = useCategories();
+    const { categoryId } = useParams();
+    const navigate = useNavigate();
+    const action = useLibraryAction();
     const [searchQuery, setSearchQuery] = useState('');
     const [levelFilter, setLevelFilter] = useState<'all' | 'root' | 'child'>('all');
-    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [categoryToDelete, setCategoryToDelete] = useState<AssetCategory | null>(null);
 
     const categories = list.data || [];
+    const isCreateOpen = categoryId === 'new';
+    const isEditOpen = Boolean(categoryId && !isCreateOpen && list.isSuccess);
+    const current = categories.find((category) => category.id === categoryId);
+    const closeEditor = () => navigate('/admin/categories', { replace: true });
 
     // Tính số danh mục con cho từng danh mục
     const childCountMap = useMemo(() => {
@@ -179,7 +190,11 @@ export function AdminCategoriesPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button type="button" onClick={() => setIsCreateOpen(true)} className="gap-2">
+                    <Button
+                        type="button"
+                        onClick={() => navigate('/admin/categories/new')}
+                        className="gap-2"
+                    >
                         <Plus className="h-4 w-4" data-icon="inline-start" />
                         Tạo danh mục
                     </Button>
@@ -247,6 +262,7 @@ export function AdminCategoriesPage() {
             {/* Trạng thái tải & Báo lỗi */}
             {list.isPending && <LoadingState layout="admin-rows">Đang tải danh mục…</LoadingState>}
             {list.isError && <Feedback error={errorMessage(list.error)} errorMode="toast" />}
+            {!isEditOpen && !categoryToDelete && <WriteFeedback action={action} />}
 
             {/* Danh sách danh mục */}
             {list.isSuccess && (
@@ -269,6 +285,7 @@ export function AdminCategoriesPage() {
                                     category={item}
                                     categories={categories}
                                     childCount={childCountMap.get(item.id) || 0}
+                                    onDelete={() => setCategoryToDelete(item)}
                                 />
                             ))}
                         </ul>
@@ -289,7 +306,7 @@ export function AdminCategoriesPage() {
                                 <div className="mt-4 flex justify-center">
                                     <Button
                                         type="button"
-                                        onClick={() => setIsCreateOpen(true)}
+                                        onClick={() => navigate('/admin/categories/new')}
                                         className="gap-2"
                                     >
                                         <Plus className="h-4 w-4" />
@@ -302,269 +319,64 @@ export function AdminCategoriesPage() {
                 </div>
             )}
 
-            {/* Modal tạo danh mục mới */}
-            <CategoryCreateModal
-                isOpen={isCreateOpen}
-                onClose={() => setIsCreateOpen(false)}
-                categories={categories}
-                onSuccess={() => void list.refetch()}
-            />
-        </div>
-    );
-}
-
-function CategoryForm({
-    categories,
-    current,
-}: {
-    categories: AssetCategory[];
-    current?: AssetCategory;
-}) {
-    const action = useLibraryAction();
-    const navigate = useNavigate();
-    const [draft, setDraft] = useState<CreateCategoryBody | UpdateCategoryBody | 'delete' | null>(
-        null,
-    );
-    const [error, setError] = useState<string | null>(null);
-    const excluded = current ? excludedParents(categories, current.id) : new Set<string>();
-
-    return (
-        <div className="space-y-6">
-            {/* Tiêu đề & mô tả */}
-            <div className="flex flex-col gap-1">
-                <h1 className="font-semibold text-2xl text-foreground tracking-tight">
-                    {current ? `Sửa danh mục: ${current.name}` : 'Tạo danh mục mới'}
-                </h1>
-                <p className="text-muted-foreground text-sm">
-                    {current
-                        ? 'Cập nhật tên, danh mục cha và thứ tự hiển thị của danh mục này.'
-                        : 'Thiết lập danh mục mới để phân loại và quản lý tài nguyên trong thư viện.'}
-                </p>
-            </div>
-
-            <WriteFeedback action={action} error={error} />
-
-            {/* Form chỉnh sửa / tạo */}
-            <form
-                className="space-y-5 rounded-[var(--radius-lg)] border border-border bg-surface p-5 sm:p-6"
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    const data = new FormData(event.currentTarget);
-                    const name = String(data.get('name') || '').trim();
-                    const parentId = String(data.get('parentId') || '') || null;
-                    const sortOrder = Number(data.get('sortOrder'));
-
-                    const parsed = current
-                        ? UpdateCategoryBodySchema.safeParse({
-                              ...(name !== current.name ? { name } : {}),
-                              ...(parentId !== current.parentId ? { parentId } : {}),
-                              ...(sortOrder !== current.sortOrder ? { sortOrder } : {}),
-                          })
-                        : CreateCategoryBodySchema.safeParse({ name, parentId });
-
-                    if (!parsed.success) {
-                        setError(errorMessage(parsed.error));
-                        return;
-                    }
-                    setError(null);
-                    setDraft(parsed.data);
-                }}
-            >
-                <h2 className="font-semibold text-base text-foreground">Thông tin danh mục</h2>
-
-                <FieldGroup className="gap-4">
-                    <fieldset disabled={action.busy || action.uncertain} className="space-y-4">
-                        {/* 1. Tên danh mục */}
-                        <Field>
-                            <FieldLabel htmlFor="category-name" className="font-medium text-xs">
-                                Tên danh mục <span className="text-destructive">*</span>
-                            </FieldLabel>
-                            <Input
-                                name="name"
-                                id="category-name"
-                                required
-                                maxLength={100}
-                                defaultValue={current?.name || ''}
-                                placeholder="Ví dụ: Mô hình 3D, Âm thanh thiên nhiên..."
-                                className="mt-1 h-9 text-xs placeholder:text-xs"
-                            />
-                        </Field>
-
-                        {/* 2. Danh mục cha */}
-                        <CategorySelect
-                            name="parentId"
-                            label="Danh mục cha (không bắt buộc)"
-                            categories={categories}
-                            value={current?.parentId || ''}
-                            exclude={excluded}
-                            emptyLabel="Không có (danh mục gốc)"
-                        />
-
-                        {/* 3. Thứ tự hiển thị */}
-                        {current && (
-                            <Field>
-                                <FieldLabel
-                                    htmlFor="category-order"
-                                    className="font-medium text-xs"
-                                >
-                                    Thứ tự hiển thị
-                                </FieldLabel>
-                                <Input
-                                    name="sortOrder"
-                                    id="category-order"
-                                    required
-                                    type="number"
-                                    step={1}
-                                    min={-32768}
-                                    max={32767}
-                                    defaultValue={current.sortOrder}
-                                    className="mt-1 h-9 text-xs"
-                                />
-                                <span className="mt-1 block text-[11px] text-muted-foreground">
-                                    Số nhỏ hơn sẽ hiển thị trước trong danh sách chọn.
-                                </span>
-                            </Field>
-                        )}
-
-                        <div className="pt-2">
-                            <Button type="submit" className="gap-2">
-                                <Save className="h-4 w-4" data-icon="inline-start" />
-                                {current ? 'Xem lại và lưu danh mục' : 'Xem lại và tạo danh mục'}
-                            </Button>
-                        </div>
-                    </fieldset>
-                </FieldGroup>
-            </form>
-
-            {/* Khối nguy hiểm: Xóa danh mục */}
-            {current && (
-                <section className="space-y-3 rounded-[var(--radius-lg)] border border-destructive/30 bg-destructive/5 p-5 sm:p-6">
-                    <h2 className="font-semibold text-base text-destructive">Xóa danh mục</h2>
-                    <p className="max-w-2xl text-muted-foreground text-xs leading-relaxed">
-                        Chỉ xóa khi không còn danh mục con hoặc tài nguyên gắn với danh mục này.
-                        Chuyển các mục sang danh mục khác trước khi thực hiện xóa.
-                    </p>
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        className="h-8 gap-1.5 px-3 font-medium text-xs"
-                        type="button"
-                        disabled={action.busy || action.uncertain || excluded.size > 1}
-                        onClick={() => setDraft('delete')}
-                    >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Xóa danh mục
-                    </Button>
-                    {excluded.size > 1 && (
-                        <p className="text-[11px] text-destructive">
-                            Không thể xóa danh mục đang có danh mục con trực thuộc.
-                        </p>
-                    )}
-                </section>
+            {isCreateOpen && (
+                <CategoryCreateModal isOpen onClose={closeEditor} categories={categories} />
             )}
-
-            {/* Hộp thoại xác nhận */}
-            {draft && (
-                <LibraryConfirm
-                    title={
-                        draft === 'delete'
-                            ? 'Xóa danh mục?'
-                            : current
-                              ? 'Lưu thay đổi danh mục?'
-                              : 'Tạo danh mục?'
+            {isEditOpen && (
+                <CategoryEditDialog
+                    key={categoryId}
+                    current={current}
+                    categories={categories}
+                    action={action}
+                    onClose={closeEditor}
+                />
+            )}
+            {categoryToDelete && (
+                <ConfirmationDialog
+                    title="Xóa danh mục?"
+                    description={
+                        <p className="wrap-anywhere m-0">
+                            Danh mục <strong>{categoryToDelete.name}</strong> sẽ bị xóa khỏi thư
+                            viện. Danh mục phải trống trước khi xóa.
+                        </p>
                     }
                     busy={action.busy}
-                    blocked={action.uncertain}
-                    error={action.error}
-                    onClose={() => setDraft(null)}
-                    onConfirm={() =>
-                        void action.run(
-                            async () => {
-                                if (draft === 'delete') {
-                                    if (current) await libraryApi.removeCategory(current.id);
-                                    return;
-                                }
-                                if (current) await libraryApi.updateCategory(current.id, draft);
-                                else await libraryApi.createCategory(draft as CreateCategoryBody);
-                            },
-                            () => navigate('/admin/categories', { replace: true }),
-                        )
-                    }
+                    onClose={() => setCategoryToDelete(null)}
                 >
-                    <p>{draft === 'delete' ? current?.name : draft.name || current?.name}</p>
-                    {draft !== 'delete' && (
-                        <p>
-                            Danh mục cha:{' '}
-                            {categories.find(
-                                (item) =>
-                                    item.id ===
-                                    ((draft as UpdateCategoryBody).parentId === undefined
-                                        ? current?.parentId
-                                        : (draft as UpdateCategoryBody).parentId),
-                            )?.name || 'Không có'}
-                        </p>
-                    )}
-                    {draft !== 'delete' && current && (
-                        <p>
-                            Thứ tự hiển thị:{' '}
-                            {(draft as UpdateCategoryBody).sortOrder ?? current.sortOrder}
-                        </p>
-                    )}
-                    <p>
-                        {draft === 'delete'
-                            ? 'Danh mục này sẽ bị xóa khỏi cấu trúc dùng chung.'
-                            : 'Cập nhật này áp dụng cho các màn chọn danh mục khi tải lại.'}
-                    </p>
-                </LibraryConfirm>
+                    <WriteFeedback action={action} />
+                    <AlertDialogFooter className="mt-0 border-0 pt-0">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={action.busy}
+                            onClick={() => setCategoryToDelete(null)}
+                            data-initial-focus
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            disabled={
+                                action.busy ||
+                                action.uncertain ||
+                                childCountMap.has(categoryToDelete.id)
+                            }
+                            onClick={() =>
+                                void action.run(
+                                    () => libraryApi.removeCategory(categoryToDelete.id),
+                                    () => {
+                                        setCategoryToDelete(null);
+                                        toast.success('Đã xóa danh mục.');
+                                    },
+                                )
+                            }
+                        >
+                            {action.busy ? 'Đang xóa…' : 'Xóa danh mục'}
+                        </Button>
+                    </AlertDialogFooter>
+                </ConfirmationDialog>
             )}
-        </div>
-    );
-}
-
-export function AdminCategoryEditPage() {
-    const { categoryId } = useParams();
-    const list = useCategories();
-    const current = list.data?.find((item) => item.id === categoryId);
-
-    return (
-        <div className="mx-auto max-w-4xl space-y-6 p-6">
-            {/* Thanh điều hướng quay lại */}
-            <div className="flex items-center gap-2">
-                <Link
-                    to="/admin/categories"
-                    className="inline-flex items-center gap-1.5 text-muted-foreground text-xs transition-colors hover:text-foreground"
-                >
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                    <span>Về danh mục tài nguyên</span>
-                </Link>
-            </div>
-
-            {list.isPending && <LoadingState layout="detail">Đang tải danh mục…</LoadingState>}
-
-            {list.isError && (
-                <div className="space-y-3">
-                    <Feedback error={errorMessage(list.error)} errorMode="toast" />
-                    <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />
-                </div>
-            )}
-
-            {list.isSuccess &&
-                (categoryId && !current ? (
-                    <div className="rounded-[var(--radius-lg)] border border-destructive/20 bg-destructive/10 p-5">
-                        <h1 className="font-semibold text-base text-destructive">
-                            Không tìm thấy danh mục
-                        </h1>
-                        <p className="mt-1 text-muted-foreground text-xs">
-                            Danh mục này có thể đã bị xóa hoặc đường dẫn không chính xác.
-                        </p>
-                    </div>
-                ) : (
-                    <CategoryForm
-                        key={current?.id || 'new'}
-                        current={current}
-                        categories={list.data}
-                    />
-                ))}
         </div>
     );
 }

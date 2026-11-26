@@ -85,11 +85,6 @@ const AdminCategoriesPage = lazy(() =>
         default: module.AdminCategoriesPage,
     })),
 );
-const AdminCategoryEditPage = lazy(() =>
-    import('../pages/AdminCategoriesPage').then((module) => ({
-        default: module.AdminCategoryEditPage,
-    })),
-);
 const AdminMarkersPage = lazy(() =>
     import('../pages/AdminMarkersPage').then((module) => ({ default: module.AdminMarkersPage })),
 );
@@ -290,11 +285,9 @@ const router = createBrowserRouter(
                             <Route path="library" element={<AdminLibraryPage />} />
                             <Route path="library/new" element={<AdminLibraryNewPage />} />
                             <Route path="library/:assetId" element={<AdminLibraryDetailPage />} />
-                            <Route path="categories" element={<AdminCategoriesPage />} />
-                            <Route path="categories/new" element={<AdminCategoryEditPage />} />
                             <Route
-                                path="categories/:categoryId"
-                                element={<AdminCategoryEditPage />}
+                                path="categories/:categoryId?"
+                                element={<AdminCategoriesPage />}
                             />
                         </Route>
                         <Route path="markers" element={<AdminMarkersPage />} />

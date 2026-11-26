@@ -122,6 +122,7 @@ export function CategorySelect({
     label = 'Danh mục',
     name = 'categoryId',
     emptyLabel = 'Không có',
+    labelClassName,
 }: {
     categories: AssetCategory[];
     onValueChange?: (value: string) => void;
@@ -130,10 +131,11 @@ export function CategorySelect({
     label?: string;
     name?: string;
     emptyLabel?: string;
+    labelClassName?: string;
 }) {
     return (
         <Field orientation="contents">
-            <FieldLabel htmlFor={`library-${name}`}>
+            <FieldLabel htmlFor={`library-${name}`} className={labelClassName}>
                 {label}
                 <FormSelect
                     id={`library-${name}`}

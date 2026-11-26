@@ -1,5 +1,4 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { FolderPlus, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { assetKeys } from '@/features/assets';
@@ -57,11 +56,6 @@ export function CategoryCreateModal({
             const err = validateName(val);
             setFieldErrors((p) => ({ ...p, name: err }));
         }
-    };
-
-    const handleNameBlur = () => {
-        const err = validateName(name);
-        setFieldErrors((p) => ({ ...p, name: err }));
     };
 
     const handleClose = () => {
@@ -134,87 +128,68 @@ export function CategoryCreateModal({
                 }
             }}
         >
-            <DialogContent className="max-h-[90dvh] max-w-[480px] space-y-4 overflow-y-auto p-5 sm:p-6">
-                <DialogHeader className="gap-1 pb-0.5">
-                    <DialogTitle className="m-0 flex items-center gap-2 font-semibold text-base text-foreground leading-tight sm:text-lg">
-                        <FolderPlus className="h-4.5 w-4.5 shrink-0 text-primary" />
-                        <span>Tạo danh mục mới</span>
-                    </DialogTitle>
-                    <DialogDescription className="text-muted-foreground text-xs leading-relaxed">
-                        Thiết lập danh mục để phân loại và quản lý tài nguyên trong thư viện dùng
-                        chung.
+            <DialogContent
+                showCloseButton={!createMutation.isPending}
+                className="max-h-[90dvh] gap-4 overflow-y-auto p-5 sm:p-6"
+            >
+                <DialogHeader>
+                    <DialogTitle className="pr-8">Tạo danh mục mới</DialogTitle>
+                    <DialogDescription>
+                        Tạo danh mục để phân loại tài nguyên dùng chung.
                     </DialogDescription>
                 </DialogHeader>
 
                 <Feedback error={apiError} errorMode="toast" />
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <FieldGroup className="gap-3.5">
-                        {/* 1. Tên danh mục */}
+                <form onSubmit={handleSubmit}>
+                    <FieldGroup className="gap-4">
                         <Field>
-                            <FieldLabel
-                                htmlFor="create-category-name"
-                                className="font-medium text-xs"
-                            >
-                                Tên danh mục <span className="text-destructive">*</span>
-                            </FieldLabel>
+                            <FieldLabel htmlFor="create-category-name">Tên danh mục</FieldLabel>
                             <Input
                                 id="create-category-name"
                                 value={name}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                                     handleNameChange(e.target.value)
                                 }
-                                onBlur={handleNameBlur}
+                                aria-invalid={Boolean(fieldErrors.name)}
+                                aria-describedby={
+                                    fieldErrors.name ? 'create-category-name-error' : undefined
+                                }
                                 maxLength={100}
                                 disabled={createMutation.isPending}
                                 placeholder="Ví dụ: Mô hình 3D, Âm thanh thiên nhiên..."
-                                className="mt-1 h-8 text-xs placeholder:text-xs"
                                 autoFocus
                             />
                             {fieldErrors.name && (
-                                <FieldError className="m-0 mt-1 text-[11px]">
+                                <FieldError id="create-category-name-error">
                                     {fieldErrors.name}
                                 </FieldError>
                             )}
                         </Field>
 
-                        {/* 2. Danh mục cha */}
-                        <Field orientation="contents">
-                            <FieldLabel
-                                htmlFor="create-category-parent"
-                                className="font-medium text-xs"
-                            >
-                                Danh mục cha (không bắt buộc)
-                                <FormSelect
-                                    id="create-category-parent"
-                                    value={parentId}
-                                    onValueChange={(val) => setParentId(val)}
-                                    options={categoryOptions}
-                                    disabled={createMutation.isPending}
-                                />
-                            </FieldLabel>
+                        <Field>
+                            <FieldLabel htmlFor="create-category-parent">Danh mục cha</FieldLabel>
+                            <FormSelect
+                                id="create-category-parent"
+                                value={parentId}
+                                onValueChange={setParentId}
+                                options={categoryOptions}
+                                disabled={createMutation.isPending}
+                            />
                         </Field>
                     </FieldGroup>
 
-                    <DialogFooter className="mt-2 flex-row justify-end gap-2 border-border/60 border-t pt-2">
+                    <DialogFooter className="mt-5 border-0 pt-0">
                         <Button
                             type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="h-8 px-3 text-xs"
+                            variant="outline"
                             onClick={handleClose}
                             disabled={createMutation.isPending}
                         >
-                            Hủy bỏ
+                            Hủy
                         </Button>
-                        <Button
-                            type="submit"
-                            size="sm"
-                            className="h-8 gap-1.5 px-3.5 font-medium text-xs"
-                            disabled={createMutation.isPending}
-                        >
-                            <Plus className="h-3.5 w-3.5" />
-                            <span>{createMutation.isPending ? 'Đang tạo...' : 'Tạo danh mục'}</span>
+                        <Button type="submit" disabled={createMutation.isPending}>
+                            {createMutation.isPending ? 'Đang tạo…' : 'Tạo danh mục'}
                         </Button>
                     </DialogFooter>
                 </form>
