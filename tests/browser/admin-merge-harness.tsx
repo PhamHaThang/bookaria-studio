@@ -238,7 +238,10 @@ const router = createMemoryRouter(
     ],
     { initialEntries: [params.get('path') || '/admin/users'] },
 );
-createRoot(document.getElementById('root')!).render(
+const root = document.getElementById('root');
+if (!root) throw new Error('Missing admin harness root');
+
+createRoot(root).render(
     <AppProviders>
         <RouterProvider router={router} />
     </AppProviders>,

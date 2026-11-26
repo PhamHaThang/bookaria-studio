@@ -20,7 +20,10 @@ const configuredR2Origin = (() => {
         return null;
     }
 })();
-const allowedOrigins = new Set([location.origin, ...(configuredR2Origin ? [configuredR2Origin] : [])]);
+const allowedOrigins = new Set([
+    location.origin,
+    ...(configuredR2Origin ? [configuredR2Origin] : []),
+]);
 let started = false;
 const compact = matchMedia('(max-width: 640px)');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;

@@ -61,7 +61,8 @@ test('SEC-STU-04: uploadFile enforces *.r2.cloudflarestorage.com HTTPS URL and s
 
 test('SEC-VW-01 (Studio): Studio src/ has no raw HTML injection sinks (innerHTML / dangerouslySetInnerHTML)', () => {
     const files = collectSourceFiles(path.resolve(import.meta.dirname, '../src'));
-    const sinkPattern = /\b(innerHTML|outerHTML|insertAdjacentHTML|dangerouslySetInnerHTML)\b|document\.write\s*\(/;
+    const sinkPattern =
+        /\b(innerHTML|outerHTML|insertAdjacentHTML|dangerouslySetInnerHTML)\b|document\.write\s*\(/;
     const hits = [];
     for (const file of files) {
         const text = fs.readFileSync(file, 'utf8');
