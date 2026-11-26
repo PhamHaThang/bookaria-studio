@@ -20,6 +20,7 @@ import {
     AssetSchema,
     BookariaMarkerSchema,
 } from '../../shared/contracts/dto.schema';
+import { MarkerAnalysisMetricsSchema } from '../../shared/contracts/marker-analysis.schema';
 
 export function createAdminLibraryApi(http: AxiosInstance) {
     const same = <T extends { id: string }>(value: T, id?: string): T => {
@@ -135,6 +136,17 @@ export function createAdminLibraryApi(http: AxiosInstance) {
             const res = await http.patch(
                 `/admin/bookaria-markers/${IdSchema.parse(id)}`,
                 UpdateBookariaMarkerBodySchema.parse(input),
+            );
+            expectStatus(res, 200);
+            return same(readData(res, BookariaMarkerSchema), id);
+        },
+        async saveMarkerAssessment(
+            id: string,
+            metrics: z.input<typeof MarkerAnalysisMetricsSchema>,
+        ) {
+            const res = await http.put(
+                `/admin/bookaria-markers/${IdSchema.parse(id)}/assessment`,
+                MarkerAnalysisMetricsSchema.parse(metrics),
             );
             expectStatus(res, 200);
             return same(readData(res, BookariaMarkerSchema), id);

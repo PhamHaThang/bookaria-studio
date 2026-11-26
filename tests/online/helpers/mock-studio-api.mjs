@@ -148,7 +148,7 @@ export function createStudioMockState(options = {}) {
             id: marker1Id,
             number: 1,
             imageUrl: `${CDN_ORIGIN}/markers/marker-1.png`,
-            markerScore: 5,
+            assessment: null,
             isActive: true,
             validatedAt: NOW,
         },
@@ -156,7 +156,7 @@ export function createStudioMockState(options = {}) {
             id: marker2Id,
             number: 2,
             imageUrl: `${CDN_ORIGIN}/markers/marker-2.png`,
-            markerScore: 4,
+            assessment: null,
             isActive: false,
             validatedAt: null,
         },
@@ -1091,13 +1091,24 @@ parent.postMessage({ type: 'ready', id }, location.origin);
                     id: nextUuid('ffffffff-ffff-4fff-8fff'),
                     number: state.markers.length + 1,
                     imageUrl: `${CDN_ORIGIN}/markers/marker-${state.markers.length + 1}.png`,
-                    markerScore: 4,
+                    assessment: null,
                     isActive: Boolean(bodyJson?.isActive),
                     validatedAt: NOW,
                 };
                 state.markers.push(marker);
                 addAudit('MANAGE_MARKER', 'MARKER', marker.id, bodyJson);
                 return reply(marker, 201);
+            }
+            if (
+                method === 'PUT' &&
+                path.endsWith('/assessment') &&
+                path.startsWith('/admin/bookaria-markers/')
+            ) {
+                const mid = path.split('/').at(-2);
+                const marker = state.markers.find((m) => m.id === mid);
+                if (!marker) return replyError('NOT_FOUND', 404, 'Không tìm thấy marker.');
+                marker.assessment = { ...bodyJson, assessedAt: NOW };
+                return reply(marker);
             }
             if (method === 'PATCH' && path.startsWith('/admin/bookaria-markers/')) {
                 const mid = path.split('/').at(-1);

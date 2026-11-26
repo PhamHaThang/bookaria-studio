@@ -403,18 +403,60 @@ test.describe('Studio Admin: RBAC, Dashboard, Users, Moderation, Library, Catego
 
         await page.goto('/admin/markers');
         await expect(
-            page.getByRole('heading', { name: 'Bộ marker Bookaria', exact: true }),
+            page.getByRole('heading', { name: 'Quản lý marker', exact: true }),
         ).toBeVisible();
         await expect(page.getByText('Marker số #1')).toBeVisible();
 
-        // 1. Toggle marker #2 active state
-        await page.getByRole('button', { name: 'Bật marker' }).click();
-        const toggleDialog = page.getByRole('dialog');
-        await toggleDialog.getByRole('button', { name: /Bật marker|Xác nhận/i }).click();
+        // 1. Open marker details and enable it from the confirmation dialog.
+        const markerName = page.getByRole('button', { name: 'Marker số #2', exact: true });
+        await markerName.click();
+        const detail = page.getByRole('dialog', { name: 'Chi tiết marker số #2', exact: true });
+        await expect(detail.getByRole('link', { name: 'Ảnh gốc' })).toBeVisible();
+        await expect(detail.getByText('Tạm dừng cấp phát mới')).toBeVisible();
+        await detail.getByRole('button', { name: 'Đánh giá ảnh', exact: true }).click();
+        const evaluation = page.getByRole('dialog', { name: 'Đánh giá marker số #2', exact: true });
+        await expect(evaluation.locator('input[type="file"]')).toHaveCount(0);
+        await expect(
+            evaluation.getByRole('img', { name: 'Phân bố điểm: 2%', exact: true }),
+        ).toBeVisible();
+        await evaluation.getByRole('button', { name: 'Lưu đánh giá', exact: true }).click();
+        await expect(
+            detail.getByRole('heading', { name: 'Đánh giá gần nhất', exact: true }),
+        ).toBeVisible();
+        await expect(
+            detail.getByRole('img', { name: 'Phân bố điểm: 2%', exact: true }),
+        ).toBeVisible();
+        const writes = () =>
+            mock.state.calls.filter(
+                ({ method, path }) => method === 'PUT' && path.endsWith('/assessment'),
+            );
+        expect(writes()).toHaveLength(1);
+        expect(writes()[0].body).toMatchObject({ distribution: 0.02, uniqueness: 1, dimension: 1 });
+
+        await detail.getByRole('button', { name: 'Đánh giá lại', exact: true }).click();
+        const reassessment = page.getByRole('dialog', {
+            name: 'Đánh giá lại marker số #2',
+            exact: true,
+        });
+        await expect(
+            reassessment.getByRole('button', { name: 'Lưu đánh giá', exact: true }),
+        ).toBeVisible();
+        await reassessment.getByRole('button', { name: 'Đóng', exact: true }).last().click();
+        await expect(
+            detail.getByRole('heading', { name: 'Đánh giá gần nhất', exact: true }),
+        ).toBeVisible();
+        expect(writes()).toHaveLength(1);
+
+        await detail.getByRole('button', { name: 'Bật marker', exact: true }).click();
+        const toggleDialog = page.getByRole('dialog', { name: 'Bật marker số #2?', exact: true });
+        await toggleDialog.getByRole('button', { name: 'Bật marker', exact: true }).click();
         await expect
             .poll(() =>
                 mock.state.calls.some(
-                    (c) => c.method === 'PATCH' && c.path.startsWith('/admin/bookaria-markers/'),
+                    (c) =>
+                        c.method === 'PATCH' &&
+                        c.path.startsWith('/admin/bookaria-markers/') &&
+                        c.body?.isActive === true,
                 ),
             )
             .toBe(true);
@@ -431,7 +473,7 @@ test.describe('Studio Admin: RBAC, Dashboard, Users, Moderation, Library, Catego
             buffer: TINY_PNG,
         });
         await expect(testDialog.getByText(/256 × 256 px|Ảnh phân tích/)).toBeVisible();
-        await testDialog.getByRole('button', { name: 'Đóng thử điểm marker' }).click();
+        await testDialog.locator('[data-slot="dialog-close"]').click();
 
         // 3. Register new marker via mocked marker-compiler + R2 upload + register endpoint
         await page.getByRole('button', { name: 'Đăng ký marker' }).click();

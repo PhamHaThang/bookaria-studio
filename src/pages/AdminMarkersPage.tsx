@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Calendar, ExternalLink, Eye, Info, Plus, Power, ScanLine } from 'lucide-react';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -77,10 +77,10 @@ function AdminMarkerItem({ marker, onViewDetail, onToggleStatus }: AdminMarkerIt
                             </Badge>
 
                             <Badge
-                                tone="neutral"
+                                tone={marker.assessment ? 'info' : 'neutral'}
                                 className="h-5 justify-center px-2 text-center font-normal text-[11px] leading-none"
                             >
-                                Chưa đánh giá
+                                {marker.assessment ? 'Đã đánh giá' : 'Chưa đánh giá'}
                             </Badge>
                         </div>
 
@@ -142,10 +142,11 @@ function AdminMarkerItem({ marker, onViewDetail, onToggleStatus }: AdminMarkerIt
 
 export function AdminMarkersPage() {
     const { user } = useAuth();
+    const cache = useQueryClient();
     const [params, setParams] = useSearchParams();
     const query = readAdminQueueSearch(params);
 
-    const [testingOpen, setTestingOpen] = useState(false);
+    const [testing, setTesting] = useState<{ marker?: BookariaMarker } | null>(null);
     const [detailMarker, setDetailMarker] = useState<BookariaMarker | null>(null);
     const [toggleMarker, setToggleMarker] = useState<BookariaMarker | null>(null);
 
@@ -157,7 +158,7 @@ export function AdminMarkersPage() {
     });
 
     const handleOpenRegister = () => {
-        setTestingOpen(false);
+        setTesting(null);
         setParams(
             (current) => {
                 const next = new URLSearchParams(current);
@@ -184,13 +185,13 @@ export function AdminMarkersPage() {
             {/* Header đồng bộ chuẩn thiết kế THEME.md */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="font-semibold text-2xl tracking-tight">Bộ marker Bookaria</h1>
+                    <h1 className="font-semibold text-2xl tracking-tight">Quản lý marker</h1>
                     <p className="mt-1 text-muted-foreground text-sm">
-                        Quản lý marker dùng để nhận diện trang sách thực tế và đồng bộ hiển thị AR.
+                        Đăng ký và quản lý ảnh nhận diện cho các trang sách AR.
                     </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                    <Button variant="outline" onClick={() => setTestingOpen(true)}>
+                    <Button variant="outline" onClick={() => setTesting({})}>
                         <ScanLine data-icon="inline-start" className="h-4 w-4" />
                         Phân tích ảnh
                     </Button>
@@ -286,7 +287,29 @@ export function AdminMarkersPage() {
             {isRegistering && <MarkerRegistrationDialog onClose={handleCloseRegister} />}
 
             {/* Modal thử điểm chất lượng marker */}
-            {testingOpen && <MarkerTestDialog onClose={() => setTestingOpen(false)} />}
+            {testing && (
+                <MarkerTestDialog
+                    marker={testing.marker}
+                    onClose={() => {
+                        setTesting(null);
+                        if (testing.marker) setDetailMarker(testing.marker);
+                    }}
+                    onSaved={(updated) => {
+                        cache.setQueryData<typeof list.data>(
+                            libraryKeys.markers(user?.id || '', query),
+                            (current) =>
+                                current && {
+                                    ...current,
+                                    data: current.data.map((marker) =>
+                                        marker.id === updated.id ? updated : marker,
+                                    ),
+                                },
+                        );
+                        setTesting(null);
+                        setDetailMarker(updated);
+                    }}
+                />
+            )}
 
             {/* Modal xem chi tiết marker */}
             <MarkerDetailModal
@@ -297,9 +320,9 @@ export function AdminMarkersPage() {
                     setDetailMarker(null);
                     setToggleMarker(m);
                 }}
-                onTestMarker={() => {
+                onTestMarker={(marker) => {
                     setDetailMarker(null);
-                    setTestingOpen(true);
+                    setTesting({ marker });
                 }}
             />
 

@@ -216,7 +216,7 @@ test('admin upload API validates request and response contracts and sends cancel
                               id,
                               number: 3,
                               imageUrl: 'https://example.com/marker.png',
-                              markerScore: null,
+                              assessment: null,
                               isActive: false,
                               validatedAt: null,
                           }

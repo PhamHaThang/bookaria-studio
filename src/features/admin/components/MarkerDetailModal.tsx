@@ -1,27 +1,13 @@
-import {
-    Calendar,
-    Check,
-    Copy,
-    ExternalLink,
-    Hash,
-    Info,
-    Power,
-    ScanLine,
-    Sparkles,
-} from 'lucide-react';
+import { Check, Copy, ExternalLink, Power, ScanLine } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import type { BookariaMarker } from '@/shared/contracts/dto.schema';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/shared/ui/primitives/dialog';
+import { DialogFooter } from '@/shared/ui/primitives/dialog';
+import { MarkerMetrics } from '../../pages/ui/MarkerMetrics';
 import { adminDate } from '../model';
+import { AdminDialog } from './AdminDialog';
 
 export interface MarkerDetailModalProps {
     marker: BookariaMarker | null;
@@ -48,171 +34,133 @@ export function MarkerDetailModal({
             setCopiedId(true);
             setTimeout(() => setCopiedId(false), 2000);
         } catch {
-            // fallback
+            toast.error('Không sao chép được ID marker.');
         }
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-h-[90dvh] max-w-lg space-y-4 overflow-y-auto p-5 sm:p-6">
-                <DialogHeader className="gap-1 pb-0.5">
-                    <DialogTitle className="m-0 flex items-center gap-2 font-semibold text-base text-foreground leading-tight sm:text-lg">
-                        <ScanLine className="h-5 w-5 shrink-0 text-primary" />
-                        <span>Chi tiết Marker số #{marker.number}</span>
-                    </DialogTitle>
-                    <DialogDescription className="text-muted-foreground text-xs leading-relaxed">
-                        Thông tin hình ảnh, đặc trưng nhận diện và trạng thái cấp phát của marker
-                        AR.
-                    </DialogDescription>
-                </DialogHeader>
-
-                {/* Khung xem trước hình ảnh marker */}
-                <div className="relative flex aspect-square max-h-[240px] w-full items-center justify-center overflow-hidden rounded-[var(--radius-lg)] border border-border bg-muted/20 p-4">
+        <AdminDialog
+            open={isOpen}
+            onClose={onClose}
+            title={`Chi tiết marker số #${marker.number}`}
+            description="Ảnh nhận diện, trạng thái cấp phát và thông tin xác thực."
+        >
+            <div className="-mx-1 grid min-h-0 gap-4 overflow-y-auto px-1 pb-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:items-start">
+                <div className="relative flex h-48 items-center justify-center rounded-lg border border-border bg-muted/40 p-3 sm:h-56">
                     <img
                         src={marker.imageUrl}
                         alt={`Marker số ${marker.number}`}
-                        className="h-full w-full object-contain drop-shadow-sm transition-transform hover:scale-105"
+                        className="h-full w-full object-contain"
                     />
-                    <a
-                        href={marker.imageUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-md border border-border/80 bg-surface/90 px-2 py-1 font-medium text-foreground text-xs shadow-xs backdrop-blur-xs transition hover:bg-surface"
-                        title="Mở ảnh gốc trong tab mới"
+                    <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="absolute top-2 right-2 shadow-sm [--action-outline-hover:var(--bg-hover)] [--action-outline:var(--bg-surface)]"
                     >
-                        <span>Ảnh gốc</span>
-                        <ExternalLink className="h-3 w-3" />
-                    </a>
+                        <a href={marker.imageUrl} target="_blank" rel="noopener noreferrer">
+                            Ảnh gốc
+                            <ExternalLink data-icon="inline-end" />
+                        </a>
+                    </Button>
                 </div>
-
-                {/* Huy hiệu trạng thái & Điểm số */}
-                <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone={marker.isActive ? 'success' : 'neutral'} className="px-2.5 py-0.5">
-                        {marker.isActive ? 'Đang bật' : 'Đã tắt'}
-                    </Badge>
-                    <Badge tone="neutral" className="px-2.5 py-0.5">
-                        <Sparkles className="mr-1 h-3 w-3" />
-                        Chưa đánh giá
-                    </Badge>
-                </div>
-
-                {/* Đánh giá chất lượng nhận diện */}
-                <div className="rounded-[var(--radius-md)] border border-border/70 bg-surface/60 p-3 text-xs">
-                    <p className="font-medium text-foreground">Đánh giá chất lượng nhận diện AR</p>
-                    <p className="mt-1 text-muted-foreground leading-relaxed">
-                        Chưa có kết quả phân tích được lưu. Dùng công cụ phân tích ảnh để xem phân
-                        bố điểm, độ độc đáo và kích thước ảnh.
-                    </p>
-                </div>
-
-                {/* Danh sách thông số kỹ thuật */}
-                <div className="space-y-2.5 rounded-[var(--radius-md)] border border-border bg-muted/20 p-3.5 text-xs">
-                    <div className="flex items-center justify-between gap-2 border-border/60 border-b pb-2">
-                        <span className="flex items-center gap-1.5 text-muted-foreground">
-                            <Hash className="h-3.5 w-3.5" />
-                            Số thứ tự marker
-                        </span>
-                        <span className="font-semibold text-foreground">#{marker.number}</span>
+                <div className="flex min-w-0 flex-col gap-4">
+                    <div className="flex flex-wrap gap-2">
+                        <Badge tone={marker.isActive ? 'success' : 'neutral'}>
+                            {marker.isActive ? 'Đang bật' : 'Đã tắt'}
+                        </Badge>
+                        <Badge tone={marker.assessment ? 'info' : 'neutral'}>
+                            {marker.assessment ? 'Đã đánh giá' : 'Chưa đánh giá'}
+                        </Badge>
                     </div>
-
-                    <div className="flex items-center justify-between gap-2 border-border/60 border-b pb-2">
-                        <span className="flex items-center gap-1.5 text-muted-foreground">
-                            <Calendar className="h-3.5 w-3.5" />
-                            Ghi nhận xác thực
-                        </span>
-                        <span className="font-medium text-foreground">
-                            {marker.validatedAt
-                                ? adminDate(marker.validatedAt)
-                                : 'Chưa ghi nhận xác thực'}
-                        </span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 border-border/60 border-b pb-2">
-                        <span className="flex items-center gap-1.5 text-muted-foreground">
-                            <Info className="h-3.5 w-3.5" />
-                            Quy tắc cấp phát
-                        </span>
-                        <span
-                            className={
-                                marker.isActive
-                                    ? 'font-medium text-success-foreground'
-                                    : 'font-medium text-muted-foreground'
-                            }
-                        >
-                            {marker.isActive
-                                ? 'Sẵn sàng cấp cho trang mới'
-                                : 'Tạm dừng cấp phát mới'}
-                        </span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 pt-0.5">
-                        <span className="text-muted-foreground">Mã định danh (ID):</span>
-                        <div className="flex items-center gap-1.5">
-                            <code className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] text-foreground">
-                                {marker.id}
-                            </code>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleCopyId}
-                                className="h-6 w-6 p-0"
-                                title="Sao chép ID"
-                            >
-                                {copiedId ? (
-                                    <Check className="h-3.5 w-3.5 text-success" />
-                                ) : (
-                                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                                )}
-                            </Button>
+                    <dl className="m-0 grid gap-3 rounded-lg bg-muted/40 p-3 text-sm">
+                        <div className="grid gap-1">
+                            <dt className="text-muted-foreground text-xs">Xác thực</dt>
+                            <dd className="m-0 font-medium">
+                                {marker.validatedAt
+                                    ? adminDate(marker.validatedAt)
+                                    : 'Chưa xác thực'}
+                            </dd>
                         </div>
-                    </div>
+                        <div className="grid gap-1">
+                            <dt className="text-muted-foreground text-xs">Cấp phát</dt>
+                            <dd className="m-0 font-medium">
+                                {marker.isActive
+                                    ? 'Sẵn sàng cấp cho trang mới'
+                                    : 'Tạm dừng cấp phát mới'}
+                            </dd>
+                        </div>
+                        <div className="grid gap-1">
+                            <dt className="text-muted-foreground text-xs">ID marker</dt>
+                            <dd className="m-0 flex min-w-0 items-center gap-1">
+                                <code className="wrap-anywhere min-w-0 flex-1 text-xs">
+                                    {marker.id}
+                                </code>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    onClick={handleCopyId}
+                                    aria-label={copiedId ? 'Đã sao chép ID' : 'Sao chép ID'}
+                                    title="Sao chép ID"
+                                >
+                                    {copiedId ? (
+                                        <Check className="text-success-foreground" />
+                                    ) : (
+                                        <Copy />
+                                    )}
+                                </Button>
+                            </dd>
+                        </div>
+                    </dl>
                 </div>
+                {marker.assessment && (
+                    <section className="grid gap-3 rounded-lg border border-border p-3 sm:col-span-2">
+                        <div className="flex flex-wrap items-center justify-between gap-1">
+                            <h3 className="m-0 font-semibold text-sm">Đánh giá gần nhất</h3>
+                            <time
+                                dateTime={marker.assessment.assessedAt}
+                                className="text-muted-foreground text-xs"
+                            >
+                                {adminDate(marker.assessment.assessedAt)}
+                            </time>
+                        </div>
+                        <MarkerMetrics analysis={marker.assessment} />
+                    </section>
+                )}
+            </div>
 
-                <DialogFooter className="mt-2 flex flex-wrap items-center justify-between gap-2 border-border/60 border-t pt-3">
-                    <div className="flex items-center gap-2">
-                        {onToggleStatus && (
-                            <Button
-                                type="button"
-                                variant={marker.isActive ? 'outline' : 'secondary'}
-                                size="sm"
-                                className="h-8 gap-1.5 px-3 text-xs"
-                                onClick={() => {
-                                    onClose();
-                                    onToggleStatus(marker);
-                                }}
-                            >
-                                <Power className="h-3.5 w-3.5" />
-                                <span>{marker.isActive ? 'Tắt marker' : 'Bật marker'}</span>
-                            </Button>
-                        )}
-                        {onTestMarker && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 gap-1.5 px-3 text-xs"
-                                onClick={() => {
-                                    onClose();
-                                    onTestMarker(marker);
-                                }}
-                            >
-                                <ScanLine className="h-3.5 w-3.5" />
-                                <span>Phân tích ảnh</span>
-                            </Button>
-                        )}
-                    </div>
+            <DialogFooter className="mt-0 shrink-0 flex-row flex-wrap items-center justify-end border-0 pt-0">
+                <Button type="button" variant="outline" onClick={onClose}>
+                    Đóng
+                </Button>
+                {onToggleStatus && (
                     <Button
                         type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="h-8 px-4 text-xs"
-                        onClick={onClose}
+                        variant="outline"
+                        className={marker.isActive ? 'text-destructive' : undefined}
+                        onClick={() => {
+                            onClose();
+                            onToggleStatus(marker);
+                        }}
                     >
-                        Đóng
+                        <Power data-icon="inline-start" />
+                        {marker.isActive ? 'Tắt marker' : 'Bật marker'}
                     </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                )}
+                {onTestMarker && (
+                    <Button
+                        type="button"
+                        onClick={() => {
+                            onClose();
+                            onTestMarker(marker);
+                        }}
+                    >
+                        <ScanLine data-icon="inline-start" />
+                        {marker.assessment ? 'Đánh giá lại' : 'Đánh giá ảnh'}
+                    </Button>
+                )}
+            </DialogFooter>
+        </AdminDialog>
     );
 }

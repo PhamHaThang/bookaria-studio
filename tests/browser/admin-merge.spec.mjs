@@ -445,12 +445,14 @@ for (const legacy of [false, true]) {
         await page.getByRole('button', { name: 'Chi tiết', exact: true }).click();
         const detail = page.getByRole('dialog');
         await expect(detail.getByText('Chưa đánh giá', { exact: true })).toBeVisible();
-        await expect(detail.getByText(/Chưa có kết quả phân tích được lưu/)).toBeVisible();
+        await expect(
+            detail.getByRole('button', { name: 'Đánh giá ảnh', exact: true }),
+        ).toBeVisible();
         await expect(detail.getByText(/\/100|Cần cải thiện/)).toHaveCount(0);
         await detail.getByRole('button', { name: 'Đóng', exact: true }).first().click();
         await page.getByRole('button', { name: 'Tắt marker', exact: true }).click();
         const toggle = page.getByRole('dialog');
-        await expect(toggle.getByText('Chưa đánh giá', { exact: true })).toBeVisible();
+        await expect(toggle.getByRole('button', { name: 'Tắt marker', exact: true })).toBeVisible();
         await expect(toggle.getByText(/\/100|Điểm chất lượng:/)).toHaveCount(0);
         expect(await page.evaluate(() => window.adminReview.writes)).toEqual([]);
     });

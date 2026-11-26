@@ -1,23 +1,15 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Power } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/shared/api/errors';
 import type { BookariaMarker } from '@/shared/contracts/dto.schema';
-import { cn } from '@/shared/lib/cn';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { Feedback } from '@/shared/ui/Feedback';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/shared/ui/primitives/dialog';
+import { DialogFooter } from '@/shared/ui/primitives/dialog';
 import { libraryApi } from '../library-ui';
 import { useAdminMutation as useMutation } from '../use-admin-mutation';
+import { AdminDialog } from './AdminDialog';
 
 export interface MarkerToggleModalProps {
     marker: BookariaMarker | null;
@@ -60,111 +52,54 @@ export function MarkerToggleModal({ marker, isOpen, onClose, onSuccess }: Marker
     const willBeActive = !marker.isActive;
 
     return (
-        <Dialog
+        <AdminDialog
             open={isOpen}
-            onOpenChange={(open) => {
-                if (!open && !toggleMutation.isPending) {
-                    onClose();
-                }
-            }}
+            busy={toggleMutation.isPending}
+            onClose={onClose}
+            title={`${willBeActive ? 'Bật' : 'Tắt'} marker số #${marker.number}?`}
+            description={
+                willBeActive
+                    ? 'Marker sẽ được cấp phát cho các trang sách AR mới.'
+                    : 'Marker sẽ ngừng cấp phát cho trang mới. Các trang đã dùng marker vẫn hiển thị AR như trước.'
+            }
+            className="max-w-[min(480px,calc(100vw-32px))]"
         >
-            <DialogContent
-                className="max-h-[90dvh] max-w-md space-y-4 overflow-y-auto p-5 sm:p-6"
-                onEscapeKeyDown={(e) => {
-                    if (toggleMutation.isPending) e.preventDefault();
-                }}
-                onPointerDownOutside={(e) => {
-                    if (toggleMutation.isPending) e.preventDefault();
-                }}
-            >
-                <DialogHeader className="gap-1 pb-0.5">
-                    <DialogTitle className="m-0 flex items-center gap-2 font-semibold text-base text-foreground leading-tight sm:text-lg">
-                        <Power
-                            className={cn(
-                                'h-5 w-5 shrink-0',
-                                willBeActive ? 'text-emerald-500' : 'text-amber-500',
-                            )}
-                        />
-                        <span>
-                            {marker.isActive ? 'Tắt' : 'Bật'} marker số #{marker.number}?
-                        </span>
-                    </DialogTitle>
-                    <DialogDescription className="text-muted-foreground text-xs leading-relaxed">
-                        {marker.isActive
-                            ? 'Marker này sẽ ngừng cấp phát cho các trang sách AR mới.'
-                            : 'Marker này sẽ được kích hoạt để cấp phát cho các trang sách AR mới.'}
-                    </DialogDescription>
-                </DialogHeader>
-
-                <Feedback error={apiError} errorMode="toast" />
-
-                {/* Tóm tắt marker */}
-                <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface p-3 shadow-xs">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/30 p-1">
-                        <img
-                            src={marker.imageUrl}
-                            alt=""
-                            className="h-full w-full object-contain"
-                        />
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                            <span className="font-semibold text-foreground text-sm">
-                                Marker số #{marker.number}
-                            </span>
-                            <Badge
-                                tone={marker.isActive ? 'success' : 'neutral'}
-                                className="h-5 px-1.5 text-[10px]"
-                            >
-                                {marker.isActive ? 'Hiện đang bật' : 'Hiện đang tắt'}
-                            </Badge>
-                        </div>
-                        <p className="truncate text-muted-foreground text-xs">Chưa đánh giá</p>
-                    </div>
+            <Feedback error={apiError} errorMode="toast" />
+            <div className="flex min-h-0 items-center gap-3 overflow-y-auto rounded-lg bg-muted/40 p-3">
+                <img
+                    src={marker.imageUrl}
+                    alt=""
+                    className="size-11 shrink-0 rounded-md border border-border bg-surface object-contain p-1"
+                />
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    <span className="font-medium text-sm">Marker số #{marker.number}</span>
+                    <Badge tone={marker.isActive ? 'success' : 'neutral'}>
+                        {marker.isActive ? 'Đang bật' : 'Đã tắt'}
+                    </Badge>
                 </div>
-
-                {/* Hướng dẫn chi tiết */}
-                <div className="rounded-[var(--radius-md)] border border-border/70 bg-muted/20 p-3 text-muted-foreground text-xs leading-relaxed">
-                    {marker.isActive ? (
-                        <p>
-                            Marker sẽ <strong>không được cấp phát cho các trang sách mới</strong>{' '}
-                            khi người dùng tạo nội dung. Các trang sách hoặc phiên bản đã sử dụng
-                            marker này trước đây sẽ <strong>không bị thay đổi</strong>.
-                        </p>
-                    ) : (
-                        <p>
-                            Marker sẽ <strong>được cấp phát cho các trang sách mới</strong>.
-                        </p>
-                    )}
-                </div>
-
-                <DialogFooter className="mt-2 flex items-center justify-end gap-2 border-border/60 border-t pt-3">
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        disabled={toggleMutation.isPending}
-                        onClick={onClose}
-                        className="h-8 px-3 text-xs"
-                    >
-                        Hủy
-                    </Button>
-                    <Button
-                        type="button"
-                        variant={marker.isActive ? 'outline' : 'default'}
-                        size="sm"
-                        disabled={toggleMutation.isPending}
-                        onClick={() => toggleMutation.mutate()}
-                        className="h-8 px-4 text-xs"
-                    >
-                        {toggleMutation.isPending
-                            ? 'Đang xử lý…'
-                            : marker.isActive
-                              ? 'Xác nhận tắt'
-                              : 'Xác nhận bật'}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            </div>
+            <DialogFooter className="mt-0 shrink-0 flex-row flex-wrap items-center justify-end border-0 pt-0">
+                <Button
+                    type="button"
+                    variant="outline"
+                    disabled={toggleMutation.isPending}
+                    onClick={onClose}
+                >
+                    Hủy
+                </Button>
+                <Button
+                    type="button"
+                    variant={willBeActive ? 'default' : 'destructive'}
+                    disabled={toggleMutation.isPending}
+                    onClick={() => toggleMutation.mutate()}
+                >
+                    {toggleMutation.isPending
+                        ? 'Đang xử lý…'
+                        : willBeActive
+                          ? 'Bật marker'
+                          : 'Tắt marker'}
+                </Button>
+            </DialogFooter>
+        </AdminDialog>
     );
 }

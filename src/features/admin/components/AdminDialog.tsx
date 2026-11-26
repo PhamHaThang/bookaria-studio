@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/shared/lib/cn';
 import {
     Dialog,
@@ -16,6 +16,7 @@ export function AdminDialog({
     onClose,
     children,
     className,
+    onOpenAutoFocus,
 }: {
     open: boolean;
     busy?: boolean;
@@ -24,6 +25,7 @@ export function AdminDialog({
     onClose: () => void;
     children: ReactNode;
     className?: string;
+    onOpenAutoFocus?: ComponentProps<typeof DialogContent>['onOpenAutoFocus'];
 }) {
     return (
         <Dialog
@@ -34,6 +36,7 @@ export function AdminDialog({
         >
             <DialogContent
                 showCloseButton={!busy}
+                onOpenAutoFocus={onOpenAutoFocus}
                 className={cn(
                     'flex max-h-[calc(100dvh-32px)] max-w-[min(600px,calc(100vw-32px))] flex-col gap-4 overflow-hidden p-5 sm:p-6',
                     className,

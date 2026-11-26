@@ -37,7 +37,7 @@ const marker = {
     id,
     number: 123,
     imageUrl: 'https://example.com/marker.png',
-    markerScore: null,
+    assessment: null,
     isActive: true,
     validatedAt: null,
 };
@@ -223,7 +223,7 @@ test('category writes validate create201, parent reset, integer order bounds and
     data = { ...category, id: other };
     await assert.rejects(() => api.updateCategory(id, { name: 'Test' }), ContractError);
 });
-test('marker list and registration preserve zero score and signed seed, require references/unique number shape', async () => {
+test('marker list and registration preserve signed seed and omit the legacy score', async () => {
     const calls = [];
     let status = 200,
         data = page([marker]);
@@ -245,14 +245,12 @@ test('marker list and registration preserve zero score and signed seed, require 
         seed: -23,
         imagePublicId: 'test/image',
         mindPublicId: 'test/target.mind',
-        markerScore: 0,
     });
     const body = JSON.parse(calls[1].data);
-    assert.equal(body.markerScore, 0);
+    assert.equal('markerScore' in body, false);
     assert.equal(body.seed, -23);
     await assert.rejects(() => api.createMarker({ ...body, number: 0 }));
     await assert.rejects(() => api.createMarker({ ...body, imagePublicId: '' }));
-    await assert.rejects(() => api.createMarker({ ...body, markerScore: 6 }));
     assert.equal(calls.length, 2);
 });
 test('marker toggle distinguishes false from missing and validates result identity', async () => {

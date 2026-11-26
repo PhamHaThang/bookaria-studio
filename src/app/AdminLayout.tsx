@@ -41,7 +41,7 @@ const destinations = [
     { to: '/admin/books', label: 'Tra cứu sách', icon: BookOpen },
     { to: '/admin/library', label: 'Thư viện dùng chung', icon: LibraryBig },
     { to: '/admin/categories', label: 'Danh mục', icon: Tags },
-    { to: '/admin/markers', label: 'Bộ marker', icon: ScanLine },
+    { to: '/admin/markers', label: 'Quản lý marker', icon: ScanLine },
     { to: '/admin/jobs', label: 'Tác vụ', icon: ListTodo },
     { to: '/admin/audit-logs', label: 'Nhật ký quản trị', icon: ScrollText },
 ];
