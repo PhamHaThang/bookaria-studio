@@ -23,6 +23,7 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Spinner } from '@/shared/ui/primitives/spinner';
+import { RetryNotice } from '@/shared/ui/RetryNotice';
 import { StudioPageHeader } from '@/shared/ui/StudioPageHeader';
 
 export function TrashPage() {
@@ -77,12 +78,12 @@ export function TrashPage() {
             />
             {listing.isPending && <LoadingState layout="rows">Đang tải thùng rác…</LoadingState>}
             {listing.isError && (
-                <div className="flex flex-col items-start gap-3">
-                    <Feedback error={errorMessage(listing.error)} />
-                    <Button variant="outline" onClick={() => void listing.refetch()}>
-                        Thử tải lại
-                    </Button>
-                </div>
+                <RetryNotice
+                    message="Chưa tải được sách trong thùng rác."
+                    detail={errorMessage(listing.error)}
+                    busy={listing.isFetching}
+                    onRetry={() => void listing.refetch()}
+                />
             )}
             {listing.isSuccess && listing.data.data.length > 0 && (
                 <>

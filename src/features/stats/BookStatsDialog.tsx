@@ -123,7 +123,10 @@ export function BookStatsDialog({
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-5 sm:px-6 sm:pb-6">
                     {valid && failed && (
                         <div className="flex flex-col items-start gap-4 py-6">
-                            <Feedback error={errorMessage(detail.error || stats.error)} />
+                            <Feedback
+                                error={errorMessage(detail.error || stats.error)}
+                                errorMode="toast"
+                            />
                             <Button variant="outline" disabled={refreshing} onClick={refresh}>
                                 Thử tải lại
                             </Button>

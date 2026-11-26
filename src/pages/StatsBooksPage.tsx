@@ -19,11 +19,11 @@ import {
     EmptyTitle,
 } from '@/shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import { RetryNotice } from '@/shared/ui/RetryNotice';
 import { StudioPageHeader } from '@/shared/ui/StudioPageHeader';
 import { useAuth } from '../features/auth';
 import { bookKeys, booksApi, readBookSearch, updateBookSearch } from '../features/books';
 import { errorMessage } from '../shared/api/errors';
-import { Feedback } from '../shared/ui/Feedback';
 import { Pagination } from '../shared/ui/Pagination';
 
 export function StatsBooksPage() {
@@ -94,12 +94,11 @@ export function StatsBooksPage() {
             />
             {list.isPending && <LoadingState layout="stats-books">Đang tải sách…</LoadingState>}
             {list.isError && (
-                <div className="list-state px-0 py-12">
-                    <Feedback error={errorMessage(list.error)} />
-                    <Button type="button" onClick={() => void list.refetch()}>
-                        Thử tải lại
-                    </Button>
-                </div>
+                <RetryNotice
+                    message={errorMessage(list.error)}
+                    busy={list.isFetching}
+                    onRetry={() => void list.refetch()}
+                />
             )}
             {list.isSuccess && (
                 <>

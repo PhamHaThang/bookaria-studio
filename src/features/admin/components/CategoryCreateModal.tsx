@@ -9,8 +9,8 @@ import {
     CreateCategoryBodySchema,
 } from '@/shared/contracts/api/admin.schema';
 import type { AssetCategory } from '@/shared/contracts/dto.schema';
-import { Alert } from '@/shared/ui/Alert';
 import { Button } from '@/shared/ui/Button';
+import { Feedback } from '@/shared/ui/Feedback';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import {
     Dialog,
@@ -146,11 +146,7 @@ export function CategoryCreateModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                {apiError && (
-                    <Alert tone="danger" className="text-xs">
-                        {apiError}
-                    </Alert>
-                )}
+                <Feedback error={apiError} errorMode="toast" />
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <FieldGroup className="gap-3.5">

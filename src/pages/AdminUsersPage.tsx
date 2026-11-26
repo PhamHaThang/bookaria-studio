@@ -8,7 +8,6 @@ import {
     Pencil,
     Plus,
     ShieldCheck,
-    Trash2,
     Unlock,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -33,7 +32,6 @@ import {
     roleLabel,
     statusLabel,
     UserCreateModal,
-    UserDeleteModal,
     UserDetailModal,
     UserLockModal,
     UserUpdateModal,
@@ -47,7 +45,6 @@ interface AdminUserItemProps {
     onViewDetails: (userId: string) => void;
     onUpdate: (user: AdminUser) => void;
     onToggleLock: (user: AdminUser) => void;
-    onDelete: (user: AdminUser) => void;
 }
 
 /**
@@ -60,7 +57,6 @@ function AdminUserItem({
     onViewDetails,
     onUpdate,
     onToggleLock,
-    onDelete,
 }: AdminUserItemProps) {
     const usedBytes = user.storage?.usedBytes ?? 0;
     const quotaBytes = Math.max(1, user.storage?.quotaBytes ?? 1);
@@ -211,31 +207,6 @@ function AdminUserItem({
                     >
                         {isLocked ? <Unlock className="size-4" /> : <Lock className="size-4" />}
                     </Button>
-
-                    {/* 4. Xóa tài khoản */}
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={isSelf}
-                        className={cn(
-                            'text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive',
-                            isSelf && 'cursor-not-allowed opacity-40 hover:bg-transparent',
-                        )}
-                        onClick={() => onDelete(user)}
-                        title={
-                            isSelf
-                                ? 'Không thể tự vô hiệu hóa tài khoản của chính mình'
-                                : 'Vô hiệu hóa tài khoản người dùng'
-                        }
-                        aria-label={
-                            isSelf
-                                ? 'Không thể tự vô hiệu hóa tài khoản của chính mình'
-                                : 'Vô hiệu hóa tài khoản người dùng'
-                        }
-                    >
-                        <Trash2 className="size-4" />
-                    </Button>
                 </div>
             </div>
 
@@ -313,7 +284,7 @@ function AdminUserItem({
     );
 }
 
-type ModalType = 'none' | 'create' | 'detail' | 'update' | 'lock' | 'delete';
+type ModalType = 'none' | 'create' | 'detail' | 'update' | 'lock';
 
 export function AdminUsersPage() {
     const { user: currentAdmin } = useAuth();
@@ -343,10 +314,6 @@ export function AdminUsersPage() {
 
     const handleToggleLock = (user: AdminUser) => {
         setModalState({ type: 'lock', user, userId: user.id });
-    };
-
-    const handleDelete = (user: AdminUser) => {
-        setModalState({ type: 'delete', user, userId: user.id });
     };
 
     const closeModal = () => {
@@ -493,7 +460,7 @@ export function AdminUsersPage() {
             {list.isPending && (
                 <LoadingState layout="admin-rows">Đang tải người dùng…</LoadingState>
             )}
-            {list.isError && <Feedback error={errorMessage(list.error)} />}
+            {list.isError && <Feedback error={errorMessage(list.error)} errorMode="toast" />}
 
             {/* Danh sách người dùng */}
             {list.isSuccess && (
@@ -521,7 +488,6 @@ export function AdminUsersPage() {
                                     onViewDetails={handleViewDetails}
                                     onUpdate={handleUpdate}
                                     onToggleLock={handleToggleLock}
-                                    onDelete={handleDelete}
                                 />
                             ))}
                         </ul>
@@ -565,7 +531,6 @@ export function AdminUsersPage() {
                 onClose={closeModal}
                 onEdit={(u) => setModalState({ type: 'update', user: u, userId: u.id })}
                 onLock={(u) => setModalState({ type: 'lock', user: u, userId: u.id })}
-                onDelete={(u) => setModalState({ type: 'delete', user: u, userId: u.id })}
             />
 
             {/* 3. Modal Cập nhật người dùng */}
@@ -580,14 +545,6 @@ export function AdminUsersPage() {
             <UserLockModal
                 user={modalState.user ?? null}
                 isOpen={modalState.type === 'lock'}
-                onClose={closeModal}
-                onSuccess={() => void list.refetch()}
-            />
-
-            {/* 5. Modal Xác nhận xóa người dùng */}
-            <UserDeleteModal
-                user={modalState.user ?? null}
-                isOpen={modalState.type === 'delete'}
                 onClose={closeModal}
                 onSuccess={() => void list.refetch()}
             />

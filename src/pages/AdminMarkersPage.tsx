@@ -218,7 +218,7 @@ export function AdminMarkersPage() {
 
             {/* Trạng thái tải dữ liệu và lỗi */}
             {list.isPending && <LoadingState layout="admin-rows">Đang tải marker…</LoadingState>}
-            {list.isError && <Feedback error={errorMessage(list.error)} />}
+            {list.isError && <Feedback error={errorMessage(list.error)} errorMode="toast" />}
 
             {list.isSuccess && (
                 <>

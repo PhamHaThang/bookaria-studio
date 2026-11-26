@@ -163,7 +163,10 @@ export function ObjectEditor({
                                     </div>
                                     {detail.isError && (
                                         <>
-                                            <Feedback error={errorMessage(detail.error)} />
+                                            <Feedback
+                                                error={errorMessage(detail.error)}
+                                                errorMode="toast"
+                                            />
                                             <Button
                                                 variant="outline"
                                                 onClick={() => {

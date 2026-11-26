@@ -406,7 +406,7 @@ export function AdminModerationPage() {
             {list.isPending && (
                 <LoadingState layout="admin-rows">Đang tải báo cáo kiểm duyệt…</LoadingState>
             )}
-            {list.isError && <Feedback error={errorMessage(list.error)} />}
+            {list.isError && <Feedback error={errorMessage(list.error)} errorMode="toast" />}
 
             {/* Danh sách sách có báo cáo */}
             {list.isSuccess && (
@@ -863,7 +863,7 @@ export function AdminBooksPage() {
 
             {/* Trạng thái tải & Báo lỗi */}
             {list.isPending && <LoadingState layout="admin-rows">Đang tải sách…</LoadingState>}
-            {list.isError && <Feedback error={errorMessage(list.error)} />}
+            {list.isError && <Feedback error={errorMessage(list.error)} errorMode="toast" />}
 
             {/* Danh sách sách */}
             {list.isSuccess && (

@@ -257,11 +257,7 @@ export function BookImportField({
                     )}
                 </div>
             )}
-            {error && (
-                <div className="[&_.feedback]:m-0">
-                    <Feedback error={error} />
-                </div>
-            )}
+            <Feedback error={error} errorMode="toast" />
             {images && (
                 <>
                     <p className="m-0 text-muted-foreground text-xs">

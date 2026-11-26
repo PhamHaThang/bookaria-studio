@@ -27,9 +27,23 @@ const cardClass = 'h-full gap-0 py-0';
 function PendingModelCard({ job, focus }: { job: ModelGeneration; focus: boolean }) {
     const card = useRef<HTMLDivElement>(null);
     useEffect(() => {
-        if (!focus) return;
-        card.current?.focus({ preventScroll: true });
-        card.current?.scrollIntoView({ block: 'nearest' });
+        const target = card.current;
+        if (!focus || !target) return;
+
+        // Both the app and the Studio layout can temporarily make the card inert.
+        const focusWhenReady = () => {
+            const inertAncestor = target.closest('[inert]');
+            if (inertAncestor) {
+                observer.observe(inertAncestor, { attributeFilter: ['inert'] });
+                return;
+            }
+            observer.disconnect();
+            target.focus({ preventScroll: true });
+            target.scrollIntoView({ block: 'nearest' });
+        };
+        const observer = new MutationObserver(focusWhenReady);
+        focusWhenReady();
+        return () => observer.disconnect();
     }, [focus]);
     const failed = job.status === 'FAILED';
     const queued = job.status === 'QUEUED';

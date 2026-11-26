@@ -210,7 +210,7 @@ export function ModelGenerationDialog() {
                             )}
                         </section>
                         <div className="order-2 flex min-w-0 flex-col gap-3 md:col-span-2 md:row-start-2">
-                            <Feedback error={error} className="mb-0" />
+                            <Feedback error={error} errorMode="toast" />
                             <div className="flex flex-wrap items-center justify-end gap-2">
                                 {file && (
                                     <Button

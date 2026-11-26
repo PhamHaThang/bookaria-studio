@@ -107,11 +107,11 @@ export function MemoryVariablesPanel({
             : [...definitions, draft];
         const checked = WorkflowVariablesSchema.safeParse(next);
         if (!checked.success) {
-            setFormError(
-                draft.name.trim()
-                    ? checked.error.issues[0]?.message || 'Kiểm tra lại thông tin.'
-                    : 'Vui lòng nhập tên thông tin.',
-            );
+            const message = draft.name.trim()
+                ? checked.error.issues[0]?.message || 'Kiểm tra lại thông tin.'
+                : 'Vui lòng nhập tên thông tin.';
+            setFormError(message);
+            toast.error(message, { id: 'memory-variable-validation' });
             nameInput.current?.focus({ preventScroll: true });
             return;
         }
@@ -142,6 +142,7 @@ export function MemoryVariablesPanel({
             aria-label="Thông tin ghi nhớ của sách"
             className="flex min-h-0 flex-1 flex-col gap-3 py-4"
         >
+            <Feedback error={loading ? null : error} errorMode="toast" />
             <div className="flex shrink-0 items-center justify-between gap-2 px-3">
                 <h2 className="m-0 font-semibold text-sm">Thông tin ghi nhớ</h2>
                 <Button
@@ -162,7 +163,6 @@ export function MemoryVariablesPanel({
             )}
             {error && (
                 <div className="flex shrink-0 flex-col gap-2 px-3">
-                    <Feedback error={error} className="m-0" />
                     <Button variant="outline" size="sm" disabled={loading} onClick={onRetry}>
                         Thử lại
                     </Button>
@@ -249,12 +249,14 @@ export function MemoryVariablesPanel({
                                 </p>
                             )}
                             {error && (
-                                <>
-                                    <Feedback error={error} className="m-0" />
-                                    <Button variant="outline" size="sm" onClick={onRetry}>
-                                        Thử lại
-                                    </Button>
-                                </>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={loading}
+                                    onClick={onRetry}
+                                >
+                                    Thử lại
+                                </Button>
                             )}
                         </DialogHeader>
                         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">
@@ -359,7 +361,6 @@ export function MemoryVariablesPanel({
                                         Giá trị khi bắt đầu hoặc đặt lại tiến trình.
                                     </FieldDescription>
                                 </Field>
-                                {formError && <Feedback error={formError} className="m-0" />}
                             </FieldGroup>
                             {original && (
                                 <div className="mt-4 flex flex-col gap-2">

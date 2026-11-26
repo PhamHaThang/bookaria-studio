@@ -61,6 +61,7 @@ export function NarrationGenerator({
     guardNavigation?: boolean;
 }) {
     const id = useId();
+    const generationErrorToastId = `${id}-generate-error`;
     const { user } = useAuth();
     const cache = useQueryClient();
     const [open, setOpen] = useState(false);
@@ -140,6 +141,7 @@ export function NarrationGenerator({
         const userId = user.id;
         setGenerating(true);
         setError('');
+        toast.dismiss(generationErrorToastId);
         try {
             const file = await assetsApi.generateNarration(
                 { text, voice, ...options },
@@ -149,7 +151,8 @@ export function NarrationGenerator({
             setGenerated({ file, text, voice, options });
             setCheckpoint(null);
         } catch (cause) {
-            if (!controller.signal.aborted) setError(errorMessage(cause));
+            if (!controller.signal.aborted && auth.store.getState().user?.id === userId)
+                toast.error(errorMessage(cause), { id: generationErrorToastId });
         } finally {
             if (request.current === controller) {
                 request.current = null;
@@ -202,6 +205,7 @@ export function NarrationGenerator({
     }
 
     function closeForm() {
+        toast.dismiss(generationErrorToastId);
         request.current?.abort();
         request.current = null;
         setOpen(false);

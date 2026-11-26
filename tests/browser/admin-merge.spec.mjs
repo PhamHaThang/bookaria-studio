@@ -327,9 +327,10 @@ test('uncertain create error requires checking state before sending another writ
     await dialog.locator('form').evaluate((form) => form.requestSubmit());
     await expect.poll(() => page.evaluate(() => window.adminReview.writes.length)).toBe(1);
     await page.evaluate(() => window.adminReview.release());
-    await expect(dialog.getByText(/Tải lại trang để kiểm tra trạng thái/)).toBeVisible();
+    await expect(
+        page.locator('[data-sonner-toast]').getByText(/Tải lại trang để kiểm tra trạng thái/),
+    ).toBeVisible();
     await dialog.locator('form').evaluate((form) => form.requestSubmit());
-    await expect(dialog.getByText(/Tải lại trang để kiểm tra trạng thái/)).toBeVisible();
     expect(await page.evaluate(() => window.adminReview.writes.length)).toBe(1);
 });
 
@@ -379,16 +380,33 @@ test('admin detail retains marker analysis status after merging the new page car
     await expect(page.getByText('1 đối tượng · Marker: Cần phân tích lại')).toBeVisible();
 });
 
-test('user deactivation is described as locking rather than permanent deletion', async ({
+test('the user list and detail expose one lock or unlock action without a deactivation button', async ({
     page,
 }) => {
     await open(page);
-    await page
-        .getByRole('button', { name: 'Vô hiệu hóa tài khoản người dùng', exact: true })
-        .click();
-    const dialog = page.getByRole('alertdialog');
-    await expect(dialog.getByText(/dữ liệu không bị xóa/)).toBeVisible();
-    await expect(dialog.getByText(/vĩnh viễn/)).toHaveCount(0);
+    const row = page.getByRole('listitem').filter({ hasText: 'author@example.test' });
+    await expect(row.getByRole('button', { name: /vô hiệu hóa/i })).toHaveCount(0);
+    await row.getByRole('button', { name: 'Khóa tài khoản', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.locator('#lock-reason').fill('Khóa tài khoản thử nghiệm');
+    await dialog.getByRole('button', { name: 'Khóa tài khoản', exact: true }).click();
+    await expect
+        .poll(() => page.evaluate(() => window.adminReview.writes[0]?.data.status))
+        .toBe('LOCKED');
+    await page.evaluate(() => window.adminReview.release());
+    await expect(row.getByRole('button', { name: 'Mở khóa tài khoản', exact: true })).toBeVisible();
+
+    await row.getByRole('button', { name: 'Xem chi tiết tài khoản', exact: true }).click();
+    await expect(dialog.getByRole('button', { name: 'Mở khóa', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /vô hiệu hóa/i })).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Mở khóa', exact: true }).click();
+    await dialog.locator('#lock-reason').fill('Mở khóa tài khoản thử nghiệm');
+    await dialog.getByRole('button', { name: 'Mở khóa tài khoản', exact: true }).click();
+    await expect
+        .poll(() => page.evaluate(() => window.adminReview.writes[1]?.data.status))
+        .toBe('ACTIVE');
+    await page.evaluate(() => window.adminReview.release());
+    await expect(row.getByRole('button', { name: 'Khóa tài khoản', exact: true })).toBeVisible();
 });
 
 for (const setup of [

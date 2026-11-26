@@ -42,7 +42,10 @@ function PromoteForm({ asset, categories }: { asset: Asset; categories: AssetCat
 
     if (asset.scope !== 'mine' || asset.status !== 'READY') {
         return (
-            <Feedback error="Chỉ chọn tài nguyên cá nhân đã ở trạng thái Sẵn sàng để đưa vào thư viện." />
+            <Feedback
+                error="Chỉ chọn tài nguyên cá nhân đã ở trạng thái Sẵn sàng để đưa vào thư viện."
+                errorMode="toast"
+            />
         );
     }
 
@@ -201,7 +204,7 @@ export function AdminLibraryNewPage() {
             {mine.isPending && (
                 <LoadingState layout="assets">Đang tải tài nguyên cá nhân…</LoadingState>
             )}
-            {mine.isError && <Feedback error={errorMessage(mine.error)} />}
+            {mine.isError && <Feedback error={errorMessage(mine.error)} errorMode="toast" />}
 
             {/* Danh sách tài nguyên cá nhân */}
             {mine.isSuccess && (
@@ -317,12 +320,17 @@ export function AdminLibraryNewPage() {
 
             {/* Khối Form cấu hình đưa vào thư viện */}
             <div className="pt-4">
-                {selected && !valid && <Feedback error="Mã tài nguyên chưa hợp lệ." />}
+                {selected && !valid && (
+                    <Feedback error="Mã tài nguyên chưa hợp lệ." errorMode="toast" />
+                )}
                 {valid && detail.isPending && (
                     <LoadingState layout="detail">Đang tải tài nguyên đã chọn…</LoadingState>
                 )}
                 {(detail.isError || categories.isError) && (
-                    <Feedback error={errorMessage(detail.error || categories.error)} />
+                    <Feedback
+                        error={errorMessage(detail.error || categories.error)}
+                        errorMode="toast"
+                    />
                 )}
                 {valid && detail.isSuccess && categories.isSuccess && (
                     <PromoteForm

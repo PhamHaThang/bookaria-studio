@@ -97,7 +97,7 @@ export function BookModerationDetailModal({
 
                 {isPending && <LoadingState layout="detail">Đang tải thông tin sách…</LoadingState>}
 
-                {isError && <Feedback error={errorMessage(error)} />}
+                {isError && <Feedback error={errorMessage(error)} errorMode="toast" />}
 
                 {book && (
                     <div className="space-y-4">

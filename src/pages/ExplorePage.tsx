@@ -278,7 +278,7 @@ function ExploreBooks() {
                             </EmptyTitle>
                         </EmptyHeader>
                         <CircleAlert aria-hidden="true" className="size-6 text-destructive" />
-                        <Feedback error={errorMessage(listing.error)} />
+                        <Feedback error={errorMessage(listing.error)} errorMode="toast" />
                         <EmptyContent>
                             <Button type="button" onClick={() => void listing.refetch()}>
                                 Thử tải lại

@@ -100,9 +100,15 @@ export function BookPages({
                     {adding ? 'Đóng phần thêm trang' : 'Thêm trang'}
                 </Button>
             </div>
-            <Feedback error={deleting ? null : error} success={notice} warning={warning} />
+            <Feedback
+                error={deleting ? null : error}
+                success={notice}
+                warning={warning}
+                errorMode="toast"
+                warningMode="toast"
+            />
             {uncertain && (
-                <Alert tone="warning" className="my-4">
+                <Alert tone="warning" className="my-2">
                     <p>
                         Chưa xác nhận được kết quả. Yêu cầu có thể đã được nhận; hãy tải lại danh
                         sách trước khi thao tác tiếp.
@@ -110,6 +116,7 @@ export function BookPages({
                     <Button
                         variant="secondary"
                         aria-busy={busy}
+                        className="mt-2"
                         onClick={async () => {
                             setBusy(true);
                             setError(null);
@@ -139,7 +146,7 @@ export function BookPages({
             )}
             {pages.isError && (
                 <>
-                    <Feedback error={errorMessage(pages.error)} />
+                    <Feedback error={errorMessage(pages.error)} errorMode="toast" />
                     <Button
                         variant="secondary"
                         onClick={() => {
@@ -346,7 +353,7 @@ export function BookPages({
                         if (!busy) setDeleting(null);
                     }}
                 >
-                    <Feedback error={error} />
+                    <Feedback error={error} errorMode="toast" />
                     <div className="form-actions mt-3 flex flex-wrap items-center gap-5 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-4 max-[760px]:[&_>_a]:text-center [.confirm-dialog_&]:mt-6 [.confirm-dialog_&]:justify-end max-[760px]:[.confirm-dialog_&]:flex-row max-[760px]:[.confirm-dialog_&]:flex-wrap [.image-editor_&:empty]:hidden [.scene-object-asset_&]:gap-2">
                         <AlertDialogCancel variant="plain" asChild>
                             <Button

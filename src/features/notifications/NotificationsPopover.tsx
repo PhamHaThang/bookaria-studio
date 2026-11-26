@@ -6,7 +6,6 @@ import { auth } from '@/features/auth/model/session';
 import { errorMessage } from '@/shared/api/errors';
 import type { MarkNotificationsReadBody } from '@/shared/contracts/api/me.schema';
 import { cn } from '@/shared/lib/cn';
-import { Alert } from '@/shared/ui/Alert';
 import { LoadingState } from '@/shared/ui/LoadingState';
 import { Badge as NotificationIndicator } from '@/shared/ui/primitives/badge';
 import { Button } from '@/shared/ui/primitives/button';
@@ -22,6 +21,7 @@ import { ScrollArea } from '@/shared/ui/primitives/scroll-area';
 import { Separator } from '@/shared/ui/primitives/separator';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
+import { RetryNotice } from '@/shared/ui/RetryNotice';
 import { notificationTarget } from './api';
 import { notificationKeys, notificationsApi, useUnreadNotifications } from './index';
 
@@ -126,10 +126,7 @@ export function NotificationsPopover({
             await mutation.mutateAsync(body);
             return auth.store.getState().user?.id === userId;
         } catch (cause) {
-            if (auth.store.getState().user?.id === userId)
-                setError(
-                    `${errorMessage(cause)} Tải lại thông báo để kiểm tra trạng thái trước khi thử lại.`,
-                );
+            if (auth.store.getState().user?.id === userId) setError(errorMessage(cause));
             return false;
         } finally {
             lock.current = false;
@@ -242,20 +239,19 @@ export function NotificationsPopover({
                     className="h-[min(440px,calc(var(--radix-popover-content-available-height)-128px))] min-h-0 overscroll-contain"
                     aria-busy={list.isFetching || mutation.isPending}
                 >
-                    {error && (
-                        <div className="p-4">
-                            <Alert tone="danger">{error}</Alert>
-                            <Button type="button" variant="ghost" size="sm" onClick={reload}>
-                                Tải lại thông báo
-                            </Button>
-                        </div>
-                    )}
-                    {list.isError && !list.isFetchNextPageError && (
-                        <div className="p-4">
-                            <Alert tone="danger">{errorMessage(list.error)}</Alert>
-                            <Button type="button" variant="ghost" size="sm" onClick={reload}>
-                                Thử lại
-                            </Button>
+                    {(error || (list.isError && !list.isFetchNextPageError)) && (
+                        <div className="px-3">
+                            <RetryNotice
+                                message={
+                                    error
+                                        ? 'Chưa xác nhận được trạng thái đã đọc.'
+                                        : 'Chưa tải được thông báo.'
+                                }
+                                detail={error || errorMessage(list.error)}
+                                label={error ? 'Tải lại thông báo' : 'Thử lại'}
+                                busy={list.isFetching}
+                                onRetry={reload}
+                            />
                         </div>
                     )}
                     {list.isPending && (
@@ -375,22 +371,13 @@ export function NotificationsPopover({
                                 aria-live="polite"
                             >
                                 {list.isFetchNextPageError ? (
-                                    <>
-                                        <span className="text-muted-foreground text-xs">
-                                            Chưa tải được thông báo tiếp theo.
-                                        </span>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={list.isFetchingNextPage}
-                                            onClick={() =>
-                                                void list.fetchNextPage({ cancelRefetch: false })
-                                            }
-                                        >
-                                            Thử tải lại
-                                        </Button>
-                                    </>
+                                    <RetryNotice
+                                        message="Chưa tải được thông báo tiếp theo."
+                                        busy={list.isFetchingNextPage}
+                                        onRetry={() =>
+                                            void list.fetchNextPage({ cancelRefetch: false })
+                                        }
+                                    />
                                 ) : list.isFetchingNextPage ? (
                                     <span className="flex items-center gap-2 text-muted-foreground text-xs">
                                         <Spinner className="size-3.5" aria-hidden="true" />

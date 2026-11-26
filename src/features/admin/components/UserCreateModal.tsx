@@ -11,8 +11,8 @@ import {
 import { LIMITS } from '@/shared/contracts/common.schema';
 import type { AdminUser } from '@/shared/contracts/dto.schema';
 import type { UserRole } from '@/shared/contracts/enums.schema';
-import { Alert } from '@/shared/ui/Alert';
 import { Button } from '@/shared/ui/Button';
+import { Feedback } from '@/shared/ui/Feedback';
 import { PasswordInput } from '@/shared/ui/PasswordInput';
 import {
     Dialog,
@@ -199,11 +199,7 @@ export function UserCreateModal({ isOpen, onClose, onSuccess }: UserCreateModalP
                     </DialogDescription>
                 </DialogHeader>
 
-                {apiError && (
-                    <Alert tone="danger" className="text-xs">
-                        {apiError}
-                    </Alert>
-                )}
+                <Feedback error={apiError} errorMode="toast" />
 
                 <form onSubmit={handleSubmit} className="space-y-5 pt-1">
                     <FieldGroup className="gap-5">

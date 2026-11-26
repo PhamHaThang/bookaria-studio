@@ -246,7 +246,7 @@ export function AdminCategoriesPage() {
 
             {/* Trạng thái tải & Báo lỗi */}
             {list.isPending && <LoadingState layout="admin-rows">Đang tải danh mục…</LoadingState>}
-            {list.isError && <Feedback error={errorMessage(list.error)} />}
+            {list.isError && <Feedback error={errorMessage(list.error)} errorMode="toast" />}
 
             {/* Danh sách danh mục */}
             {list.isSuccess && (
@@ -543,7 +543,7 @@ export function AdminCategoryEditPage() {
 
             {list.isError && (
                 <div className="space-y-3">
-                    <Feedback error={errorMessage(list.error)} />
+                    <Feedback error={errorMessage(list.error)} errorMode="toast" />
                     <AdminReload retry={() => void list.refetch()} busy={list.isFetching} />
                 </div>
             )}

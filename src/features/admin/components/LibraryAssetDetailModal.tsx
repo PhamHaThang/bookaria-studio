@@ -108,6 +108,7 @@ export function LibraryAssetDetailModal({
                                     ? detailQuery.error.message
                                     : 'Không thể tải thông tin tài nguyên.'
                             }
+                            errorMode="toast"
                         />
                     </div>
                 )}

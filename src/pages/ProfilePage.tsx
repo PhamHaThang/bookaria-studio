@@ -352,7 +352,7 @@ export function ProfilePage() {
                             <LoadingState layout="profile">Đang tải hồ sơ…</LoadingState>
                         ) : (
                             <div>
-                                <Feedback error={errorMessage(profile.error)} />
+                                <Feedback error={errorMessage(profile.error)} errorMode="toast" />
                                 <Button onClick={() => void profile.refetch()}>Thử tải lại</Button>
                             </div>
                         )}

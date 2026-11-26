@@ -8,6 +8,7 @@ import type { PrintPdfBody } from '@/shared/contracts/api/publish.schema';
 import { layoutMarkerStickerSheets, MARKER_STICKER_SHEET } from '@/shared/contracts/marker.schema';
 import { Alert } from '@/shared/ui/Alert';
 import { Button } from '@/shared/ui/Button';
+import { Feedback } from '@/shared/ui/Feedback';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { PdfReaderButton } from '@/shared/ui/pdf-reader/PdfReaderButton';
 import {
@@ -65,12 +66,19 @@ export function PrintLayoutEditor({
         );
     if (query.isError)
         return (
-            <Alert tone="danger">
-                {errorMessage(query.error)}{' '}
-                <Button variant="link" onClick={() => void query.refetch()}>
-                    Thử lại
+            <div>
+                <Feedback
+                    error={query.isFetching ? null : errorMessage(query.error)}
+                    errorMode="toast"
+                />
+                <Button
+                    variant="outline"
+                    disabled={query.isFetching}
+                    onClick={() => void query.refetch()}
+                >
+                    {query.isFetching ? 'Đang tải…' : 'Thử tải lại bố cục'}
                 </Button>
-            </Alert>
+            </div>
         );
     return (
         <Layout
@@ -794,8 +802,9 @@ function Layout({
                         </p>
                     </FieldGroup>
                 )}
-                {(error || currentIssue || problems[0]) && (
-                    <Alert tone="danger">{error || currentIssue || problems[0]}</Alert>
+                <Feedback error={error} errorMode="toast" />
+                {(currentIssue || problems[0]) && (
+                    <Alert tone="danger">{currentIssue || problems[0]}</Alert>
                 )}
                 {previewBroken && (
                     <Alert tone="warning">

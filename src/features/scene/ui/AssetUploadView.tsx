@@ -369,7 +369,10 @@ export function AssetUploadView({
                                     <Feedback error="Không xử lý được tệp. Hãy kiểm tra định dạng và tải một bản khác." />
                                 ) : result.isError ? (
                                     <>
-                                        <Feedback error={errorMessage(result.error)} />
+                                        <Feedback
+                                            error={errorMessage(result.error)}
+                                            errorMode="toast"
+                                        />
                                         <Button
                                             variant="secondary"
                                             size="sm"

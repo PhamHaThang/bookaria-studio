@@ -8,6 +8,7 @@ import { ModerationNoteBodySchema } from '@/shared/contracts/api/admin.schema';
 import { Alert } from '@/shared/ui/Alert';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { Feedback } from '@/shared/ui/Feedback';
 import {
     Dialog,
     DialogContent,
@@ -139,11 +140,7 @@ export function BookDismissModal({ book, isOpen, onClose, onSuccess }: BookDismi
                     </p>
                 </Alert>
 
-                {apiError && (
-                    <Alert tone="danger" className="m-0 p-2.5 text-xs">
-                        {apiError}
-                    </Alert>
-                )}
+                <Feedback error={apiError} errorMode="toast" />
 
                 <form onSubmit={handleSubmit} className="space-y-3.5 pt-0.5">
                     <FieldGroup className="gap-2">

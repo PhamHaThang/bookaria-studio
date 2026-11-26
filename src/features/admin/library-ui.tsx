@@ -49,7 +49,7 @@ export function WriteFeedback({
 }) {
     return (
         <>
-            <Feedback error={error || action.error} />
+            <Feedback error={error || action.error} errorMode="toast" />
             {action.uncertain && (
                 <Button
                     variant="secondary"
@@ -88,7 +88,7 @@ export function LibraryConfirm({
             onClose={onClose}
             className="admin-confirm [&_p]:wrap-anywhere max-h-[calc(100dvh_-_32px)] max-w-[min(480px,_calc(100%_-_32px))] overflow-y-auto [&_p]:[white-space:pre-wrap]"
         >
-            <Feedback error={error} />
+            <Feedback error={error} errorMode="toast" />
             <div className="admin-actions flex flex-wrap items-center gap-3 max-[640px]:flex-col max-[640px]:items-stretch [.admin-confirm_&]:mt-5">
                 <AlertDialogCancel variant="plain" asChild>
                     <Button type="button" fullWidth disabled={busy || blocked} onClick={onConfirm}>

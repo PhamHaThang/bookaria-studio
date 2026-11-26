@@ -1,6 +1,6 @@
-import { useId, useState } from 'react';
+import { useId } from 'react';
+import { toast } from 'sonner';
 import type { Scene } from '@/shared/contracts/scene.schema';
-import { Alert, AlertDescription } from '@/shared/ui/primitives/alert';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import type { InteractionFlow } from '../model/interaction-flow';
@@ -24,14 +24,15 @@ export function MovementSettingsPanel({
 }) {
     const id = useId();
     const { loop, objectId } = readMovementSequence(graph, stepId);
-    const [error, setError] = useState('');
     const updateLoop = (pauseMs: number | null) => {
         try {
             const object = scene.objects.find((item) => item.id === objectId);
             onChange(setMovementLoop(graph, stepId, object, pauseMs));
-            setError('');
+            toast.dismiss(id);
         } catch (cause) {
-            setError(cause instanceof Error ? cause.message : 'Chưa cập nhật được đoạn lặp.');
+            toast.error(cause instanceof Error ? cause.message : 'Chưa cập nhật được đoạn lặp.', {
+                id,
+            });
         }
     };
 
@@ -70,11 +71,6 @@ export function MovementSettingsPanel({
                         Lặp các bước chuyển động nối tiếp. Các bước sau đoạn lặp sẽ chờ.
                     </p>
                 </>
-            )}
-            {error && (
-                <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                </Alert>
             )}
         </section>
     );

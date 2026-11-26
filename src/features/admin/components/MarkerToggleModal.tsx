@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Power } from 'lucide-react';
+import { Power } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/shared/api/errors';
@@ -7,7 +7,7 @@ import type { BookariaMarker } from '@/shared/contracts/dto.schema';
 import { cn } from '@/shared/lib/cn';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
-import { Alert, AlertDescription } from '@/shared/ui/primitives/alert';
+import { Feedback } from '@/shared/ui/Feedback';
 import {
     Dialog,
     DialogContent,
@@ -96,12 +96,7 @@ export function MarkerToggleModal({ marker, isOpen, onClose, onSuccess }: Marker
                     </DialogDescription>
                 </DialogHeader>
 
-                {apiError && (
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription>{apiError}</AlertDescription>
-                    </Alert>
-                )}
+                <Feedback error={apiError} errorMode="toast" />
 
                 {/* Tóm tắt marker */}
                 <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface p-3 shadow-xs">

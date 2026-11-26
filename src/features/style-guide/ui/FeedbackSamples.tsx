@@ -20,7 +20,7 @@ export function FeedbackSamples() {
                     title="Alert theo vai trò"
                     source="@/shared/ui/Alert · info / success / warning / danger"
                 >
-                    <div className="grid grid-cols-2 gap-4 max-[800px]:grid-cols-1">
+                    <div className="grid grid-cols-2 gap-2 max-[800px]:grid-cols-1 [&_.feedback]:m-0">
                         <Alert tone="info">Thông tin: bạn có thể đổi tên sách trong editor.</Alert>
                         <Alert tone="success">Thành công: thông tin mẫu đã được lưu.</Alert>
                         <Alert tone="warning">Cần chú ý: xác minh email trước khi xuất bản.</Alert>
@@ -49,10 +49,13 @@ export function FeedbackSamples() {
                             Đóng toast mẫu
                         </Button>
                     </div>
-                    <Feedback
-                        error="Lỗi mẫu: tệp vượt dung lượng cho phép. Chọn một tệp nhỏ hơn."
-                        warning="Cảnh báo mẫu: mô hình nhiều chi tiết có thể tải chậm."
-                    />
+                    <div className="grid gap-2">
+                        <Feedback
+                            className="m-0"
+                            error="Lỗi mẫu: tệp vượt dung lượng cho phép. Chọn một tệp nhỏ hơn."
+                            warning="Cảnh báo mẫu: mô hình nhiều chi tiết có thể tải chậm."
+                        />
+                    </div>
                 </Sample>
                 <Sample
                     title="Badge"

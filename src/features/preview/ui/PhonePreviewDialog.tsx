@@ -1,5 +1,6 @@
 import { Copy, ExternalLink } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { apiClient } from '@/shared/api/client';
 import { errorMessage } from '@/shared/api/errors';
 import { IdSchema } from '@/shared/contracts/common.schema';
@@ -7,6 +8,7 @@ import { JobResultsSchema } from '@/shared/contracts/dto.schema';
 import { ApiErrorSchema } from '@/shared/contracts/error.schema';
 import { Alert } from '@/shared/ui/Alert';
 import { Button } from '@/shared/ui/Button';
+import { Feedback } from '@/shared/ui/Feedback';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import {
     Dialog,
@@ -224,9 +226,10 @@ function PhonePreviewSession({ bookId, pageId, unsaved, onClose }: PhonePreviewP
                             ]}
                         />
                     </Field>
-                    {(configError || error) && (
+                    <Feedback error={configError ? null : error} errorMode="toast" />
+                    {configError && (
                         <Alert tone="danger" className="mb-0">
-                            {configError || error}
+                            {configError}
                         </Alert>
                     )}
                     {!link && (
@@ -279,10 +282,10 @@ function PhonePreviewSession({ bookId, pageId, unsaved, onClose }: PhonePreviewP
                                     variant="outline"
                                     onClick={() => {
                                         void navigator.clipboard.writeText(link).then(
-                                            () => setStatus('Đã sao chép liên kết.'),
+                                            () => toast.success('Đã sao chép liên kết.'),
                                             () =>
-                                                setError(
-                                                    'Không sao chép được. Hãy sao chép địa chỉ bên dưới.',
+                                                toast.error(
+                                                    'Không sao chép được. Bạn có thể sao chép địa chỉ thủ công.',
                                                 ),
                                         );
                                     }}

@@ -540,9 +540,9 @@ export function BookCreateDialog({ backTo = '/books' }: { backTo?: '/books' | '/
                                     </div>
                                 </fieldset>
                             </div>
-                            {(error || busy) && (
-                                <div className="creation-result max-h-[28dvh] shrink-0 overflow-y-auto px-6 pt-3 pb-4 [&_>_.feedback]:m-0">
-                                    <Feedback error={error} />
+                            <Feedback error={error} errorMode="toast" />
+                            {(busy || (locked && error)) && (
+                                <div className="creation-result max-h-[28dvh] shrink-0 overflow-y-auto px-6 pt-3 pb-4">
                                     {locked && !busy && error && (
                                         <p className="creation-recovery mx-0 my-2 text-[length:12px]">
                                             {checkpoint.current.uncertain

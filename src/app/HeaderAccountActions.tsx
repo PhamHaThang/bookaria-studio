@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, LogOut, PanelsTopLeft, ShieldCheck, UserRound } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { auth, useAuth } from '@/features/auth/model/session';
 import { NotificationsPopover } from '@/features/notifications/NotificationsPopover';
 import { profileApi, profileKey } from '@/features/profile';
@@ -9,7 +10,6 @@ import { errorMessage } from '@/shared/api/errors';
 import type { AuthUser } from '@/shared/contracts/api/auth.schema';
 import type { Me } from '@/shared/contracts/dto.schema';
 import { cn } from '@/shared/lib/cn';
-import { Alert } from '@/shared/ui/Alert';
 import { Avatar } from '@/shared/ui/Avatar';
 import { AvatarBadge } from '@/shared/ui/primitives/avatar';
 import { Button } from '@/shared/ui/primitives/button';
@@ -37,7 +37,6 @@ function SignedInActions({
     children?: ReactNode;
 }) {
     const [panel, setPanel] = useState<Panel>(null);
-    const [error, setError] = useState<string | null>(null);
     const [params, setParams] = useSearchParams();
     const navigate = useNavigate();
     const { signingOut } = useAuth();
@@ -74,12 +73,13 @@ function SignedInActions({
         if (auth.store.getState().signingOut) return;
         hover.current = false;
         clearTimeout(timer.current);
-        setError(null);
+        toast.dismiss('header-logout-error');
         try {
             await auth.logout();
             navigate('/', { replace: true });
         } catch (cause) {
-            if (auth.store.getState().user?.id === user.id) setError(errorMessage(cause));
+            if (auth.store.getState().user?.id === user.id)
+                toast.error(errorMessage(cause), { id: 'header-logout-error' });
         }
     }
 
@@ -116,11 +116,6 @@ function SignedInActions({
                 )}
             </DropdownMenuGroup>
             <DropdownMenuGroup>
-                {error && (
-                    <DropdownMenuLabel>
-                        <Alert tone="danger">{error}</Alert>
-                    </DropdownMenuLabel>
-                )}
                 <DropdownMenuItem
                     variant="destructive"
                     disabled={signingOut}

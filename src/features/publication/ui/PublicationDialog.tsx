@@ -27,6 +27,7 @@ import { BookCoverImage } from '@/shared/ui/BookCoverImage';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { Disclosure } from '@/shared/ui/Disclosure';
+import { Feedback } from '@/shared/ui/Feedback';
 import { Checkbox } from '@/shared/ui/primitives/checkbox';
 import {
     Dialog,
@@ -238,7 +239,7 @@ export function PublicationDialog({
             await navigator.clipboard.writeText(value);
             toast.success('Đã sao chép.');
         } catch {
-            setError('Chưa sao chép được. Bạn có thể chọn liên kết và sao chép thủ công.');
+            toast.error('Chưa sao chép được. Bạn có thể chọn liên kết và sao chép thủ công.');
         }
     }
     async function download(url: string, name: string) {
@@ -252,7 +253,7 @@ export function PublicationDialog({
             a.click();
             setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
         } catch {
-            setError('Chưa tải được tệp. Hãy thử lại hoặc mở liên kết trong tab mới.');
+            toast.error('Chưa tải được tệp. Hãy thử lại hoặc mở liên kết trong tab mới.');
         }
     }
     const renderIssues = (items: PublishCheck['errors'] | PublishCheck['warnings']) => {
@@ -416,7 +417,7 @@ export function PublicationDialog({
                                 : 'overflow-y-auto',
                         )}
                     >
-                        {visibleError && <Alert tone="danger">{visibleError}</Alert>}
+                        <Feedback error={visibleError} errorMode="toast" />
                         {preparing ? (
                             <div
                                 role="status"
@@ -709,15 +710,22 @@ export function PublicationDialog({
                                                     <Spinner /> Đang tải liên kết…
                                                 </div>
                                             ) : share.isError ? (
-                                                <Alert tone="danger">
-                                                    {errorMessage(share.error)}{' '}
+                                                <>
+                                                    <Feedback
+                                                        error={
+                                                            share.isFetching
+                                                                ? null
+                                                                : errorMessage(share.error)
+                                                        }
+                                                        errorMode="toast"
+                                                    />
                                                     <Button
                                                         variant="link"
                                                         onClick={() => void share.refetch()}
                                                     >
                                                         Thử lại
                                                     </Button>
-                                                </Alert>
+                                                </>
                                             ) : (
                                                 share.data && (
                                                     <div className="grid grid-cols-[minmax(0,1fr)_156px] items-start gap-6">

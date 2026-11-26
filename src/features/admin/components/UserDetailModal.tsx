@@ -7,7 +7,6 @@ import {
     Lock,
     Pencil,
     ShieldCheck,
-    Trash2,
     Unlock,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth';
@@ -41,17 +40,9 @@ interface UserDetailModalProps {
     onClose: () => void;
     onEdit?: (user: AdminUserDetails) => void;
     onLock?: (user: AdminUserDetails) => void;
-    onDelete?: (user: AdminUserDetails) => void;
 }
 
-export function UserDetailModal({
-    userId,
-    isOpen,
-    onClose,
-    onEdit,
-    onLock,
-    onDelete,
-}: UserDetailModalProps) {
+export function UserDetailModal({ userId, isOpen, onClose, onEdit, onLock }: UserDetailModalProps) {
     const { user: currentAdmin } = useAuth();
 
     const {
@@ -345,21 +336,6 @@ export function UserDetailModal({
                     </Button>
                     {userDetails && (
                         <div className="flex flex-wrap items-center gap-2.5">
-                            {!isSelf && onDelete && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                                    onClick={() => {
-                                        onClose();
-                                        onDelete(userDetails);
-                                    }}
-                                >
-                                    <Trash2 className="h-4 w-4" data-icon="inline-start" />
-                                    <span>Vô hiệu hóa</span>
-                                </Button>
-                            )}
-
                             {!isSelf && onLock && (
                                 <Button
                                     variant="secondary"

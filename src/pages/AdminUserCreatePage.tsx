@@ -26,7 +26,7 @@ export function AdminUserCreatePage() {
             <Link to="/admin/users">Về danh sách người dùng</Link>
             <h1>Tạo người dùng</h1>
             <p>Tạo tài khoản mới với vai trò và hạn mức được chỉ định. Không tự gửi email mời.</p>
-            <Feedback error={error || action.error} />
+            <Feedback error={error || action.error} errorMode="toast" />
             {action.uncertain && (
                 <Button
                     variant="secondary"
@@ -153,7 +153,6 @@ export function AdminUserCreatePage() {
                         {bytesLabel(draft.storageQuotaBytes)}.
                     </p>
                     {draft.role === 'ADMIN' && <p>Tài khoản này có quyền quản trị hệ thống.</p>}
-                    <Feedback error={action.error} />
                     <div className="admin-actions flex flex-wrap items-center gap-3 max-[640px]:flex-col max-[640px]:items-stretch [.admin-confirm_&]:mt-5">
                         <AlertDialogCancel variant="plain" asChild>
                             <Button

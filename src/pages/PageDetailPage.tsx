@@ -217,7 +217,7 @@ function PageDetailContent({ bookId, pageId }: { bookId: string; pageId: string 
         return (
             <div className="flex min-h-screen flex-col items-center justify-center gap-4">
                 <h1>Chưa mở được editor</h1>
-                <Feedback error={errorMessage(problem)} />
+                <Feedback error={errorMessage(problem)} errorMode="toast" />
                 <Button
                     onClick={() => {
                         void detail.refetch();

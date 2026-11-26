@@ -57,7 +57,13 @@ for (const [width, theme, failOnce] of [
                 return logoutCalls === 1
                     ? route.fulfill({
                           status: 500,
-                          json: { error: { message: 'Chưa đăng xuất được.' } },
+                          json: {
+                              error: {
+                                  code: 'INTERNAL_ERROR',
+                                  message: 'Chưa đăng xuất được.',
+                                  requestId: 'test',
+                              },
+                          },
                       })
                     : route.fulfill({ status: 204 });
             }
@@ -239,7 +245,10 @@ for (const [width, theme, failOnce] of [
             const menu = page.getByRole('menu');
             await expect(menu.locator('[aria-current="page"]')).toHaveText('Hồ sơ');
             await menu.getByRole('menuitem', { name: 'Đăng xuất', exact: true }).click();
-            await expect(menu.getByRole('alert')).toBeVisible();
+            await expect(
+                page.locator('[data-sonner-toast]').getByText('Chưa đăng xuất được.'),
+            ).toBeVisible();
+            await expect(menu.getByRole('alert')).toHaveCount(0);
             await expect(
                 menu.getByRole('menuitem', { name: 'Đăng xuất', exact: true }),
             ).toBeEnabled();

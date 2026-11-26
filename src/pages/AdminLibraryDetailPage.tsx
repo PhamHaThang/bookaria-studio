@@ -255,7 +255,7 @@ export function AdminLibraryDetailPage() {
                     <h1 className="font-semibold text-base text-destructive">
                         Chưa mở được tài nguyên
                     </h1>
-                    <Feedback error={errorMessage(detail.error)} />
+                    <Feedback error={errorMessage(detail.error)} errorMode="toast" />
                 </div>
             )}
 
@@ -264,7 +264,10 @@ export function AdminLibraryDetailPage() {
                     <h1 className="font-semibold text-foreground text-lg">
                         Tài nguyên chưa thuộc thư viện
                     </h1>
-                    <Feedback error="Tài nguyên này hiện chỉ là tài nguyên cá nhân và chưa thuộc thư viện dùng chung." />
+                    <Feedback
+                        error="Tài nguyên này hiện chỉ là tài nguyên cá nhân và chưa thuộc thư viện dùng chung."
+                        errorMode="toast"
+                    />
                     <Button asChild>
                         <Link to={`/admin/library/new?asset=${assetId}`}>
                             Chọn để đưa vào thư viện

@@ -96,7 +96,7 @@ export function AdminDashboardPage() {
     if (query.isError) {
         return (
             <div className="mx-auto max-w-6xl p-6">
-                <Feedback error={errorMessage(query.error)} />
+                <Feedback error={errorMessage(query.error)} errorMode="toast" />
                 <div className="mt-4">
                     <Button variant="secondary" onClick={() => void query.refetch()}>
                         Thử lại
