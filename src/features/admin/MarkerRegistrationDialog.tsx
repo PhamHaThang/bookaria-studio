@@ -3,6 +3,7 @@ import { Check, ImagePlus, ScanLine, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/shared/api/errors';
+import { LoadingToast } from '@/shared/ui/LoadingToast';
 import { Badge } from '@/shared/ui/primitives/badge';
 import { Button } from '@/shared/ui/primitives/button';
 import {
@@ -378,19 +379,16 @@ export function MarkerRegistrationDialog({ onClose }: { onClose: () => void }) {
                         role="status"
                         aria-live="polite"
                     >
-                        <p className="m-0 text-muted-foreground text-sm">
-                            {busy
-                                ? 'Đang chuẩn bị và đăng ký marker…'
-                                : done
-                                  ? `Đã đăng ký ${done}/${rows.length} marker`
-                                  : `${ready.length} marker sẵn sàng`}
-                        </p>
-                        {busy && (
-                            <Progress
-                                value={progress}
-                                className="max-w-80"
-                                aria-label="Tiến độ đăng ký bộ marker"
-                            />
+                        <LoadingToast
+                            title={busy ? 'Đang chuẩn bị và đăng ký marker…' : null}
+                            description={`${Math.round(progress)}% · ${done}/${rows.length} marker đã đăng ký`}
+                        />
+                        {!busy && (
+                            <p className="m-0 text-muted-foreground text-sm">
+                                {done
+                                    ? `Đã đăng ký ${done}/${rows.length} marker`
+                                    : `${ready.length} marker sẵn sàng`}
+                            </p>
                         )}
                     </div>
                     <div className="flex shrink-0 gap-3">

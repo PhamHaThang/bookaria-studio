@@ -1,7 +1,7 @@
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { LoadingToast } from '@/shared/ui/LoadingToast';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { Progress } from '@/shared/ui/primitives/progress';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { ContractError } from '../../../shared/api/contract';
 import { errorMessage } from '../../../shared/api/errors';
@@ -193,23 +193,14 @@ export function PageImageForm({
                     {file && <p className="page-file-name wrap-anywhere m-0">{file.name}</p>}
                     {children}
                 </fieldset>
-                {stage && (
-                    <div>
-                        <p role="status">
-                            {labels[stage]}
-                            {['uploading', 'compiling', 'uploading-marker'].includes(stage)
-                                ? ` ${progress}%`
-                                : ''}
-                        </p>
-                        {['uploading', 'compiling', 'uploading-marker'].includes(stage) && (
-                            <Progress
-                                aria-label="Tiến độ chuẩn bị trang"
-                                max={100}
-                                value={progress}
-                            />
-                        )}
-                    </div>
-                )}
+                <LoadingToast
+                    title={stage ? labels[stage] : null}
+                    description={
+                        stage && ['uploading', 'compiling', 'uploading-marker'].includes(stage)
+                            ? `${progress}%`
+                            : undefined
+                    }
+                />
                 {!stage && (ready || checkpoint?.uploaded) && (
                     <p className="field-hint mt-2 block font-normal text-[length:var(--text-xs)] text-muted-foreground leading-[var(--leading-normal)] [.asset-metadata-form_&]:mx-0 [.asset-metadata-form_&]:mt-[calc(-1_*_var(--space-3))] [.asset-metadata-form_&]:mb-5 [.asset-upload-form_&:last-child]:mt-[calc(-1_*_var(--space-3))] [.asset-upload-form_&]:mx-0 [.asset-upload-form_&]:mt-2 [.asset-upload-form_&]:mb-5 max-[1200px]:[.scene-object-fields_>_&]:col-[1_/_-1] [.workbench-panel_&]:text-[length:11px]">
                         Ảnh đã tải xong. Thử lại sẽ dùng ảnh này, không tải trùng tệp.

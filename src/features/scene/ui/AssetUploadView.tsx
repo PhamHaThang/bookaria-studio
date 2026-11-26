@@ -5,10 +5,10 @@ import { toast } from 'sonner';
 import { AUDIO_TAG_OPTIONS } from '@/shared/scene/audio-kind';
 import { Feedback } from '@/shared/ui/Feedback';
 import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingToast } from '@/shared/ui/LoadingToast';
 import { Button } from '@/shared/ui/primitives/button';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { Progress } from '@/shared/ui/primitives/progress';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { errorMessage } from '../../../shared/api/errors';
 import type { CompleteAssetBody } from '../../../shared/contracts/api/assets.schema';
@@ -120,6 +120,7 @@ export function AssetUploadView({
             controller = new AbortController();
         active.current = controller;
         setError(null);
+        setProgress(0);
         try {
             const body =
                 checkpoint?.uploaded && metadata.current
@@ -341,18 +342,10 @@ export function AssetUploadView({
                             )}
                         </Field>
                         <Feedback error={error} errorMode="toast" />
-                        {stage && (
-                            <div role="status" className="flex flex-col gap-2 text-sm">
-                                <span className="flex items-center gap-2">
-                                    <Spinner aria-hidden="true" />
-                                    {stageLabels[stage]}
-                                    {stage === 'uploading' && ` ${progress}%`}
-                                </span>
-                                {stage === 'uploading' && (
-                                    <Progress value={progress} aria-label="Tiến độ tải tệp" />
-                                )}
-                            </div>
-                        )}
+                        <LoadingToast
+                            title={stage ? stageLabels[stage] : null}
+                            progress={stage === 'uploading' ? progress : undefined}
+                        />
                         {!stage && !assetId && checkpoint?.uploaded && (
                             <p role="status" className="text-muted-foreground text-xs">
                                 Tệp đã tải xong. Chỉ cần xác nhận lại.

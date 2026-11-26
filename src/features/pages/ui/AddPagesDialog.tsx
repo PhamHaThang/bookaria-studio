@@ -8,6 +8,7 @@ import { cn } from '../../../shared/lib/cn';
 import { Button } from '../../../shared/ui/Button';
 import { ConfirmationDialog } from '../../../shared/ui/ConfirmationDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
+import { LoadingToast } from '../../../shared/ui/LoadingToast';
 import { Button as ActionButton } from '../../../shared/ui/primitives/button';
 import {
     Dialog,
@@ -17,7 +18,6 @@ import {
     DialogTitle,
 } from '../../../shared/ui/primitives/dialog';
 import { Field, FieldLabel, FieldLegend, FieldSet } from '../../../shared/ui/primitives/field';
-import { Progress } from '../../../shared/ui/primitives/progress';
 import { RadioGroup, RadioGroupItem } from '../../../shared/ui/primitives/radio-group';
 import { Separator } from '../../../shared/ui/primitives/separator';
 import { Spinner } from '../../../shared/ui/primitives/spinner';
@@ -324,23 +324,30 @@ export function AddPagesDialog({
                                 }}
                             />
                         </div>
-                        {locked && (
+                        <LoadingToast
+                            title={
+                                busy
+                                    ? checkpoint.current.uncertain
+                                        ? 'Đang kiểm tra danh sách trang…'
+                                        : stage || 'Đang thêm trang…'
+                                    : null
+                            }
+                            description={
+                                count && !checkpoint.current.uncertain
+                                    ? `${completed}/${count} trang đã thêm.`
+                                    : undefined
+                            }
+                        />
+                        {locked && !busy && (
                             <div
                                 role="status"
                                 aria-live="polite"
                                 className="mt-5 flex flex-col gap-3 rounded-lg bg-muted p-4"
                             >
                                 <span className="flex items-center gap-2 text-sm">
-                                    {busy && <Spinner aria-hidden="true" />}
-                                    {busy ? stage : `Đã thêm ${completed}/${count} trang.`}
+                                    Đã thêm {completed}/{count} trang.
                                 </span>
-                                <Progress
-                                    value={completed}
-                                    max={count}
-                                    aria-label="Tiến độ thêm trang"
-                                    getValueLabel={() => `${completed}/${count} trang đã thêm`}
-                                />
-                                {!busy && !checkpoint.current.uncertain && completed < count && (
+                                {!checkpoint.current.uncertain && completed < count && (
                                     <p className="m-0 text-muted-foreground text-xs">
                                         Tiếp tục sẽ bỏ qua trang đã thêm và giữ nguyên thứ tự bạn đã
                                         chọn.

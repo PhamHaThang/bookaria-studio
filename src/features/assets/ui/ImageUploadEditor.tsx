@@ -6,10 +6,10 @@ import { authLocation } from '@/features/auth/model/dialog';
 import { useAuth } from '@/features/auth/model/session';
 import { cn } from '@/shared/lib/cn';
 import { optimizeBookCover } from '@/shared/lib/image-file';
+import { LoadingToast } from '@/shared/ui/LoadingToast';
 import { Button as PreviewButton } from '@/shared/ui/primitives/button';
 import { Field, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { Progress } from '@/shared/ui/primitives/progress';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { errorMessage } from '../../../shared/api/errors';
 import type { Asset } from '../../../shared/contracts/dto.schema';
@@ -322,21 +322,10 @@ export function ImageUploadEditor({
                                 {file.name} · {formatBytes(file.size)}
                             </p>
                         )}
-                        {stage && (
-                            <div className="image-upload-progress [&_progress]:w-full">
-                                <p role="status">
-                                    {stages[stage]}
-                                    {stage === 'uploading' ? ` ${progress}%` : ''}
-                                </p>
-                                {stage === 'uploading' && (
-                                    <Progress
-                                        aria-label="Tiến độ tải ảnh"
-                                        value={progress}
-                                        max={100}
-                                    />
-                                )}
-                            </div>
-                        )}
+                        <LoadingToast
+                            title={stage ? stages[stage] : null}
+                            description={stage === 'uploading' ? `${progress}%` : undefined}
+                        />
                         {!stage && readyAsset && (
                             <p
                                 className={

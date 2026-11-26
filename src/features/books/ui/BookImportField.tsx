@@ -3,11 +3,10 @@ import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../../../shared/api/errors';
 import { Button } from '../../../shared/ui/Button';
 import { Feedback } from '../../../shared/ui/Feedback';
+import { LoadingToast } from '../../../shared/ui/LoadingToast';
 import { Button as ActionButton } from '../../../shared/ui/primitives/button';
 import { FieldSet } from '../../../shared/ui/primitives/field';
 import { Input } from '../../../shared/ui/primitives/input';
-import { Progress } from '../../../shared/ui/primitives/progress';
-import { Spinner } from '../../../shared/ui/primitives/spinner';
 import {
     type ImportSource,
     mergeImageFiles,
@@ -225,37 +224,23 @@ export function BookImportField({
                     void choose(incoming);
                 }}
             />
+            <LoadingToast
+                title={reading ? 'Đang đọc tài liệu…' : null}
+                description={
+                    progress
+                        ? `${progress.current}/${progress.total} trang đã kiểm tra.`
+                        : 'Đang kiểm tra và chuẩn bị ảnh xem trước.'
+                }
+            />
             {reading && (
-                <div
-                    className="flex flex-col gap-4 rounded-xl bg-muted p-4"
-                    role="status"
-                    aria-live="polite"
+                <ActionButton
+                    variant="ghost"
+                    size="sm"
+                    className="self-start"
+                    onClick={cancelReading}
                 >
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <Spinner aria-hidden="true" />
-                            <div className="flex flex-col gap-1">
-                                <span className="font-medium text-sm">Đang đọc tài liệu…</span>
-                                <span className="text-muted-foreground text-xs">
-                                    Đang kiểm tra và chuẩn bị ảnh xem trước.
-                                </span>
-                            </div>
-                        </div>
-                        <ActionButton variant="ghost" size="sm" onClick={cancelReading}>
-                            Hủy đọc
-                        </ActionButton>
-                    </div>
-                    {progress && (
-                        <Progress
-                            value={progress.current}
-                            max={progress.total}
-                            aria-label="Tiến độ kiểm tra tài liệu"
-                            getValueLabel={() =>
-                                `${progress.current}/${progress.total} trang đã kiểm tra`
-                            }
-                        />
-                    )}
-                </div>
+                    Hủy đọc
+                </ActionButton>
             )}
             <Feedback error={error} errorMode="toast" />
             {images && (

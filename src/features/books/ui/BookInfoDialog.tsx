@@ -11,6 +11,7 @@ import { Button } from '../../../shared/ui/Button';
 import { ConfirmationDialog } from '../../../shared/ui/ConfirmationDialog';
 import { Feedback } from '../../../shared/ui/Feedback';
 import { LoadingState } from '../../../shared/ui/LoadingState';
+import { LoadingToast } from '../../../shared/ui/LoadingToast';
 import { Button as ActionButton } from '../../../shared/ui/primitives/button';
 import {
     Dialog,
@@ -20,7 +21,6 @@ import {
     DialogTitle,
 } from '../../../shared/ui/primitives/dialog';
 import { Input } from '../../../shared/ui/primitives/input';
-import { Progress } from '../../../shared/ui/primitives/progress';
 import { Separator } from '../../../shared/ui/primitives/separator';
 import { Spinner } from '../../../shared/ui/primitives/spinner';
 import { assetKeys, assetsApi } from '../../assets';
@@ -396,21 +396,12 @@ export function BookInfoDialog({
                                     onDirtyChange={setMetadataDirty}
                                     onSubmit={(form) => void save(form)}
                                 />
-                                {busy && (
-                                    <div role="status" className="flex flex-col gap-3">
-                                        <span className="flex items-center gap-2 text-sm">
-                                            <Spinner aria-hidden="true" />
-                                            {stage}
-                                        </span>
-                                        {stage === 'Đang tải ảnh bìa…' && (
-                                            <Progress
-                                                value={progress}
-                                                max={100}
-                                                aria-label="Tiến độ tải ảnh bìa"
-                                            />
-                                        )}
-                                    </div>
-                                )}
+                                <LoadingToast
+                                    title={busy ? stage || 'Đang lưu thông tin sách…' : null}
+                                    description={
+                                        stage === 'Đang tải ảnh bìa…' ? `${progress}%` : undefined
+                                    }
+                                />
                             </>
                         )}
                     </div>

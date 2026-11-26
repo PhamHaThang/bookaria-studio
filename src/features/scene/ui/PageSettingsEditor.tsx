@@ -6,6 +6,7 @@ import { BufferedInput } from '@/shared/ui/BufferedTextInput';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { Feedback } from '@/shared/ui/Feedback';
+import { LoadingToast } from '@/shared/ui/LoadingToast';
 import { Button as IconButton } from '@/shared/ui/primitives/button';
 import {
     Dialog,
@@ -23,7 +24,6 @@ import {
     FieldSet,
 } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { Progress } from '@/shared/ui/primitives/progress';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Switch } from '@/shared/ui/primitives/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/primitives/toggle-group';
@@ -670,21 +670,15 @@ export function PageSettingsEditor({
                     </FieldGroup>
                 </fieldset>
                 <footer className="flex shrink-0 flex-col gap-3 p-4">
-                    {busy && (
-                        <div
-                            className="flex min-w-0 flex-col gap-2"
-                            role="status"
-                            aria-live="polite"
-                        >
-                            <span className="truncate text-muted-foreground text-xs">
-                                {stage || 'Đang lưu…'}
-                            </span>
-                            {(stage?.includes('nhận diện') || stage?.startsWith('Đang tải ')) &&
-                                !stage?.includes('lưu') && (
-                                    <Progress value={progress} className="h-1.5" />
-                                )}
-                        </div>
-                    )}
+                    <LoadingToast
+                        title={busy ? stage || 'Đang lưu…' : null}
+                        description={
+                            (stage?.includes('nhận diện') || stage?.startsWith('Đang tải ')) &&
+                            !stage?.includes('lưu')
+                                ? `${progress}%`
+                                : undefined
+                        }
+                    />
                     <div className="flex items-center gap-2">
                         <Button
                             type="button"

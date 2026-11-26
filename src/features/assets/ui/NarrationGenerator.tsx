@@ -10,6 +10,7 @@ import {
     NarrationOptionsSchema,
 } from '@/shared/contracts/api/narration.schema';
 import { Button } from '@/shared/ui/Button';
+import { LoadingToast } from '@/shared/ui/LoadingToast';
 import {
     Dialog,
     DialogContent,
@@ -21,7 +22,6 @@ import {
 } from '@/shared/ui/primitives/dialog';
 import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { Progress } from '@/shared/ui/primitives/progress';
 import { Slider } from '@/shared/ui/primitives/slider';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
@@ -457,28 +457,24 @@ export function NarrationGenerator({
                                         </p>
                                     </div>
                                 )}
-                                {busy && (generated || stage) && (
-                                    <div
-                                        role="status"
-                                        className="flex items-center gap-2 text-muted-foreground text-xs"
-                                    >
-                                        {generated && <Spinner aria-hidden="true" />}
-                                        <span>
-                                            {stage
-                                                ? stageLabels[stage]
-                                                : generated
-                                                  ? 'Đang tạo lại. Bản nghe thử cũ vẫn được giữ.'
-                                                  : 'Đang xử lý âm thanh…'}
-                                        </span>
-                                    </div>
-                                )}
-                                {stage === 'uploading' && (
-                                    <Progress
-                                        value={progress}
-                                        aria-label="Tiến độ lưu âm thanh"
-                                        className="h-1.5"
-                                    />
-                                )}
+                                <LoadingToast
+                                    title={
+                                        stage
+                                            ? stageLabels[stage]
+                                            : generating
+                                              ? generated
+                                                  ? 'Đang tạo lại lời đọc…'
+                                                  : 'Đang tạo bản nghe thử…'
+                                              : null
+                                    }
+                                    description={
+                                        stage === 'uploading'
+                                            ? `${progress}%`
+                                            : generating && generated
+                                              ? 'Bản nghe thử cũ vẫn được giữ.'
+                                              : undefined
+                                    }
+                                />
                                 {error && (
                                     <p
                                         role="alert"

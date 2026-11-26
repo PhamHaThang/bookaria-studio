@@ -1,13 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, BookOpen, FileUp, LoaderCircle, X } from 'lucide-react';
+import { ArrowRight, BookOpen, FileUp, X } from 'lucide-react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { optimizeBookCover } from '@/shared/lib/image-file';
 import { FormSelect } from '@/shared/ui/FormSelect';
+import { LoadingToast } from '@/shared/ui/LoadingToast';
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
-import { Progress } from '@/shared/ui/primitives/progress';
 import { RadioGroup, RadioGroupItem } from '@/shared/ui/primitives/radio-group';
 import { Spinner } from '@/shared/ui/primitives/spinner';
 import { Textarea } from '@/shared/ui/primitives/textarea';
@@ -541,44 +541,17 @@ export function BookCreateDialog({ backTo = '/books' }: { backTo?: '/books' | '/
                                 </fieldset>
                             </div>
                             <Feedback error={error} errorMode="toast" />
-                            {(busy || (locked && error)) && (
+                            <LoadingToast
+                                title={busy ? stage || 'Đang tạo sách…' : null}
+                                description={`${completed}/${count} trang đã hoàn tất. Giữ tab này mở đến khi xong.`}
+                            />
+                            {locked && !busy && error && (
                                 <div className="creation-result max-h-[28dvh] shrink-0 overflow-y-auto px-6 pt-3 pb-4">
-                                    {locked && !busy && error && (
-                                        <p className="creation-recovery mx-0 my-2 text-[length:12px]">
-                                            {checkpoint.current.uncertain
-                                                ? 'Yêu cầu có thể đã được lưu. Mở sách để kiểm tra; hệ thống sẽ không tự gửi lại và tạo trùng.'
-                                                : `Sách đã tạo, ${completed}/${count} trang đã nhập. Tiếp tục sẽ giữ nguyên các trang đã xong. Giữ tab này để tiếp tục.`}
-                                        </p>
-                                    )}
-                                    {busy && (
-                                        <div
-                                            className="creation-progress mt-0 flex items-center gap-3 text-[length:14px] text-primary [&_small]:mt-[6px] [&_small]:block [&_small]:text-current"
-                                            role="status"
-                                        >
-                                            <LoaderCircle
-                                                size={20}
-                                                className="button-spinner shrink-0 motion-safe:animate-spin"
-                                            />
-                                            <span>
-                                                {stage}
-                                                <small>
-                                                    {completed}/{count} trang đã hoàn tất. Giữ trang
-                                                    này mở đến khi hoàn tất.
-                                                </small>
-                                            </span>
-                                        </div>
-                                    )}
-                                    {locked && (
-                                        <Progress
-                                            value={completed}
-                                            max={count}
-                                            className="mt-3"
-                                            aria-label="Tiến độ tạo trang sách"
-                                            getValueLabel={() =>
-                                                `${completed}/${count} trang đã hoàn tất`
-                                            }
-                                        />
-                                    )}
+                                    <p className="creation-recovery mx-0 my-2 text-[length:12px]">
+                                        {checkpoint.current.uncertain
+                                            ? 'Yêu cầu có thể đã được lưu. Mở sách để kiểm tra; hệ thống sẽ không tự gửi lại và tạo trùng.'
+                                            : `Sách đã tạo, ${completed}/${count} trang đã nhập. Tiếp tục sẽ giữ nguyên các trang đã xong. Giữ tab này để tiếp tục.`}
+                                    </p>
                                 </div>
                             )}
                             <footer className="flex shrink-0 items-center justify-between gap-4 border-border border-t px-6 py-4 [&>div]:flex [&>div]:items-center [&>div]:gap-3 [&>span]:text-muted-foreground [&>span]:text-xs">

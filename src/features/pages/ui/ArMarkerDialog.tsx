@@ -14,6 +14,7 @@ import {
 import { Alert } from '@/shared/ui/Alert';
 import { Button } from '@/shared/ui/Button';
 import { Feedback } from '@/shared/ui/Feedback';
+import { LoadingToast } from '@/shared/ui/LoadingToast';
 import { Badge } from '@/shared/ui/primitives/badge';
 import { Button as IconButton } from '@/shared/ui/primitives/button';
 import {
@@ -673,18 +674,22 @@ export function ArMarkerDialog({
                         )}
                         <div className="flex min-w-0 items-center justify-between gap-4">
                             <div className="min-w-0 flex-1" role="status" aria-live="polite">
-                                {(busy || scoring) && (
+                                <LoadingToast
+                                    title={busy ? stage || 'Đang lưu marker…' : null}
+                                    description={
+                                        stage === 'Đang chuẩn bị nhận diện ảnh…' ||
+                                        stage === 'Đang tải dữ liệu nhận diện…'
+                                            ? `${progress}%`
+                                            : undefined
+                                    }
+                                />
+                                {!busy && scoring && (
                                     <div className="flex max-w-96 flex-col gap-2">
                                         <span className="flex items-center gap-2 text-muted-foreground text-xs">
                                             <Spinner className="size-4 shrink-0" />
-                                            {busy
-                                                ? stage
-                                                : `Đang đánh giá ảnh… ${job?.progress ?? 0}%`}
+                                            Đang đánh giá ảnh… {job?.progress ?? 0}%
                                         </span>
-                                        <Progress
-                                            value={busy ? progress : (job?.progress ?? 0)}
-                                            className="h-1.5"
-                                        />
+                                        <Progress value={job?.progress ?? 0} className="h-1.5" />
                                     </div>
                                 )}
                                 {mode === 'CUSTOM_MARKER' &&
