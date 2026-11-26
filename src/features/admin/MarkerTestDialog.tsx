@@ -281,19 +281,15 @@ export function MarkerTestDialog({ onClose }: { onClose: () => void }) {
                                 <ScanLine className="mx-auto size-20 text-muted-foreground" />
                                 <h3 className="m-0 font-semibold">Xem ảnh có dễ nhận diện không</h3>
                                 <p className="m-0 text-muted-foreground text-sm">
-                                    Xem phân bố điểm, độ độc đáo và kích thước ảnh theo cách của
-                                    Pictarize.
-                                </p>
-                                <p className="m-0 text-muted-foreground text-sm">
-                                    Ảnh được phân tích ngay trong trình duyệt; không tạo tài nguyên
-                                    hay đăng ký marker.
+                                    Kiểm tra phân bố điểm, độ độc đáo và kích thước ảnh ngay trong
+                                    trình duyệt trước khi đăng ký marker.
                                 </p>
                             </div>
                         )}
                         <Alert>
                             <AlertDescription>
-                                Ba tiêu chí được đánh giá riêng từ điểm đặc trưng MindAR. Hãy thử
-                                thêm với bản in và camera thực tế.
+                                Hãy quét bản in bằng camera để kiểm tra khả năng nhận diện trong
+                                điều kiện thực tế.
                             </AlertDescription>
                         </Alert>
                     </aside>
