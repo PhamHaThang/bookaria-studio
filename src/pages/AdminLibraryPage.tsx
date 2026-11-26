@@ -13,6 +13,7 @@ import {
     Plus,
     Tag,
     Trash2,
+    Upload,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -267,7 +268,7 @@ function AdminLibraryItem({
     );
 }
 
-type ModalType = 'none' | 'create' | 'detail' | 'edit' | 'delete';
+type ModalType = 'none' | 'create' | 'upload' | 'detail' | 'edit' | 'delete';
 
 export function AdminLibraryPage() {
     const { user } = useAuth();
@@ -321,14 +322,22 @@ export function AdminLibraryPage() {
                         sách AR.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setModalState({ type: 'upload' })}
+                    >
+                        <Upload data-icon="inline-start" aria-hidden="true" />
+                        Tải tài nguyên
+                    </Button>
                     <Button
                         type="button"
                         onClick={() => setModalState({ type: 'create' })}
                         className="gap-2"
                     >
                         <Plus className="h-4 w-4" data-icon="inline-start" />
-                        Thêm vào thư viện
+                        Thêm tài nguyên
                     </Button>
                 </div>
             </div>
@@ -495,11 +504,14 @@ export function AdminLibraryPage() {
             )}
 
             {/* Modal thêm tài nguyên mới vào thư viện */}
-            <LibraryAssetCreateModal
-                isOpen={modalState.type === 'create'}
-                onClose={closeModal}
-                onSuccess={() => void list.refetch()}
-            />
+            {(modalState.type === 'create' || modalState.type === 'upload') && (
+                <LibraryAssetCreateModal
+                    isOpen
+                    initialUpload={modalState.type === 'upload'}
+                    onClose={closeModal}
+                    onSuccess={() => void list.refetch()}
+                />
+            )}
 
             {/* Modal xem chi tiết tài nguyên */}
             <LibraryAssetDetailModal

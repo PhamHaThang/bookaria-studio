@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, FileUp, RefreshCw, Upload } from 'lucide-react';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { cn } from '@/shared/lib/cn';
 import { AUDIO_TAG_OPTIONS } from '@/shared/scene/audio-kind';
 import { Feedback } from '@/shared/ui/Feedback';
 import { FormSelect } from '@/shared/ui/FormSelect';
@@ -39,6 +40,8 @@ export function AssetUploadView({
     onBusyChange,
     onDirtyChange,
     onUploaded,
+    library,
+    typeField,
 }: {
     type: AssetType;
     pending: boolean;
@@ -47,7 +50,11 @@ export function AssetUploadView({
     onBusyChange: (busy: boolean) => void;
     onDirtyChange?: (dirty: boolean) => void;
     onUploaded?: (completion: AssetUploadCompletion) => void;
+    library?: { fields: ReactNode; onFileNameChange: (name: string) => void };
+    typeField?: ReactNode;
 }) {
+    const forLibrary = Boolean(library);
+    const standalone = Boolean(library || typeField);
     const [dragging, setDragging] = useState(false);
     const [controlsTarget] = useState<HTMLDivElement | null>(null);
     const { user } = useAuth(),
@@ -106,7 +113,9 @@ export function AssetUploadView({
             if (type === 'MODEL') readModelDocument(await selected.arrayBuffer());
             if (version.current !== generation) return;
             setFile(selected);
-            setName(selected.name.replace(/\.[^.]+$/, '').slice(0, 150));
+            const suggestedName = selected.name.replace(/\.[^.]+$/, '').slice(0, 150);
+            setName(suggestedName);
+            library?.onFileNameChange(suggestedName);
         } catch (cause) {
             if (version.current === generation) toast.error(errorMessage(cause));
         } finally {
@@ -177,6 +186,16 @@ export function AssetUploadView({
     }
     const ready = result.data?.status === 'READY',
         failed = result.data?.status === 'FAILED';
+    const replaceFile = (
+        <Button
+            variant={standalone ? 'outline' : 'ghost'}
+            size="sm"
+            disabled={busy || Boolean(assetId) || reading || Boolean(checkpoint?.uploaded)}
+            onClick={() => input.current?.click()}
+        >
+            Thay tệp
+        </Button>
+    );
     return (
         <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col" aria-busy={busy}>
             <input
@@ -191,11 +210,27 @@ export function AssetUploadView({
                     event.currentTarget.value = '';
                 }}
             />
-            <div className="min-h-0 flex-1 px-6 py-4">
-                <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_280px] grid-rows-[minmax(0,1fr)] gap-6">
+            <div
+                className={cn(
+                    'min-h-0 flex-1 px-6 py-4',
+                    standalone && 'overflow-y-auto',
+                    typeField && 'max-sm:px-4',
+                    forLibrary && 'px-1 py-2',
+                )}
+            >
+                <div
+                    className={cn(
+                        'grid h-full min-h-0 grid-cols-[minmax(0,1fr)_280px] grid-rows-[minmax(0,1fr)] gap-6',
+                        standalone &&
+                            'max-sm:h-auto max-sm:grid-cols-1 max-sm:grid-rows-none max-sm:gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(260px,38%)]',
+                    )}
+                >
                     <section
                         aria-label="Xem trước tài nguyên"
-                        className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background data-[dragging=true]:border-primary"
+                        className={cn(
+                            'flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background data-[dragging=true]:border-primary',
+                            standalone && 'max-sm:min-h-52',
+                        )}
                         data-dragging={dragging}
                         onDragOver={(event) => {
                             event.preventDefault();
@@ -216,6 +251,9 @@ export function AssetUploadView({
                             void selectFile(event.dataTransfer.files[0] || null);
                         }}
                     >
+                        {standalone && file && (
+                            <div className="flex shrink-0 justify-end px-3 pt-3">{replaceFile}</div>
+                        )}
                         {url ? (
                             <AssetMediaPreview
                                 type={type}
@@ -248,99 +286,100 @@ export function AssetUploadView({
                             </div>
                         )}
                     </section>
-                    <FieldGroup className="min-h-0 gap-4 overflow-y-auto [&_[data-slot=alert]]:m-0 [&_[data-slot=alert]]:py-2 [&_[data-slot=field-label]]:m-0 [&_[data-slot=input]]:mt-0 [&_[data-slot=input]]:min-h-10 [&_[data-slot=input]]:text-sm [&_[data-slot=select-trigger]]:mt-0">
-                        <Field>
-                            <FieldLabel htmlFor="scene-import-name">Tên tài nguyên</FieldLabel>
-                            <Input
-                                id="scene-import-name"
-                                name="name"
-                                value={name}
-                                onChange={(event) => setName(event.currentTarget.value)}
-                                maxLength={150}
-                                required
-                                disabled={
-                                    !file ||
-                                    busy ||
-                                    Boolean(assetId) ||
-                                    Boolean(checkpoint?.uploaded)
-                                }
-                                placeholder="Tên tài nguyên"
-                            />
-                        </Field>
-                        <Field
-                            data-collapsed={Boolean(stage || assetId || checkpoint?.uploaded)}
-                            className="data-[collapsed=true]:hidden"
-                        >
-                            <FieldLabel htmlFor="scene-import-tags">
-                                {type === 'AUDIO' ? 'Loại âm thanh' : 'Nhãn'}{' '}
-                                {type !== 'AUDIO' && (
-                                    <span className="font-normal text-muted-foreground">
-                                        (không bắt buộc)
-                                    </span>
-                                )}
-                            </FieldLabel>
-                            {type === 'AUDIO' ? (
-                                <FormSelect
-                                    id="scene-import-tags"
-                                    name="tags"
-                                    defaultValue={'bgm'}
-                                    options={AUDIO_TAG_OPTIONS}
-                                    disabled={
-                                        !file ||
-                                        busy ||
-                                        Boolean(assetId) ||
-                                        Boolean(checkpoint?.uploaded)
-                                    }
-                                />
-                            ) : (
+                    <FieldGroup
+                        className={cn(
+                            'min-h-0 gap-4 overflow-y-auto [&_[data-slot=alert]]:m-0 [&_[data-slot=alert]]:py-2 [&_[data-slot=field-label]]:m-0 [&_[data-slot=input]]:mt-0 [&_[data-slot=input]]:min-h-10 [&_[data-slot=input]]:text-sm [&_[data-slot=select-trigger]]:mt-0',
+                            standalone && 'gap-3 max-sm:overflow-visible',
+                        )}
+                    >
+                        {typeField}
+                        {library?.fields}
+                        {!forLibrary && (
+                            <Field>
+                                <FieldLabel htmlFor="scene-import-name">Tên tài nguyên</FieldLabel>
                                 <Input
-                                    id="scene-import-tags"
-                                    name="tags"
+                                    id="scene-import-name"
+                                    name="name"
+                                    value={name}
+                                    onChange={(event) => setName(event.currentTarget.value)}
+                                    maxLength={150}
+                                    required
                                     disabled={
                                         !file ||
                                         busy ||
                                         Boolean(assetId) ||
                                         Boolean(checkpoint?.uploaded)
                                     }
-                                    placeholder="động vật, tự nhiên"
+                                    placeholder="Tên tài nguyên"
                                 />
-                            )}
-                            <FieldDescription className="text-xs [@media(max-height:700px)]:hidden">
-                                {type === 'AUDIO'
-                                    ? 'Chọn BGM, SFX hoặc Voice.'
-                                    : 'Phân cách bằng dấu phẩy. Tối đa 20 nhãn.'}
-                            </FieldDescription>
-                        </Field>
-                        <Field>
-                            <FieldLabel htmlFor="scene-import-file">Tệp tài nguyên</FieldLabel>
-                            {file ? (
-                                <div className="flex min-w-0 items-center gap-2">
-                                    <span
-                                        className="min-w-0 flex-1 truncate text-sm"
-                                        title={file.name}
-                                    >
-                                        {file.name}
-                                    </span>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
+                            </Field>
+                        )}
+                        {!forLibrary && (
+                            <Field
+                                data-collapsed={Boolean(stage || assetId || checkpoint?.uploaded)}
+                                className="data-[collapsed=true]:hidden"
+                            >
+                                <FieldLabel htmlFor="scene-import-tags">
+                                    {type === 'AUDIO' ? 'Loại âm thanh' : 'Nhãn'}{' '}
+                                    {type !== 'AUDIO' && (
+                                        <span className="font-normal text-muted-foreground">
+                                            (không bắt buộc)
+                                        </span>
+                                    )}
+                                </FieldLabel>
+                                {type === 'AUDIO' ? (
+                                    <FormSelect
+                                        id="scene-import-tags"
+                                        name="tags"
+                                        defaultValue={'bgm'}
+                                        options={AUDIO_TAG_OPTIONS}
                                         disabled={
+                                            !file ||
                                             busy ||
                                             Boolean(assetId) ||
-                                            reading ||
                                             Boolean(checkpoint?.uploaded)
                                         }
-                                        onClick={() => input.current?.click()}
-                                    >
-                                        Thay tệp
-                                    </Button>
-                                </div>
-                            ) : (
-                                <FieldDescription className="text-xs">
-                                    {importHint[type]}
+                                    />
+                                ) : (
+                                    <Input
+                                        id="scene-import-tags"
+                                        name="tags"
+                                        disabled={
+                                            !file ||
+                                            busy ||
+                                            Boolean(assetId) ||
+                                            Boolean(checkpoint?.uploaded)
+                                        }
+                                        placeholder="động vật, tự nhiên"
+                                    />
+                                )}
+                                <FieldDescription className="text-xs [@media(max-height:700px)]:hidden">
+                                    {type === 'AUDIO'
+                                        ? 'Chọn BGM, SFX hoặc Voice.'
+                                        : 'Phân cách bằng dấu phẩy. Tối đa 20 nhãn.'}
                                 </FieldDescription>
-                            )}
-                        </Field>
+                            </Field>
+                        )}
+                        {!standalone && (
+                            <Field>
+                                <FieldLabel htmlFor="scene-import-file">Tệp tài nguyên</FieldLabel>
+                                {file ? (
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        <span
+                                            className="min-w-0 flex-1 truncate text-sm"
+                                            title={file.name}
+                                        >
+                                            {file.name}
+                                        </span>
+                                        {replaceFile}
+                                    </div>
+                                ) : (
+                                    <FieldDescription className="text-xs">
+                                        {importHint[type]}
+                                    </FieldDescription>
+                                )}
+                            </Field>
+                        )}
                         <Feedback error={error} errorMode="toast" />
                         <LoadingToast
                             title={stage ? stageLabels[stage] : null}
@@ -382,7 +421,9 @@ export function AssetUploadView({
                                             Đang xử lý tài nguyên…
                                         </span>
                                         <p className="text-muted-foreground text-xs">
-                                            Bạn có thể về thư viện trong lúc chờ xử lý.
+                                            {forLibrary
+                                                ? 'Bạn có thể quay lại danh sách trong lúc chờ.'
+                                                : 'Bạn có thể về thư viện trong lúc chờ xử lý.'}
                                         </p>
                                     </>
                                 )}
@@ -391,13 +432,21 @@ export function AssetUploadView({
                     </FieldGroup>
                 </div>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-border border-t px-6 py-3">
+            <div
+                className={cn(
+                    'flex shrink-0 flex-wrap items-center justify-between gap-3 border-border border-t px-6 py-3',
+                    typeField && 'max-sm:px-4',
+                    forLibrary && 'mt-3 px-0 pb-0',
+                )}
+            >
                 <p className="text-muted-foreground text-xs">
-                    {assetId
-                        ? 'Tài nguyên đã lưu trong thư viện của bạn.'
-                        : onUploaded
-                          ? 'Tệp được lưu vào tài nguyên cá nhân của bạn.'
-                          : 'Tải lên trước, sau đó chọn thêm vào trang.'}
+                    {forLibrary
+                        ? 'Tệp được lưu vào kho cá nhân trước khi thêm vào thư viện.'
+                        : assetId
+                          ? 'Tài nguyên đã lưu trong thư viện của bạn.'
+                          : onUploaded
+                            ? 'Tệp được lưu vào tài nguyên cá nhân của bạn.'
+                            : 'Tải lên trước, sau đó chọn thêm vào trang.'}
                 </p>
                 <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
                     {stage && stage !== 'completing' && (
@@ -407,7 +456,13 @@ export function AssetUploadView({
                     )}
                     {!busy && (
                         <Button variant="ghost" onClick={onBack}>
-                            {onUploaded ? 'Hủy' : assetId ? 'Về tài nguyên của tôi' : 'Về thư viện'}
+                            {forLibrary
+                                ? 'Quay lại'
+                                : onUploaded
+                                  ? 'Hủy'
+                                  : assetId
+                                    ? 'Về tài nguyên của tôi'
+                                    : 'Về thư viện'}
                         </Button>
                     )}
                     {assetId ? (
@@ -417,7 +472,11 @@ export function AssetUploadView({
                                 if (result.data?.status === 'READY') onChoose(result.data);
                             }}
                         >
-                            Thêm vào trang
+                            {forLibrary
+                                ? pending
+                                    ? 'Đang thêm…'
+                                    : 'Thêm vào thư viện'
+                                : 'Thêm vào trang'}
                         </Button>
                     ) : (
                         <Button type="submit" disabled={!file || reading || busy}>

@@ -1,9 +1,10 @@
-import { Box, Image as ImageIcon, Music2, Video, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { AssetType } from '@/shared/contracts/enums.schema';
 import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
+import { FormSelect } from '@/shared/ui/FormSelect';
 import { Button } from '@/shared/ui/primitives/button';
 import {
     Dialog,
@@ -12,15 +13,15 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/shared/ui/primitives/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs';
+import { Field, FieldLabel } from '@/shared/ui/primitives/field';
 import { type AssetUploadCompletion, AssetUploadView } from '../../scene/ui/AssetUploadView';
 import { NavigationGuard } from '../../scene/ui/NavigationGuard';
 
 const types = [
-    { value: 'IMAGE', label: 'Hình ảnh', icon: ImageIcon },
-    { value: 'MODEL', label: 'Mô hình 3D', icon: Box },
-    { value: 'AUDIO', label: 'Âm thanh', icon: Music2 },
-    { value: 'VIDEO', label: 'Video', icon: Video },
+    { value: 'IMAGE', label: 'Hình ảnh' },
+    { value: 'MODEL', label: 'Mô hình 3D' },
+    { value: 'AUDIO', label: 'Âm thanh' },
+    { value: 'VIDEO', label: 'Video' },
 ] as const;
 
 export function AssetUploadDialog({ backTo = '/assets' }: { backTo?: '/assets' | '/studio' }) {
@@ -62,18 +63,6 @@ export function AssetUploadDialog({ backTo = '/assets' }: { backTo?: '/assets' |
         );
     }
 
-    const upload = (
-        <AssetUploadView
-            key={type}
-            type={type}
-            pending={false}
-            onChoose={() => {}}
-            onBack={close}
-            onBusyChange={setBusy}
-            onDirtyChange={setDirty}
-            onUploaded={setUploaded}
-        />
-    );
     return (
         <>
             <Dialog
@@ -84,7 +73,7 @@ export function AssetUploadDialog({ backTo = '/assets' }: { backTo?: '/assets' |
             >
                 <DialogContent
                     showCloseButton={false}
-                    className="flex h-[min(760px,calc(100dvh-48px))] max-w-[min(1100px,calc(100vw-48px))] flex-col overflow-hidden p-0"
+                    className="flex h-[min(760px,calc(100dvh-24px))] max-w-[min(1100px,calc(100vw-24px))] flex-col overflow-hidden p-0"
                     onInteractOutside={(event) => event.preventDefault()}
                     onCloseAutoFocus={(event) => {
                         event.preventDefault();
@@ -113,30 +102,33 @@ export function AssetUploadDialog({ backTo = '/assets' }: { backTo?: '/assets' |
                             <X />
                         </Button>
                     </div>
-                    <Tabs
-                        activationMode="manual"
-                        value={type}
-                        onValueChange={(value) => {
-                            if (busy || value === type) return;
-                            if (dirty) setNextType(value as AssetType);
-                            else setType(value as AssetType);
-                        }}
-                        className="min-h-0 flex-1 gap-0"
-                    >
-                        <div className="shrink-0 px-6 pt-4">
-                            <TabsList aria-label="Loại tài nguyên tải lên">
-                                {types.map(({ value, label, icon: Icon }) => (
-                                    <TabsTrigger key={value} value={value} disabled={busy}>
-                                        <Icon aria-hidden="true" />
-                                        {label}
-                                    </TabsTrigger>
-                                ))}
-                            </TabsList>
-                        </div>
-                        <TabsContent value={type} className="flex min-h-0 flex-1 flex-col">
-                            {upload}
-                        </TabsContent>
-                    </Tabs>
+                    <AssetUploadView
+                        key={type}
+                        type={type}
+                        pending={false}
+                        onChoose={() => {}}
+                        onBack={close}
+                        onBusyChange={setBusy}
+                        onDirtyChange={setDirty}
+                        onUploaded={setUploaded}
+                        typeField={
+                            <Field>
+                                <FieldLabel htmlFor="asset-upload-type">Loại tài nguyên</FieldLabel>
+                                <FormSelect
+                                    id="asset-upload-type"
+                                    value={type}
+                                    options={types}
+                                    disabled={busy}
+                                    onValueChange={(value) => {
+                                        const selected = types.find((item) => item.value === value);
+                                        if (!selected || busy || selected.value === type) return;
+                                        if (dirty) setNextType(selected.value);
+                                        else setType(selected.value);
+                                    }}
+                                />
+                            </Field>
+                        }
+                    />
                 </DialogContent>
             </Dialog>
             <NavigationGuard
@@ -152,6 +144,7 @@ export function AssetUploadDialog({ backTo = '/assets' }: { backTo?: '/assets' |
                     description="Tệp đang chọn chưa được tải lên. Đổi loại sẽ bỏ lựa chọn hiện tại."
                     busy={false}
                     onClose={() => setNextType(null)}
+                    returnFocus={() => document.getElementById('asset-upload-type')}
                 >
                     <div className="mt-6 flex justify-end gap-3">
                         <Button variant="outline" onClick={() => setNextType(null)}>

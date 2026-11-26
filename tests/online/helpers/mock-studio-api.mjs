@@ -1021,7 +1021,7 @@ parent.postMessage({ type: 'ready', id }, location.origin);
             }
             if (method === 'DELETE' && path.startsWith('/admin/library/assets/')) {
                 const aid = path.split('/').at(-1);
-                if (aid === libraryAssetId && options.libraryAssetInUse) {
+                if (aid === state.ids.libraryAssetId && options.libraryAssetInUse) {
                     return replyError('ASSET_IN_USE', 409, 'Tài nguyên đang được sử dụng.');
                 }
                 state.assets.delete(aid);
@@ -1842,7 +1842,11 @@ parent.postMessage({ type: 'ready', id }, location.origin);
                     (!type || a.type === type) &&
                     (!q || a.name.toLowerCase().includes(q)),
             );
-            return replyPage(items, Number(url.searchParams.get('page') || 1));
+            return replyPage(
+                items,
+                Number(url.searchParams.get('page') || 1),
+                Number(url.searchParams.get('limit') || 12),
+            );
         }
         if (method === 'GET' && /^\/assets\/[^/]+$/.test(path)) {
             const aid = path.split('/')[2];

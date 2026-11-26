@@ -108,7 +108,9 @@ test.describe('Studio Client: Overview, Books, Trash, Assets, Narration, 3D Gen 
         await page.getByRole('link', { name: 'Tải tài nguyên' }).click();
         const uploadDialog = page.getByRole('dialog');
         await expect(uploadDialog.getByRole('heading', { name: 'Tải tài nguyên' })).toBeVisible();
-        await uploadDialog.getByRole('tab', { name: 'Mô hình 3D' }).click();
+        const uploadType = uploadDialog.getByRole('combobox', { name: 'Loại tài nguyên' });
+        await uploadType.click();
+        await page.getByRole('option', { name: 'Mô hình 3D', exact: true }).click();
 
         const fileInput = uploadDialog.locator('input[type="file"]');
         await fileInput.setInputFiles({
@@ -117,6 +119,16 @@ test.describe('Studio Client: Overview, Books, Trash, Assets, Narration, 3D Gen 
             buffer: createTinyGlb(),
         });
         await uploadDialog.getByLabel('Tên tài nguyên').fill('Robot 3D Kiểm Thử');
+        const preview = uploadDialog.getByRole('region', { name: 'Xem trước tài nguyên' });
+        await expect(preview.getByRole('button', { name: 'Thay tệp' })).toBeVisible();
+        await uploadType.click();
+        await page.getByRole('option', { name: 'Hình ảnh', exact: true }).click();
+        await page
+            .getByRole('alertdialog')
+            .getByRole('button', { name: 'Giữ tệp hiện tại' })
+            .click();
+        await expect(uploadType).toHaveText('Mô hình 3D');
+        await expect(uploadDialog.getByLabel('Tên tài nguyên')).toHaveValue('Robot 3D Kiểm Thử');
         await uploadDialog.getByRole('button', { name: 'Tải lên', exact: true }).click();
 
         await expect(page).toHaveURL(/\/assets$/);

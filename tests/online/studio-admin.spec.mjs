@@ -203,6 +203,142 @@ test.describe('Studio Admin: RBAC, Dashboard, Users, Moderation, Library, Catego
         expect(
             mock.state.calls.some((c) => c.method === 'GET' && c.path === '/admin/library/assets'),
         ).toBe(true);
+        await page.getByRole('button', { name: 'Xóa khỏi thư viện dùng chung' }).click();
+        const removeShared = page.getByRole('dialog', { name: 'Xóa tài nguyên?' });
+        await removeShared.getByRole('checkbox').check();
+        await removeShared.getByRole('button', { name: 'Xác nhận xóa' }).click();
+        await expect(page.locator('[data-sonner-toast][data-type="error"]')).toContainText(
+            /tài nguyên đang được/i,
+        );
+        await expect(removeShared).toBeVisible();
+        expect(mock.state.assets.has(mock.state.ids.libraryAssetId)).toBe(true);
+    });
+
+    test('shared library dialogs cover picking, sharing, editing and deleting an asset', async ({
+        page,
+    }) => {
+        const mock = await installStudioMocks(page, { role: 'ADMIN' });
+        const source = mock.state.assets.get(mock.state.ids.imageAssetId);
+        const unavailable = mock.state.assets.get(mock.state.ids.audioAssetId);
+        unavailable.status = 'PROCESSING';
+
+        await page.goto('/admin/library');
+        await page.getByRole('button', { name: 'Thêm tài nguyên', exact: true }).click();
+        const picker = page.getByRole('dialog', { name: 'Chọn tài nguyên' });
+        await expect(
+            picker.getByRole('button', { name: new RegExp(unavailable.name) }),
+        ).toBeDisabled();
+        const search = picker.getByRole('searchbox', { name: 'Tìm tài nguyên cá nhân' });
+        await search.fill(source.name);
+        const choose = picker.getByRole('button', { name: new RegExp(source.name) });
+        await choose.press('Enter');
+
+        const share = page.getByRole('dialog', { name: 'Thông tin tài nguyên' });
+        await expect(share.getByLabel('Tên tài nguyên')).toHaveValue(source.name);
+        await share.getByRole('button', { name: 'Quay lại' }).click();
+        await expect(search).toHaveValue(source.name);
+        await choose.click();
+        const shareLicense = share.getByRole('combobox', { name: /Giấy phép sử dụng/ });
+        await expect(shareLicense).toHaveText('Chọn giấy phép');
+        await shareLicense.click();
+        const ccZero = page.getByRole('option', { name: 'CC0', exact: true });
+        await expect(ccZero).toHaveAccessibleDescription(
+            'Dùng, sửa và chia sẻ, kể cả thương mại. Không yêu cầu ghi công.',
+        );
+        await ccZero.click();
+        await share.getByRole('button', { name: 'Thêm vào thư viện' }).click();
+        await expect(share).toBeHidden();
+
+        const row = page.getByRole('listitem').filter({ hasText: source.name });
+        await row.getByRole('button', { name: 'Xem chi tiết tài nguyên' }).click();
+        const detail = page.getByRole('dialog', { name: 'Chi tiết tài nguyên' });
+        await expect(detail.getByRole('img', { name: 'Xem trước hình ảnh' })).toBeVisible();
+        await expect(detail.getByText('CC0', { exact: true })).toBeVisible();
+        await detail.getByRole('button', { name: 'Chỉnh sửa' }).click();
+        const edit = page.getByRole('dialog', { name: 'Chỉnh sửa tài nguyên' });
+        await edit.getByLabel('Tên tài nguyên').fill('Ảnh sử dụng trong thư viện');
+        const editLicense = edit.getByRole('combobox', { name: /Giấy phép sử dụng/ });
+        await expect(editLicense).toHaveText('CC0');
+        await editLicense.click();
+        await page.getByRole('option', { name: 'Giấy phép khác' }).click();
+        await edit
+            .getByRole('textbox', { name: 'Tên giấy phép khác' })
+            .fill('Giấy phép của tác giả');
+        await edit.getByRole('button', { name: 'Lưu thay đổi' }).click();
+        await expect(edit).toBeHidden();
+
+        const updatedRow = page
+            .getByRole('listitem')
+            .filter({ hasText: 'Ảnh sử dụng trong thư viện' });
+        await updatedRow.getByRole('button', { name: 'Chỉnh sửa thông tin' }).click();
+        await expect(editLicense).toHaveText('Giấy phép khác');
+        await expect(edit.getByRole('textbox', { name: 'Tên giấy phép khác' })).toHaveValue(
+            'Giấy phép của tác giả',
+        );
+        await edit.getByRole('button', { name: 'Hủy' }).click();
+        await updatedRow.getByRole('button', { name: 'Xóa khỏi thư viện dùng chung' }).click();
+        const remove = page.getByRole('dialog', { name: 'Xóa tài nguyên?' });
+        const confirm = remove.getByRole('button', { name: 'Xác nhận xóa' });
+        await expect(confirm).toBeDisabled();
+        await remove.getByRole('checkbox').check();
+        await confirm.click();
+        await expect(remove).toBeHidden();
+        await expect(updatedRow).toHaveCount(0);
+    });
+
+    test('shared library uploads a new file and saves its metadata in the same dialog', async ({
+        page,
+    }) => {
+        const mock = await installStudioMocks(page, { role: 'ADMIN' });
+        await page.setViewportSize({ width: 390, height: 700 });
+        await page.goto('/admin/library');
+        await page.getByRole('button', { name: 'Tải tài nguyên', exact: true }).click();
+        const upload = page.getByRole('dialog', { name: 'Tải tệp mới', exact: true });
+        await upload.locator('input[type="file"]').setInputFiles({
+            name: 'minh-hoa-cu.png',
+            mimeType: 'image/png',
+            buffer: createSquarePng(128),
+        });
+        const preview = upload.getByRole('region', { name: 'Xem trước tài nguyên' });
+        const fileChooser = page.waitForEvent('filechooser');
+        await preview.getByRole('button', { name: 'Thay tệp' }).click();
+        await (await fileChooser).setFiles({
+            name: 'minh-hoa-moi.png',
+            mimeType: 'image/png',
+            buffer: createSquarePng(128),
+        });
+        await expect(upload.getByLabel('Tên tài nguyên')).toHaveValue('minh-hoa-moi');
+        await expect(upload.getByText('Tệp tài nguyên', { exact: true })).toHaveCount(0);
+        await upload.getByLabel('Tên tài nguyên').fill('Minh họa mới');
+        const license = upload.getByRole('combobox', { name: /Giấy phép sử dụng/ });
+        await license.click();
+        await page.getByRole('option', { name: 'CC0', exact: true }).click();
+        await upload.getByLabel(/Tác giả gốc/).fill('Tác giả minh họa');
+        await upload.getByLabel(/Liên kết nguồn gốc/).fill('https://bookaria.test/minh-hoa');
+        await upload.getByLabel(/Nhãn/).fill('minh họa, đại dương');
+        await upload.getByRole('button', { name: 'Quay lại' }).click();
+        const discard = page.getByRole('alertdialog', { name: 'Bỏ tệp đang chọn?' });
+        await discard.getByRole('button', { name: 'Tiếp tục tải' }).click();
+        await expect(upload.getByLabel('Tên tài nguyên')).toHaveValue('Minh họa mới');
+        await upload.getByRole('button', { name: 'Tải lên', exact: true }).click();
+        const next = upload.getByRole('button', { name: 'Thêm vào thư viện', exact: true });
+        await expect(next).toBeEnabled();
+        await expect(next).toBeInViewport();
+        await expect(license).toHaveText('CC0');
+        await expect(page).toHaveURL(/\/admin\/library$/);
+        expect(page.context().pages()).toHaveLength(1);
+        await next.click();
+        await expect(upload).toBeHidden();
+        await expect(page.getByText('Minh họa mới', { exact: true })).toBeVisible();
+        expect(
+            [...mock.state.assets.values()].find((asset) => asset.name === 'Minh họa mới'),
+        ).toMatchObject({
+            scope: 'library',
+            license: 'CC0',
+            authorName: 'Tác giả minh họa',
+            sourceUrl: 'https://bookaria.test/minh-hoa',
+            tags: ['minh họa', 'đại dương'],
+        });
     });
 
     test('admin Bookaria markers: ORB image test, register new marker, and toggle active status', async ({

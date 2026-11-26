@@ -15,7 +15,12 @@ import {
     SelectValue,
 } from './primitives/select';
 
-export type SelectOption = { value: string | number; label: ReactNode; disabled?: boolean };
+export type SelectOption = {
+    value: string | number;
+    label: ReactNode;
+    description?: string;
+    disabled?: boolean;
+};
 type FormSelectProps = Omit<
     ComponentPropsWithoutRef<typeof SelectTrigger>,
     'value' | 'defaultValue' | 'onChange' | 'children'
@@ -95,15 +100,30 @@ export function FormSelect({
                 </SelectTrigger>
                 <SelectContent>
                     <SelectGroup>
-                        {options.map((option) => (
-                            <SelectItem
-                                key={String(option.value)}
-                                value={encode(option.value)}
-                                disabled={option.disabled}
-                            >
-                                {option.label}
-                            </SelectItem>
-                        ))}
+                        {options.map((option) => {
+                            const descriptionId = option.description
+                                ? `${generatedId}-option-${encodeURIComponent(option.value)}`
+                                : undefined;
+                            return (
+                                <SelectItem
+                                    key={String(option.value)}
+                                    value={encode(option.value)}
+                                    disabled={option.disabled}
+                                    aria-describedby={descriptionId}
+                                >
+                                    {option.label}
+                                    {option.description && (
+                                        <span
+                                            id={descriptionId}
+                                            aria-hidden="true"
+                                            className="mt-0.5 block text-muted-foreground text-xs"
+                                        >
+                                            {option.description}
+                                        </span>
+                                    )}
+                                </SelectItem>
+                            );
+                        })}
                     </SelectGroup>
                 </SelectContent>
             </Select>

@@ -109,8 +109,11 @@ for (const viewport of [
         await page.goto('/assets?type=MODEL');
         await page.getByRole('link', { name: 'Tải tài nguyên', exact: true }).click();
         const upload = page.getByRole('dialog', { name: 'Tải tài nguyên', exact: true });
-        await expect(upload.getByRole('tab', { name: 'Mô hình 3D', selected: true })).toBeVisible();
-        await upload.getByRole('tab', { name: 'Hình ảnh' }).click();
+        const uploadType = upload.getByRole('combobox', { name: 'Loại tài nguyên' });
+        await expect(uploadType).toHaveText('Mô hình 3D');
+        await uploadType.click();
+        await page.getByRole('option', { name: 'Hình ảnh', exact: true }).click();
+        await expect(uploadType).toHaveText('Hình ảnh');
         await expect(upload.getByRole('button', { name: 'Tải lên', exact: true })).toBeVisible();
         await expect(upload.getByRole('button', { name: /tạo 3D/i })).toHaveCount(0);
         await upload.getByRole('button', { name: 'Đóng tải tài nguyên' }).click();

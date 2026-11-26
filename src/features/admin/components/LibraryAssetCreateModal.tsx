@@ -1,52 +1,56 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ExternalLink, Plus, Search, Share2, UploadCloud } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import {
-    AssetThumbnail,
-    assetKeys,
-    assetStatusLabels,
-    assetsApi,
-    assetTypeLabels,
-} from '@/features/assets';
+import { assetKeys, assetStatusLabels, assetsApi, assetTypeLabels } from '@/features/assets';
 import { useAuth } from '@/features/auth';
+import { AssetUploadView } from '@/features/scene/ui/AssetUploadView';
 import { errorMessage } from '@/shared/api/errors';
 import {
     type CreateLibraryAssetBody,
     CreateLibraryAssetBodySchema,
 } from '@/shared/contracts/api/admin.schema';
 import type { Asset } from '@/shared/contracts/dto.schema';
-import { formatBytes } from '@/shared/lib/format';
+import { type AssetType, AssetTypeSchema } from '@/shared/contracts/enums.schema';
 import { AUDIO_TAG_OPTIONS, audioKindFromTags } from '@/shared/scene/audio-kind';
 import { Alert } from '@/shared/ui/Alert';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { ConfirmationDialog } from '@/shared/ui/ConfirmationDialog';
 import { Feedback } from '@/shared/ui/Feedback';
 import { FormSelect } from '@/shared/ui/FormSelect';
 import { LoadingState } from '@/shared/ui/LoadingState';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/shared/ui/primitives/dialog';
+import { DialogFooter } from '@/shared/ui/primitives/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/ui/primitives/empty';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/ui/primitives/field';
+import {
+    Field,
+    FieldDescription,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+} from '@/shared/ui/primitives/field';
 import { Input } from '@/shared/ui/primitives/input';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import { libraryApi } from '../library-ui';
 import { useAdminMutation as useMutation } from '../use-admin-mutation';
+import { LibraryAssetDialog, LibraryAssetSummary } from './LibraryAssetDialog';
+import { LibraryLicenseField } from './LibraryLicenseField';
+
+const uploadTypes = AssetTypeSchema.options.map((type) => ({
+    value: type,
+    label: assetTypeLabels[type],
+}));
 
 export interface LibraryAssetCreateModalProps {
     isOpen: boolean;
+    initialUpload?: boolean;
     onClose: () => void;
     onSuccess?: (createdAssetId?: string) => void;
 }
 
 export function LibraryAssetCreateModal({
     isOpen,
+    initialUpload = false,
     onClose,
     onSuccess,
 }: LibraryAssetCreateModalProps) {
@@ -57,12 +61,16 @@ export function LibraryAssetCreateModal({
     const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(1);
+    const [uploadType, setUploadType] = useState<AssetType | null>(initialUpload ? 'IMAGE' : null);
+    const [uploadBusy, setUploadBusy] = useState(false);
+    const [uploadDirty, setUploadDirty] = useState(false);
+    const [discardUpload, setDiscardUpload] = useState<(() => void) | null>(null);
 
     // Bước 2: Form cấu hình metadata
     const [name, setName] = useState('');
     const [categoryId, setCategoryId] = useState<string>('');
     const [license, setLicense] = useState('');
-    const [authorName, setAuthorName] = useState('');
+    const [authorName, setAuthorName] = useState(initialUpload ? user?.displayName || '' : '');
     const [sourceUrl, setSourceUrl] = useState('');
     const [tags, setTags] = useState('');
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -93,12 +101,15 @@ export function LibraryAssetCreateModal({
                 },
                 signal,
             ),
-        enabled: isOpen && !selectedAsset,
+        enabled: isOpen && !selectedAsset && !uploadType,
+        refetchInterval: (query) =>
+            query.state.data?.data.some((asset) => asset.status === 'PROCESSING') ? 2000 : false,
     });
 
     // Đặt lại state khi đóng modal
     const handleClose = () => {
         setSelectedAsset(null);
+        setUploadType(null);
         setSearchQuery('');
         setPage(1);
         setName('');
@@ -114,7 +125,7 @@ export function LibraryAssetCreateModal({
 
     // Khi chọn một tài nguyên cá nhân để cấu hình
     const handleSelectAsset = (asset: Asset) => {
-        if (asset.status !== 'READY') return;
+        if (asset.status !== 'READY' || asset.scope !== 'mine') return;
         setSelectedAsset(asset);
         setName(asset.name || '');
         setCategoryId(asset.categoryId || '');
@@ -139,9 +150,9 @@ export function LibraryAssetCreateModal({
 
     // Mutation thực hiện promote tài nguyên vào thư viện
     const promoteMutation = useMutation({
-        mutationFn: async () => {
-            if (!selectedAsset) throw new Error('Vui lòng chọn một tài nguyên cá nhân');
-
+        mutationFn: async (asset: Asset) => {
+            if (asset.status !== 'READY' || asset.scope !== 'mine')
+                throw new Error('Vui lòng chọn một tài nguyên cá nhân đã sẵn sàng.');
             const errors: Record<string, string> = {};
             const trimmedName = name.trim();
             const trimmedLicense = license.trim();
@@ -158,7 +169,7 @@ export function LibraryAssetCreateModal({
             }
 
             const rawTags =
-                selectedAsset.type === 'AUDIO'
+                asset.type === 'AUDIO'
                     ? [tags.trim()]
                     : tags
                           .split(',')
@@ -166,7 +177,7 @@ export function LibraryAssetCreateModal({
                           .filter(Boolean);
 
             const payload: CreateLibraryAssetBody = {
-                assetId: selectedAsset.id,
+                assetId: asset.id,
                 name: trimmedName,
                 categoryId: categoryId || null,
                 license: trimmedLicense,
@@ -196,487 +207,434 @@ export function LibraryAssetCreateModal({
         },
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const promote = (asset: Asset) => {
         setFieldErrors({});
         setApiError(null);
-        promoteMutation.mutate();
+        promoteMutation.mutate(asset);
     };
 
     const categories = categoriesQuery.data || [];
+    const personalAssets = mineAssetsQuery.data;
+    const leaveUpload = (next: () => void) => {
+        if (uploadBusy) return;
+        if (uploadDirty) setDiscardUpload(() => next);
+        else next();
+    };
+    const startUpload = () => {
+        setName('');
+        setCategoryId('');
+        setLicense('');
+        setAuthorName(user?.displayName || '');
+        setSourceUrl('');
+        setTags('');
+        setFieldErrors({});
+        setApiError(null);
+        setUploadType('IMAGE');
+    };
+
+    function renderFields(type: AssetType, disabled: boolean) {
+        return (
+            <FieldGroup className={uploadType ? 'gap-3!' : 'gap-4'}>
+                {uploadType && (
+                    <Field>
+                        <FieldLabel htmlFor="library-upload-type">Loại tài nguyên</FieldLabel>
+                        <FormSelect
+                            id="library-upload-type"
+                            value={uploadType}
+                            options={uploadTypes}
+                            disabled={disabled}
+                            onValueChange={(value) => {
+                                const nextType = AssetTypeSchema.parse(value);
+                                leaveUpload(() => {
+                                    setName('');
+                                    setTags(nextType === 'AUDIO' ? 'bgm' : '');
+                                    setUploadType(nextType);
+                                });
+                            }}
+                        />
+                    </Field>
+                )}
+                {/* Tên tài nguyên */}
+                <Field>
+                    <FieldLabel htmlFor="promote-asset-name">
+                        Tên tài nguyên <span className="text-destructive">*</span>
+                    </FieldLabel>
+                    <Input
+                        id="promote-asset-name"
+                        name="name"
+                        value={name}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            setName(e.target.value);
+                            if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: '' }));
+                        }}
+                        maxLength={150}
+                        disabled={disabled}
+                        placeholder="Nhập tên tài nguyên..."
+                    />
+                    {fieldErrors.name && <FieldError>{fieldErrors.name}</FieldError>}
+                </Field>
+
+                {/* Danh mục */}
+                <Field>
+                    <FieldLabel htmlFor="promote-asset-category">Danh mục</FieldLabel>
+                    <FormSelect
+                        id="promote-asset-category"
+                        value={categoryId}
+                        onValueChange={setCategoryId}
+                        options={[
+                            { value: '', label: 'Không phân danh mục' },
+                            ...categories.map((cat) => ({
+                                value: cat.id,
+                                label: cat.name,
+                            })),
+                        ]}
+                        disabled={disabled}
+                    />
+                </Field>
+
+                <LibraryLicenseField
+                    id="promote-asset-license"
+                    value={license}
+                    onValueChange={(value) => {
+                        setLicense(value);
+                        if (fieldErrors.license) setFieldErrors((p) => ({ ...p, license: '' }));
+                    }}
+                    disabled={disabled}
+                    error={fieldErrors.license}
+                />
+
+                <Field>
+                    <FieldLabel htmlFor="promote-asset-author">
+                        Tác giả gốc <span className="text-destructive">*</span>
+                    </FieldLabel>
+                    <Input
+                        id="promote-asset-author"
+                        value={authorName}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            setAuthorName(e.target.value);
+                            if (fieldErrors.authorName)
+                                setFieldErrors((p) => ({ ...p, authorName: '' }));
+                        }}
+                        maxLength={150}
+                        disabled={disabled}
+                        placeholder="Tên tác giả gốc..."
+                    />
+                    {fieldErrors.authorName && <FieldError>{fieldErrors.authorName}</FieldError>}
+                </Field>
+
+                {/* Nguồn liên kết */}
+                <Field>
+                    <FieldLabel htmlFor="promote-asset-source">
+                        Liên kết nguồn gốc{' '}
+                        <span className="font-normal text-muted-foreground">(không bắt buộc)</span>
+                    </FieldLabel>
+                    <Input
+                        id="promote-asset-source"
+                        type="url"
+                        value={sourceUrl}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setSourceUrl(e.target.value)
+                        }
+                        disabled={disabled}
+                        placeholder="https://..."
+                    />
+                </Field>
+
+                {/* Nhãn Tags */}
+                <Field>
+                    <FieldLabel htmlFor="promote-asset-tags">
+                        {type === 'AUDIO' ? 'Loại âm thanh' : 'Nhãn (ngăn cách bởi dấu phẩy)'}
+                    </FieldLabel>
+                    {type === 'AUDIO' ? (
+                        <FormSelect
+                            id="promote-asset-tags"
+                            name="tags"
+                            value={tags}
+                            onValueChange={(val) => setTags(val)}
+                            options={AUDIO_TAG_OPTIONS}
+                            disabled={disabled}
+                        />
+                    ) : (
+                        <Input
+                            id="promote-asset-tags"
+                            name="tags"
+                            value={tags}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                setTags(e.target.value)
+                            }
+                            disabled={disabled}
+                            placeholder="ví dụ: phong cảnh, thiên nhiên, 3d..."
+                        />
+                    )}
+                    {type !== 'AUDIO' && (
+                        <FieldDescription className="text-xs">
+                            Tối đa 20 nhãn, mỗi nhãn không quá 30 ký tự.
+                        </FieldDescription>
+                    )}
+                </Field>
+            </FieldGroup>
+        );
+    }
 
     return (
-        <Dialog
-            open={isOpen}
-            onOpenChange={(open: boolean) => {
-                if (!open && !promoteMutation.isPending) {
-                    handleClose();
+        <>
+            <LibraryAssetDialog
+                open={isOpen}
+                busy={promoteMutation.isPending || uploadBusy}
+                className={
+                    uploadType
+                        ? 'h-[min(840px,calc(100dvh-24px))] max-h-[calc(100dvh-24px)] max-w-[min(1200px,calc(100vw-24px))]'
+                        : undefined
                 }
-            }}
-        >
-            <DialogContent className="max-h-[90dvh] max-w-[540px] space-y-4 overflow-y-auto p-5 sm:p-6">
-                <DialogHeader className="gap-1 pb-0.5">
-                    <DialogTitle className="m-0 flex items-center gap-2 font-semibold text-base text-foreground leading-tight sm:text-lg">
-                        {selectedAsset ? (
-                            <>
-                                <Share2 className="h-4.5 w-4.5 shrink-0 text-primary" />
-                                <span>Cấu hình tài nguyên đưa vào thư viện</span>
-                            </>
-                        ) : (
-                            <>
-                                <Plus className="h-4.5 w-4.5 shrink-0 text-primary" />
-                                <span>Thêm tài nguyên vào thư viện</span>
-                            </>
-                        )}
-                    </DialogTitle>
-                    <DialogDescription className="text-muted-foreground text-xs leading-relaxed">
-                        {selectedAsset
-                            ? 'Xác nhận thông tin bản quyền và tác giả trước khi đưa vào thư viện dùng chung.'
-                            : 'Chọn tài nguyên cá nhân đã sẵn sàng để xuất bản vào thư viện dùng chung cho toàn bộ tác giả.'}
-                    </DialogDescription>
-                </DialogHeader>
-
+                title={
+                    uploadType
+                        ? 'Tải tệp mới'
+                        : selectedAsset
+                          ? 'Thông tin tài nguyên'
+                          : 'Chọn tài nguyên'
+                }
+                description={
+                    uploadType
+                        ? 'Chọn tệp từ máy để thêm vào thư viện dùng chung.'
+                        : selectedAsset
+                          ? 'Kiểm tra giấy phép và thông tin tác giả trước khi chia sẻ.'
+                          : 'Chọn tài nguyên cá nhân để thêm vào thư viện dùng chung.'
+                }
+                onClose={() => leaveUpload(handleClose)}
+            >
                 <Feedback error={apiError} errorMode="toast" />
 
-                {/* BƯỚC 1: Chọn tài nguyên cá nhân */}
-                {!selectedAsset && (
-                    <div className="space-y-3.5">
-                        {/* Thanh tìm kiếm & liên kết tải lên */}
-                        <div className="flex items-center gap-2">
-                            <div className="relative flex-1">
-                                <Search className="absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    value={searchQuery}
-                                    onChange={(e) => {
-                                        setSearchQuery(e.target.value);
-                                        setPage(1);
-                                    }}
-                                    placeholder="Tìm tài nguyên cá nhân..."
-                                    className="h-8 pl-8 text-xs placeholder:text-xs"
-                                />
-                            </div>
+                {uploadType && (
+                    <AssetUploadView
+                        key={uploadType}
+                        type={uploadType}
+                        pending={promoteMutation.isPending}
+                        library={{
+                            fields: renderFields(
+                                uploadType,
+                                uploadBusy || promoteMutation.isPending,
+                            ),
+                            onFileNameChange: setName,
+                        }}
+                        onChoose={promote}
+                        onBack={() =>
+                            leaveUpload(() => {
+                                setSearchQuery('');
+                                setPage(1);
+                                setUploadType(null);
+                                setFieldErrors({});
+                                setApiError(null);
+                            })
+                        }
+                        onBusyChange={setUploadBusy}
+                        onDirtyChange={setUploadDirty}
+                    />
+                )}
+
+                {!selectedAsset && !uploadType && (
+                    <div className="flex min-h-0 flex-col gap-3">
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
+                            <SearchInput
+                                aria-label="Tìm tài nguyên cá nhân"
+                                value={searchQuery}
+                                onValueChange={(value) => {
+                                    setSearchQuery(value);
+                                    setPage(1);
+                                }}
+                                placeholder="Tìm theo tên…"
+                                loading={mineAssetsQuery.isFetching && !mineAssetsQuery.isPending}
+                                className="min-w-36 flex-1"
+                            />
                             <Button
                                 variant="outline"
-                                size="sm"
-                                asChild
-                                className="h-8 shrink-0 gap-1.5 px-2.5 text-xs"
+                                className="min-h-[var(--control-height)] gap-2"
+                                onClick={startUpload}
                             >
-                                <Link to="/assets/upload" target="_blank" rel="noopener noreferrer">
-                                    <UploadCloud className="h-3.5 w-3.5 text-primary" />
-                                    <span>Tải tệp mới</span>
-                                    <ExternalLink className="h-2.5 w-2.5 text-muted-foreground" />
-                                </Link>
+                                <Upload data-icon="inline-start" aria-hidden="true" />
+                                Tải tệp mới
                             </Button>
                         </div>
 
-                        {/* Danh sách tài nguyên cá nhân */}
-                        {mineAssetsQuery.isPending && (
-                            <LoadingState layout="assets">
-                                Đang tải tài nguyên cá nhân…
-                            </LoadingState>
-                        )}
-
-                        {mineAssetsQuery.isError && (
-                            <Alert tone="danger" className="text-xs">
-                                {errorMessage(mineAssetsQuery.error)}
-                            </Alert>
-                        )}
-
-                        {mineAssetsQuery.isSuccess && (
-                            <div className="space-y-3">
-                                {mineAssetsQuery.data.data.length ? (
-                                    <ul className="max-h-[340px] space-y-2 overflow-y-auto pr-1">
-                                        {mineAssetsQuery.data.data.map((asset) => {
+                        <div className="min-h-0 overflow-y-auto" key={page}>
+                            {mineAssetsQuery.isPending && (
+                                <LoadingState layout="assets">
+                                    Đang tải tài nguyên cá nhân…
+                                </LoadingState>
+                            )}
+                            {mineAssetsQuery.isError && (
+                                <div className="flex flex-col items-start gap-3 py-3">
+                                    <Alert tone="danger">
+                                        {errorMessage(mineAssetsQuery.error)}
+                                    </Alert>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => void mineAssetsQuery.refetch()}
+                                    >
+                                        Thử tải lại
+                                    </Button>
+                                </div>
+                            )}
+                            {mineAssetsQuery.isSuccess &&
+                                (personalAssets?.data.length ? (
+                                    <ul className="m-0 list-none divide-y divide-border px-0">
+                                        {personalAssets.data.map((asset) => {
                                             const isReady =
                                                 asset.status === 'READY' && asset.scope === 'mine';
-
                                             return (
-                                                <li
-                                                    key={asset.id}
-                                                    onClick={() => {
-                                                        if (isReady) handleSelectAsset(asset);
-                                                    }}
-                                                    onKeyDown={(e) => {
-                                                        if (
-                                                            isReady &&
-                                                            (e.key === 'Enter' || e.key === ' ')
-                                                        ) {
-                                                            e.preventDefault();
-                                                            handleSelectAsset(asset);
-                                                        }
-                                                    }}
-                                                    role={isReady ? 'button' : undefined}
-                                                    tabIndex={isReady ? 0 : undefined}
-                                                    className={`flex items-center justify-between gap-3 rounded-lg border p-2.5 transition-colors ${
-                                                        isReady
-                                                            ? 'cursor-pointer border-border bg-surface hover:border-primary/50 hover:bg-surface-hover'
-                                                            : 'border-border/50 bg-muted/20 opacity-60'
-                                                    }`}
-                                                >
-                                                    <div className="flex min-w-0 items-center gap-2.5">
-                                                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-border/60 bg-muted/40">
-                                                            <AssetThumbnail
-                                                                asset={asset}
-                                                                variant="compact"
-                                                            />
-                                                        </div>
-                                                        <div className="min-w-0 space-y-0.5">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <h4 className="truncate font-semibold text-foreground text-xs">
-                                                                    {asset.name}
-                                                                </h4>
-                                                                <Badge
-                                                                    tone="neutral"
-                                                                    className="h-4 px-1 text-[10px]"
-                                                                >
-                                                                    {assetTypeLabels[asset.type] ||
-                                                                        asset.type}
-                                                                </Badge>
-                                                            </div>
-                                                            <p className="text-[11px] text-muted-foreground">
-                                                                {formatBytes(asset.sizeBytes)} •{' '}
-                                                                <span
-                                                                    className={
-                                                                        isReady
-                                                                            ? 'text-emerald-600 dark:text-emerald-400'
-                                                                            : 'text-amber-500'
-                                                                    }
-                                                                >
-                                                                    {assetStatusLabels[
-                                                                        asset.status
-                                                                    ] || asset.status}
-                                                                </span>
-                                                            </p>
-                                                        </div>
-                                                    </div>
-
-                                                    <Button
-                                                        variant={isReady ? 'default' : 'secondary'}
-                                                        size="sm"
-                                                        className="h-7 shrink-0 px-2.5 text-xs"
+                                                <li key={asset.id}>
+                                                    <button
                                                         type="button"
                                                         disabled={!isReady}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleSelectAsset(asset);
-                                                        }}
+                                                        onClick={() => handleSelectAsset(asset)}
+                                                        className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:not-disabled:bg-muted focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2 disabled:cursor-default disabled:opacity-65"
                                                     >
-                                                        {isReady ? 'Chọn' : 'Chưa sẵn sàng'}
-                                                    </Button>
+                                                        <LibraryAssetSummary asset={asset} />
+                                                        {isReady ? (
+                                                            <span className="flex shrink-0 items-center gap-1.5 text-muted-foreground text-sm">
+                                                                Chọn{' '}
+                                                                <ChevronRight
+                                                                    className="size-4"
+                                                                    aria-hidden="true"
+                                                                />
+                                                            </span>
+                                                        ) : (
+                                                            <Badge
+                                                                tone={
+                                                                    asset.status === 'FAILED'
+                                                                        ? 'danger'
+                                                                        : 'neutral'
+                                                                }
+                                                            >
+                                                                {assetStatusLabels[asset.status]}
+                                                            </Badge>
+                                                        )}
+                                                    </button>
                                                 </li>
                                             );
                                         })}
                                     </ul>
                                 ) : (
-                                    <Empty className="py-8">
+                                    <Empty className="border-0 py-10">
                                         <EmptyHeader>
                                             <EmptyTitle>
-                                                <h3 className="text-sm">
-                                                    Chưa có tài nguyên phù hợp
-                                                </h3>
+                                                {searchQuery
+                                                    ? 'Không tìm thấy tài nguyên'
+                                                    : 'Chưa có tài nguyên cá nhân'}
                                             </EmptyTitle>
                                             <EmptyDescription>
-                                                <p className="text-xs">
-                                                    Không tìm thấy tài nguyên cá nhân nào ở trạng
-                                                    thái sẵn sàng. Hãy tải tệp mới lên trước.
-                                                </p>
+                                                {searchQuery
+                                                    ? 'Thử tìm với từ khóa khác.'
+                                                    : 'Tải tệp mới để thêm tài nguyên vào thư viện.'}
                                             </EmptyDescription>
                                         </EmptyHeader>
                                     </Empty>
-                                )}
+                                ))}
+                        </div>
 
-                                {/* Phân trang danh sách cá nhân */}
-                                {mineAssetsQuery.data.meta.totalPages > 1 && (
-                                    <div className="flex items-center justify-between border-border/60 border-t pt-2 text-muted-foreground text-xs">
-                                        <span>
-                                            Trang {page} / {mineAssetsQuery.data.meta.totalPages}
-                                        </span>
-                                        <div className="flex gap-1.5">
+                        {mineAssetsQuery.isSuccess &&
+                            personalAssets &&
+                            personalAssets.meta.total > 0 && (
+                                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-border border-t pt-3">
+                                    <span className="text-muted-foreground text-sm">
+                                        {personalAssets.meta.total} tài nguyên
+                                    </span>
+                                    {personalAssets.meta.totalPages > 1 && (
+                                        <nav
+                                            aria-label="Phân trang tài nguyên cá nhân"
+                                            className="flex items-center gap-2"
+                                        >
                                             <Button
+                                                type="button"
                                                 variant="outline"
-                                                size="sm"
-                                                className="h-7 px-2 text-xs"
+                                                size="icon-sm"
+                                                aria-label="Trang trước"
                                                 disabled={page <= 1}
-                                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                                onClick={() => setPage(page - 1)}
                                             >
-                                                Trước
+                                                <ChevronLeft aria-hidden="true" />
                                             </Button>
+                                            <span className="text-muted-foreground text-sm tabular-nums">
+                                                {page} / {personalAssets.meta.totalPages}
+                                            </span>
                                             <Button
+                                                type="button"
                                                 variant="outline"
-                                                size="sm"
-                                                className="h-7 px-2 text-xs"
-                                                disabled={
-                                                    page >= mineAssetsQuery.data.meta.totalPages
-                                                }
-                                                onClick={() => setPage((p) => p + 1)}
+                                                size="icon-sm"
+                                                aria-label="Trang sau"
+                                                disabled={page >= personalAssets.meta.totalPages}
+                                                onClick={() => setPage(page + 1)}
                                             >
-                                                Sau
+                                                <ChevronRight aria-hidden="true" />
                                             </Button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        <DialogFooter className="mt-2 border-border/60 border-t pt-2">
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                className="h-8 px-3 text-xs"
-                                onClick={handleClose}
-                            >
-                                Đóng
-                            </Button>
-                        </DialogFooter>
+                                        </nav>
+                                    )}
+                                </div>
+                            )}
                     </div>
                 )}
 
-                {/* BƯỚC 2: Cấu hình thông tin đưa vào thư viện */}
                 {selectedAsset && (
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Thẻ tóm tắt tài nguyên đã chọn */}
-                        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-surface/40 p-2.5">
-                            <div className="flex min-w-0 items-center gap-2.5">
-                                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-border/60 bg-muted/60">
-                                    <AssetThumbnail asset={selectedAsset} variant="compact" />
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="truncate font-semibold text-foreground text-sm">
-                                            {selectedAsset.name}
-                                        </span>
-                                        <Badge
-                                            tone="neutral"
-                                            className="h-4.5 px-1.5 font-normal text-[10px]"
-                                        >
-                                            {assetTypeLabels[selectedAsset.type] ||
-                                                selectedAsset.type}
-                                        </Badge>
-                                    </div>
-                                    <p className="truncate text-[11px] text-muted-foreground">
-                                        {formatBytes(selectedAsset.sizeBytes)} • Định dạng .
-                                        {selectedAsset.format.toUpperCase()}
-                                    </p>
-                                </div>
+                    <form
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            promote(selectedAsset);
+                        }}
+                        className="flex min-h-0 flex-col gap-4"
+                    >
+                        <div className="-mx-1 min-h-0 space-y-4 overflow-y-auto px-1 pb-1">
+                            <div className="rounded-lg bg-muted/40 p-3">
+                                <LibraryAssetSummary asset={selectedAsset} />
                             </div>
+                            {renderFields(selectedAsset.type, promoteMutation.isPending)}
+
+                            <p className="m-0 rounded-lg bg-muted/40 p-3 text-muted-foreground text-sm">
+                                Tài nguyên sẽ chuyển từ kho cá nhân sang thư viện dùng chung. Các
+                                sách đang dùng tài nguyên vẫn hoạt động.
+                            </p>
+                        </div>
+                        <DialogFooter className="mt-0 shrink-0 border-0 pt-0">
                             <Button
                                 type="button"
                                 variant="outline"
-                                size="sm"
-                                className="h-7 shrink-0 gap-1 px-2 text-xs"
-                                onClick={handleBackToSelect}
-                                disabled={promoteMutation.isPending}
-                            >
-                                <ArrowLeft className="h-3 w-3" />
-                                <span>Đổi tài nguyên</span>
-                            </Button>
-                        </div>
-
-                        <FieldGroup className="gap-3.5">
-                            {/* Tên tài nguyên */}
-                            <Field>
-                                <FieldLabel
-                                    htmlFor="promote-asset-name"
-                                    className="font-medium text-xs"
-                                >
-                                    Tên tài nguyên <span className="text-destructive">*</span>
-                                </FieldLabel>
-                                <Input
-                                    id="promote-asset-name"
-                                    value={name}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                        setName(e.target.value);
-                                        if (fieldErrors.name)
-                                            setFieldErrors((p) => ({ ...p, name: '' }));
-                                    }}
-                                    maxLength={150}
-                                    disabled={promoteMutation.isPending}
-                                    className="mt-1 h-8 text-xs placeholder:text-xs"
-                                    placeholder="Nhập tên tài nguyên..."
-                                />
-                                {fieldErrors.name && (
-                                    <FieldError className="m-0 mt-1 text-[11px]">
-                                        {fieldErrors.name}
-                                    </FieldError>
-                                )}
-                            </Field>
-
-                            {/* Danh mục */}
-                            <Field orientation="contents">
-                                <FieldLabel
-                                    htmlFor="promote-asset-category"
-                                    className="font-medium text-xs"
-                                >
-                                    Danh mục thư viện
-                                    <FormSelect
-                                        id="promote-asset-category"
-                                        value={categoryId}
-                                        onValueChange={(val) => setCategoryId(val)}
-                                        options={[
-                                            { value: '', label: 'Không phân danh mục' },
-                                            ...categories.map((cat) => ({
-                                                value: cat.id,
-                                                label: cat.name,
-                                            })),
-                                        ]}
-                                        disabled={promoteMutation.isPending}
-                                    />
-                                </FieldLabel>
-                            </Field>
-
-                            {/* Giấy phép & Tác giả 2 cột */}
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                <Field>
-                                    <FieldLabel
-                                        htmlFor="promote-asset-license"
-                                        className="font-medium text-xs"
-                                    >
-                                        Giấy phép sử dụng{' '}
-                                        <span className="text-destructive">*</span>
-                                    </FieldLabel>
-                                    <Input
-                                        id="promote-asset-license"
-                                        value={license}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                            setLicense(e.target.value);
-                                            if (fieldErrors.license)
-                                                setFieldErrors((p) => ({ ...p, license: '' }));
-                                        }}
-                                        maxLength={50}
-                                        disabled={promoteMutation.isPending}
-                                        className="mt-1 h-8 text-xs placeholder:text-xs"
-                                        placeholder="Ví dụ: CC-BY, CC0, Miễn phí..."
-                                    />
-                                    {fieldErrors.license && (
-                                        <FieldError className="m-0 mt-1 text-[11px]">
-                                            {fieldErrors.license}
-                                        </FieldError>
-                                    )}
-                                </Field>
-
-                                <Field>
-                                    <FieldLabel
-                                        htmlFor="promote-asset-author"
-                                        className="font-medium text-xs"
-                                    >
-                                        Tác giả gốc <span className="text-destructive">*</span>
-                                    </FieldLabel>
-                                    <Input
-                                        id="promote-asset-author"
-                                        value={authorName}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                            setAuthorName(e.target.value);
-                                            if (fieldErrors.authorName)
-                                                setFieldErrors((p) => ({ ...p, authorName: '' }));
-                                        }}
-                                        maxLength={150}
-                                        disabled={promoteMutation.isPending}
-                                        className="mt-1 h-8 text-xs placeholder:text-xs"
-                                        placeholder="Tên tác giả gốc..."
-                                    />
-                                    {fieldErrors.authorName && (
-                                        <FieldError className="m-0 mt-1 text-[11px]">
-                                            {fieldErrors.authorName}
-                                        </FieldError>
-                                    )}
-                                </Field>
-                            </div>
-
-                            {/* Nguồn liên kết */}
-                            <Field>
-                                <FieldLabel
-                                    htmlFor="promote-asset-source"
-                                    className="font-medium text-xs"
-                                >
-                                    Liên kết nguồn gốc{' '}
-                                    <span className="font-normal text-muted-foreground">
-                                        (không bắt buộc)
-                                    </span>
-                                </FieldLabel>
-                                <Input
-                                    id="promote-asset-source"
-                                    type="url"
-                                    value={sourceUrl}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                        setSourceUrl(e.target.value)
-                                    }
-                                    disabled={promoteMutation.isPending}
-                                    className="mt-1 h-8 text-xs placeholder:text-xs"
-                                    placeholder="https://..."
-                                />
-                            </Field>
-
-                            {/* Nhãn Tags */}
-                            <Field>
-                                <FieldLabel
-                                    htmlFor="promote-asset-tags"
-                                    className="font-medium text-xs"
-                                >
-                                    {selectedAsset.type === 'AUDIO'
-                                        ? 'Loại âm thanh'
-                                        : 'Nhãn (ngăn cách bởi dấu phẩy)'}
-                                </FieldLabel>
-                                {selectedAsset.type === 'AUDIO' ? (
-                                    <FormSelect
-                                        id="promote-asset-tags"
-                                        value={tags}
-                                        onValueChange={(val) => setTags(val)}
-                                        options={AUDIO_TAG_OPTIONS}
-                                        disabled={promoteMutation.isPending}
-                                    />
-                                ) : (
-                                    <Input
-                                        id="promote-asset-tags"
-                                        value={tags}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                            setTags(e.target.value)
-                                        }
-                                        disabled={promoteMutation.isPending}
-                                        className="mt-1 h-8 text-xs placeholder:text-xs"
-                                        placeholder="ví dụ: phong cảnh, thiên nhiên, 3d..."
-                                    />
-                                )}
-                                <span className="mt-1 block text-[11px] text-muted-foreground">
-                                    Tối đa 20 nhãn, mỗi nhãn không quá 30 ký tự.
-                                </span>
-                            </Field>
-                        </FieldGroup>
-
-                        <div className="rounded-md border border-border/60 bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
-                            Tài nguyên sẽ được chuyển khỏi danh sách cá nhân sang thư viện dùng
-                            chung. Tất cả tác giả có thể dùng trong sách; các tham chiếu hiện có
-                            được giữ nguyên.
-                        </div>
-
-                        <DialogFooter className="mt-2 flex-row justify-end gap-2 border-border/60 border-t pt-2">
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                className="h-8 px-3 text-xs"
                                 onClick={handleBackToSelect}
                                 disabled={promoteMutation.isPending}
                             >
                                 Quay lại
                             </Button>
-                            <Button
-                                type="submit"
-                                size="sm"
-                                className="h-8 gap-1.5 px-3.5 font-medium text-xs"
-                                disabled={promoteMutation.isPending}
-                            >
-                                <Share2 className="h-3.5 w-3.5" />
-                                <span>
-                                    {promoteMutation.isPending
-                                        ? 'Đang xử lý...'
-                                        : 'Đưa vào thư viện'}
-                                </span>
+                            <Button type="submit" disabled={promoteMutation.isPending}>
+                                {promoteMutation.isPending ? 'Đang thêm…' : 'Thêm vào thư viện'}
                             </Button>
                         </DialogFooter>
                     </form>
                 )}
-            </DialogContent>
-        </Dialog>
+            </LibraryAssetDialog>
+            {discardUpload && (
+                <ConfirmationDialog
+                    title="Bỏ tệp đang chọn?"
+                    description="Tệp này chưa được thêm vào kho cá nhân."
+                    busy={false}
+                    onClose={() => setDiscardUpload(null)}
+                >
+                    <DialogFooter className="mt-0 border-0 pt-0">
+                        <Button
+                            variant="outline"
+                            data-initial-focus
+                            onClick={() => setDiscardUpload(null)}
+                        >
+                            Tiếp tục tải
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                setDiscardUpload(null);
+                                discardUpload();
+                            }}
+                        >
+                            Bỏ tệp
+                        </Button>
+                    </DialogFooter>
+                </ConfirmationDialog>
+            )}
+        </>
     );
 }
