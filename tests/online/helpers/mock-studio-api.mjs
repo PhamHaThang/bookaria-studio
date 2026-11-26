@@ -912,10 +912,13 @@ parent.postMessage({ type: 'ready', id }, location.origin);
                 return replyPage(items, Number(url.searchParams.get('page') || 1));
             }
             if (method === 'GET' && path === '/admin/books') {
-                const visibility = url.searchParams.get('visibility') || 'PUBLIC';
+                const visibility = url.searchParams.get('visibility') || 'ALL';
                 const q = (url.searchParams.get('q') || '').toLowerCase();
                 const items = [...state.books.values()]
-                    .filter((b) => b.visibility === visibility)
+                    .filter(
+                        (b) =>
+                            !b.deletedAt && (visibility === 'ALL' || b.visibility === visibility),
+                    )
                     .filter((b) => !q || b.title.toLowerCase().includes(q))
                     .map((b) => ({
                         ...toBookSummary(b),

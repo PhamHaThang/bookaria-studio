@@ -819,6 +819,7 @@ export function AdminBooksPage() {
                             name="visibility"
                             value={query.visibility}
                             options={[
+                                { value: 'ALL', label: 'Tất cả' },
                                 { value: 'PUBLIC', label: 'Công khai' },
                                 { value: 'UNLISTED', label: 'Qua liên kết' },
                                 { value: 'PRIVATE', label: 'Riêng tư' },
@@ -848,8 +849,8 @@ export function AdminBooksPage() {
                 {/* Footer bar của filter */}
                 <div className="mt-3 flex items-center justify-between border-border border-t pt-3 text-xs">
                     <span className="text-muted-foreground">
-                        Sách bị gỡ được chuyển sang riêng tư. Chọn “Riêng tư” để tra cứu và khôi
-                        phục.
+                        Sách bị gỡ được chuyển sang riêng tư. Chọn “Tất cả” hoặc “Riêng tư” để tìm
+                        sách cần khôi phục.
                     </span>
                     <Link
                         to="/admin/books"

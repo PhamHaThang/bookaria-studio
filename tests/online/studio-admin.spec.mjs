@@ -81,6 +81,27 @@ test.describe('Studio Admin: RBAC, Dashboard, Users, Moderation, Library, Catego
             .toBe(true);
     });
 
+    test('admin books default to all visibility levels and reset to all', async ({ page }) => {
+        await installStudioMocks(page, { role: 'ADMIN' });
+        await page.goto('/admin/books');
+
+        const visibility = page.getByRole('combobox', { name: 'Quyền hiển thị' });
+        const publicBook = page.getByText('Đại Dương Xanh AR', { exact: true });
+        const privateBook = page.getByText('Sách Nháp Khám Phá', { exact: true });
+        await expect(visibility).toHaveText('Tất cả');
+        await expect(publicBook).toBeVisible();
+        await expect(privateBook).toBeVisible();
+
+        await visibility.click();
+        await page.getByRole('option', { name: 'Công khai', exact: true }).click();
+        await expect(publicBook).toBeVisible();
+        await expect(privateBook).toBeHidden();
+
+        await page.getByRole('link', { name: 'Đặt lại bộ lọc' }).click();
+        await expect(visibility).toHaveText('Tất cả');
+        await expect(privateBook).toBeVisible();
+    });
+
     test('moderation queue, takedown (requires reason), reinstate, and dismiss reports', async ({
         page,
     }) => {

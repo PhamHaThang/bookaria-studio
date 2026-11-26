@@ -71,12 +71,17 @@ test('admin URL filters preserve valid values, reject unknown enum/sort and boun
     assert.equal(fallback.status, undefined);
     assert.equal(fallback.sort, '-createdAt');
     assert.equal(readAdminUsersSearch(new URLSearchParams({ q: 'x'.repeat(120) })).q.length, 100);
-    assert.equal(readAdminBooksSearch(new URLSearchParams()).visibility, 'PUBLIC');
+    assert.equal(readAdminBooksSearch(new URLSearchParams()).visibility, 'ALL');
+    assert.equal(readAdminBooksSearch(new URLSearchParams('visibility=ALL')).visibility, 'ALL');
+    assert.equal(
+        readAdminBooksSearch(new URLSearchParams('visibility=PUBLIC')).visibility,
+        'PUBLIC',
+    );
     assert.equal(
         readAdminBooksSearch(new URLSearchParams('visibility=PRIVATE')).visibility,
         'PRIVATE',
     );
-    assert.equal(readAdminBooksSearch(new URLSearchParams('visibility=oops')).visibility, 'PUBLIC');
+    assert.equal(readAdminBooksSearch(new URLSearchParams('visibility=oops')).visibility, 'ALL');
     assert.equal(readAdminQueueSearch(new URLSearchParams('page=2')).page, 2);
     assert.notDeepEqual(adminKeys.user(id, other), adminKeys.user(other, id));
 });

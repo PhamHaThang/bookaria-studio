@@ -43,7 +43,7 @@ export function readAdminUsersSearch(params: URLSearchParams) {
 }
 export function readAdminBooksSearch(params: URLSearchParams) {
     const visibility = AdminBooksQuerySchema.shape.visibility.safeParse(
-        params.get('visibility') || 'PUBLIC',
+        params.get('visibility') || undefined,
     );
     const rawLimit = Number(params.get('limit'));
     const limit = [5, 10, 12, 20].includes(rawLimit) ? rawLimit : 12;
@@ -51,7 +51,7 @@ export function readAdminBooksSearch(params: URLSearchParams) {
         page: page(params),
         limit,
         q: (params.get('q') || '').trim().slice(0, 100) || undefined,
-        visibility: visibility.success ? visibility.data : 'PUBLIC',
+        visibility: visibility.success ? visibility.data : undefined,
     });
 }
 export const readAdminQueueSearch = (params: URLSearchParams) => {
