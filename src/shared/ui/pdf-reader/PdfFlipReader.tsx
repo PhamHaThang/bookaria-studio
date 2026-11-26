@@ -19,7 +19,6 @@ export default function PdfFlipReader({
     const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
     const src = new URL(`${import.meta.env.BASE_URL}pdf-reader/index.html`, window.location.href);
     src.hash = new URLSearchParams({
-        pdf: url,
         title,
         theme: initialTheme,
     }).toString();
@@ -33,7 +32,12 @@ export default function PdfFlipReader({
             ) {
                 return;
             }
-            if (event.data.type === 'ready' || event.data.type === 'error') {
+            if (event.data.type === 'hello') {
+                frame.current?.contentWindow?.postMessage(
+                    { type: 'pdf-reader-open', pdf: url, title, theme: initialTheme },
+                    window.location.origin,
+                );
+            } else if (event.data.type === 'ready' || event.data.type === 'error') {
                 setStatus(event.data.type);
             } else if (event.data.type === 'close') {
                 onClose();
@@ -50,7 +54,7 @@ export default function PdfFlipReader({
         }
         window.addEventListener('message', receive);
         return () => window.removeEventListener('message', receive);
-    }, [onClose, setPreference, theme, url]);
+    }, [initialTheme, onClose, setPreference, theme, title, url]);
 
     useEffect(() => {
         if (status === 'ready') {

@@ -3,7 +3,7 @@
   "zod": "4.6.5",
   "files": {
     "api/admin.schema.ts": "963c88e8ba5bb0cb8cd056e4e25a419a32d5ba6d70880cc48962b5ed0bd928da",
-    "api/assets.schema.ts": "01a957b1213d003834c03b05254b57a2042f45abe5598702611122b1b2049dd1",
+    "api/assets.schema.ts": "e1fb6a5bded4fd0d76980a934cc5d36010698dd97f0860e311ed38ef7a04b1b4",
     "api/auth.schema.ts": "7b227ba99c21fa7eb81f96cf6ed81cca477299d21706fb558ea514fecfd48b46",
     "api/book-draft.schema.ts": "f5a4783cdd336e6420da3d5de31ddf7bee6da51d1fee897dcd36f74f21799407",
     "api/books.schema.ts": "1f9eeadfea47188c0a12a59a0e1aa72dc42baf1f744121e922da74c1dba77303",
@@ -14,7 +14,7 @@
     "api/public.schema.ts": "a59ac9b613088c3dc2413b2eec5e798d73c1fb1b4b9b3fc48f2a4315aba259c6",
     "api/publish.schema.ts": "3b220411b623d845da3ceabd494fae609f4fce0b4a7e534b0c70a33a8b9f91e5",
     "asset.schema.ts": "5fc6c90acfc06d63563da516bd1eb4ab82ef96984df944e313682bc51746fccd",
-    "common.schema.ts": "b9bd7f84a0e43aab23b5397712cc47bc2dba218e78ef73c54d39b623ccdc1409",
+    "common.schema.ts": "cc09b2cdee4bbf5e8c337e24a0f00f2c40d819dfe5da6c7da9816c9d40c834d8",
     "dto.schema.ts": "5e2d93c87bf407103af71e424072f4f3cc3331ccb875a66f795d085f528fb94d",
     "enums.schema.ts": "3ea2f9dc2ede4153bae0fa4ec597acb9bbb6218eaab1437e9f915308ab4bde72",
     "error.schema.ts": "702c4fcd301e6fccb82aa5060c60acef169a94668d7e2fdee2285825d9e359a4",

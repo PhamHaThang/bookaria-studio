@@ -6,8 +6,22 @@ const pageInput = document.querySelector('#page');
 const total = document.querySelector('#total');
 const more = document.querySelector('#more');
 const parentOrigin = location.origin;
-const title = params.get('title') || 'Bookaria';
+let title = params.get('title') || 'Bookaria';
 const initialTheme = params.get('theme') === 'dark' ? 'dark' : 'light';
+const configuredR2Origin = (() => {
+    const raw = document
+        .querySelector('meta[name="bookaria-r2-origin"]')
+        ?.getAttribute('content')
+        ?.trim();
+    if (!raw) return null;
+    try {
+        return new URL(raw).origin;
+    } catch {
+        return null;
+    }
+})();
+const allowedOrigins = new Set([location.origin, ...(configuredR2Origin ? [configuredR2Origin] : [])]);
+let started = false;
 const compact = matchMedia('(max-width: 640px)');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const soundKey = 'bookaria:pdf-page-sound';
@@ -41,8 +55,29 @@ window.addEventListener('message', (event) => {
     const theme = event.data?.theme;
     if (event.data?.type === 'pdf-reader-theme' && (theme === 'light' || theme === 'dark')) {
         applyTheme(theme);
+    } else if (event.data?.type === 'pdf-reader-open' && typeof event.data?.pdf === 'string') {
+        try {
+            startBook(event.data.pdf, event.data.title, theme);
+        } catch {
+            send('error');
+        }
     }
 });
+
+function isAllowedPdfUrl(pdfUrl) {
+    if (!['http:', 'https:'].includes(pdfUrl.protocol) || pdfUrl.username || pdfUrl.password) {
+        return false;
+    }
+    if (allowedOrigins.has(pdfUrl.origin)) return true;
+    if (pdfUrl.protocol === 'https:' && /\.r2\.dev$/i.test(pdfUrl.hostname)) return true;
+    if (
+        (location.hostname === 'localhost' || location.hostname === '127.0.0.1') &&
+        ['localhost', '127.0.0.1'].includes(pdfUrl.hostname)
+    ) {
+        return true;
+    }
+    return false;
+}
 
 function send(type) {
     window.parent.postMessage({ source: 'bookaria-pdf', type }, parentOrigin);
@@ -69,11 +104,20 @@ async function download(book) {
     }
 }
 
-function setup() {
-    const pdfUrl = new URL(params.get('pdf') ?? '');
-    if (!['http:', 'https:'].includes(pdfUrl.protocol) || pdfUrl.username || pdfUrl.password) {
+function startBook(rawUrl, nextTitle, nextTheme) {
+    if (started) return;
+    if (typeof nextTitle === 'string' && nextTitle.trim()) {
+        title = nextTitle.trim();
+        document.title = title;
+    }
+    if (nextTheme === 'light' || nextTheme === 'dark') {
+        applyTheme(nextTheme);
+    }
+    const pdfUrl = new URL(rawUrl ?? '');
+    if (!isAllowedPdfUrl(pdfUrl)) {
         throw new Error('Invalid PDF URL');
     }
+    started = true;
     const resources = new URL('../vendor/dearflip-lite/dflip/', location.href);
     window.dFlipLocation = resources.href;
     Object.assign(window.DFLIP.defaults, {
@@ -278,7 +322,13 @@ window.addEventListener('keydown', (event) => {
 });
 
 try {
-    setup();
+    if (params.has('pdf')) {
+        startBook(params.get('pdf'), params.get('title'), initialTheme);
+    } else if (window.parent !== window) {
+        send('hello');
+    } else {
+        send('error');
+    }
 } catch {
     send('error');
 }

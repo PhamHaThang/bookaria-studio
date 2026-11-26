@@ -7,16 +7,7 @@
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
-    <script>
-      (() => {
-        let preference = 'system';
-        try { preference = localStorage.getItem('bookaria.theme') || 'system'; } catch {}
-        const dark = preference === 'dark' || (preference !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.classList.toggle('dark', dark);
-        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-        document.documentElement.dataset.editor = /^\/books\/[^/]+\/(?:edit|pages\/[^/]+)\/?$/.test(location.pathname) ? 'true' : 'false';
-      })();
-    </script>
+    <script src="/boot-theme.js"></script>
     <title>Bookaria Studio</title>
     <style>
       .app-boot {
@@ -54,11 +45,11 @@
         <div class="app-boot-brand" aria-hidden="true">
           <picture class="boki-boot-light">
             <source media="(prefers-reduced-motion: reduce)" srcset="/brand/mascot/light-loading-poster.svg">
-            <img loading="lazy" src="/brand/mascot/light-loading-loop.svg" alt="" width="80" height="80" onload="this.dataset.loadingStarted = performance.now()">
+            <img loading="lazy" src="/brand/mascot/light-loading-loop.svg" alt="" width="80" height="80">
           </picture>
           <picture class="boki-boot-dark">
             <source media="(prefers-reduced-motion: reduce)" srcset="/brand/mascot/dark-loading-poster.svg">
-            <img loading="lazy" src="/brand/mascot/dark-loading-loop.svg" alt="" width="80" height="80" onload="this.dataset.loadingStarted = performance.now()">
+            <img loading="lazy" src="/brand/mascot/dark-loading-loop.svg" alt="" width="80" height="80">
           </picture>
         </div>
         <div class="app-boot-copy"><p><span class="app-label">Đang tải tài nguyên…</span><span class="editor-label">Đang mở editor…</span></p></div>
