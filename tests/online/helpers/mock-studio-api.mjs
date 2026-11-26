@@ -1147,10 +1147,18 @@ parent.postMessage({ type: 'ready', id }, location.origin);
             if (method === 'GET' && path === '/admin/audit-logs') {
                 const action = url.searchParams.get('action');
                 const targetType = url.searchParams.get('targetType');
+                const targetId = url.searchParams.get('targetId')?.toLowerCase();
+                const actorId = url.searchParams.get('actorId')?.toLowerCase();
                 const items = state.auditLogs.filter(
                     (l) =>
                         (!action || l.action === action) &&
-                        (!targetType || l.target.type === targetType),
+                        (!targetType || l.target.type === targetType) &&
+                        (!actorId || l.actor.id.toLowerCase() === actorId) &&
+                        (!targetId ||
+                            l.target.id.toLowerCase() === targetId ||
+                            (targetType === 'JOB' &&
+                                l.action === 'RETRY_JOB' &&
+                                l.detail?.newJobId === targetId)),
                 );
                 return replyPage(items, Number(url.searchParams.get('page') || 1));
             }

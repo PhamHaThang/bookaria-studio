@@ -493,7 +493,15 @@ test.describe('Studio Admin: RBAC, Dashboard, Users, Moderation, Library, Catego
         const mock = await installStudioMocks(page, { role: 'ADMIN' });
 
         await page.goto('/admin/jobs');
-        await expect(page.getByText(mock.state.ids.failedJobId).first()).toBeVisible();
+        const failedJob = page
+            .getByRole('listitem')
+            .filter({ hasText: mock.state.ids.failedJobId });
+        await expect(failedJob).toBeVisible();
+        await failedJob.getByRole('link', { name: 'Nhật ký quản trị', exact: true }).click();
+        await expect(
+            page.getByRole('heading', { name: 'Chưa có nhật ký quản trị cho tác vụ này' }),
+        ).toBeVisible();
+        await page.getByRole('link', { name: 'Về trang Tác vụ', exact: true }).click();
 
         // Retry failed job -> 202 with new jobId
         await page.getByRole('button', { name: 'Thử lại' }).click();
@@ -507,12 +515,20 @@ test.describe('Studio Admin: RBAC, Dashboard, Users, Moderation, Library, Catego
             )
             .toBe(true);
 
-        // Audit logs page & detail modal
-        await page.goto('/admin/audit-logs');
+        const retryHistory = page.getByRole('link', { name: 'Xem nhật ký thử lại', exact: true });
+        await expect(retryHistory).toBeVisible();
+        const retryLog = mock.state.auditLogs.find(
+            (log) => log.target.id === mock.state.ids.failedJobId,
+        );
+        expect(retryLog?.detail?.newJobId).toBeTruthy();
+        const newJob = page.getByRole('listitem').filter({ hasText: retryLog.detail.newJobId });
+        await newJob.getByRole('link', { name: 'Nhật ký quản trị', exact: true }).click();
+        await expect(page).toHaveURL(new RegExp(`targetId=${retryLog.detail.newJobId}`));
         await expect(
             page.getByRole('heading', { name: 'Nhật ký quản trị', exact: true }),
         ).toBeVisible();
-        await page.getByRole('button', { name: 'Xem chi tiết' }).first().click();
+        const auditRow = page.getByRole('listitem').filter({ hasText: 'Chạy lại tác vụ' });
+        await auditRow.getByRole('button', { name: 'Xem chi tiết' }).click();
         const logDialog = page.getByRole('dialog');
         await expect(logDialog).toBeVisible();
         await expect(

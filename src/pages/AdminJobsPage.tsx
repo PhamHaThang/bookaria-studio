@@ -129,7 +129,7 @@ function AdminJobItem({ job, onRetry, retryDisabled }: AdminJobItemProps) {
                     >
                         <Link to={auditTargetLink('JOB', job.id)}>
                             <FileText className="h-3.5 w-3.5" />
-                            <span>Nhật ký tác vụ</span>
+                            <span>Nhật ký quản trị</span>
                         </Link>
                     </Button>
 

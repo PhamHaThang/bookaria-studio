@@ -4,62 +4,42 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AuditLogDetailModal, adminDate, adminOperationsApi, auditLabel } from '../features/admin';
 import { operationsKeys, readAuditSearch, targetLabel } from '../features/admin/operations-model';
-import { AdminActor } from '../features/admin/operations-ui';
+import { AdminActor, auditActionTone } from '../features/admin/operations-ui';
 import { AdminPager, AdminReload } from '../features/admin/ui';
 import { useAuth } from '../features/auth';
 import { errorMessage } from '../shared/api/errors';
+import type { AuditLog } from '../shared/contracts/dto.schema';
 import { AuditActionSchema, AuditTargetTypeSchema } from '../shared/contracts/enums.schema';
 import { Badge } from '../shared/ui/Badge';
 import { Button } from '../shared/ui/Button';
 import { Feedback } from '../shared/ui/Feedback';
 import { SelectFilter, TextFilter } from '../shared/ui/LiveFilters';
 import { LoadingState } from '../shared/ui/LoadingState';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../shared/ui/primitives/empty';
+import {
+    Empty,
+    EmptyContent,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyTitle,
+} from '../shared/ui/primitives/empty';
 import { Field, FieldGroup, FieldLabel } from '../shared/ui/primitives/field';
-
-function getAuditActionTone(action: string): 'success' | 'danger' | 'warning' | 'info' | 'neutral' {
-    switch (action) {
-        case 'LOCK_USER':
-        case 'TAKE_DOWN_BOOK':
-        case 'DELETE_ASSET':
-            return 'danger';
-        case 'CREATE_USER':
-        case 'REINSTATE_BOOK':
-        case 'CREATE_LIBRARY_ASSET':
-            return 'success';
-        case 'UNLOCK_USER':
-        case 'CHANGE_ROLE':
-        case 'SET_QUOTA':
-        case 'RESOLVE_REPORT':
-            return 'info';
-        case 'RETRY_JOB':
-            return 'warning';
-        default:
-            return 'neutral';
-    }
-}
+import { RetryNotice } from '../shared/ui/RetryNotice';
 
 interface AdminAuditItemProps {
-    log: {
-        id: number;
-        action: string;
-        createdAt: string;
-        actor: { id: string; displayName: string } | null;
-        target: { id: string; type: string };
-    };
+    log: AuditLog;
     onViewDetails: (logId: number) => void;
 }
 
 function AdminAuditItem({ log, onViewDetails }: AdminAuditItemProps) {
-    const actionTone = getAuditActionTone(log.action);
+    const actionTone = auditActionTone(log.action);
 
     return (
-        <li className="group space-y-3.5 rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-all hover:border-primary/40 hover:shadow-xs">
+        <li className="grid gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-primary/40 sm:p-5">
             {/* Hàng 1: Icon + Tên hành động + Mã log + Nút Xem chi tiết */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex min-w-0 flex-1 items-start gap-3.5">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-border bg-muted/40 text-primary shadow-xs">
-                        <ScrollText className="h-5 w-5" />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+                        <ScrollText className="size-5" aria-hidden="true" />
                     </div>
 
                     <div className="min-w-0 flex-1 space-y-1">
@@ -69,48 +49,49 @@ function AdminAuditItem({ log, onViewDetails }: AdminAuditItemProps) {
                                 onClick={() => onViewDetails(log.id)}
                                 className="truncate text-left font-semibold text-base text-foreground transition-colors hover:text-primary focus-visible:underline focus-visible:outline-none"
                             >
-                                {auditLabel[log.action as keyof typeof auditLabel] || log.action}
+                                {auditLabel[log.action]}
                             </button>
                             <Badge tone={actionTone} className="px-2 py-0.5 font-medium text-xs">
                                 #{log.id}
                             </Badge>
                         </div>
 
-                        <p className="text-muted-foreground text-xs">
-                            Thời điểm:{' '}
-                            <span className="text-foreground">{adminDate(log.createdAt)}</span>
-                        </p>
+                        <time
+                            dateTime={log.createdAt}
+                            className="block text-muted-foreground text-xs"
+                        >
+                            {adminDate(log.createdAt)}
+                        </time>
                     </div>
                 </div>
 
                 {/* Nút Xem chi tiết mở modal */}
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="ml-auto shrink-0">
                     <Button
                         variant="outline"
                         size="sm"
                         type="button"
                         onClick={() => onViewDetails(log.id)}
-                        className="h-8 gap-1.5 px-3 text-xs"
                     >
-                        <Eye className="h-3.5 w-3.5" />
+                        <Eye data-icon="inline-start" />
                         <span>Xem chi tiết</span>
                     </Button>
                 </div>
             </div>
 
             {/* Hàng 2: Chi tiết người thực hiện & đối tượng */}
-            <div className="grid grid-cols-1 gap-2.5 rounded-lg border border-border/50 bg-muted/20 p-3 text-xs sm:grid-cols-2">
-                <div className="flex items-center gap-1.5 truncate">
+            <div className="grid gap-2 rounded-lg bg-muted/40 p-3 text-xs sm:grid-cols-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
                     <span className="shrink-0 text-muted-foreground">Người thực hiện:</span>
-                    <span className="truncate font-medium text-foreground">
+                    <span className="wrap-anywhere min-w-0 font-medium text-foreground">
                         <AdminActor actor={log.actor} />
                     </span>
                 </div>
-                <div className="flex items-center gap-1.5 truncate">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
                     <span className="shrink-0 text-muted-foreground">
-                        {targetLabel[log.target.type as keyof typeof targetLabel] || 'Đối tượng'}:
+                        {targetLabel[log.target.type]}:
                     </span>
-                    <code className="truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
+                    <code className="wrap-anywhere min-w-0 font-mono text-foreground">
                         {log.target.id}
                     </code>
                 </div>
@@ -125,6 +106,7 @@ export function AdminAuditPage() {
 
     const parsed = readAuditSearch(params);
     const query = parsed.success ? parsed.data : null;
+    const isJobHistory = query?.targetType === 'JOB' && Boolean(query.targetId);
 
     const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
 
@@ -143,17 +125,15 @@ export function AdminAuditPage() {
     );
 
     return (
-        <div className="mx-auto max-w-6xl space-y-6 p-6">
+        <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
             {/* Header: Tiêu đề & Mô tả */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="font-semibold text-2xl text-foreground tracking-tight">
-                        Nhật ký quản trị
-                    </h1>
-                    <p className="mt-1 text-muted-foreground text-sm">
-                        Đối chiếu người thực hiện, đối tượng và nội dung từng thao tác quản trị.
-                    </p>
-                </div>
+            <div>
+                <h1 className="font-semibold text-2xl text-foreground tracking-tight">
+                    Nhật ký quản trị
+                </h1>
+                <p className="mt-1 text-muted-foreground text-sm">
+                    Đối chiếu người thực hiện, đối tượng và nội dung từng thao tác quản trị.
+                </p>
             </div>
 
             {/* Thanh Bộ lọc & Tìm kiếm đồng bộ */}
@@ -234,9 +214,9 @@ export function AdminAuditPage() {
                 </FieldGroup>
 
                 {/* Footer bar của filter: thông tin & Đặt lại bộ lọc */}
-                <div className="mt-3 flex items-center justify-between border-border border-t pt-3 text-xs">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-border border-t pt-3 text-xs">
                     <span className="text-muted-foreground">
-                        Hệ thống kiểm toán lưu vết toàn bộ hoạt động can thiệp dữ liệu và quản trị.
+                        Dùng bộ lọc để tìm các thao tác quản trị đã ghi nhận.
                     </span>
                     {hasFilters && (
                         <Link
@@ -262,12 +242,16 @@ export function AdminAuditPage() {
             )}
 
             {query && list.isError && (
-                <Feedback error={errorMessage(list.error)} errorMode="toast" />
+                <RetryNotice
+                    message={errorMessage(list.error)}
+                    busy={list.isFetching}
+                    onRetry={() => void list.refetch()}
+                />
             )}
 
             {query && list.isSuccess && (
                 <div className="space-y-4">
-                    <div className="flex items-center justify-between text-muted-foreground text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground text-xs">
                         <span>
                             Hiển thị{' '}
                             <strong className="text-foreground">{list.data.data.length}</strong>{' '}
@@ -278,7 +262,7 @@ export function AdminAuditPage() {
                     </div>
 
                     {list.data.data.length ? (
-                        <ul className="list-none space-y-3.5 p-0">
+                        <ul className="m-0 list-none space-y-3 p-0">
                             {list.data.data.map((log) => (
                                 <AdminAuditItem
                                     key={log.id}
@@ -291,15 +275,27 @@ export function AdminAuditPage() {
                         <Empty className="empty-state px-5 py-16">
                             <EmptyHeader>
                                 <EmptyTitle>
-                                    <h2>Không có nhật ký phù hợp</h2>
+                                    <h2>
+                                        {isJobHistory
+                                            ? 'Chưa có nhật ký quản trị cho tác vụ này'
+                                            : 'Không có nhật ký phù hợp'}
+                                    </h2>
                                 </EmptyTitle>
                                 <EmptyDescription>
                                     <p>
-                                        Thử bộ lọc khác hoặc đợi thao tác quản trị mới được ghi
-                                        nhận.
+                                        {isJobHistory
+                                            ? 'Mục này ghi các thao tác của quản trị viên như yêu cầu chạy lại. Trạng thái, tiến độ và kết quả xử lý nằm ở trang Tác vụ.'
+                                            : 'Thử bộ lọc khác hoặc đợi thao tác quản trị mới được ghi nhận.'}
                                     </p>
                                 </EmptyDescription>
                             </EmptyHeader>
+                            {isJobHistory && (
+                                <EmptyContent>
+                                    <Button asChild variant="outline">
+                                        <Link to="/admin/jobs">Về trang Tác vụ</Link>
+                                    </Button>
+                                </EmptyContent>
+                            )}
                         </Empty>
                     )}
 
