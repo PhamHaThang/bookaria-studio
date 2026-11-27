@@ -73,7 +73,8 @@ test.describe('Online Deployment Smoke & Infrastructure Verification', () => {
                         apiHost.split('.').slice(-2).join('.') !==
                             studioHost.split('.').slice(-2).join('.') ||
                         studioHost.endsWith('.pages.dev') ||
-                        apiHost.endsWith('.onrender.com');
+                        apiHost.endsWith('.onrender.com') ||
+                        apiHost.endsWith('.up.railway.app');
                     if (isCrossSite && apiHost !== studioHost) {
                         expect(setCookie.toLowerCase()).toContain('samesite=none');
                     }
